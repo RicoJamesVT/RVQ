@@ -19,8 +19,8 @@
     "mobile:build:ios": "capacitor build ios"
   },
   "devDependencies": {
-    "electron": "^latest",
-    "electron-builder": "^latest"
+    "electron": "latest",
+"electron-builder": "latest"
   },
   "dependencies": {
     "@capacitor/core": "latest",
