@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rico's Vinyl Quest</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="assets/icons/icon-192.png">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="theme-color" content="#120e18">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Vinyl Quest">
+<style>
+  html, body {
+    height: 100%;
+    margin: 0;
+    background: #120e18;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+  }
+  canvas {
+    image-rendering: pixelated;
+    max-width: 100vw;
+    max-height: 100vh;
+    aspect-ratio: 8 / 5;
+    outline: none;
+  }
+</style>
+</head>
+<body>
+<canvas id="game" width="960" height="600"></canvas>
+<script src="game.js"></script>
+<script>
+  // Registers the service worker so the game can be installed to a home
+  // screen (Android + iOS) and works offline. Also watches for a new
+  // version (i.e. you bumped CACHE_VERSION in sw.js after adding levels)
+  // and reloads automatically the next time the player opens the game.
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').then((reg) => {
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'activated') {
+              // A fresh version just took over. Reload once so the
+              // player is on the latest code/levels.
+              window.location.reload();
+            }
+          });
+        });
+      }).catch((err) => console.warn('SW registration failed', err));
+    });
+  }
+</script>
+</body>
+</html>
