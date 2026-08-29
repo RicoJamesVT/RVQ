@@ -19,6 +19,8 @@
     display: grid;
     place-items: center;
     overflow: hidden;
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    color: #f6f4f7;
   }
   canvas {
     image-rendering: pixelated;
@@ -27,11 +29,73 @@
     aspect-ratio: 8 / 5;
     outline: none;
   }
+
+  /* Install button (top-right overlay) */
+  .install-wrap { position: fixed; top: 18px; right: 18px; z-index: 9999; }
+  .install-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: linear-gradient(180deg,#2b222f,#1a1319);
+    color: #f6f4f7;
+    border: 1px solid rgba(255,255,255,0.06);
+    padding: 10px 14px;
+    border-radius: 999px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.6), inset 0 -2px 0 rgba(255,255,255,0.02);
+    cursor: pointer;
+    backdrop-filter: blur(4px);
+    -webkit-tap-highlight-color: transparent;
+  }
+  .install-button:hover { transform: translateY(-2px); transition: transform .12s ease; }
+  .install-button:active { transform: translateY(0); }
+  .install-record {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #111 6%, #222 20%, #0b0b0b 45%);
+    box-shadow: inset 0 0 6px rgba(255,255,255,0.03);
+    position: relative; flex: 0 0 28px;
+  }
+  .install-record::after { content: ''; position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); width: 6px; height: 6px; background:#ddd; border-radius:50%; }
+
+  /* iOS modal */
+  .install-modal { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; z-index:10000; }
+  .install-modal .backdrop { position:absolute; inset:0; background: linear-gradient(180deg, rgba(5,3,6,0.6), rgba(5,3,6,0.8)); backdrop-filter: blur(6px); }
+  .install-modal .sheet { position:relative; width: min(420px, 92%); background: #1c1620; border-radius: 12px; padding: 18px; box-shadow: 0 12px 40px rgba(0,0,0,0.6); border:1px solid rgba(255,255,255,0.03); color:#fff; }
+  .install-modal h3 { margin:0 0 8px 0; font-size:1.05rem; }
+  .install-modal p { margin:6px 0 12px 0; color:#d8d6da; }
+  .install-steps { display:flex; gap:10px; align-items:center; }
+  .step { display:flex; gap:10px; align-items:center; }
+  .step .kbd { background:#0e0b0e; padding:6px 10px; border-radius:8px; border:1px solid rgba(255,255,255,0.04); color:#fff; }
+  .close-modal { margin-top:12px; background:transparent; border:1px solid rgba(255,255,255,0.06); color:#fff; padding:8px 12px; border-radius:8px; cursor:pointer; }
 </style>
 </head>
 <body>
 <canvas id="game" width="960" height="600"></canvas>
+
+<!-- Install UI -->
+<div class="install-wrap" aria-hidden="false">
+  <button id="installBtn" class="install-button" aria-label="Install Game" title="Install Game" style="display:none;">
+    <span class="install-record" aria-hidden="true"></span>
+    <span>Install Game</span>
+  </button>
+</div>
+
+<!-- iOS install modal -->
+<div id="installModal" class="install-modal" role="dialog" aria-modal="true" aria-hidden="true">
+  <div class="backdrop"></div>
+  <div class="sheet" role="document">
+    <h3>Add Vinyl Quest to your Home Screen</h3>
+    <p>To install the game on iOS Safari, follow these steps:</p>
+    <div class="install-steps">
+      <div class="step"><div class="kbd">1</div><div>Tap the Share icon in Safari (the box with an arrow)</div></div>
+      <div class="step"><div class="kbd">2</div><div>Choose "Add to Home Screen"</div></div>
+    </div>
+    <p style="margin-top:10px;color:#cfcdd0">Tip: use Safari's Share menu — third-party browsers on iOS don't support "Add to Home Screen".</p>
+    <button id="closeInstallModal" class="close-modal">Got it</button>
+  </div>
+</div>
+
 <script src="game.js"></script>
+<script src="install.js"></script>
 <script>
   // Registers the service worker so the game can be installed to a home
   // screen (Android + iOS) and works offline. Also watches for a new
