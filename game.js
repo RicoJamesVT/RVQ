@@ -649,6 +649,11 @@ const MINIGAME_ACTIONS = {
   clawmachine: () => enterMinigame(createClawMachineModeSelect()),
   beatjam: () => enterMinigame(createBeatJamModeSelect()),
   scratchdj: () => enterMinigame(createScratchDJModeSelect()),
+  // Chess is a full standalone web app (not a canvas mini-game), so it
+  // doesn't go through enterMinigame()/activeMinigame at all -- it opens
+  // in the same kind of full-screen DOM/iframe overlay Rico's Lab uses for
+  // its instruments. See openChessApp()/createChessOverlay() below.
+  chess: () => openChessApp(),
 };
 
 // ---- trophy case: personal bests for the 8 scored mini-games --------------
@@ -5923,6 +5928,7 @@ window.addEventListener('keydown', (e) => {
     // consumes to close the instrument overlay; [Esc] is the one extra key
     // worth adding here since browsers treat it as the natural "close".
     if (k === 'escape' && state === 'labApp') { closeInstrument(); }
+    if (k === 'escape' && state === 'chessApp') { closeChessApp(); }
     if (k === 'arrowleft') selectMove = -1;
     if (k === 'arrowright') selectMove = 1;
     if (k === 'arrowup') menuMove = -1;
@@ -6853,6 +6859,13 @@ const shops = {
           'Cash rules plenty, but calculation rules cash. Think three moves before you spend one dollar.',
         ] },
     ],
+    // Chess table sign, set back one row south of the coffee-klatch table
+    // (and clear of the shop's spawn tile) so it reads as "pull up a seat
+    // at the Actor/Abbot/Chessmaster's table" without sitting on top of
+    // any of them.
+    minigames: [
+      { id: 'chess', tx: 6, ty: 8, label: 'PLAY CHESS' },
+    ],
   }),
   diner: makeShop('diner', {
     floor: '#b8a08a', plank: '#a89078', wallColor: '#7a4a3a',
@@ -7669,7 +7682,7 @@ const music = {
 // enter/exit call sites, so it can't drift out of sync no matter which
 // of the several ways the player backs out of the lab popup (keyboard
 // [X], on-screen [X] button, closing the instrument iframe, etc.).
-const DUCKED_STATES = new Set(['lab', 'labApp', 'characterIntro']);
+const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'characterIntro']);
 function syncMusicDuck() {
   music.duck(DUCKED_STATES.has(state));
 }
@@ -8392,6 +8405,110 @@ function createLabAppOverlay() {
 }
 createLabAppOverlay();
 
+// ---------------------------------------------------------------- Henry's Diner chess table overlay
+// The chess table in Henry's Diner (see MINIGAME_ACTIONS.chess) launches a
+// full standalone web game (wu-chess.vercel.app), not a from-scratch canvas
+// mini-game -- so it reuses the exact same "full-screen DOM overlay with an
+// <iframe>" trick as the Rico's Lab instrument overlay just above, rather
+// than porting an entire chess engine/UI into the canvas mini-game system.
+// Kept as its own overlay (rather than folding into labOverlayEl) since it's
+// reached from a totally different door/state and has nothing to do with
+// Rico's Lab.
+const CHESS_APP_URL = 'https://wu-chess.vercel.app/';
+let chessOverlayEl = null, chessOverlayFrame = null;
+let chessReturnState = 'play';
+let chessHistoryPushed = false; // mirrors labHistoryPushed -- see openChessApp()/closeChessApp()
+
+function createChessOverlay() {
+  const style = document.createElement('style');
+  style.textContent = `
+    #ricoChessApp {
+      position: fixed; inset: 0; z-index: 1000;
+      background: #000;
+      display: none; flex-direction: column;
+    }
+    #ricoChessApp.open { display: flex; }
+    #ricoChessApp .rca-bar {
+      flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 10px 14px;
+      background: linear-gradient(#241a0e, #120d06);
+      border-bottom: 2px solid #e0b040;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    }
+    #ricoChessApp .rca-title {
+      color: #f4ecd8; font: bold 14px monospace; letter-spacing: 0.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #ricoChessApp .rca-close {
+      flex: 0 0 auto; cursor: pointer;
+      background: rgba(224,176,64,0.15);
+      border: 1.5px solid rgba(224,176,64,0.85);
+      color: #f4ecd8; border-radius: 8px;
+      padding: 7px 16px; font: bold 13px monospace;
+      -webkit-user-select: none; user-select: none;
+    }
+    #ricoChessApp .rca-close:active { background: rgba(224,176,64,0.4); }
+    #ricoChessApp iframe {
+      flex: 1 1 auto; width: 100%; border: 0; background: #000;
+    }
+  `;
+  document.head.appendChild(style);
+
+  chessOverlayEl = document.createElement('div');
+  chessOverlayEl.id = 'ricoChessApp';
+
+  const bar = document.createElement('div');
+  bar.className = 'rca-bar';
+  const title = document.createElement('div');
+  title.className = 'rca-title';
+  title.textContent = "HENRY'S DINER \u2014 CHESS";
+  const closeBtn = document.createElement('div');
+  closeBtn.className = 'rca-close';
+  closeBtn.textContent = '\u2190 BACK TO THE DINER';
+  bindTap(closeBtn, closeChessApp);
+  bar.appendChild(title);
+  bar.appendChild(closeBtn);
+
+  chessOverlayFrame = document.createElement('iframe');
+  chessOverlayFrame.setAttribute('allow', 'autoplay');
+
+  chessOverlayEl.appendChild(bar);
+  chessOverlayEl.appendChild(chessOverlayFrame);
+  document.body.appendChild(chessOverlayEl);
+}
+createChessOverlay();
+
+// Opens the chess table overlay and switches state to 'chessApp'. Called
+// from MINIGAME_ACTIONS.chess (E on the chess table, or tapping its
+// floating sign), same entry points every other mini-game uses.
+function openChessApp() {
+  chessReturnState = state;
+  chessOverlayFrame.src = CHESS_APP_URL;
+  chessOverlayEl.classList.add('open');
+  state = 'chessApp';
+  // Same throwaway-history-entry trick as openInstrument() above, so the
+  // browser/OS back gesture closes the chess overlay instead of leaving
+  // the game entirely.
+  history.pushState({ ricoChessApp: true }, '');
+  chessHistoryPushed = true;
+}
+
+// Tears the iframe back down and returns to ordinary gameplay. fromPopState
+// mirrors closeInstrument()'s parameter -- true when triggered by the
+// browser's back button (whose history entry is already consumed), so we
+// must not call history.back() again in that case.
+function closeChessApp(fromPopState) {
+  chessOverlayEl.classList.remove('open');
+  chessOverlayFrame.src = 'about:blank';
+  state = chessReturnState;
+  if (!fromPopState && chessHistoryPushed) {
+    chessHistoryPushed = false;
+    history.back();
+  } else {
+    chessHistoryPushed = false;
+  }
+}
+
 // Character-intro splash video, played once between character select and
 // the first frame of gameplay. Same DOM-overlay approach as the lab-app
 // iframe above and for the same reason: video decode/composite is handled
@@ -8541,6 +8658,8 @@ function closeInstrument(fromPopState) {
 window.addEventListener('popstate', () => {
   if (state === 'labApp') {
     closeInstrument(true);
+  } else if (state === 'chessApp') {
+    closeChessApp(true);
   }
 });
 
@@ -8556,11 +8675,12 @@ canvas.addEventListener('pointerdown', (e) => {
     const vx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const vy = (e.clientY - rect.top) * (canvas.height / rect.height);
     handleLabTap(vx, vy);
-  } else if (state === 'labApp') {
+  } else if (state === 'labApp' || state === 'chessApp') {
     // The DOM overlay sits on top of (and outside) the canvas while an
-    // instrument is loaded, so a pointerdown reaching the canvas itself
-    // means the overlay isn't up yet/already closing -- ignore it rather
-    // than falling through to the generic interactPressed=true below.
+    // instrument/the chess app is loaded, so a pointerdown reaching the
+    // canvas itself means the overlay isn't up yet/already closing --
+    // ignore it rather than falling through to the generic
+    // interactPressed=true below.
   } else if (state === 'play') {
     // Tapping directly on a "TAP HERE TO PLAY AROUND" sign jumps straight
     // into that mini-game -- no need to walk up and face the exact tile.
@@ -8783,6 +8903,13 @@ function update(dt) {
     // on-screen [X] touch button (which only ever sets buyPressed, same as
     // every other popup's "back" button) works while an instrument is open.
     if (buyPressed) closeInstrument();
+  } else if (state === 'chessApp') {
+    // Same reasoning as 'labApp' just above: the DOM overlay (see
+    // createChessOverlay()) owns input while the chess app is loaded --
+    // its own close button and [Esc] handle closing it directly. buyPressed
+    // is still consumed here too so the on-screen [X] touch button works
+    // while the chess app is open.
+    if (buyPressed) closeChessApp();
   } else if (state === 'hotkeys') {
     if (interactPressed || buyPressed) state = hotkeysReturnState;
   } else if (state === 'crate') {
@@ -8989,10 +9116,11 @@ function render(time) {
     drawSplash();
     return;
   }
-  if (state === 'labApp' || state === 'characterIntro') {
+  if (state === 'labApp' || state === 'chessApp' || state === 'characterIntro') {
     // Same reasoning as the labApp overlay: a DOM element (the <video>,
-    // see createCharacterIntroOverlay()) fully covers the canvas here, so
-    // there's nothing to gain from redrawing the world underneath it.
+    // see createCharacterIntroOverlay(), or the chess <iframe>, see
+    // createChessOverlay()) fully covers the canvas here, so there's
+    // nothing to gain from redrawing the world underneath it.
     return;
   }
   if (WORLD_HIDDEN_STATES.has(state)) {
