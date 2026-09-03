@@ -649,6 +649,7 @@ const MINIGAME_ACTIONS = {
   clawmachine: () => enterMinigame(createClawMachineModeSelect()),
   beatjam: () => enterMinigame(createBeatJamModeSelect()),
   scratchdj: () => enterMinigame(createScratchDJModeSelect()),
+  penaltyshootout: () => enterMinigame(createPenaltyShootoutGame()),
   // Chess is a full standalone web app (not a canvas mini-game), so it
   // doesn't go through enterMinigame()/activeMinigame at all -- it opens
   // in the same kind of full-screen DOM/iframe overlay Rico's Lab uses for
@@ -683,6 +684,8 @@ const MINIGAME_TROPHIES = [
     flavor: 'Six tries to walk off with the good flowers.' },
   { id: 'scratchdj', label: 'Freestyle Scratch-DJ', unit: 'pts',
     flavor: 'Two needles, two hands, no time to think about either.' },
+  { id: 'penaltyshootout', label: 'Penalty Shootout', unit: 'pts',
+    flavor: 'Five kicks against the keeper -- pick a corner and strike.' },
 ];
 
 function trophyMetaFor(id) { return MINIGAME_TROPHIES.find((t) => t.id === id); }
@@ -866,6 +869,286 @@ function createDartsGame() {
       ctx.fillStyle = '#6a6070';
       ctx.font = '13px monospace';
       ctx.fillText('X to walk away anytime', cx, phase === 'done' ? 488 : 476);
+    },
+  };
+}
+
+// Penalty Shootout: same two-tap power/aim trick as Darts above, just aimed
+// at a goalmouth instead of a dartboard. Ported from a standalone prototype
+// that ran the shot as full 3D physics in Three.js -- since the prototype's
+// own velocity solve always lands the ball at the locked aim/power's exact
+// target (x, y) at the goal line by construction (no drag, no lateral
+// forces), the outcome only ever depends on that target point, not on
+// simulating the flight -- so here the flight is just a canvas-primitives
+// animation for spectacle, and judging reuses the original target-point
+// math wholesale. Every constant below (distances in "meters") is carried
+// over unchanged from that prototype so shot feel/difficulty matches.
+const PK_CFG = {
+  goalHalfWidth: 3.66, goalHeight: 2.4,
+  aimPeriod: 1.7, aimRange: 4.3,
+  powerPeriod: 1.3, heightBase: 0.11, heightPerPower: 3.1,
+  wideX: 3.77, overY: 2.51,
+  hardShotPower: 0.72, hardShotReachCut: 0.35,
+  saveCentreX: 1.1, saveCentreY: 2.2,
+  saveSideCentre: 2.1, saveSideReach: 1.35, saveSideHighY: 0.9, saveSideLowY: 1.35,
+  shotHighY: 1.2, postTolerance: 0.11, barTolerance: 0.11,
+  keeperReadChance: 0.4, keeperDiveDuration: 0.45,
+  maxKicks: 5,
+};
+
+function pkCurrentAim(t) { return Math.sin((t / PK_CFG.aimPeriod) * Math.PI * 2); }
+function pkCurrentPower(t) {
+  const phase = (t % PK_CFG.powerPeriod) / PK_CFG.powerPeriod;
+  return phase < 0.5 ? phase * 2 : (1 - phase) * 2;
+}
+function pkShotZone(targetX) {
+  if (targetX < -1.1) return 'left';
+  if (targetX > 1.1) return 'right';
+  return 'centre';
+}
+function pkDecideKeeperDive(targetX, targetY) {
+  const trueZone = pkShotZone(targetX);
+  const reads = Math.random() < PK_CFG.keeperReadChance;
+  const zones = ['left', 'centre', 'right'];
+  const side = reads ? trueZone : zones[Math.floor(Math.random() * 3)];
+  const shotHigh = targetY > PK_CFG.shotHighY;
+  const matches = Math.random() < 0.5;
+  const high = matches ? shotHigh : Math.random() < 0.5;
+  return { side, high };
+}
+// Mirrors the prototype's judgeShot() exactly, minus the DOM/mesh side
+// effects -- same post/bar tolerance check first, then wide/over, then a
+// keeper save zone keyed off which way (and how well) the keeper guessed.
+function pkJudgeShot(x, y, power, dive) {
+  const onPost = Math.abs(Math.abs(x) - PK_CFG.goalHalfWidth) <= PK_CFG.postTolerance && y <= PK_CFG.goalHeight + 0.2;
+  const onBar = Math.abs(y - PK_CFG.goalHeight) <= PK_CFG.barTolerance && Math.abs(x) <= PK_CFG.goalHalfWidth + 0.15;
+  if (onPost || onBar) return { result: 'post', headline: 'OFF THE POST!', sub: 'So close.' };
+  if (Math.abs(x) > PK_CFG.wideX || y > PK_CFG.overY) {
+    return { result: 'wide', headline: y > PK_CFG.overY ? 'OVER THE BAR!' : 'WIDE!', sub: 'Not this time.' };
+  }
+  const reachCut = power > PK_CFG.hardShotPower ? PK_CFG.hardShotReachCut : 0;
+  let saved;
+  if (dive.side === 'centre') {
+    saved = Math.abs(x) <= (PK_CFG.saveCentreX - reachCut) && y <= PK_CFG.saveCentreY;
+  } else {
+    const centre = dive.side === 'left' ? -PK_CFG.saveSideCentre : PK_CFG.saveSideCentre;
+    const reach = PK_CFG.saveSideReach - reachCut;
+    const heightOk = dive.high ? y >= PK_CFG.saveSideHighY : y <= PK_CFG.saveSideLowY;
+    saved = Math.abs(x - centre) <= reach && heightOk;
+  }
+  if (saved) return { result: 'save', headline: 'SAVED!', sub: 'Great stop by the keeper.' };
+  return { result: 'goal', headline: 'GOAL!', sub: '' };
+}
+
+function createPenaltyShootoutGame() {
+  const cx = VIEW_W / 2;
+  const groundY = 380, goalTopY = 190, goalHalfWidthPx = 170;
+  const pxPerMX = goalHalfWidthPx / PK_CFG.goalHalfWidth;       // px per "meter" horizontally
+  const pxPerMY = (groundY - goalTopY) / PK_CFG.goalHeight;      // px per "meter" vertically
+  const ballStartY = groundY + 58;
+  const FLIGHT_TIME = 0.55;
+
+  let phase = 'aim';        // 'aim' | 'power' | 'flying' | 'result' | 'done'
+  let aimLocked = 0, powerLocked = 0;
+  let phaseClock = 0;       // seconds since the current aim/power sweep (re)started
+  let flightT = 0;
+  let dive = null;
+  let targetXm = 0, targetYm = 0;
+  let outcome = null;       // { result, headline, sub }
+  let kicksTaken = 0, goals = 0;
+  const results = [];       // 'goal' | 'save' | 'post' | 'wide' per kick
+  let resultTimer = 0;
+  let bestRecorded = false, isNewBest = false;
+
+  function startKick() {
+    phase = 'aim';
+    phaseClock = 0;
+    aimLocked = 0; powerLocked = 0;
+    dive = null;
+    outcome = null;
+  }
+  startKick();
+
+  return {
+    update(dt) {
+      if (phase === 'aim') {
+        phaseClock += dt;
+        if (interactPressed) { aimLocked = pkCurrentAim(phaseClock); phase = 'power'; phaseClock = 0; }
+      } else if (phase === 'power') {
+        phaseClock += dt;
+        if (interactPressed) {
+          powerLocked = pkCurrentPower(phaseClock);
+          targetXm = aimLocked * PK_CFG.aimRange;
+          targetYm = PK_CFG.heightBase + powerLocked * PK_CFG.heightPerPower;
+          dive = pkDecideKeeperDive(targetXm, targetYm);
+          flightT = 0;
+          phase = 'flying';
+        }
+      } else if (phase === 'flying') {
+        flightT += dt / FLIGHT_TIME;
+        if (flightT >= 1) {
+          flightT = 1;
+          outcome = pkJudgeShot(targetXm, targetYm, powerLocked, dive);
+          results.push(outcome.result);
+          kicksTaken++;
+          if (outcome.result === 'goal') goals++;
+          phase = 'result';
+          resultTimer = 1.3;
+        }
+      } else if (phase === 'result') {
+        resultTimer -= dt;
+        if (resultTimer <= 0) {
+          if (kicksTaken >= PK_CFG.maxKicks) phase = 'done';
+          else startKick();
+        }
+      } else if (phase === 'done') {
+        if (!bestRecorded) { isNewBest = recordMinigameScore('penaltyshootout', goals); bestRecorded = true; }
+        if (interactPressed) exitMinigame();
+      }
+      // X always bails out early, no matter the phase
+      if (buyPressed) exitMinigame();
+    },
+    draw() {
+      ctx.fillStyle = 'rgba(8,6,12,0.9)';
+      ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#e0b040';
+      ctx.font = 'bold 26px monospace';
+      ctx.fillText('PENALTY SHOOTOUT', cx, 40);
+      ctx.fillStyle = '#f4ecd8';
+      ctx.font = '15px monospace';
+      ctx.fillText(`KICK ${Math.min(kicksTaken + 1, PK_CFG.maxKicks)} / ${PK_CFG.maxKicks}   SCORE ${goals}`, cx, 62);
+
+      // kick dots
+      const dotY = 78, dotGap = 16, dotStart = cx - (PK_CFG.maxKicks - 1) * dotGap / 2;
+      for (let i = 0; i < PK_CFG.maxKicks; i++) {
+        ctx.beginPath();
+        ctx.arc(dotStart + i * dotGap, dotY, 4, 0, Math.PI * 2);
+        ctx.fillStyle = results[i] === 'goal' ? '#8cff5f' : results[i] ? '#ff5b52' : 'rgba(244,236,216,0.25)';
+        ctx.fill();
+      }
+
+      // pitch
+      ctx.fillStyle = '#123d24';
+      ctx.fillRect(0, goalTopY - 20, VIEW_W, VIEW_H - (goalTopY - 20));
+
+      // goal frame
+      const gx0 = cx - goalHalfWidthPx, gx1 = cx + goalHalfWidthPx;
+      ctx.strokeStyle = 'rgba(244,236,216,0.25)';
+      ctx.lineWidth = 1;
+      for (let i = 1; i < 8; i++) {
+        const nx = gx0 + (gx1 - gx0) * (i / 8);
+        ctx.beginPath(); ctx.moveTo(nx, goalTopY); ctx.lineTo(nx, groundY); ctx.stroke();
+      }
+      for (let i = 1; i < 5; i++) {
+        const ny = goalTopY + (groundY - goalTopY) * (i / 5);
+        ctx.beginPath(); ctx.moveTo(gx0, ny); ctx.lineTo(gx1, ny); ctx.stroke();
+      }
+      ctx.strokeStyle = '#f4f6f4';
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.moveTo(gx0, groundY); ctx.lineTo(gx0, goalTopY);
+      ctx.lineTo(gx1, goalTopY); ctx.lineTo(gx1, groundY);
+      ctx.stroke();
+
+      // keeper
+      const diveT = phase === 'flying' || phase === 'result' ? Math.min(1, flightT / 0.85) : 0;
+      const e = 1 - (1 - diveT) * (1 - diveT); // easeOutQuad
+      const sideSign = !dive ? 0 : dive.side === 'left' ? -1 : dive.side === 'right' ? 1 : 0;
+      const isHop = dive && dive.side === 'centre' && dive.high;
+      const kSlideX = (isHop ? 0 : sideSign * 90 * e);
+      const kRiseY = dive ? -(dive.high ? 46 : 16) * e * (isHop ? 0.4 : 1) : 0;
+      const kTilt = sideSign * (dive && dive.high ? 55 : 77) * e * Math.PI / 180;
+      const kx = cx + kSlideX, ky = groundY - 34 + kRiseY;
+      ctx.save();
+      ctx.translate(kx, ky);
+      ctx.rotate(kTilt);
+      ctx.fillStyle = '#ffb020';
+      ctx.fillRect(-11, -26, 22, 26);
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(-9, 0, 18, 12);
+      ctx.fillStyle = '#d8a878';
+      ctx.beginPath(); ctx.arc(0, -34, 8, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+
+      // ball
+      let bx = cx, by = ballStartY, br = 9;
+      if (phase === 'aim' || phase === 'power') {
+        // resting on the spot
+      } else if (phase === 'flying' || phase === 'result') {
+        const showX = phase === 'result' ? targetXm : targetXm;
+        const showY = phase === 'result' ? targetYm : targetYm;
+        const tx = cx + showX * pxPerMX, ty = groundY - showY * pxPerMY;
+        const ease = flightT * (2 - flightT); // easeOutQuad-ish arc feel
+        bx = ballStartY /* unused */, bx = cx + (tx - cx) * ease;
+        by = ballStartY + (ty - ballStartY) * ease;
+        br = 9 - 4 * flightT;
+        if (phase === 'result' && (outcome.result === 'goal')) br = Math.max(2, br); // shrinks into the net
+      }
+      ctx.beginPath();
+      ctx.arc(bx, by, Math.max(2, br), 0, Math.PI * 2);
+      ctx.fillStyle = '#f4ecd8';
+      ctx.fill();
+      ctx.strokeStyle = '#0c0810';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // aim/power crosshair -- shows where the shot is currently lined up
+      // to land inside (or outside) the frame
+      if (phase === 'aim' || phase === 'power') {
+        const aim = phase === 'aim' ? pkCurrentAim(phaseClock) : aimLocked;
+        const powerNow = phase === 'power' ? pkCurrentPower(phaseClock) : 0;
+        const heightM = phase === 'power' ? PK_CFG.heightBase + powerNow * PK_CFG.heightPerPower : PK_CFG.heightBase;
+        const chx = cx + aim * PK_CFG.aimRange * pxPerMX;
+        const chy = groundY - heightM * pxPerMY;
+        ctx.strokeStyle = phase === 'power' ? '#4ad0ff' : '#e0b040';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(chx - 9, chy); ctx.lineTo(chx + 9, chy); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(chx, chy - 9); ctx.lineTo(chx, chy + 9); ctx.stroke();
+      }
+
+      // power meter, vertical, right side (only while setting power)
+      if (phase === 'power') {
+        const barX = VIEW_W - 60, barY = 190, barW = 16, barH = 160;
+        ctx.strokeStyle = '#f4ecd8';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(barX, barY, barW, barH);
+        const p = pkCurrentPower(phaseClock);
+        ctx.fillStyle = '#e0a030';
+        ctx.fillRect(barX + 2, barY + barH - (barH - 4) * p - 2, barW - 4, (barH - 4) * p);
+        ctx.fillStyle = '#9a90a8';
+        ctx.font = '12px monospace';
+        ctx.fillText('POWER', barX + barW / 2, barY - 8);
+      }
+
+      ctx.textAlign = 'center';
+      ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#e0b040' : '#f4ecd8';
+      ctx.font = 'bold 17px monospace';
+      if (phase === 'aim') ctx.fillText('- TAP E TO SET YOUR AIM -', cx, 470);
+      else if (phase === 'power') ctx.fillText('- TAP E AGAIN TO STRIKE -', cx, 470);
+      else if (phase === 'result') {
+        ctx.fillStyle = outcome.result === 'goal' ? '#8cff5f' : '#ff5b52';
+        ctx.font = 'bold 24px monospace';
+        ctx.fillText(outcome.headline, cx, 466);
+        if (outcome.sub) {
+          ctx.fillStyle = '#9a90a8';
+          ctx.font = '13px monospace';
+          ctx.fillText(outcome.sub, cx, 486);
+        }
+      } else if (phase === 'done') {
+        ctx.fillText(`FINAL SCORE: ${goals} / ${PK_CFG.maxKicks} - PRESS E TO LEAVE`, cx, 466);
+      }
+
+      if (phase === 'done') {
+        ctx.font = '14px monospace';
+        ctx.fillStyle = isNewBest ? '#8cff5f' : '#9a90a8';
+        ctx.fillText(isNewBest ? 'NEW BEST!' : `BEST: ${bestFor('penaltyshootout') ?? 0}`, cx, 486);
+      }
+
+      ctx.fillStyle = '#6a6070';
+      ctx.font = '13px monospace';
+      ctx.fillText('X to walk away anytime', cx, phase === 'done' ? 504 : 494);
     },
   };
 }
@@ -6474,6 +6757,16 @@ function makeOverworld() {
     // dogRow moved off 23 -> 6: the new stadium footprint (rows 17-23) now
     // sits on top of the old dog lane.
     ambient: { bikeRows: [9], walkerRow: 12, dogRow: 6 },
+    // A soccer ball sitting out on the Vermont Green FC pitch, inside the
+    // stadium bowl carved out above (STADIUM_X/Y/W/H) -- tx/ty (19, 19) is
+    // comfortably inside that walkable interior (cols 18-21, rows 18-22),
+    // clear of the west/east gate row (20). `icon: 'soccerball'` swaps the
+    // usual floating arcade-cabinet sign for a ball sprite (see
+    // drawMinigameSoccerBall()) so it reads as "kick this" rather than
+    // "play this cabinet".
+    minigames: [
+      { id: 'penaltyshootout', tx: 19, ty: 19, label: 'PENALTY KICKS', icon: 'soccerball' },
+    ],
   };
   // Talkable townsfolk: Gary (the old hippy guitarist by the deli garbage
   // can) and Willie (the painter out front of Green Door Studio).
@@ -9083,6 +9376,51 @@ function drawMinigameArcadeSign(wx, wy, time, seed, label) {
   return { cx, cy, hw: cabW / 2 + 12, hh: cabH / 2 + 20 };
 }
 
+// Alternate mini-game marker used when a map entry sets `icon: 'soccerball'`
+// (currently just the penalty-shootout ball out on the stadium pitch) --
+// same bob/label/hitbox contract as drawMinigameArcadeSign() above so it
+// drops into the exact same per-frame loop and tap-shortcut handling, it
+// just reads as "a ball sitting on the grass" instead of "an arcade
+// cabinet", which fits a soccer pitch far better than a cabinet would.
+function drawMinigameSoccerBall(wx, wy, time, seed, label) {
+  const s = MINIGAME_OBJECT_SCALE;
+  const bob = Math.sin(time * 0.003 + seed) * 3;
+  const cx = wx, cy = wy - 10 + bob;
+  const r = 9 * s;
+
+  // soft contact shadow on the grass, independent of the ball's bob
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.beginPath();
+  ctx.ellipse(wx, wy + 2, r * 0.9, r * 0.32, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ball body
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fillStyle = '#f4ecd8';
+  ctx.fill();
+  ctx.strokeStyle = '#241c28';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // a few classic pentagon patches, just enough at this size to read as a
+  // soccer ball rather than a plain circle
+  ctx.fillStyle = '#241c28';
+  ctx.beginPath(); ctx.arc(cx, cy - r * 0.35, r * 0.28, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx - r * 0.55, cy + r * 0.2, r * 0.24, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + r * 0.55, cy + r * 0.2, r * 0.24, 0, Math.PI * 2); ctx.fill();
+
+  // floating label above the ball -- same flash-between-label-and-tap-hint
+  // behavior as the arcade sign
+  const flashOnLabel = Math.floor(time / 1400) % 2 === 0;
+  ctx.fillStyle = '#ffd23c';
+  ctx.font = `bold ${Math.round(9 * s)}px monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillText(flashOnLabel ? (label || 'MINI-GAME') : 'TAP TO PLAY', cx, cy - r - 10);
+
+  return { cx, cy, hw: r + 14, hh: r + 22 };
+}
+
 // Converts a tap already in 960x600 view-space (same space VIEW_W/VIEW_H
 // describe) into world coordinates, using whichever camera transform the
 // most recent render() frame actually drew with. Mirrors the inverse of the
@@ -9188,7 +9526,9 @@ function render(time) {
       const wx = mg.tx * TILE + TILE / 2, wy = mg.ty * TILE + TILE / 2;
       const seed = i * 1.7;
       drawMinigameTileGlow(wx, wy, time, seed);
-      const rect = drawMinigameArcadeSign(wx, wy, time, seed, mg.label);
+      const rect = mg.icon === 'soccerball'
+        ? drawMinigameSoccerBall(wx, wy, time, seed, mg.label)
+        : drawMinigameArcadeSign(wx, wy, time, seed, mg.label);
       minigameSignHitboxes.push({ map: player.map, id: mg.id, ...rect });
     });
   }
