@@ -811,10 +811,10 @@ function createDartsGame() {
 
       ctx.textAlign = 'center';
       ctx.fillStyle = '#e0b040';
-      ctx.font = 'bold 26px monospace';
+      ctx.font = 'bold 28px monospace';
       ctx.fillText('DARTS', cx, 60);
       ctx.fillStyle = '#f4ecd8';
-      ctx.font = '15px monospace';
+      ctx.font = '17px monospace';
       ctx.fillText(`SCORE ${score}   THROWS LEFT ${Math.max(0, throwsLeft)}`, cx, 84);
 
       // board
@@ -850,24 +850,24 @@ function createDartsGame() {
       ctx.fillStyle = '#e0a030';
       ctx.fillRect(barX + 2, barY + 2, (barW - 4) * shownPower, barH - 4);
       ctx.fillStyle = '#9a90a8';
-      ctx.font = '14px monospace';
+      ctx.font = '16px monospace';
       ctx.fillText('POWER', cx, barY - 8);
 
       ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#e0b040' : '#f4ecd8';
-      ctx.font = 'bold 17px monospace';
+      ctx.font = 'bold 19px monospace';
       if (phase === 'power') ctx.fillText('- TAP E TO SET POWER -', cx, 452);
       else if (phase === 'aim') ctx.fillText('- TAP E TO THROW -', cx, 452);
       else if (phase === 'result') ctx.fillText(lastScoreLabel, cx, 452);
       else if (phase === 'done') ctx.fillText(`FINAL SCORE: ${score} - PRESS E TO LEAVE`, cx, 452);
 
       if (phase === 'done') {
-        ctx.font = '14px monospace';
+        ctx.font = '16px monospace';
         ctx.fillStyle = isNewBest ? '#8cff5f' : '#9a90a8';
         ctx.fillText(isNewBest ? 'NEW BEST!' : `BEST: ${bestFor('darts')}`, cx, 470);
       }
 
       ctx.fillStyle = '#6a6070';
-      ctx.font = '13px monospace';
+      ctx.font = '15px monospace';
       ctx.fillText('X to walk away anytime', cx, phase === 'done' ? 488 : 476);
     },
   };
@@ -1014,10 +1014,10 @@ function createPenaltyShootoutGame() {
 
       ctx.textAlign = 'center';
       ctx.fillStyle = '#e0b040';
-      ctx.font = 'bold 26px monospace';
+      ctx.font = 'bold 28px monospace';
       ctx.fillText('PENALTY SHOOTOUT', cx, 40);
       ctx.fillStyle = '#f4ecd8';
-      ctx.font = '15px monospace';
+      ctx.font = '17px monospace';
       ctx.fillText(`KICK ${Math.min(kicksTaken + 1, PK_CFG.maxKicks)} / ${PK_CFG.maxKicks}   SCORE ${goals}`, cx, 62);
 
       // kick dots
@@ -1118,22 +1118,22 @@ function createPenaltyShootoutGame() {
         ctx.fillStyle = '#e0a030';
         ctx.fillRect(barX + 2, barY + barH - (barH - 4) * p - 2, barW - 4, (barH - 4) * p);
         ctx.fillStyle = '#9a90a8';
-        ctx.font = '12px monospace';
+        ctx.font = '14px monospace';
         ctx.fillText('POWER', barX + barW / 2, barY - 8);
       }
 
       ctx.textAlign = 'center';
       ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#e0b040' : '#f4ecd8';
-      ctx.font = 'bold 17px monospace';
+      ctx.font = 'bold 19px monospace';
       if (phase === 'aim') ctx.fillText('- TAP E TO SET YOUR AIM -', cx, 470);
       else if (phase === 'power') ctx.fillText('- TAP E AGAIN TO STRIKE -', cx, 470);
       else if (phase === 'result') {
         ctx.fillStyle = outcome.result === 'goal' ? '#8cff5f' : '#ff5b52';
-        ctx.font = 'bold 24px monospace';
+        ctx.font = 'bold 26px monospace';
         ctx.fillText(outcome.headline, cx, 466);
         if (outcome.sub) {
           ctx.fillStyle = '#9a90a8';
-          ctx.font = '13px monospace';
+          ctx.font = '15px monospace';
           ctx.fillText(outcome.sub, cx, 486);
         }
       } else if (phase === 'done') {
@@ -1141,13 +1141,13 @@ function createPenaltyShootoutGame() {
       }
 
       if (phase === 'done') {
-        ctx.font = '14px monospace';
+        ctx.font = '16px monospace';
         ctx.fillStyle = isNewBest ? '#8cff5f' : '#9a90a8';
         ctx.fillText(isNewBest ? 'NEW BEST!' : `BEST: ${bestFor('penaltyshootout') ?? 0}`, cx, 486);
       }
 
       ctx.fillStyle = '#6a6070';
-      ctx.font = '13px monospace';
+      ctx.font = '15px monospace';
       ctx.fillText('X to walk away anytime', cx, phase === 'done' ? 504 : 494);
     },
   };
@@ -1270,7 +1270,7 @@ function createMiniFX() {
     popups.push({
       text, x, y,
       color: opts.color || '#f4ecd8',
-      size: opts.size || 16,
+      size: opts.size || 18,
       life: 0,
       maxLife: opts.duration || 0.9,
       rise: opts.rise || 40,
@@ -1549,27 +1549,27 @@ function createModeSelectMenu(opts) {
       ctx.fillRect(0, 0, VIEW_W, VIEW_H);
       ctx.textAlign = 'center';
       ctx.fillStyle = '#e0b040';
-      ctx.font = 'bold 26px monospace';
+      ctx.font = 'bold 28px monospace';
       ctx.fillText(opts.title, VIEW_W / 2, 100);
 
       if (phase === 'loading') {
         ctx.fillStyle = '#f4ecd8';
-        ctx.font = 'bold 17px monospace';
+        ctx.font = 'bold 19px monospace';
         ctx.fillText('LOADING 3D' + '.'.repeat(1 + (Math.floor(loadDots * 3) % 3)), VIEW_W / 2, 290);
         ctx.fillStyle = '#6a6070';
-        ctx.font = '13px monospace';
+        ctx.font = '15px monospace';
         ctx.fillText('X to walk away', VIEW_W / 2, 330);
         return;
       }
       if (phase === 'error') {
         ctx.fillStyle = '#c04070';
-        ctx.font = 'bold 17px monospace';
+        ctx.font = 'bold 19px monospace';
         ctx.fillText("COULDN'T START 3D MODE", VIEW_W / 2, 270);
         ctx.fillStyle = '#f4ecd8';
-        ctx.font = '15px monospace';
+        ctx.font = '17px monospace';
         ctx.fillText('E - PLAY CLASSIC INSTEAD', VIEW_W / 2, 310);
         ctx.fillStyle = '#6a6070';
-        ctx.font = '13px monospace';
+        ctx.font = '15px monospace';
         ctx.fillText('X to walk away', VIEW_W / 2, 340);
       }
     },
@@ -1943,10 +1943,10 @@ function createDarts3DGame() {
       const cx = VIEW_W / 2;
       ctx.textAlign = 'center';
       ctx.fillStyle = '#e0b040';
-      ctx.font = 'bold 26px monospace';
+      ctx.font = 'bold 28px monospace';
       ctx.fillText('DARTS 3D', cx, 60);
       ctx.fillStyle = '#f4ecd8';
-      ctx.font = '15px monospace';
+      ctx.font = '17px monospace';
       ctx.fillText(`SCORE ${score}   THROWS LEFT ${Math.max(0, throwsLeft)}`, cx, 84);
 
       const barX = cx - 100, barY = 470, barW = 200, barH = 18;
@@ -1959,24 +1959,24 @@ function createDarts3DGame() {
       ctx.fillStyle = '#e0a030';
       ctx.fillRect(barX + 2, barY + 2, (barW - 4) * shownPower, barH - 4);
       ctx.fillStyle = '#9a90a8';
-      ctx.font = '14px monospace';
+      ctx.font = '16px monospace';
       ctx.fillText('POWER', cx, barY - 10);
 
       ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#e0b040' : '#f4ecd8';
-      ctx.font = 'bold 17px monospace';
+      ctx.font = 'bold 19px monospace';
       if (phase === 'power') ctx.fillText('- TAP E TO SET POWER -', cx, 520);
       else if (phase === 'aim') ctx.fillText('- TAP E TO THROW -', cx, 520);
       else if (phase === 'result') ctx.fillText(lastScoreLabel, cx, 520);
       else if (phase === 'done') ctx.fillText(`FINAL SCORE: ${score} - PRESS E TO LEAVE`, cx, 520);
 
       if (phase === 'done') {
-        ctx.font = '14px monospace';
+        ctx.font = '16px monospace';
         ctx.fillStyle = isNewBest ? '#8cff5f' : '#9a90a8';
         ctx.fillText(isNewBest ? 'NEW BEST!' : `BEST: ${bestFor('darts')}`, cx, 542);
       }
 
       ctx.fillStyle = '#6a6070';
-      ctx.font = '13px monospace';
+      ctx.font = '15px monospace';
       ctx.fillText('X to walk away anytime', cx, phase === 'done' ? 562 : 544);
     },
   };
@@ -2045,10 +2045,10 @@ function createBeatMatchGame() {
 
       ctx.textAlign = 'center';
       ctx.fillStyle = '#4ad0ff';
-      ctx.font = 'bold 26px monospace';
+      ctx.font = 'bold 28px monospace';
       ctx.fillText('BEAT MATCH', VIEW_W / 2, 60);
       ctx.fillStyle = '#f4ecd8';
-      ctx.font = '15px monospace';
+      ctx.font = '17px monospace';
       ctx.fillText(`SCORE ${score}   BEAT ${Math.min(round, ROUNDS)}/${ROUNDS}   COMBO x${combo}`, VIEW_W / 2, 84);
 
       // timing bar track
@@ -2068,19 +2068,19 @@ function createBeatMatchGame() {
       ctx.fillRect(nx - 2, barY - 8, 4, barH + 16);
 
       ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#4ad0ff' : '#f4ecd8';
-      ctx.font = 'bold 17px monospace';
+      ctx.font = 'bold 19px monospace';
       if (phase === 'wait') ctx.fillText('- TAP E ON THE BEAT -', VIEW_W / 2, 360);
       else if (phase === 'result') ctx.fillText(lastHitLabel, VIEW_W / 2, 360);
       else if (phase === 'done') ctx.fillText(`FINAL SCORE: ${score} - PRESS E TO LEAVE`, VIEW_W / 2, 360);
 
       if (phase === 'done') {
-        ctx.font = '14px monospace';
+        ctx.font = '16px monospace';
         ctx.fillStyle = isNewBest ? '#8cff5f' : '#9a90a8';
         ctx.fillText(isNewBest ? 'NEW BEST!' : `BEST: ${bestFor('beatmatch')}`, VIEW_W / 2, 378);
       }
 
       ctx.fillStyle = '#6a6070';
-      ctx.font = '13px monospace';
+      ctx.font = '15px monospace';
       ctx.fillText('X to walk away anytime', VIEW_W / 2, phase === 'done' ? 396 : 384);
     },
   };
@@ -2370,26 +2370,26 @@ function createBeatMatch3DGame() {
       const cx = VIEW_W / 2;
       ctx.textAlign = 'center';
       ctx.fillStyle = '#4ad0ff';
-      ctx.font = 'bold 26px monospace';
+      ctx.font = 'bold 28px monospace';
       ctx.fillText('BEAT MATCH 3D', cx, 60);
       ctx.fillStyle = '#f4ecd8';
-      ctx.font = '15px monospace';
+      ctx.font = '17px monospace';
       ctx.fillText(`SCORE ${score}   BEAT ${Math.min(round, ROUNDS)}/${ROUNDS}   COMBO x${combo}`, cx, 84);
 
       ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#4ad0ff' : '#f4ecd8';
-      ctx.font = 'bold 17px monospace';
+      ctx.font = 'bold 19px monospace';
       if (phase === 'wait') ctx.fillText('- TAP E ON THE BEAT -', cx, 520);
       else if (phase === 'result') ctx.fillText(lastHitLabel, cx, 520);
       else if (phase === 'done') ctx.fillText(`FINAL SCORE: ${score} - PRESS E TO LEAVE`, cx, 520);
 
       if (phase === 'done') {
-        ctx.font = '14px monospace';
+        ctx.font = '16px monospace';
         ctx.fillStyle = isNewBest ? '#8cff5f' : '#9a90a8';
         ctx.fillText(isNewBest ? 'NEW BEST!' : `BEST: ${bestFor('beatmatch')}`, cx, 542);
       }
 
       ctx.fillStyle = '#6a6070';
-      ctx.font = '13px monospace';
+      ctx.font = '15px monospace';
       ctx.fillText('X to walk away anytime', cx, phase === 'done' ? 562 : 544);
     },
   };
@@ -2490,10 +2490,10 @@ function createBeatJamGame() {
 
       ctx.textAlign = 'center';
       ctx.fillStyle = '#e0b040';
-      ctx.font = 'bold 26px monospace';
+      ctx.font = 'bold 28px monospace';
       ctx.fillText('BEAT JAM', cx, 56);
       ctx.fillStyle = '#f4ecd8';
-      ctx.font = '15px monospace';
+      ctx.font = '17px monospace';
       ctx.fillText(`HITS ${hits}`, cx, 78);
 
       // countdown bar
@@ -2504,7 +2504,7 @@ function createBeatJamGame() {
       ctx.fillStyle = frac > 0.3 ? '#8cff5f' : '#e0603a';
       ctx.fillRect(barX, barY, barW * Math.max(0, frac), 8);
       ctx.fillStyle = '#f4ecd8';
-      ctx.font = 'bold 14px monospace';
+      ctx.font = 'bold 16px monospace';
       ctx.fillText(`${Math.ceil(timeLeft)}s`, cx, barY + 24);
 
       // MPC-style pad body behind the four pads
@@ -2527,19 +2527,19 @@ function createBeatJamGame() {
         ctx.strokeRect(x - PAD / 2, y - PAD / 2, PAD, PAD);
 
         ctx.fillStyle = lit ? '#181418' : '#f4ecd8';
-        ctx.font = 'bold 22px monospace';
+        ctx.font = 'bold 24px monospace';
         ctx.fillText(p.label, x, y + 8);
-        ctx.font = '20px monospace';
+        ctx.font = '22px monospace';
         ctx.fillText(p.hint, x, y - 26);
       });
 
       ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#8cff5f' : '#f4ecd8';
-      ctx.font = 'bold 17px monospace';
+      ctx.font = 'bold 19px monospace';
       if (phase === 'jam') ctx.fillText('- \u25B2\u25BC\u25C0\u25B6 OR TAP A PAD TO PLAY -', cx, 562);
       else ctx.fillText("TIME'S UP! NICE SET - PRESS E TO LEAVE", cx, 562);
 
       ctx.fillStyle = '#6a6070';
-      ctx.font = '13px monospace';
+      ctx.font = '15px monospace';
       ctx.fillText('X to walk away anytime', cx, 584);
     },
   };
@@ -2802,10 +2802,10 @@ function createBeatJam3DGame() {
       // HUD: same layout and styling as the classic version
       ctx.textAlign = 'center';
       ctx.fillStyle = '#e0b040';
-      ctx.font = 'bold 26px monospace';
+      ctx.font = 'bold 28px monospace';
       ctx.fillText('BEAT JAM 3D', cx, 56);
       ctx.fillStyle = '#f4ecd8';
-      ctx.font = '15px monospace';
+      ctx.font = '17px monospace';
       ctx.fillText(`HITS ${hits}`, cx, 78);
 
       const barW = 260, barX = cx - barW / 2, barY = 92;
@@ -2815,7 +2815,7 @@ function createBeatJam3DGame() {
       ctx.fillStyle = frac > 0.3 ? '#8cff5f' : '#e0603a';
       ctx.fillRect(barX, barY, barW * Math.max(0, frac), 8);
       ctx.fillStyle = '#f4ecd8';
-      ctx.font = 'bold 14px monospace';
+      ctx.font = 'bold 16px monospace';
       ctx.fillText(`${Math.ceil(timeLeft)}s`, cx, barY + 24);
 
       // pad labels/hints over the 3D chassis, same positions as the
@@ -2825,20 +2825,20 @@ function createBeatJam3DGame() {
         const lit = p.flash > 0;
         ctx.fillStyle = lit ? '#181418' : '#f4ecd8';
         ctx.globalAlpha = lit ? 0.5 + p.flash * 0.5 : 0.9;
-        ctx.font = 'bold 20px monospace';
+        ctx.font = 'bold 22px monospace';
         ctx.fillText(p.label, x, y + 8);
-        ctx.font = '18px monospace';
+        ctx.font = '20px monospace';
         ctx.fillText(p.hint, x, y - 26);
         ctx.globalAlpha = 1;
       });
 
       ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#8cff5f' : '#f4ecd8';
-      ctx.font = 'bold 17px monospace';
+      ctx.font = 'bold 19px monospace';
       if (phase === 'jam') ctx.fillText('- \u25B2\u25BC\u25C0\u25B6 OR TAP A PAD TO PLAY -', cx, 562);
       else ctx.fillText("TIME'S UP! NICE SET - PRESS E TO LEAVE", cx, 562);
 
       ctx.fillStyle = '#6a6070';
-      ctx.font = '13px monospace';
+      ctx.font = '15px monospace';
       ctx.fillText('X to walk away anytime', cx, 584);
     },
   };
@@ -2965,10 +2965,10 @@ function createWhackPigeonGame() {
 
       ctx.textAlign = 'center';
       ctx.fillStyle = '#8cff5f';
-      ctx.font = 'bold 26px monospace';
+      ctx.font = 'bold 28px monospace';
       ctx.fillText('WHACK-A-PIGEON', cx, 60);
       ctx.fillStyle = '#f4ecd8';
-      ctx.font = '15px monospace';
+      ctx.font = '17px monospace';
       ctx.fillText(`SCORE ${score}   ROUND ${Math.min(round, ROUNDS)}/${ROUNDS}   COMBO x${combo}`, cx, 84);
 
       // ledge + holes
@@ -3002,19 +3002,19 @@ function createWhackPigeonGame() {
       });
 
       ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#8cff5f' : '#f4ecd8';
-      ctx.font = 'bold 17px monospace';
+      ctx.font = 'bold 19px monospace';
       if (phase === 'up') ctx.fillText('- TAP E TO WHACK IT -', cx, 420);
       else if (phase === 'result') ctx.fillText(lastHitLabel, cx, 420);
       else if (phase === 'done') ctx.fillText(`FINAL SCORE: ${score} - PRESS E TO LEAVE`, cx, 420);
 
       if (phase === 'done') {
-        ctx.font = '14px monospace';
+        ctx.font = '16px monospace';
         ctx.fillStyle = isNewBest ? '#8cff5f' : '#9a90a8';
         ctx.fillText(isNewBest ? 'NEW BEST!' : `BEST: ${bestFor('whackpigeon')}`, cx, 438);
       }
 
       ctx.fillStyle = '#6a6070';
-      ctx.font = '13px monospace';
+      ctx.font = '15px monospace';
       ctx.fillText('X to walk away anytime', cx, phase === 'done' ? 456 : 444);
     },
   };
@@ -3377,26 +3377,26 @@ function createWhackPigeon3DGame() {
       const cx = VIEW_W / 2;
       ctx.textAlign = 'center';
       ctx.fillStyle = '#8cff5f';
-      ctx.font = 'bold 26px monospace';
+      ctx.font = 'bold 28px monospace';
       ctx.fillText('WHACK-A-PIGEON 3D', cx, 60);
       ctx.fillStyle = '#f4ecd8';
-      ctx.font = '15px monospace';
+      ctx.font = '17px monospace';
       ctx.fillText(`SCORE ${score}   ROUND ${Math.min(round, ROUNDS)}/${ROUNDS}   COMBO x${combo}`, cx, 84);
 
       ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#8cff5f' : '#f4ecd8';
-      ctx.font = 'bold 17px monospace';
+      ctx.font = 'bold 19px monospace';
       if (phase === 'up') ctx.fillText('- TAP E TO WHACK IT -', cx, 520);
       else if (phase === 'result') ctx.fillText(lastHitLabel, cx, 520);
       else if (phase === 'done') ctx.fillText(`FINAL SCORE: ${score} - PRESS E TO LEAVE`, cx, 520);
 
       if (phase === 'done') {
-        ctx.font = '14px monospace';
+        ctx.font = '16px monospace';
         ctx.fillStyle = isNewBest ? '#8cff5f' : '#9a90a8';
         ctx.fillText(isNewBest ? 'NEW BEST!' : `BEST: ${bestFor('whackpigeon')}`, cx, 542);
       }
 
       ctx.fillStyle = '#6a6070';
-      ctx.font = '13px monospace';
+      ctx.font = '15px monospace';
       ctx.fillText('X to walk away anytime', cx, phase === 'done' ? 562 : 544);
     },
   };
@@ -3488,10 +3488,10 @@ function createCrateDiggingGame() {
 
       ctx.textAlign = 'center';
       ctx.fillStyle = '#e0b040';
-      ctx.font = 'bold 26px monospace';
+      ctx.font = 'bold 28px monospace';
       ctx.fillText('CRATE DIGGING', VIEW_W / 2, 56);
       ctx.fillStyle = '#f4ecd8';
-      ctx.font = '15px monospace';
+      ctx.font = '17px monospace';
       ctx.fillText(`SCORE ${score}   DIG ${Math.min(round, ROUNDS)}/${ROUNDS}`, VIEW_W / 2, 78);
 
       // crate frame around the stack
@@ -3511,7 +3511,7 @@ function createCrateDiggingGame() {
         ctx.strokeRect(stackX, sy + 2, stackW, slotH - 4);
         if (revealed) {
           ctx.fillStyle = '#181418';
-          ctx.font = 'bold 14px monospace';
+          ctx.font = 'bold 16px monospace';
           ctx.fillText(lastOutcome.type === 'rare' ? '\u2605 RARE' : lastOutcome.type === 'mixtape' ? 'MIXTAPE' : 'DUD',
             stackX + stackW / 2, sy + slotH / 2 + 4);
         }
@@ -3537,24 +3537,24 @@ function createCrateDiggingGame() {
       }
 
       ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#e0b040' : '#f4ecd8';
-      ctx.font = 'bold 17px monospace';
+      ctx.font = 'bold 19px monospace';
       if (phase === 'dig') ctx.fillText('- TAP E TO GRAB ONE -', VIEW_W / 2, 430);
       else if (phase === 'result') {
         ctx.fillText(lastOutcome.label, VIEW_W / 2, 430);
         ctx.fillStyle = '#9a90a8';
-        ctx.font = '14px monospace';
+        ctx.font = '16px monospace';
         ctx.fillText(lastOutcome.sub, VIEW_W / 2, 448);
       } else if (phase === 'done') {
         ctx.fillText(`FINAL SCORE: ${score} - PRESS E TO LEAVE`, VIEW_W / 2, 430);
         ctx.fillStyle = '#9a90a8';
-        ctx.font = '14px monospace';
+        ctx.font = '16px monospace';
         ctx.fillText(`${tally.rare} rare 45${tally.rare === 1 ? '' : 's'}, ${tally.mixtape} mixtape${tally.mixtape === 1 ? '' : 's'}, ${tally.dud} dud${tally.dud === 1 ? '' : 's'}`, VIEW_W / 2, 448);
         ctx.fillStyle = isNewBest ? '#8cff5f' : '#9a90a8';
         ctx.fillText(isNewBest ? 'NEW BEST!' : `BEST: ${bestFor('cratedig')}`, VIEW_W / 2, 464);
       }
 
       ctx.fillStyle = '#6a6070';
-      ctx.font = '13px monospace';
+      ctx.font = '15px monospace';
       ctx.fillText('X to walk away anytime', VIEW_W / 2, phase === 'dig' ? 454 : 486);
     },
   };
@@ -3742,7 +3742,7 @@ function createCrateDigging3DGame() {
       fx.perfect3D(T, scene, worldPos, outcome.color);
       fx.flash('#e0b040', 0.14, 0.22);
       fx.ring(screenPos.x, screenPos.y, '#e0b040', { endRadius: 60 });
-      fx.popup(`+${outcome.pts}`, screenPos.x, screenPos.y, { color: '#e0b040', size: 22 });
+      fx.popup(`+${outcome.pts}`, screenPos.x, screenPos.y, { color: '#e0b040', size: 24 });
     } else if (outcome.type === 'mixtape') {
       fx.cameraPunch(0.045, 0.16);
       fx.shake(0.025, 0.14);
@@ -3751,7 +3751,7 @@ function createCrateDigging3DGame() {
       fx.popup(`+${outcome.pts}`, screenPos.x, screenPos.y, { color: '#4870d0' });
     } else {
       fx.shake(0.012, 0.1);
-      fx.popup('DUD', screenPos.x, screenPos.y, { color: '#8a8090', size: 13 });
+      fx.popup('DUD', screenPos.x, screenPos.y, { color: '#8a8090', size: 15 });
     }
   }
 
@@ -3864,31 +3864,31 @@ function createCrateDigging3DGame() {
       const cx = VIEW_W / 2;
       ctx.textAlign = 'center';
       ctx.fillStyle = '#e0b040';
-      ctx.font = 'bold 26px monospace';
+      ctx.font = 'bold 28px monospace';
       ctx.fillText('CRATE DIGGING 3D', cx, 56);
       ctx.fillStyle = '#f4ecd8';
-      ctx.font = '15px monospace';
+      ctx.font = '17px monospace';
       ctx.fillText(`SCORE ${score}   DIG ${Math.min(round, ROUNDS)}/${ROUNDS}`, cx, 78);
 
       ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#e0b040' : '#f4ecd8';
-      ctx.font = 'bold 17px monospace';
+      ctx.font = 'bold 19px monospace';
       if (phase === 'dig') ctx.fillText('- TAP E TO GRAB ONE -', cx, 520);
       else if (phase === 'result') {
         ctx.fillText(lastOutcome.label, cx, 520);
         ctx.fillStyle = '#9a90a8';
-        ctx.font = '14px monospace';
+        ctx.font = '16px monospace';
         ctx.fillText(lastOutcome.sub, cx, 538);
       } else if (phase === 'done') {
         ctx.fillText(`FINAL SCORE: ${score} - PRESS E TO LEAVE`, cx, 520);
         ctx.fillStyle = '#9a90a8';
-        ctx.font = '14px monospace';
+        ctx.font = '16px monospace';
         ctx.fillText(`${tally.rare} rare 45${tally.rare === 1 ? '' : 's'}, ${tally.mixtape} mixtape${tally.mixtape === 1 ? '' : 's'}, ${tally.dud} dud${tally.dud === 1 ? '' : 's'}`, cx, 538);
         ctx.fillStyle = isNewBest ? '#8cff5f' : '#9a90a8';
         ctx.fillText(isNewBest ? 'NEW BEST!' : `BEST: ${bestFor('cratedig')}`, cx, 554);
       }
 
       ctx.fillStyle = '#6a6070';
-      ctx.font = '13px monospace';
+      ctx.font = '15px monospace';
       ctx.fillText('X to walk away anytime', cx, phase === 'dig' ? 544 : 576);
     },
   };
@@ -4061,10 +4061,10 @@ function createSpeedSweepGame() {
 
       ctx.textAlign = 'center';
       ctx.fillStyle = '#e0b040';
-      ctx.font = 'bold 26px monospace';
+      ctx.font = 'bold 28px monospace';
       ctx.fillText('SPEED SWEEP', VIEW_W / 2, 56);
       ctx.fillStyle = '#f4ecd8';
-      ctx.font = '15px monospace';
+      ctx.font = '17px monospace';
       ctx.fillText(`SCORE ${score}   SWEPT ${swept}`, VIEW_W / 2, 78);
 
       // countdown bar
@@ -4075,7 +4075,7 @@ function createSpeedSweepGame() {
       ctx.fillStyle = frac > 0.3 ? '#8cff5f' : '#e0603a';
       ctx.fillRect(barX, barY, barW * Math.max(0, frac), 8);
       ctx.fillStyle = '#f4ecd8';
-      ctx.font = 'bold 14px monospace';
+      ctx.font = 'bold 16px monospace';
       ctx.fillText(`${Math.ceil(timeLeft)}s`, VIEW_W / 2, barY + 24);
 
       // shop floor strip -- pre-baked once (see getSpeedSweepFloorCanvas) and
@@ -4100,7 +4100,7 @@ function createSpeedSweepGame() {
       pops.forEach((p) => {
         ctx.globalAlpha = Math.max(0, p.life / 0.5);
         ctx.fillStyle = '#8cff5f';
-        ctx.font = 'bold 16px monospace';
+        ctx.font = 'bold 18px monospace';
         ctx.fillText(`+${p.pts}`, p.x, p.y - 10);
         ctx.globalAlpha = 1;
       });
@@ -4108,18 +4108,18 @@ function createSpeedSweepGame() {
       if (phase === 'sweep') drawBroom(broomX, FLOOR_Y);
 
       ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#8cff5f' : '#f4ecd8';
-      ctx.font = 'bold 17px monospace';
+      ctx.font = 'bold 19px monospace';
       if (phase === 'sweep') ctx.fillText('- HOLD \u25c0 \u25b6 TO MOVE, TAP E TO SWEEP -', VIEW_W / 2, 420);
       else ctx.fillText(`TIME'S UP! FINAL SCORE: ${score} - PRESS E TO LEAVE`, VIEW_W / 2, 420);
 
       if (phase === 'done') {
-        ctx.font = '14px monospace';
+        ctx.font = '16px monospace';
         ctx.fillStyle = isNewBest ? '#8cff5f' : '#9a90a8';
         ctx.fillText(isNewBest ? 'NEW BEST!' : `BEST: ${bestFor('speedsweep')}`, VIEW_W / 2, 438);
       }
 
       ctx.fillStyle = '#6a6070';
-      ctx.font = '13px monospace';
+      ctx.font = '15px monospace';
       ctx.fillText('X to walk away anytime', VIEW_W / 2, phase === 'done' ? 456 : 444);
     },
   };
@@ -4452,10 +4452,10 @@ function createSpeedSweep3DGame() {
       const cx = VIEW_W / 2;
       ctx.textAlign = 'center';
       ctx.fillStyle = '#e0b040';
-      ctx.font = 'bold 26px monospace';
+      ctx.font = 'bold 28px monospace';
       ctx.fillText('SPEED SWEEP 3D', cx, 56);
       ctx.fillStyle = '#f4ecd8';
-      ctx.font = '15px monospace';
+      ctx.font = '17px monospace';
       ctx.fillText(`SCORE ${score}   SWEPT ${swept}`, cx, 78);
 
       // countdown bar
@@ -4466,30 +4466,30 @@ function createSpeedSweep3DGame() {
       ctx.fillStyle = frac > 0.3 ? '#8cff5f' : '#e0603a';
       ctx.fillRect(barX, barY, barW * Math.max(0, frac), 8);
       ctx.fillStyle = '#f4ecd8';
-      ctx.font = 'bold 14px monospace';
+      ctx.font = 'bold 16px monospace';
       ctx.fillText(`${Math.ceil(timeLeft)}s`, cx, barY + 24);
 
       if (popText) {
         ctx.fillStyle = '#8cff5f';
-        ctx.font = 'bold 16px monospace';
+        ctx.font = 'bold 18px monospace';
         ctx.globalAlpha = Math.max(0, popText.timer / 0.5);
         ctx.fillText(popText.text, cx, 480);
         ctx.globalAlpha = 1;
       }
 
       ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#8cff5f' : '#f4ecd8';
-      ctx.font = 'bold 17px monospace';
+      ctx.font = 'bold 19px monospace';
       if (phase === 'sweep') ctx.fillText('- HOLD \u25c0 \u25b6 TO MOVE, TAP E TO SWEEP -', cx, 520);
       else ctx.fillText(`TIME'S UP! FINAL SCORE: ${score} - PRESS E TO LEAVE`, cx, 520);
 
       if (phase === 'done') {
-        ctx.font = '14px monospace';
+        ctx.font = '16px monospace';
         ctx.fillStyle = isNewBest ? '#8cff5f' : '#9a90a8';
         ctx.fillText(isNewBest ? 'NEW BEST!' : `BEST: ${bestFor('speedsweep')}`, cx, 538);
       }
 
       ctx.fillStyle = '#6a6070';
-      ctx.font = '13px monospace';
+      ctx.font = '15px monospace';
       ctx.fillText('X to walk away anytime', cx, phase === 'done' ? 556 : 544);
     },
   };
@@ -4569,10 +4569,10 @@ function createStaringContestGame() {
       const cx = VIEW_W / 2;
       ctx.textAlign = 'center';
       ctx.fillStyle = '#e0b040';
-      ctx.font = 'bold 26px monospace';
+      ctx.font = 'bold 28px monospace';
       ctx.fillText('STARING CONTEST', cx, 56);
       ctx.fillStyle = '#c8c0d8';
-      ctx.font = '15px monospace';
+      ctx.font = '17px monospace';
       ctx.fillText('First one to blink loses.', cx, 78);
 
       // --- cushion the cat sits on ---
@@ -4693,11 +4693,11 @@ function createStaringContestGame() {
 
       // status line + result
       ctx.textAlign = 'center';
-      ctx.font = 'bold 17px monospace';
+      ctx.font = 'bold 19px monospace';
       if (phase === 'staring') {
         ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#e0b040' : '#f4ecd8';
         ctx.fillText('- DON\'T MOVE. DON\'T PRESS ANYTHING. -', cx, 440);
-        ctx.font = '14px monospace';
+        ctx.font = '16px monospace';
         ctx.fillStyle = '#9a90a8';
         ctx.fillText(`HOLDING STILL: ${elapsed.toFixed(1)}s`, cx, 462);
       } else if (phase === 'result' || phase === 'done') {
@@ -4709,7 +4709,7 @@ function createStaringContestGame() {
           ctx.fillText('YOU BLINKED. THE CAT WINS.', cx, 440);
         }
         if (phase === 'done') {
-          ctx.font = '14px monospace';
+          ctx.font = '16px monospace';
           ctx.fillStyle = '#9a90a8';
           ctx.fillText('PRESS E TO LEAVE', cx, 462);
           ctx.fillStyle = isNewBest ? '#8cff5f' : '#9a90a8';
@@ -4864,15 +4864,15 @@ function createPizzaBuildGame() {
 
       ctx.textAlign = 'center';
       ctx.fillStyle = '#e0b040';
-      ctx.font = 'bold 26px monospace';
+      ctx.font = 'bold 28px monospace';
       ctx.fillText('BUILD A PIZZA', cx, 52);
       ctx.fillStyle = '#f4ecd8';
-      ctx.font = '15px monospace';
+      ctx.font = '17px monospace';
       ctx.fillText(`SCORE ${score}   ORDER ${Math.min(round, ROUNDS)}/${ROUNDS}   COMBO x${combo}`, cx, 74);
 
       if (phase !== 'done') {
         ctx.fillStyle = '#e0603a';
-        ctx.font = 'bold 18px monospace';
+        ctx.font = 'bold 20px monospace';
         ctx.fillText(`ORDER UP: ${target.label}`, cx, 106);
       }
 
@@ -4909,24 +4909,24 @@ function createPizzaBuildGame() {
       const bottomY = cy + wheelR + iconR + 40;
       ctx.textAlign = 'center';
       ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#e0b040' : '#f4ecd8';
-      ctx.font = 'bold 17px monospace';
+      ctx.font = 'bold 19px monospace';
       if (phase === 'spin') ctx.fillText('- TAP E WHEN IT HITS THE MARKER -', cx, bottomY);
       else if (phase === 'result') ctx.fillText(lastLabel, cx, bottomY);
       else if (phase === 'done') {
         const tip = score >= 240 ? 'PERFECT SHIFT! TONY SLIPS YOU A BIG TIP!'
           : score >= 150 ? 'SOLID SHIFT -- NICE WORK.'
           : 'ROOKIE MISTAKES -- PRACTICE MAKES PERFECT.';
-        ctx.font = 'bold 16px monospace';
+        ctx.font = 'bold 18px monospace';
         ctx.fillText(tip, cx, bottomY);
-        ctx.font = 'bold 17px monospace';
+        ctx.font = 'bold 19px monospace';
         ctx.fillText(`FINAL SCORE: ${score} - PRESS E TO LEAVE`, cx, bottomY + 24);
-        ctx.font = '14px monospace';
+        ctx.font = '16px monospace';
         ctx.fillStyle = isNewBest ? '#8cff5f' : '#9a90a8';
         ctx.fillText(isNewBest ? 'NEW BEST!' : `BEST: ${bestFor('buildpizza')}`, cx, bottomY + 42);
       }
 
       ctx.fillStyle = '#6a6070';
-      ctx.font = '13px monospace';
+      ctx.font = '15px monospace';
       ctx.fillText('X to walk away anytime', cx, phase === 'done' ? bottomY + 66 : bottomY + 24);
     },
   };
@@ -5099,10 +5099,10 @@ function createClawMachineGame() {
 
       ctx.textAlign = 'center';
       ctx.fillStyle = '#e0b040';
-      ctx.font = 'bold 26px monospace';
+      ctx.font = 'bold 28px monospace';
       ctx.fillText('CLAW MACHINE', VIEW_W / 2, 56);
       ctx.fillStyle = '#f4ecd8';
-      ctx.font = '15px monospace';
+      ctx.font = '17px monospace';
       ctx.fillText(`SCORE ${score}   CAUGHT ${caught}   TRIES LEFT ${Math.max(0, triesLeft)}`, VIEW_W / 2, 78);
 
       // glass case
@@ -5121,7 +5121,7 @@ function createClawMachineGame() {
       ctx.fillStyle = '#8a6438';
       ctx.fillRect(CHUTE_X - 12, RAIL_Y - 42, 24, 16);
       ctx.fillStyle = '#f4ecd8';
-      ctx.font = 'bold 12px monospace';
+      ctx.font = 'bold 14px monospace';
       ctx.fillText('WIN', CHUTE_X, RAIL_Y - 52);
 
       flowers.forEach((f) => drawFlower(f, FLOOR_Y));
@@ -5131,13 +5131,13 @@ function createClawMachineGame() {
       pops.forEach((p) => {
         ctx.globalAlpha = Math.max(0, p.life / 0.7);
         ctx.fillStyle = p.color;
-        ctx.font = 'bold 16px monospace';
+        ctx.font = 'bold 18px monospace';
         ctx.fillText(p.text, p.x, p.y - 10);
         ctx.globalAlpha = 1;
       });
 
       ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#8cff5f' : '#f4ecd8';
-      ctx.font = 'bold 17px monospace';
+      ctx.font = 'bold 19px monospace';
       if (phase === 'done') {
         ctx.fillText(`OUT OF TRIES! FINAL SCORE: ${score} - PRESS E TO LEAVE`, VIEW_W / 2, 420);
       } else if (phase === 'aim') {
@@ -5145,13 +5145,13 @@ function createClawMachineGame() {
       }
 
       if (phase === 'done') {
-        ctx.font = '14px monospace';
+        ctx.font = '16px monospace';
         ctx.fillStyle = isNewBest ? '#8cff5f' : '#9a90a8';
         ctx.fillText(isNewBest ? 'NEW BEST!' : `BEST: ${bestFor('clawmachine')}`, VIEW_W / 2, 438);
       }
 
       ctx.fillStyle = '#6a6070';
-      ctx.font = '13px monospace';
+      ctx.font = '15px monospace';
       ctx.fillText('X to walk away anytime', VIEW_W / 2, phase === 'done' ? 456 : 444);
     },
   };
@@ -5566,14 +5566,14 @@ function createClawMachine3DGame() {
       const cx = VIEW_W / 2;
       ctx.textAlign = 'center';
       ctx.fillStyle = '#e0b040';
-      ctx.font = 'bold 26px monospace';
+      ctx.font = 'bold 28px monospace';
       ctx.fillText('CLAW MACHINE 3D', cx, 56);
       ctx.fillStyle = '#f4ecd8';
-      ctx.font = '15px monospace';
+      ctx.font = '17px monospace';
       ctx.fillText(`SCORE ${score}   CAUGHT ${caught}   TRIES LEFT ${Math.max(0, triesLeft)}`, cx, 78);
 
       ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#8cff5f' : '#f4ecd8';
-      ctx.font = 'bold 17px monospace';
+      ctx.font = 'bold 19px monospace';
       if (phase === 'done') {
         ctx.fillText(`OUT OF TRIES! FINAL SCORE: ${score} - PRESS E TO LEAVE`, cx, 540);
       } else if (message) {
@@ -5584,13 +5584,13 @@ function createClawMachine3DGame() {
       }
 
       if (phase === 'done') {
-        ctx.font = '14px monospace';
+        ctx.font = '16px monospace';
         ctx.fillStyle = isNewBest ? '#8cff5f' : '#9a90a8';
         ctx.fillText(isNewBest ? 'NEW BEST!' : `BEST: ${bestFor('clawmachine')}`, cx, 558);
       }
 
       ctx.fillStyle = '#6a6070';
-      ctx.font = '13px monospace';
+      ctx.font = '15px monospace';
       ctx.fillText('X to walk away anytime', cx, phase === 'done' ? 576 : 564);
     },
   };
@@ -5693,10 +5693,10 @@ function createScratchDJGame() {
 
       ctx.textAlign = 'center';
       ctx.fillStyle = '#e0b040';
-      ctx.font = 'bold 24px monospace';
+      ctx.font = 'bold 26px monospace';
       ctx.fillText('FREESTYLE SCRATCH-DJ', VIEW_W / 2, 56);
       ctx.fillStyle = '#f4ecd8';
-      ctx.font = '15px monospace';
+      ctx.font = '17px monospace';
       ctx.fillText(`SCORE ${score}   COMBO x${combo}   ROUND ${Math.min(round, ROUNDS)}/${ROUNDS}`, VIEW_W / 2, 80);
 
       // called-hand callout, flashing above the deck it belongs to
@@ -5704,7 +5704,7 @@ function createScratchDJGame() {
       const flash = Math.floor(performance.now() / 250) % 2;
       if (phase === 'wait' && flash) {
         ctx.fillStyle = expectedHand === 'left' ? '#5fd0ff' : '#ff5fb0';
-        ctx.font = 'bold 20px monospace';
+        ctx.font = 'bold 22px monospace';
         ctx.fillText('\u25bc', calloutX, deckY - 46);
       }
 
@@ -5747,24 +5747,24 @@ function createScratchDJGame() {
         ctx.stroke();
 
         ctx.fillStyle = deck.color;
-        ctx.font = 'bold 13px monospace';
+        ctx.font = 'bold 15px monospace';
         ctx.fillText(deck.label, deck.cx, deckY + DECK_H + 22);
       });
 
       ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#e0b040' : '#f4ecd8';
-      ctx.font = 'bold 16px monospace';
+      ctx.font = 'bold 18px monospace';
       if (phase === 'wait') ctx.fillText('- SCRATCH THE CALLED HAND ON THE BEAT -', VIEW_W / 2, 380);
       else if (phase === 'result') ctx.fillText(lastHitLabel, VIEW_W / 2, 380);
       else if (phase === 'done') ctx.fillText(`FINAL SCORE: ${score} - PRESS E TO LEAVE`, VIEW_W / 2, 380);
 
       if (phase === 'done') {
-        ctx.font = '14px monospace';
+        ctx.font = '16px monospace';
         ctx.fillStyle = isNewBest ? '#8cff5f' : '#9a90a8';
         ctx.fillText(isNewBest ? 'NEW BEST!' : `BEST: ${bestFor('scratchdj')}`, VIEW_W / 2, 400);
       }
 
       ctx.fillStyle = '#6a6070';
-      ctx.font = '13px monospace';
+      ctx.font = '15px monospace';
       ctx.fillText('X to walk away anytime', VIEW_W / 2, phase === 'done' ? 418 : 402);
     },
   };
@@ -6130,32 +6130,32 @@ function createScratchDJ3DGame() {
       const cx = VIEW_W / 2;
       ctx.textAlign = 'center';
       ctx.fillStyle = '#e0b040';
-      ctx.font = 'bold 24px monospace';
+      ctx.font = 'bold 26px monospace';
       ctx.fillText('FREESTYLE SCRATCH-DJ 3D', cx, 56);
       ctx.fillStyle = '#f4ecd8';
-      ctx.font = '15px monospace';
+      ctx.font = '17px monospace';
       ctx.fillText(`SCORE ${score}   COMBO x${combo}   ROUND ${Math.min(round, ROUNDS)}/${ROUNDS}`, cx, 80);
 
       ctx.fillStyle = '#5fd0ff';
-      ctx.font = 'bold 13px monospace';
+      ctx.font = 'bold 15px monospace';
       ctx.fillText('LEFT [E]', cx - 150, 560);
       ctx.fillStyle = '#ff5fb0';
       ctx.fillText('RIGHT [Q/SK8]', cx + 150, 560);
 
       ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#e0b040' : '#f4ecd8';
-      ctx.font = 'bold 16px monospace';
+      ctx.font = 'bold 18px monospace';
       if (phase === 'wait') ctx.fillText('- SCRATCH THE CALLED HAND ON THE BEAT -', cx, 522);
       else if (phase === 'result') ctx.fillText(lastHitLabel, cx, 522);
       else if (phase === 'done') ctx.fillText(`FINAL SCORE: ${score} - PRESS E TO LEAVE`, cx, 522);
 
       if (phase === 'done') {
-        ctx.font = '14px monospace';
+        ctx.font = '16px monospace';
         ctx.fillStyle = isNewBest ? '#8cff5f' : '#9a90a8';
         ctx.fillText(isNewBest ? 'NEW BEST!' : `BEST: ${bestFor('scratchdj')}`, cx, 542);
       }
 
       ctx.fillStyle = '#6a6070';
-      ctx.font = '13px monospace';
+      ctx.font = '15px monospace';
       ctx.fillText('X to walk away anytime', cx, 582);
     },
   };
