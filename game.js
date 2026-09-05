@@ -14984,13 +14984,17 @@ function drawHUD() {
 }
 
 function pill(text, cx, cy) {
-  ctx.font = 'bold 16px monospace';
-  const w = ctx.measureText(text).width + 24;
+  // Bumped from 16px for mobile readability. Box width/height are derived
+  // from measureText/font size, so they grow with the text automatically --
+  // no fixed dimensions to fall out of sync with the larger font.
+  ctx.font = 'bold 18px monospace';
+  const w = ctx.measureText(text).width + 28;
+  const h = 30;
   ctx.fillStyle = 'rgba(10,8,14,0.8)';
-  ctx.fillRect(cx - w / 2, cy - 14, w, 26);
+  ctx.fillRect(cx - w / 2, cy - h / 2, w, h);
   ctx.fillStyle = '#f4ecd8';
   ctx.textAlign = 'center';
-  ctx.fillText(text, cx, cy + 4);
+  ctx.fillText(text, cx, cy + 6);
 }
 
 function drawToast() {
@@ -15000,23 +15004,41 @@ function drawToast() {
 }
 
 function drawDialog() {
-  const h = 150, y = VIEW_H - h - 16;
+  // Body text sized up from 21px for mobile readability. Box height is
+  // computed from the actual wrapped line count (rather than a fixed 150px)
+  // so longer lines at this bigger font never overflow or collide with the
+  // "[E]" hint -- it just grows upward a bit instead.
+  const bodyFont = '24px monospace';
+  const lineH = 30;
+  const textMaxW = VIEW_W - 96;
+
+  ctx.font = bodyFont; // set before measuring so wrap width is accurate
+  const lines = wrapLinesCentered(dialog.lines[dialog.i], textMaxW);
+
+  const topPad = 68, bottomPad = 46;
+  const minH = 150;
+  const h = Math.max(minH, topPad + lines.length * lineH + bottomPad);
+  const y = VIEW_H - h - 16;
+
   ctx.fillStyle = 'rgba(10,8,14,0.92)';
   ctx.fillRect(24, y, VIEW_W - 48, h);
   ctx.strokeStyle = '#f4ecd8';
   ctx.lineWidth = 2;
   ctx.strokeRect(26, y + 2, VIEW_W - 52, h - 4);
+
   ctx.textAlign = 'left';
-  ctx.font = 'bold 19px monospace';
+  ctx.font = 'bold 22px monospace';
   ctx.fillStyle = '#e0b040';
-  ctx.fillText(dialog.name, 44, y + 32);
+  ctx.fillText(dialog.name, 44, y + 34);
+
   ctx.fillStyle = '#f4ecd8';
-  ctx.font = '21px monospace';
-  wrapText(dialog.lines[dialog.i], 44, y + 62, VIEW_W - 96, 28);
-  ctx.font = '16px monospace';
+  ctx.font = bodyFont;
+  lines.forEach((l, i) => ctx.fillText(l, 44, y + 62 + i * lineH));
+
+  ctx.font = 'bold 18px monospace';
   ctx.fillStyle = '#9a90a8';
   ctx.textAlign = 'right';
-  ctx.fillText('[E] ▶', VIEW_W - 44, y + h - 14);
+  ctx.fillText('[E] ▶', VIEW_W - 44, y + h - 16);
 }
 
 // Splash popup shown when the player walks into one of the placeholder
@@ -15034,7 +15056,18 @@ function drawPortalPopup() {
     ctx.drawImage(portalClosedImg, dx, dy, dw, dh);
   }
 
-  const boxW = VIEW_W - 120, boxH = 128, boxX = 60, boxY = VIEW_H - boxH - 28;
+  // Text bumped up from 18px/17px for mobile readability. Box height is
+  // derived from the wrapped line count (min 128px) so it can't overflow.
+  const boxW = VIEW_W - 120, boxX = 60;
+  const bodyFont = '20px monospace', lineH = 25;
+  ctx.font = bodyFont;
+  const lines = wrapLinesCentered(
+    'More lands are being created. More vinyl awaits. Check back later homie!',
+    boxW - 48
+  );
+  const boxH = Math.max(128, 30 + lines.length * lineH + 34);
+  const boxY = VIEW_H - boxH - 28;
+
   ctx.fillStyle = 'rgba(10,8,14,0.94)';
   ctx.fillRect(boxX, boxY, boxW, boxH);
   ctx.strokeStyle = '#f4ecd8';
@@ -15043,16 +15076,12 @@ function drawPortalPopup() {
 
   ctx.textAlign = 'center';
   ctx.fillStyle = '#f4ecd8';
-  ctx.font = '18px monospace';
-  const lines = wrapLinesCentered(
-    'More lands are being created. More vinyl awaits. Check back later homie!',
-    boxW - 48
-  );
+  ctx.font = bodyFont;
   const startY = boxY + 30;
-  lines.forEach((l, i) => ctx.fillText(l, VIEW_W / 2, startY + i * 22));
+  lines.forEach((l, i) => ctx.fillText(l, VIEW_W / 2, startY + i * lineH));
 
   ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#e0b040' : '#f4ecd8';
-  ctx.font = 'bold 17px monospace';
+  ctx.font = 'bold 18px monospace';
   ctx.fillText('Press [E] or tap screen to return', VIEW_W / 2, boxY + boxH - 16);
 }
 
@@ -15064,7 +15093,18 @@ function drawLabLockedPopup() {
   ctx.fillStyle = 'rgba(8,6,12,0.6)';
   ctx.fillRect(0, 0, VIEW_W, VIEW_H);
 
-  const boxW = VIEW_W - 160, boxH = 160, boxX = 80, boxY = (VIEW_H - boxH) / 2;
+  // Text bumped up from 17px/16px for mobile readability. Box height is
+  // derived from the wrapped line count (min 160px) so it can't overflow.
+  const boxW = VIEW_W - 160, boxX = 80;
+  const bodyFont = '19px monospace', lineH = 24;
+  ctx.font = bodyFont;
+  const lines = wrapLinesCentered(
+    "Door's locked tight. Dig up every last record hiding around town first.",
+    boxW - 48
+  );
+  const boxH = Math.max(160, 66 + lines.length * lineH + 40);
+  const boxY = (VIEW_H - boxH) / 2;
+
   ctx.fillStyle = 'rgba(10,8,14,0.94)';
   ctx.fillRect(boxX, boxY, boxW, boxH);
   ctx.strokeStyle = '#8a7a50';
@@ -15073,20 +15113,16 @@ function drawLabLockedPopup() {
 
   ctx.textAlign = 'center';
   ctx.fillStyle = '#e0b040';
-  ctx.font = 'bold 20px monospace';
-  ctx.fillText("RICO'S LAB", VIEW_W / 2, boxY + 34);
+  ctx.font = 'bold 22px monospace';
+  ctx.fillText("RICO'S LAB", VIEW_W / 2, boxY + 36);
 
   ctx.fillStyle = '#f4ecd8';
-  ctx.font = '17px monospace';
-  const lines = wrapLinesCentered(
-    "Door's locked tight. Dig up every last record hiding around town first.",
-    boxW - 48
-  );
+  ctx.font = bodyFont;
   const startY = boxY + 66;
-  lines.forEach((l, i) => ctx.fillText(l, VIEW_W / 2, startY + i * 22));
+  lines.forEach((l, i) => ctx.fillText(l, VIEW_W / 2, startY + i * lineH));
 
   ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#e0b040' : '#f4ecd8';
-  ctx.font = 'bold 16px monospace';
+  ctx.font = 'bold 18px monospace';
   ctx.fillText('Press [E] or tap screen to return', VIEW_W / 2, boxY + boxH - 16);
 }
 
