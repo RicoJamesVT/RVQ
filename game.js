@@ -7398,7 +7398,7 @@ const player = {
   tempItem: null, tempItemTimer: 0,
 };
 const collected = new Set();
-let state = 'introVideo'; // introVideo | splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | portal | fifa | minigame | hotkeys | crate | trophies | lab | labLocked | labApp
+let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | portal | fifa | minigame | hotkeys | crate | trophies | lab | labLocked | labApp
 // State to snap back to when the [H] hotkeys popup is closed -- currently
 // always 'play' since that's the only state H can be opened from, but kept
 // as its own var in case another state wants to offer the popup later.
@@ -7975,7 +7975,7 @@ const music = {
 // enter/exit call sites, so it can't drift out of sync no matter which
 // of the several ways the player backs out of the lab popup (keyboard
 // [X], on-screen [X] button, closing the instrument iframe, etc.).
-const DUCKED_STATES = new Set(['introVideo', 'lab', 'labApp', 'chessApp', 'characterIntro']);
+const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'characterIntro']);
 function syncMusicDuck() {
   music.duck(DUCKED_STATES.has(state));
 }
@@ -8802,124 +8802,6 @@ function closeChessApp(fromPopState) {
   }
 }
 
-// Launch-time intro video (M85.mp4), the very first thing shown when the
-// game boots -- before even the 'splash' PNG state. Deliberately built to
-// never cost the fast-start the game currently has:
-//   1. This overlay is created and told to play IMMEDIATELY, in parallel
-//      with (not blocking) the existing splashImg/title/lab-art preloads
-//      above -- those `new Image()` calls already fired synchronously at
-//      parse time and are completely untouched by any of this.
-//   2. It's muted + playsinline so autoplay succeeds with no user gesture
-//      required on any platform; a small tap-for-sound pill lets the
-//      player opt into audio without that ever gating start.
-//   3. update()/render() early-return while state === 'introVideo' (see
-//      WORLD_HIDDEN_STATES/labApp handling below), so the canvas draws
-//      nothing underneath it -- same reasoning as 'splash' already uses.
-//   4. Any failure to load/play (slow network, codec issue, blocked
-//      autoplay, missing file) falls straight through to the existing
-//      'splash' state instead of stalling -- it can only ever be skipped
-//      past, never a hang.
-let introVideoEl = null;
-let introVideoSkippable = false; // true only once playback has actually started
-let introVideoDone = false; // guards finishIntroVideo() against firing twice
-function createIntroVideoOverlay() {
-  const style = document.createElement('style');
-  style.textContent = `
-    #ricoIntroVideo {
-      position: fixed; inset: 0; z-index: 1000;
-      background: #000;
-      display: flex; align-items: center; justify-content: center;
-    }
-    #ricoIntroVideo.closed { display: none; }
-    #ricoIntroVideo video {
-      width: 100%; height: 100%;
-      object-fit: contain; /* letterbox rather than crop/stretch */
-      background: #000;
-    }
-    #ricoIntroVideo .riv-skip {
-      position: absolute; right: 14px; bottom: 14px;
-      padding: 8px 16px;
-      background: rgba(20,16,26,0.55);
-      border: 1.5px solid rgba(244,236,216,0.55);
-      border-radius: 8px;
-      color: #f4ecd8; font: bold 12px monospace; letter-spacing: 0.5px;
-      -webkit-user-select: none; user-select: none;
-      padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
-    }
-    #ricoIntroVideo .riv-skip:active { background: rgba(224,176,64,0.35); }
-    #ricoIntroVideo .riv-sound {
-      position: absolute; left: 14px; bottom: 14px;
-      padding: 8px 14px;
-      background: rgba(20,16,26,0.55);
-      border: 1.5px solid rgba(244,236,216,0.4);
-      border-radius: 8px;
-      color: #f4ecd8; font: bold 12px monospace; letter-spacing: 0.5px;
-      -webkit-user-select: none; user-select: none;
-    }
-    #ricoIntroVideo .riv-sound:active { background: rgba(224,176,64,0.35); }
-  `;
-  document.head.appendChild(style);
-
-  introVideoEl = document.createElement('video');
-  introVideoEl.setAttribute('playsinline', '');
-  introVideoEl.setAttribute('webkit-playsinline', '');
-  introVideoEl.muted = true; // required for guaranteed autoplay with no prior gesture
-  introVideoEl.autoplay = true;
-  introVideoEl.preload = 'auto';
-
-  const overlay = document.createElement('div');
-  overlay.id = 'ricoIntroVideo';
-  overlay.appendChild(introVideoEl);
-
-  const skipBtn = document.createElement('div');
-  skipBtn.className = 'riv-skip';
-  skipBtn.textContent = 'SKIP \u25b8';
-  bindTap(skipBtn, () => finishIntroVideo());
-  overlay.appendChild(skipBtn);
-
-  const soundBtn = document.createElement('div');
-  soundBtn.className = 'riv-sound';
-  soundBtn.textContent = '\ud83d\udd07 TAP FOR SOUND';
-  bindTap(soundBtn, () => {
-    introVideoEl.muted = false;
-    soundBtn.remove();
-  });
-  overlay.appendChild(soundBtn);
-
-  document.body.appendChild(overlay);
-  introVideoOverlayEl = overlay;
-
-  const src = document.createElement('source');
-  src.src = 'assets/M85.mp4';
-  src.type = 'video/mp4';
-  introVideoEl.appendChild(src);
-
-  introVideoEl.addEventListener('ended', () => finishIntroVideo());
-  // Any playback failure (missing file, codec issue, blocked autoplay,
-  // etc.) should never be able to strand the player on a black screen --
-  // fail straight through to the 'splash' state exactly as if the clip
-  // had finished normally.
-  introVideoEl.addEventListener('error', () => finishIntroVideo());
-
-  introVideoEl.load();
-  const playPromise = introVideoEl.play();
-  if (playPromise && playPromise.catch) {
-    playPromise.then(() => { introVideoSkippable = true; }).catch(() => finishIntroVideo());
-  } else {
-    introVideoSkippable = true;
-  }
-}
-let introVideoOverlayEl = null;
-createIntroVideoOverlay();
-
-function finishIntroVideo() {
-  if (introVideoDone) return; // already finished -- ignore duplicate ended/skip/error
-  introVideoDone = true;
-  if (introVideoOverlayEl) introVideoOverlayEl.classList.add('closed');
-  if (introVideoEl) introVideoEl.pause();
-  state = 'splash';
-}
-
 // Character-intro splash video, played once between character select and
 // the first frame of gameplay. Same DOM-overlay approach as the lab-app
 // iframe above and for the same reason: video decode/composite is handled
@@ -9177,11 +9059,7 @@ function update(dt) {
   syncMusicDuck(); // ducks the ambient loop only while in Rico's Beat Lab ('lab'/'labApp')
   if (toast) { toast.t -= dt; if (toast.t <= 0) toast = null; }
 
-  if (state === 'introVideo') {
-    // E also skips, same as tapping the on-screen SKIP button -- but only
-    // once playback has actually started, matching 'characterIntro' below.
-    if (interactPressed && introVideoSkippable) finishIntroVideo();
-  } else if (state === 'splash') {
+  if (state === 'splash') {
     if (interactPressed) { state = 'title'; titlePage = 0; music.setMenuBreak(true); }
   } else if (state === 'title') {
     // Left/right (physical arrows, on-screen d-pad, or [H]) still flips
@@ -9570,20 +9448,17 @@ function viewToWorld(vx, vy) {
 const WORLD_HIDDEN_STATES = new Set(['title', 'digChoice', 'history', 'slotChoose', 'select', 'levelIntro']);
 
 function render(time) {
-  if (state === 'introVideo' || state === 'labApp' || state === 'chessApp' || state === 'characterIntro') {
-    // Same reasoning as the labApp overlay: a DOM element (the launch
-    // <video>, see createIntroVideoOverlay()/createCharacterIntroOverlay(),
-    // or the chess <iframe>, see createChessOverlay()) fully covers the
-    // canvas here, so there's nothing to gain from redrawing anything
-    // underneath it -- and for 'introVideo' specifically, nothing has even
-    // been loaded/prepared to draw yet.
-    return;
-  }
-  // Startup optimization: the splash is the first canvas screen (shown once
-  // the intro video finishes/is skipped) and is drawn immediately. Do not
-  // spend time rendering the game world underneath it.
+  // Startup optimization: the splash is the first screen and is drawn
+  // immediately. Do not spend time rendering the game world underneath it.
   if (state === 'splash') {
     drawSplash();
+    return;
+  }
+  if (state === 'labApp' || state === 'chessApp' || state === 'characterIntro') {
+    // Same reasoning as the labApp overlay: a DOM element (the <video>,
+    // see createCharacterIntroOverlay(), or the chess <iframe>, see
+    // createChessOverlay()) fully covers the canvas here, so there's
+    // nothing to gain from redrawing the world underneath it.
     return;
   }
   if (WORLD_HIDDEN_STATES.has(state)) {
