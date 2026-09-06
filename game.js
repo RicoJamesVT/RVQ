@@ -655,6 +655,11 @@ const MINIGAME_ACTIONS = {
   // in the same kind of full-screen DOM/iframe overlay Rico's Lab uses for
   // its instruments. See openChessApp()/createChessOverlay() below.
   chess: () => openChessApp(),
+  // Rico's Beat Bot -- Green Door Studio's step-sequencer drum machine,
+  // parked at Zach's SKYLAB desk. Same "full standalone web app" shape as
+  // chess just above (own DOM/iframe overlay, not a canvas mini-game). See
+  // openBeatBotApp()/createBeatBotOverlay() below.
+  beatbot: () => openBeatBotApp(),
 };
 
 // ---- trophy case: personal bests for the 8 scored mini-games --------------
@@ -6212,6 +6217,7 @@ window.addEventListener('keydown', (e) => {
     // worth adding here since browsers treat it as the natural "close".
     if (k === 'escape' && state === 'labApp') { closeInstrument(); }
     if (k === 'escape' && state === 'chessApp') { closeChessApp(); }
+    if (k === 'escape' && state === 'beatBotApp') { closeBeatBotApp(); }
     if (k === 'arrowleft') selectMove = -1;
     if (k === 'arrowright') selectMove = 1;
     if (k === 'arrowup') menuMove = -1;
@@ -7082,6 +7088,12 @@ const shops = {
     minigames: [
       { id: 'beatmatch', tx: 5, ty: 3, label: 'PLAY BEAT MATCH' },
       { id: 'beatjam', tx: 9, ty: 7, label: 'FREESTYLE BEAT JAM' },
+      // Rico's Beat Bot, parked right at Zach's SKYLAB desk (recordingDesk
+      // sits at [1,2]/[2,2], Zach himself stands at (2,3)) -- floor tile
+      // just below/left of the desk, clear of the gear tile at (2,5) and
+      // every crate spot. Opens the full standalone drum-machine app in
+      // its own DOM overlay; see openBeatBotApp()/createBeatBotOverlay().
+      { id: 'beatbot', tx: 1, ty: 3, label: "RICO'S BEAT BOT" },
     ],
   }),
   wax: makeShop('wax', {
@@ -7398,7 +7410,7 @@ const player = {
   tempItem: null, tempItemTimer: 0,
 };
 const collected = new Set();
-let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | portal | fifa | minigame | hotkeys | crate | trophies | lab | labLocked | labApp
+let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | portal | fifa | minigame | hotkeys | crate | trophies | lab | labLocked | labApp | chessApp | beatBotApp
 // State to snap back to when the [H] hotkeys popup is closed -- currently
 // always 'play' since that's the only state H can be opened from, but kept
 // as its own var in case another state wants to offer the popup later.
@@ -7975,7 +7987,7 @@ const music = {
 // enter/exit call sites, so it can't drift out of sync no matter which
 // of the several ways the player backs out of the lab popup (keyboard
 // [X], on-screen [X] button, closing the instrument iframe, etc.).
-const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'characterIntro']);
+const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'beatBotApp', 'characterIntro']);
 function syncMusicDuck() {
   music.duck(DUCKED_STATES.has(state));
 }
@@ -8802,6 +8814,110 @@ function closeChessApp(fromPopState) {
   }
 }
 
+// ---------------------------------------------------------------- Green Door Studio beat bot overlay
+// Rico's Beat Bot (the drum-machine step sequencer parked at Zach's SKYLAB
+// desk in Green Door Studio -- see MINIGAME_ACTIONS.beatbot) is, like chess,
+// a full standalone HTML/CSS/JS page rather than a canvas mini-game, so it
+// reuses the exact same "full-screen DOM overlay with an <iframe>" trick as
+// the chess table and Rico's Lab instruments above. Kept as its own overlay
+// (rather than folding into labOverlayEl/chessOverlayEl) since it's reached
+// from a different door/state and has nothing to do with either of those.
+const BEAT_BOT_APP_URL = 'instruments/rico-beat-bot/index.html';
+let beatBotOverlayEl = null, beatBotOverlayFrame = null;
+let beatBotReturnState = 'play';
+let beatBotHistoryPushed = false; // mirrors labHistoryPushed/chessHistoryPushed -- see openBeatBotApp()/closeBeatBotApp()
+
+function createBeatBotOverlay() {
+  const style = document.createElement('style');
+  style.textContent = `
+    #ricoBeatBotApp {
+      position: fixed; inset: 0; z-index: 1000;
+      background: #000;
+      display: none; flex-direction: column;
+    }
+    #ricoBeatBotApp.open { display: flex; }
+    #ricoBeatBotApp .rbb-bar {
+      flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 10px 14px;
+      background: linear-gradient(#241a0e, #120d06);
+      border-bottom: 2px solid #e0b040;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    }
+    #ricoBeatBotApp .rbb-title {
+      color: #f4ecd8; font: bold 14px monospace; letter-spacing: 0.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #ricoBeatBotApp .rbb-close {
+      flex: 0 0 auto; cursor: pointer;
+      background: rgba(224,176,64,0.15);
+      border: 1.5px solid rgba(224,176,64,0.85);
+      color: #f4ecd8; border-radius: 8px;
+      padding: 7px 16px; font: bold 13px monospace;
+      -webkit-user-select: none; user-select: none;
+    }
+    #ricoBeatBotApp .rbb-close:active { background: rgba(224,176,64,0.4); }
+    #ricoBeatBotApp iframe {
+      flex: 1 1 auto; width: 100%; border: 0; background: #000;
+    }
+  `;
+  document.head.appendChild(style);
+
+  beatBotOverlayEl = document.createElement('div');
+  beatBotOverlayEl.id = 'ricoBeatBotApp';
+
+  const bar = document.createElement('div');
+  bar.className = 'rbb-bar';
+  const title = document.createElement('div');
+  title.className = 'rbb-title';
+  title.textContent = "GREEN DOOR STUDIO \u2014 RICO'S BEAT BOT";
+  const closeBtn = document.createElement('div');
+  closeBtn.className = 'rbb-close';
+  closeBtn.textContent = '\u2190 BACK TO THE STUDIO';
+  bindTap(closeBtn, closeBeatBotApp);
+  bar.appendChild(title);
+  bar.appendChild(closeBtn);
+
+  beatBotOverlayFrame = document.createElement('iframe');
+  beatBotOverlayFrame.setAttribute('allow', 'autoplay');
+
+  beatBotOverlayEl.appendChild(bar);
+  beatBotOverlayEl.appendChild(beatBotOverlayFrame);
+  document.body.appendChild(beatBotOverlayEl);
+}
+createBeatBotOverlay();
+
+// Opens the beat bot overlay and switches state to 'beatBotApp'. Called
+// from MINIGAME_ACTIONS.beatbot (E on the sign at Zach's desk, or tapping
+// its floating sign), same entry points every other mini-game uses.
+function openBeatBotApp() {
+  beatBotReturnState = state;
+  beatBotOverlayFrame.src = BEAT_BOT_APP_URL;
+  beatBotOverlayEl.classList.add('open');
+  state = 'beatBotApp';
+  // Same throwaway-history-entry trick as openInstrument()/openChessApp()
+  // above, so the browser/OS back gesture closes the beat bot overlay
+  // instead of leaving the game entirely.
+  history.pushState({ ricoBeatBotApp: true }, '');
+  beatBotHistoryPushed = true;
+}
+
+// Tears the iframe back down (clearing src stops any Web Audio playback)
+// and returns to ordinary gameplay in Green Door Studio. fromPopState
+// mirrors closeInstrument()/closeChessApp()'s parameter -- true when
+// triggered by the browser's back button (whose history entry is already
+// consumed), so we must not call history.back() again in that case.
+function closeBeatBotApp(fromPopState) {
+  beatBotOverlayEl.classList.remove('open');
+  beatBotOverlayFrame.src = 'about:blank';
+  state = beatBotReturnState;
+  if (!fromPopState && beatBotHistoryPushed) {
+    beatBotHistoryPushed = false;
+    history.back();
+  } else {
+    beatBotHistoryPushed = false;
+  }
+}
+
 // Character-intro splash video, played once between character select and
 // the first frame of gameplay. Same DOM-overlay approach as the lab-app
 // iframe above and for the same reason: video decode/composite is handled
@@ -8953,6 +9069,8 @@ window.addEventListener('popstate', () => {
     closeInstrument(true);
   } else if (state === 'chessApp') {
     closeChessApp(true);
+  } else if (state === 'beatBotApp') {
+    closeBeatBotApp(true);
   }
 });
 
@@ -8968,11 +9086,11 @@ canvas.addEventListener('pointerdown', (e) => {
     const vx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const vy = (e.clientY - rect.top) * (canvas.height / rect.height);
     handleLabTap(vx, vy);
-  } else if (state === 'labApp' || state === 'chessApp') {
+  } else if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp') {
     // The DOM overlay sits on top of (and outside) the canvas while an
-    // instrument/the chess app is loaded, so a pointerdown reaching the
-    // canvas itself means the overlay isn't up yet/already closing --
-    // ignore it rather than falling through to the generic
+    // instrument/the chess app/the beat bot is loaded, so a pointerdown
+    // reaching the canvas itself means the overlay isn't up yet/already
+    // closing -- ignore it rather than falling through to the generic
     // interactPressed=true below.
   } else if (state === 'play') {
     // Tapping directly on a "TAP HERE TO PLAY AROUND" sign jumps straight
@@ -9203,6 +9321,13 @@ function update(dt) {
     // is still consumed here too so the on-screen [X] touch button works
     // while the chess app is open.
     if (buyPressed) closeChessApp();
+  } else if (state === 'beatBotApp') {
+    // Same reasoning as 'labApp'/'chessApp' just above: the DOM overlay
+    // (see createBeatBotOverlay()) owns input while the beat bot is loaded
+    // -- its own close button and [Esc] handle closing it directly.
+    // buyPressed is still consumed here too so the on-screen [X] touch
+    // button works while the beat bot is open.
+    if (buyPressed) closeBeatBotApp();
   } else if (state === 'hotkeys') {
     if (interactPressed || buyPressed) state = hotkeysReturnState;
   } else if (state === 'crate') {
@@ -9454,10 +9579,11 @@ function render(time) {
     drawSplash();
     return;
   }
-  if (state === 'labApp' || state === 'chessApp' || state === 'characterIntro') {
+  if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'characterIntro') {
     // Same reasoning as the labApp overlay: a DOM element (the <video>,
-    // see createCharacterIntroOverlay(), or the chess <iframe>, see
-    // createChessOverlay()) fully covers the canvas here, so there's
+    // see createCharacterIntroOverlay(), the chess <iframe>, see
+    // createChessOverlay(), or the beat bot <iframe>, see
+    // createBeatBotOverlay()) fully covers the canvas here, so there's
     // nothing to gain from redrawing the world underneath it.
     return;
   }
