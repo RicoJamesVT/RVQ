@@ -7088,12 +7088,17 @@ const shops = {
     minigames: [
       { id: 'beatmatch', tx: 5, ty: 3, label: 'PLAY BEAT MATCH' },
       { id: 'beatjam', tx: 9, ty: 7, label: 'FREESTYLE BEAT JAM' },
-      // Rico's Beat Bot, parked right at Zach's SKYLAB desk (recordingDesk
-      // sits at [1,2]/[2,2], Zach himself stands at (2,3)) -- floor tile
-      // just below/left of the desk, clear of the gear tile at (2,5) and
-      // every crate spot. Opens the full standalone drum-machine app in
-      // its own DOM overlay; see openBeatBotApp()/createBeatBotOverlay().
-      { id: 'beatbot', tx: 1, ty: 3, label: "RICO'S BEAT BOT" },
+      // Rico's Beat Bot, parked right beside Zach's SKYLAB desk (recordingDesk
+      // sits at [1,2]/[2,2]). tx:1/ty:3 originally boxed it in on all four
+      // sides -- desk (R, solid) above at (1,2), Zach the NPC (N, solid) to
+      // the right at (2,3), a crate (C, solid) below at (1,4), and the room's
+      // outer wall (W, solid) to the left at (0,3) -- so there was no open
+      // tile left to stand on and face it. Moved one tile over to (3,2),
+      // open floor just right of the desk with clear approaches from above,
+      // below, and the right, so it's easily reachable. Opens the full
+      // standalone drum-machine app in its own DOM overlay; see
+      // openBeatBotApp()/createBeatBotOverlay().
+      { id: 'beatbot', tx: 3, ty: 2, label: "RICO'S BEAT BOT" },
     ],
   }),
   wax: makeShop('wax', {
