@@ -8729,14 +8729,22 @@ createLabAppOverlay();
 
 // ---------------------------------------------------------------- Henry's Diner chess table overlay
 // The chess table in Henry's Diner (see MINIGAME_ACTIONS.chess) launches a
-// full standalone web game (wu-chess.vercel.app), not a from-scratch canvas
-// mini-game -- so it reuses the exact same "full-screen DOM overlay with an
-// <iframe>" trick as the Rico's Lab instrument overlay just above, rather
-// than porting an entire chess engine/UI into the canvas mini-game system.
-// Kept as its own overlay (rather than folding into labOverlayEl) since it's
-// reached from a totally different door/state and has nothing to do with
-// Rico's Lab.
-const CHESS_APP_URL = 'https://wu-chess.vercel.app/';
+// full standalone web app, not a from-scratch canvas mini-game -- so it
+// reuses the exact same "full-screen DOM overlay with an <iframe>" trick as
+// the Rico's Lab instrument overlay just above, rather than porting an
+// entire chess engine/UI into the canvas mini-game system. Kept as its own
+// overlay (rather than folding into labOverlayEl) since it's reached from a
+// totally different door/state and has nothing to do with Rico's Lab.
+//
+// WU CHESS now ships as a bundled, self-contained instrument page (its own
+// full legal-move chess engine plus a small built-in CPU opponent, no
+// network calls at all) at instruments/wu-chess/index.html -- the same
+// local-file pattern BEAT_BOT_APP_URL/ORGAN_APP_URL use below. Being a
+// same-origin local asset rather than a live remote site (this used to
+// point at wu-chess.vercel.app) means it loads and plays the same with or
+// without a connection, so there's no online/offline branching needed here
+// anymore.
+const CHESS_APP_URL = 'instruments/wu-chess/index.html';
 let chessOverlayEl = null, chessOverlayFrame = null;
 let chessReturnState = 'play';
 let chessHistoryPushed = false; // mirrors labHistoryPushed -- see openChessApp()/closeChessApp()
@@ -9117,14 +9125,38 @@ function createCharacterIntroOverlay() {
   characterIntroEl = overlay;
 
   // Loading this now (rather than waiting until chooseCharacter() actually
-  // calls playCharacterIntro()) means the ~2MB clip is already buffered by
-  // the time the player reaches the character-select screen, so there's no
+  // calls playCharacterIntro()) means the clip is already buffered by the
+  // time the player reaches the character-select screen, so there's no
   // stall waiting for it once a character is picked.
-  const src = document.createElement('source');
-  src.src = 'assets/character_intro.mp4';
-  src.type = 'video/mp4';
-  characterIntroVideoEl.appendChild(src);
-  characterIntroVideoEl.load();
+  //
+  // This fetches the file and hands the video element a blob: URL instead
+  // of pointing a <source> straight at 'assets/character_intro.mp4'. That
+  // matters for offline play specifically: a <video> with a network URL
+  // requests its data in byte-range chunks (Range: bytes=...), and while a
+  // service worker's cache happily serves whole cached responses, most
+  // simple caches don't implement 206 Partial Content for those range
+  // requests -- so the clip fails to play offline even though it's fully
+  // cached and every other (non-ranged) asset in the game loads fine. A
+  // single plain fetch() has no Range header, so it's satisfied by the
+  // cache in one shot; the resulting blob: URL then plays back from memory
+  // with no further network/range requests at all.
+  fetch('assets/character_intro.mp4')
+    .then((res) => {
+      if (!res.ok) throw new Error('bad response');
+      return res.blob();
+    })
+    .then((blob) => {
+      characterIntroVideoEl.src = URL.createObjectURL(blob);
+      characterIntroVideoEl.load();
+    })
+    .catch(() => {
+      // Fetch itself failed (e.g. this asset was never cached at all) --
+      // fall back to a normal networked source. If that fails too, the
+      // 'error' listener below still catches it and skips the intro
+      // instead of stranding the player on a black screen.
+      characterIntroVideoEl.src = 'assets/character_intro.mp4';
+      characterIntroVideoEl.load();
+    });
 
   characterIntroVideoEl.addEventListener('ended', () => finishCharacterIntro());
   // Any playback failure (missing file, codec issue, etc.) should never be
