@@ -660,6 +660,11 @@ const MINIGAME_ACTIONS = {
   // chess just above (own DOM/iframe overlay, not a canvas mini-game). See
   // openBeatBotApp()/createBeatBotOverlay() below.
   beatbot: () => openBeatBotApp(),
+  // The church street organ -- a gospel drawbar organ tucked into the
+  // church's (very much not a church) interior. Same "full standalone web
+  // app, not a canvas mini-game" shape as chess/beatbot just above (own
+  // DOM/iframe overlay). See openOrganApp()/createOrganOverlay() below.
+  organ: () => openOrganApp(),
 };
 
 // ---- trophy case: personal bests for the 8 scored mini-games --------------
@@ -6218,6 +6223,7 @@ window.addEventListener('keydown', (e) => {
     if (k === 'escape' && state === 'labApp') { closeInstrument(); }
     if (k === 'escape' && state === 'chessApp') { closeChessApp(); }
     if (k === 'escape' && state === 'beatBotApp') { closeBeatBotApp(); }
+    if (k === 'escape' && state === 'organApp') { closeOrganApp(); }
     if (k === 'arrowleft') selectMove = -1;
     if (k === 'arrowright') selectMove = 1;
     if (k === 'arrowup') menuMove = -1;
@@ -7392,9 +7398,14 @@ const shops = {
     crates: [ { junkSeed: 3 }, { junkSeed: 7 } ],
     // Whack-a-Pigeon, tucked into open floor on the right side of the big
     // top -- clear of the counter table (row 3), the crates against the
-    // left wall, and the carnival props flanking the ring.
+    // left wall, and the carnival props flanking the ring. The church
+    // street organ sits on open floor between the counter (row 3) and the
+    // carnival-prop/whack-a-pigeon row (row 6) -- clear of the crate at
+    // (1,4) and directly under the trapeze artist's rigging overhead, same
+    // "hiding in plain sight" gag as the rest of this room's big-top dressing.
     minigames: [
       { id: 'whackpigeon', tx: 9, ty: 6, label: 'WHACK-A-PIGEON' },
+      { id: 'organ', tx: 6, ty: 4, label: 'PLAY THE ORGAN' },
     ],
   }),
 };
@@ -7416,7 +7427,7 @@ const player = {
   tempItem: null, tempItemTimer: 0,
 };
 const collected = new Set();
-let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | portal | fifa | minigame | hotkeys | crate | trophies | lab | labLocked | labApp | chessApp | beatBotApp
+let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | portal | fifa | minigame | hotkeys | crate | trophies | lab | labLocked | labApp | chessApp | beatBotApp | organApp
 // State to snap back to when the [H] hotkeys popup is closed -- currently
 // always 'play' since that's the only state H can be opened from, but kept
 // as its own var in case another state wants to offer the popup later.
@@ -7993,7 +8004,7 @@ const music = {
 // enter/exit call sites, so it can't drift out of sync no matter which
 // of the several ways the player backs out of the lab popup (keyboard
 // [X], on-screen [X] button, closing the instrument iframe, etc.).
-const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'beatBotApp', 'characterIntro']);
+const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'beatBotApp', 'organApp', 'characterIntro']);
 function syncMusicDuck() {
   music.duck(DUCKED_STATES.has(state));
 }
@@ -8924,6 +8935,112 @@ function closeBeatBotApp(fromPopState) {
   }
 }
 
+// ---------------------------------------------------------------- Church street organ overlay
+// The church's interior is dressed up as a big-top circus (see
+// drawChurchCircusInterior()), so the "PLAY THE ORGAN" sign is the one
+// prop that plays along with the building's actual name. Like chess and
+// the beat bot, it's a full standalone HTML/CSS/JS page (a gospel drawbar
+// organ synth) rather than a canvas mini-game, so it reuses the same
+// "full-screen DOM overlay with an <iframe>" trick. Kept as its own
+// overlay (rather than folding into labOverlayEl/chessOverlayEl/
+// beatBotOverlayEl) since it's reached from a different door/state and has
+// nothing to do with any of those.
+const ORGAN_APP_URL = 'instruments/church-street-organ/index.html';
+let organOverlayEl = null, organOverlayFrame = null;
+let organReturnState = 'play';
+let organHistoryPushed = false; // mirrors labHistoryPushed/chessHistoryPushed/beatBotHistoryPushed -- see openOrganApp()/closeOrganApp()
+
+function createOrganOverlay() {
+  const style = document.createElement('style');
+  style.textContent = `
+    #churchOrganApp {
+      position: fixed; inset: 0; z-index: 1000;
+      background: #000;
+      display: none; flex-direction: column;
+    }
+    #churchOrganApp.open { display: flex; }
+    #churchOrganApp .coa-bar {
+      flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 10px 14px;
+      background: linear-gradient(#241a0e, #120d06);
+      border-bottom: 2px solid #e0b040;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    }
+    #churchOrganApp .coa-title {
+      color: #f4ecd8; font: bold 14px monospace; letter-spacing: 0.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #churchOrganApp .coa-close {
+      flex: 0 0 auto; cursor: pointer;
+      background: rgba(224,176,64,0.15);
+      border: 1.5px solid rgba(224,176,64,0.85);
+      color: #f4ecd8; border-radius: 8px;
+      padding: 7px 16px; font: bold 13px monospace;
+      -webkit-user-select: none; user-select: none;
+    }
+    #churchOrganApp .coa-close:active { background: rgba(224,176,64,0.4); }
+    #churchOrganApp iframe {
+      flex: 1 1 auto; width: 100%; border: 0; background: #000;
+    }
+  `;
+  document.head.appendChild(style);
+
+  organOverlayEl = document.createElement('div');
+  organOverlayEl.id = 'churchOrganApp';
+
+  const bar = document.createElement('div');
+  bar.className = 'coa-bar';
+  const title = document.createElement('div');
+  title.className = 'coa-title';
+  title.textContent = 'THE CHURCH \u2014 ORGAN';
+  const closeBtn = document.createElement('div');
+  closeBtn.className = 'coa-close';
+  closeBtn.textContent = '\u2190 BACK TO THE CHURCH';
+  bindTap(closeBtn, closeOrganApp);
+  bar.appendChild(title);
+  bar.appendChild(closeBtn);
+
+  organOverlayFrame = document.createElement('iframe');
+  organOverlayFrame.setAttribute('allow', 'autoplay');
+
+  organOverlayEl.appendChild(bar);
+  organOverlayEl.appendChild(organOverlayFrame);
+  document.body.appendChild(organOverlayEl);
+}
+createOrganOverlay();
+
+// Opens the organ overlay and switches state to 'organApp'. Called from
+// MINIGAME_ACTIONS.organ (E on the organ, or tapping its floating sign),
+// same entry points every other mini-game uses.
+function openOrganApp() {
+  organReturnState = state;
+  organOverlayFrame.src = ORGAN_APP_URL;
+  organOverlayEl.classList.add('open');
+  state = 'organApp';
+  // Same throwaway-history-entry trick as openInstrument()/openChessApp()/
+  // openBeatBotApp() above, so the browser/OS back gesture closes the
+  // organ overlay instead of leaving the game entirely.
+  history.pushState({ churchOrganApp: true }, '');
+  organHistoryPushed = true;
+}
+
+// Tears the iframe back down (clearing src stops any Web Audio playback)
+// and returns to ordinary gameplay in the church. fromPopState mirrors
+// closeInstrument()/closeChessApp()/closeBeatBotApp()'s parameter -- true
+// when triggered by the browser's back button (whose history entry is
+// already consumed), so we must not call history.back() again in that case.
+function closeOrganApp(fromPopState) {
+  organOverlayEl.classList.remove('open');
+  organOverlayFrame.src = 'about:blank';
+  state = organReturnState;
+  if (!fromPopState && organHistoryPushed) {
+    organHistoryPushed = false;
+    history.back();
+  } else {
+    organHistoryPushed = false;
+  }
+}
+
 // Character-intro splash video, played once between character select and
 // the first frame of gameplay. Same DOM-overlay approach as the lab-app
 // iframe above and for the same reason: video decode/composite is handled
@@ -9077,6 +9194,8 @@ window.addEventListener('popstate', () => {
     closeChessApp(true);
   } else if (state === 'beatBotApp') {
     closeBeatBotApp(true);
+  } else if (state === 'organApp') {
+    closeOrganApp(true);
   }
 });
 
@@ -9092,12 +9211,12 @@ canvas.addEventListener('pointerdown', (e) => {
     const vx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const vy = (e.clientY - rect.top) * (canvas.height / rect.height);
     handleLabTap(vx, vy);
-  } else if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp') {
+  } else if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp') {
     // The DOM overlay sits on top of (and outside) the canvas while an
-    // instrument/the chess app/the beat bot is loaded, so a pointerdown
-    // reaching the canvas itself means the overlay isn't up yet/already
-    // closing -- ignore it rather than falling through to the generic
-    // interactPressed=true below.
+    // instrument/the chess app/the beat bot/the organ is loaded, so a
+    // pointerdown reaching the canvas itself means the overlay isn't up
+    // yet/already closing -- ignore it rather than falling through to the
+    // generic interactPressed=true below.
   } else if (state === 'play') {
     // Tapping directly on a "TAP HERE TO PLAY AROUND" sign jumps straight
     // into that mini-game -- no need to walk up and face the exact tile.
@@ -9334,6 +9453,13 @@ function update(dt) {
     // buyPressed is still consumed here too so the on-screen [X] touch
     // button works while the beat bot is open.
     if (buyPressed) closeBeatBotApp();
+  } else if (state === 'organApp') {
+    // Same reasoning as 'labApp'/'chessApp'/'beatBotApp' just above: the DOM
+    // overlay (see createOrganOverlay()) owns input while the organ is
+    // loaded -- its own close button and [Esc] handle closing it directly.
+    // buyPressed is still consumed here too so the on-screen [X] touch
+    // button works while the organ is open.
+    if (buyPressed) closeOrganApp();
   } else if (state === 'hotkeys') {
     if (interactPressed || buyPressed) state = hotkeysReturnState;
   } else if (state === 'crate') {
@@ -9585,11 +9711,12 @@ function render(time) {
     drawSplash();
     return;
   }
-  if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'characterIntro') {
+  if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'characterIntro') {
     // Same reasoning as the labApp overlay: a DOM element (the <video>,
     // see createCharacterIntroOverlay(), the chess <iframe>, see
-    // createChessOverlay(), or the beat bot <iframe>, see
-    // createBeatBotOverlay()) fully covers the canvas here, so there's
+    // createChessOverlay(), the beat bot <iframe>, see
+    // createBeatBotOverlay(), or the organ <iframe>, see
+    // createOrganOverlay()) fully covers the canvas here, so there's
     // nothing to gain from redrawing the world underneath it.
     return;
   }
