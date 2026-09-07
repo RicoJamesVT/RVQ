@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>CHURCH STREET ORGAN</title>
+<style>
+  :root{
+    --bg:#140d1a; --panel:#241a30; --pad:#f4e9d8; --pad-d:#d8c9ae;
+    --acc:#f7c944; --text:#f4e9d8; --mut:#8f7fa0; --stroke:#0b070f;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none;}
+  html,body{height:100%; margin:0;}
+  body{
+    background:radial-gradient(120% 100% at 50% 0%, #2a1f36 0%, var(--bg) 65%);
+    color:var(--text);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    display:flex; flex-direction:column; align-items:center;
+    padding:16px; min-height:100vh;
+  }
+  header{text-align:center; margin-bottom:10px;}
+  header h1{margin:0; font-size:clamp(20px,4vw,30px); letter-spacing:2px; text-transform:uppercase;
+    background:linear-gradient(90deg,#ffd57a,#ff9d5c,#e86a9c,#b06bff);
+    -webkit-background-clip:text; background-clip:text; color:transparent;}
+  header p{margin:4px 0 0; color:var(--mut); font-size:12px; letter-spacing:1px;}
+
+  .stage{width:100%; max-width:880px;}
+  .deck{display:flex; flex-wrap:wrap; gap:12px 16px; justify-content:center; align-items:center;
+    background:var(--panel); border:1px solid #000; border-radius:16px; padding:12px 16px; margin-bottom:12px;
+    box-shadow:0 10px 30px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.06);}
+  .ctrl{display:flex; flex-direction:column; align-items:center; gap:3px;}
+  .ctrl span{font-size:20px;}
+  .ctrl label{font-size:10px; letter-spacing:1px; color:var(--mut); text-transform:uppercase;}
+  input[type=range]{width:100px; accent-color:#e4a81c;}
+  .perfbtn{padding:9px 14px; border-radius:999px; border:1px solid #000; cursor:pointer;
+    background:linear-gradient(180deg,#ffd87a,#e4a81c); color:#241d30; font-weight:700; font-size:13px;
+    box-shadow:0 4px 0 #9c6f0c;}
+  .perfbtn.on{background:linear-gradient(180deg,#9cffb0,#2fbf6a);}
+
+  .hint{color:var(--mut); font-size:12px; text-align:center; margin:0 0 6px;}
+  .keys{display:flex; justify-content:center; overflow-x:auto; padding-bottom:4px;}
+  .white{width:52px; height:190px; background:linear-gradient(180deg,var(--pad) 0%, #fff 28%, var(--pad-d) 100%);
+    border:1px solid var(--stroke); border-radius:0 0 7px 7px; position:relative;}
+  .white .cap{position:absolute; bottom:6px; left:0; width:100%; text-align:center; font-size:10px; color:#8a6d2f; letter-spacing:1px;}
+  .white.down,.white:active{background:linear-gradient(180deg,#ffe9b0,#e4a81c);}
+  .black{width:34px; height:118px; background:linear-gradient(180deg,#2a2238,#0b070f);
+    border:1px solid var(--stroke); border-radius:0 0 5px 5px; position:absolute; z-index:2;}
+  .black.down,.black:active{background:linear-gradient(180deg,#5a4a72,#241a30);}
+
+  footer{color:#6a5b78; font-size:11px; margin-top:14px; text-align:center; max-width:760px;}
+  footer code{background:#241d30; padding:2px 6px; border-radius:5px; color:#cfa;}
+</style>
+</head>
+<body>
+  <header>
+    <h1>♱ CHURCH STREET ORGAN</h1>
+    <p>gospel drawbar organ · percussive punch · desktop keys + mobile touch</p>
+  </header>
+
+  <div class="stage">
+    <div class="deck">
+      <div class="ctrl" style="border-right:1px solid rgba(255,255,255,.08);padding-right:14px;">
+        <span>🎛️</span><label>Presets</label>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;">
+          <button class="perfbtn preset" data-preset="crunchy">🌶️ Crunchy</button>
+          <button class="perfbtn preset" data-preset="leslie">🌀 Leslie</button>
+          <button class="perfbtn preset" data-preset="church">🏛️ Big Church</button>
+          <button class="perfbtn preset" data-preset="custom">⭐ Custom</button>
+          <button class="perfbtn save" id="saveBtn">💾 Save</button>
+          <button class="perfbtn" id="resetBtn">↩️ Reset</button>
+        </div>
+      </div>
+      <div class="ctrl"><span>🎚️</span><label>Chorus</label>
+        <input type="range" id="chorus" min="0" max="1" step="0.01" value="0.55"></div>
+      <div class="ctrl"><span>🌀</span><label>Vibrato</label>
+        <input type="range" id="vibrato" min="0" max="1" step="0.01" value="0.4"></div>
+      <div class="ctrl"><span>⏱️</span><label>Release</label>
+        <input type="range" id="release" min="0.05" max="2" step="0.01" value="0.35"></div>
+      <div class="ctrl"><span>🧨</span><label>Percussion</label>
+        <input type="range" id="perc" min="0" max="1" step="0.01" value="0.7"></div>
+      <div class="ctrl"><span>🗿</span><label>Bass Boost</label>
+        <input type="range" id="bass" min="0" max="1" step="0.01" value="0.6"></div>
+      <button class="perfbtn" id="stabBtn">🎹 STAB</button>
+      <button class="perfbtn" id="progBtn">🎼 PROG</button>
+      <button class="perfbtn" id="pedalBtn">🦶 Pedal On</button>
+      <div class="ctrl"><span>⬅️</span><label>Octave</label>
+        <div style="display:flex;gap:6px;">
+          <button class="perfbtn" id="octDown" style="padding:6px 10px;font-size:16px;">−</button>
+          <button class="perfbtn" id="octUp" style="padding:6px 10px;font-size:16px;">+</button>
+        </div>
+      </div>
+    </div>
+
+    <p class="hint" id="hint">Desktop: A–K = whites · W E T Y U = sharps · hold = sustain · tap STAB/PROG for instant gospel</p>
+    <div class="keys" id="keys"></div>
+  </div>
+
+  <footer>Click/tap a key to start audio (browsers need a gesture first). <b>Embed in a game:</b> copy the JS under the <b>ENGINE</b> banner into <code>game.js</code> and drive it with <code>ChurchOrgan.noteOn(midi)</code> / <code>noteOff(midi)</code>.</footer>
+
+<script>
+"use strict";
+/* ============================================================
+   [ENGINE] HIP HOP CHURCH ORGAN — WebAudio synthesis engine
+   ------------------------------------------------------------
+   Portable. To drop into your game.js, copy this engine object
+   (everything up to the [ENGINE END] banner), then drive it with:
+     ChurchOrgan.init();                 // on first user gesture
+     ChurchOrgan.noteOn(midi);           // midi 0-127
+     ChurchOrgan.noteOff(midi);
+     ChurchOrgan.setParam(key, value);   // chorus,vibrato,release,perc,bass,pedal
+   ============================================================ */
+const ChurchOrgan = (function(){
+  let ctx=null, master=null, chorusGain=null;
+  const PAR = { chorus:.55, vibrato:.4, release:.35, perc:.7, bass:.6, pedal:false };
+  const DRAWBARS=[1.0,.6,.55,.32,.22,.14,.1,.06]; // harmonic level of each partial
+  const active={};
+  let started=false;
+
+  function buildGraph(){
+    ctx = new (window.AudioContext||window.webkitAudioContext)();
+
+    master = ctx.createGain(); master.gain.value = 0.5;
+    master.connect(ctx.destination);
+
+    // input bus every note feeds into
+    chorusGain = ctx.createGain(); chorusGain.gain.value = 1;
+
+    // warmth filter
+    const tone = ctx.createBiquadFilter();
+    tone.type="lowpass"; tone.frequency.value=4200; tone.Q.value=0.7;
+    // bass shelf
+    const bass = ctx.createBiquadFilter();
+    bass.type="lowshelf"; bass.frequency.value=240; bass.gain.value=6;
+    chorusGain.connect(tone); tone.connect(bass); bass.connect(master);
+
+    // stereo chorus (detuned double-tap)
+    const chDelay = ctx.createDelay(0.05); chDelay.delayTime.value=0.018;
+    const lfo = ctx.createOscillator(); lfo.frequency.value=0.7;
+    const lfoAmt = ctx.createGain(); lfoAmt.gain.value=0.006;
+    lfo.connect(lfoAmt); lfoAmt.connect(chDelay.delayTime); lfo.start();
+    const chWet = ctx.createGain(); chWet.gain.value=0.5;
+    chorusGain.connect(chDelay); chDelay.connect(chWet); chWet.connect(master);
+
+    // spring-like reverb (feedback delay)
+    const rvb = ctx.createDelay(1); rvb.delayTime.value=0.31;
+    const rfb = ctx.createGain(); rfb.gain.value=0.32;
+    const rdamp = ctx.createBiquadFilter(); rdamp.type="lowpass"; rdamp.frequency.value=1600;
+    rvb.connect(rfb); rfb.connect(rdamp); rdamp.connect(rvb);
+    const rwet = ctx.createGain(); rwet.gain.value=0.24;
+    chorusGain.connect(rvb); rvb.connect(rwet); rwet.connect(master);
+  }
+
+  function noteOn(midi){
+    if(!started) return;
+    if(active[midi]) noteOff(midi);
+    const f = 440*Math.pow(2,(midi-69)/12);
+    const t0 = ctx.currentTime + 0.004;
+
+    // per-note amplitude envelope (all partials + percussion feed into it)
+    const env = ctx.createGain(); env.gain.value=0.0001;
+    env.connect(chorusGain);
+
+    // vibrato LFO -> modulates the fundamental frequency only
+    const vib = ctx.createOscillator(); vib.frequency.value=5.5;
+    const vibAmt = ctx.createGain(); vibAmt.gain.value = PAR.vibrato*3.5;
+    vib.connect(vibAmt); vib.start(t0);
+
+    const stops=[];
+    DRAWBARS.forEach((g,i)=>{
+      const osc = ctx.createOscillator(); osc.type="sine";
+      osc.frequency.value = f*(i+1);
+      osc.detune.value = (i>=2)?(Math.random()*6-3):0;
+      if(i===0) vibAmt.connect(osc.frequency);
+      const gn = ctx.createGain(); gn.gain.value = g*0.34;
+      osc.connect(gn); gn.connect(env);
+      osc.start(t0); stops.push(osc);
+    });
+
+    // percussive transient — snappy hip-hop attack on top of the pad
+    if(PAR.perc > 0.01){
+      const perc = ctx.createOscillator(); perc.type="triangle"; perc.frequency.value=f*2;
+      const pg = ctx.createGain();
+      pg.gain.setValueAtTime(PAR.perc*0.5, t0);
+      pg.gain.exponentialRampToValueAtTime(0.001, t0+0.08);
+      perc.connect(pg); pg.connect(env);
+      perc.start(t0); perc.stop(t0+0.1); stops.push(perc);
+    }
+
+    env.gain.setValueAtTime(0.0001,t0);
+    env.gain.exponentialRampToValueAtTime(0.7,t0+0.012);
+    active[midi] = { env, stops };
+  }
+
+  function noteOff(midi){
+    const a=active[midi]; if(!a) return;
+    const t=ctx.currentTime;
+    let r = PAR.release;
+    if(PAR.pedal) r = Math.max(r, 1.6); // pedal sustains
+    a.env.gain.cancelScheduledValues(t);
+    a.env.gain.setValueAtTime(a.env.gain.value,t);
+    a.env.gain.exponentialRampToValueAtTime(0.0001,t+r);
+    a.stops.forEach(o=>{ try{o.stop(t+r+0.05);}catch(e){} });
+    delete active[midi];
+  }
+
+  function init(){
+    if(started) return;
+    buildGraph();
+    if(ctx.state==="suspended") ctx.resume();
+    started=true;
+  }
+  function setParam(k,v){ if(k in PAR) PAR[k]=v; }
+  function getParam(k){ return PAR[k]; }
+
+  // play a chord "stab": trigger several notes, then release them together
+  function stab(notes, durMs){
+    notes.forEach(n=>noteOn(n));
+    setTimeout(()=>notes.forEach(n=>noteOff(n)), durMs);
+  }
+
+  return { init, noteOn, noteOff, setParam, getParam, stab, isStarted:()=>started, name:"ChurchOrgan" };
+})();
+/* ============ [ENGINE END] UI wiring below — safe to delete ============ */
+
+// ---------- build the keyboard ----------
+const ROOT=48;                       // C3
+const WHITE_OFF=[0,2,4,5,7,9,11];
+const BLACK_OFF=[1,3,6,8,10];
+const NOTE_NAMES="C C# D D# E F F# G G# A A# B".split(" ");
+// desktop mapping over two octaves
+const KEYMAP = {
+  KeyA:0, KeyW:1, KeyS:2, KeyE:3, KeyD:4, KeyF:5, KeyT:6,
+  KeyG:7, KeyY:8, KeyH:9, KeyU:10, KeyJ:11, KeyK:12, KeyO:13,
+  KeyL:14, KeyP:15, KeySemicolon:16
+};
+
+const keyEls={};          // midi -> element
+const heldMidi=new Set(); // currently sounding
+
+function nameFor(midi){
+  const s=midi%12;
+  return NOTE_NAMES[s] + (Math.floor(midi/12)-1);
+}
+
+function buildKeys(){
+  const wrap=document.getElementById("keys");
+  const W=52,H=190,BW=34,BH=118;
+
+  // collect 2 octaves of midi offsets
+  const octaves=[0,1,2]; // C3, C4, C5 whites (3 octaves of white, 2 octaves of black)
+  let whiteList=[], blackList=[];
+  octaves.forEach(o=> WHITE_OFF.forEach(off=> whiteList.push(ROOT+o*12+off)));
+  [0,1,2].forEach(o=> BLACK_OFF.forEach(off=> blackList.push(ROOT+o*12+off)));
+
+  // render whites first in a flex row
+  whiteList.forEach(midi=>{
+    const el=document.createElement("div");
+    el.className="white";
+    el.style.width=W+"px"; el.style.height=H+"px";
+    const cap=document.createElement("div"); cap.className="cap";
+    cap.textContent=nameFor(midi);
+    el.appendChild(cap);
+    wrap.appendChild(el);
+    keyEls[midi]=el;
+    el.addEventListener("pointerdown",e=>{ e.preventDefault(); initAudio(); playKey(midi); });
+    el.addEventListener("pointerup",  ()=>stopKey(midi));
+    el.addEventListener("pointerleave",()=>stopKey(midi));
+    el.addEventListener("pointercancel",()=>stopKey(midi));
+  });
+
+  // black keys: position over the boundary between the two whites around them
+  const whiteWidth=W;
+  // helper: x position of a given white midi
+  const whitePos={};
+  whiteList.forEach((midi,i)=> whitePos[midi]=i*whiteWidth);
+
+  blackList.forEach(midi=>{
+    const lower=midi-1;                 // white immediately below (e.g. C# -> C)
+    const left = whitePos[lower] + whiteWidth - BW/2;
+    const el=document.createElement("div");
+    el.className="black";
+    el.style.width=BW+"px"; el.style.height=BH+"px";
+    el.style.left=left+"px"; el.style.top="0px";
+    wrap.appendChild(el);
+    keyEls[midi]=el;
+    el.addEventListener("pointerdown",e=>{ e.preventDefault(); initAudio(); playKey(midi); });
+    el.addEventListener("pointerup",()=>stopKey(midi));
+    el.addEventListener("pointerleave",()=>stopKey(midi));
+    el.addEventListener("pointercancel",()=>stopKey(midi));
+  });
+  wrap.style.position="relative";
+}
+
+function initAudio(){ if(!ChurchOrgan.isStarted()) ChurchOrgan.init(); }
+
+function playKey(midi){
+  heldM.add(midi);
+  ChurchOrgan.noteOn(midi);
+  keyEls[midi].classList.add("down");
+}
+function stopKey(midi){
+  if(!heldM.has(midi)) return;
+  heldM.delete(midi);
+  ChurchOrgan.noteOff(midi);
+  keyEls[midi].classList.remove("down");
+}
+
+// --- desktop keyboard ---
+let kbdBase = ROOT;
+function bindKeyboard(){
+  window.addEventListener("keydown",e=>{
+    if(e.repeat) return;
+    if(e.code in KEYMAP){
+      e.preventDefault();
+      initAudio();
+      playKey(kbdBase+KEYMAP[e.code]);
+    }
+  });
+  window.addEventListener("keyup",e=>{
+    if(e.code in KEYMAP){
+      stopKey(kbdBase+KEYMAP[e.code]);
+    }
+  });
+}
+
+// --- gospel stabs & progression ---
+const GOSPEL = [
+  {name:"Cmaj9", off:[0,4,7,11,14]},   // C E G B D
+  {name:"G9",    off:[7,11,14,17,21]}, // G B D F A
+  {name:"A7",    off:[9,13,16,19,21]},  // A C# E G B
+  {name:"Dmaj7", off:[2,6,9,13,16]}    // D F# A C# F#
+];
+let stabIdx=0, progTimer=null, progRunning=false;
+const STAB_DUR=250, PROG_ROOT=48; // C3
+
+function playStab(){
+  initAudio();
+  const chord=GOSPEL[stabIdx % GOSPEL.length];
+  const notes=chord.off.map(d=> PROG_ROOT + d);
+  ChurchOrgan.stab(notes, STAB_DUR);
+  stabIdx++;
+  flash(chord.name);
+}
+
+function playProgression(){
+  initAudio();
+  if(progRunning){ stopProgression(); return; }
+  progRunning=true;
+  progBtn.classList.add("on");
+  const seq=GOSPEL;
+  let i=0;
+  function step(){
+    if(!progRunning) return;
+    const chord=seq[i%seq.length];
+    const notes=chord.off.map(d=>PROG_ROOT+d);
+    ChurchOrgan.stab(notes, 320);
+    flash(chord.name);
+    i++;
+    progTimer=setTimeout(step, 380);
+  }
+  step();
+}
+function stopProgression(){
+  progRunning=false; clearTimeout(progTimer);
+  progBtn.classList.remove("on");
+}
+
+function flash(name){
+  hintEl.textContent = "🎹 "+name;
+  setTimeout(()=>{ hintEl.textContent="Desktop: A–K = whites · W E T Y U = sharps · hold = sustain · tap STAB/PROG for instant gospel"; }, 900);
+}
+
+function shiftOctave(d){
+  kbdBase=Math.max(24, Math.min(72, kbdBase+d*12));
+  hintEl.textContent="🎹 Desktop octave "+((kbdBase-ROOT)/12 + 2)+" (C"+(Math.floor(kbdBase/12))+")";
+  setTimeout(()=>{ hintEl.textContent="Desktop: A–K = whites · W E T Y U = sharps · hold = sustain · tap STAB/PROG for instant gospel"; }, 1200);
+}
+
+// --- one-click presets ---
+const PRESETS = {
+  crunchy:{ chorus:.18, vibrato:.1,  release:.35, perc:.95, bass:.6,  pedal:false },
+  leslie: { chorus:.6,  vibrato:.45, release:.35, perc:.45, bass:.5,  pedal:false },
+  church: { chorus:.12, vibrato:.2,  release:1.6, perc:.5,  bass:.95, pedal:true  },
+  custom: { chorus:.55, vibrato:.4,  release:.35, perc:.7,  bass:.6,  pedal:false }
+};
+
+// read current slider/knob/pedal state into an object
+function getCurrentParams(){
+  const p={};
+  ["chorus","vibrato","release","perc","bass"].forEach(k=>{
+    const el=document.getElementById(k);
+    p[k]= el ? parseFloat(el.value) : ChurchOrgan.getParam(k);
+  });
+  p.pedal = ChurchOrgan.getParam("pedal");
+  return p;
+}
+
+const STORE_KEY = "churchStreetCustom";
+
+function saveCustomSlot(){
+  PRESETS.custom = getCurrentParams();
+  try{ localStorage.setItem(STORE_KEY, JSON.stringify(PRESETS.custom)); }catch(e){}
+  hintEl.textContent="💾 Custom saved — tap ⭐ Custom to recall it";
+  setTimeout(()=>{ hintEl.textContent="Desktop: A–K = whites · W E T Y U = sharps · hold = sustain · tap STAB/PROG for instant gospel"; }, 1400);
+}
+
+// restore saved custom on load (no audio yet — just params + sliders)
+function restoreCustom(){
+  try{
+    const raw=localStorage.getItem(STORE_KEY);
+    if(raw){ const saved=JSON.parse(raw); PRESETS.custom=Object.assign(PRESETS.custom, saved); }
+  }catch(e){}
+  Object.keys(PRESETS.custom).forEach(k=>{
+    ChurchOrgan.setParam(k, PRESETS.custom[k]);
+    const el=document.getElementById(k);
+    if(el) el.value=PRESETS.custom[k];
+  });
+  const pb=document.getElementById("pedalBtn");
+  if(pb){ pb.classList.toggle("on", PRESETS.custom.pedal); pb.textContent=PRESETS.custom.pedal?"🦶 Pedal On":"🦶 Pedal Off"; }
+}
+
+function applyPreset(name){
+  const p=PRESETS[name]; if(!p) return;
+  initAudio();
+  Object.keys(p).forEach(k=>{
+    ChurchOrgan.setParam(k, p[k]);
+    const el=document.getElementById(k);   // sliders share the param ids
+    if(el) el.value=p[k];
+  });
+  const pb=document.getElementById("pedalBtn");
+  pb.classList.toggle("on", p.pedal);
+  pb.textContent = p.pedal ? "🦶 Pedal On" : "🦶 Pedal Off";
+  hintEl.textContent = "🎛️ Preset: "+name;
+  setTimeout(()=>{ hintEl.textContent="Desktop: A–K = whites · W E T Y U = sharps · hold = sustain · tap STAB/PROG for instant gospel"; }, 1200);
+}
+
+// --- controls ---
+function bindControls(){
+  const ids=["chorus","vibrato","release","perc","bass"];
+  ids.forEach(id=>{
+    const el=document.getElementById(id);
+    el.addEventListener("input",()=> ChurchOrgan.setParam(id, parseFloat(el.value)));
+  });
+
+  const pb=document.getElementById("pedalBtn");
+  pb.addEventListener("click",()=>{
+    ChurchOrgan.setParam("pedal", !ChurchOrgan.getParam("pedal"));
+    pb.classList.toggle("on", ChurchOrgan.getParam("pedal"));
+    pb.textContent = ChurchOrgan.getParam("pedal") ? "🦶 Pedal On" : "🦶 Pedal Off";
+  });
+
+  // gospel stabs + progression + octave shift
+  window.stabBtn=document.getElementById("stabBtn");
+  window.progBtn=document.getElementById("progBtn");
+  window.hintEl=document.getElementById("hint");
+  window.octShow=document.getElementById("octShow");
+  stabBtn.addEventListener("click", playStab);
+  progBtn.addEventListener("click", playProgression);
+  document.getElementById("octUp").addEventListener("click",()=>shiftOctave(1));
+  document.getElementById("octDown").addEventListener("click",()=>shiftOctave(-1));
+
+  // preset buttons
+  document.querySelectorAll(".preset").forEach(btn=>{
+    btn.addEventListener("click",()=>applyPreset(btn.dataset.preset));
+  });
+  document.getElementById("saveBtn").addEventListener("click", saveCustomSlot);
+  document.getElementById("resetBtn").addEventListener("click",()=>applyPreset("crunchy"));
+}
+
+buildKeys();
+bindControls();
+bindKeyboard();
+restoreCustom();
+</script>
+</body>
+</html>
