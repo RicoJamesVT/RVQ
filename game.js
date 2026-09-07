@@ -665,6 +665,14 @@ const MINIGAME_ACTIONS = {
   // app, not a canvas mini-game" shape as chess/beatbot just above (own
   // DOM/iframe overlay). See openOrganApp()/createOrganOverlay() below.
   organ: () => openOrganApp(),
+  // Green Mountain Mini Golf -- a set of golf clubs left out on the open
+  // grass in town (see the town map's `minigames` list below). Like chess/
+  // beatbot/organ, this is a full standalone web app (its own self-contained
+  // canvas mini-golf course, no external assets or network calls) rather
+  // than a from-scratch canvas mini-game, so it reuses the same "full-screen
+  // DOM overlay with an <iframe>" trick. See openMiniGolfApp()/
+  // createMiniGolfOverlay() below.
+  minigolf: () => openMiniGolfApp(),
 };
 
 // ---- trophy case: personal bests for the 8 scored mini-games --------------
@@ -6224,6 +6232,7 @@ window.addEventListener('keydown', (e) => {
     if (k === 'escape' && state === 'chessApp') { closeChessApp(); }
     if (k === 'escape' && state === 'beatBotApp') { closeBeatBotApp(); }
     if (k === 'escape' && state === 'organApp') { closeOrganApp(); }
+    if (k === 'escape' && state === 'minigolfApp') { closeMiniGolfApp(); }
     if (k === 'arrowleft') selectMove = -1;
     if (k === 'arrowright') selectMove = 1;
     if (k === 'arrowup') menuMove = -1;
@@ -6776,8 +6785,19 @@ function makeOverworld() {
     // usual floating arcade-cabinet sign for a ball sprite (see
     // drawMinigameSoccerBall()) so it reads as "kick this" rather than
     // "play this cabinet".
+    // A set of golf clubs left out on the grass in the open, bottom-left
+    // corner of town -- tx/ty (6, 21) sits in a clear patch well clear of
+    // Gary (5, 19), the trees at (5, 22)/(7, 19)/(3, 20)/(3, 23), and the
+    // Kountry Kart Deli/Nectars building footprints (rows 14-19, cols 4-12)
+    // to the north. `icon: 'golfclubs'` swaps the usual floating
+    // arcade-cabinet sign for a golf bag sprite (see
+    // drawMinigameGolfClubs()) so it reads as "play this" the same way the
+    // soccer ball does on the stadium pitch. Opens the full standalone
+    // mini-golf app in its own DOM overlay; see openMiniGolfApp()/
+    // createMiniGolfOverlay().
     minigames: [
       { id: 'penaltyshootout', tx: 19, ty: 19, label: 'PENALTY KICKS', icon: 'soccerball' },
+      { id: 'minigolf', tx: 6, ty: 21, label: 'PLAY MINI GOLF', icon: 'golfclubs' },
     ],
   };
   // Talkable townsfolk: Gary (the old hippy guitarist by the deli garbage
@@ -7427,7 +7447,7 @@ const player = {
   tempItem: null, tempItemTimer: 0,
 };
 const collected = new Set();
-let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | portal | fifa | minigame | hotkeys | crate | trophies | lab | labLocked | labApp | chessApp | beatBotApp | organApp
+let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | portal | fifa | minigame | hotkeys | crate | trophies | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp
 // State to snap back to when the [H] hotkeys popup is closed -- currently
 // always 'play' since that's the only state H can be opened from, but kept
 // as its own var in case another state wants to offer the popup later.
@@ -8004,7 +8024,7 @@ const music = {
 // enter/exit call sites, so it can't drift out of sync no matter which
 // of the several ways the player backs out of the lab popup (keyboard
 // [X], on-screen [X] button, closing the instrument iframe, etc.).
-const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'beatBotApp', 'organApp', 'characterIntro']);
+const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'beatBotApp', 'organApp', 'minigolfApp', 'characterIntro']);
 function syncMusicDuck() {
   music.duck(DUCKED_STATES.has(state));
 }
@@ -9065,6 +9085,118 @@ function closeOrganApp(fromPopState) {
   }
 }
 
+// ---------------------------------------------------------------- Green Mountain Mini Golf overlay
+// A set of golf clubs left out on the open grass in town (see
+// MINIGAME_ACTIONS.minigolf and the town map's `minigames` list) launches a
+// full standalone web app, not a from-scratch canvas mini-game -- so it
+// reuses the same "full-screen DOM overlay with an <iframe>" trick as chess/
+// the beat bot/the organ above. Kept as its own overlay (rather than folding
+// into any of those) since it's reached from a totally different tile/state
+// and has nothing to do with any of them.
+//
+// Green Mountain Mini Golf ships as a bundled, self-contained instrument
+// page (its own canvas course renderer/physics, no external assets and no
+// network calls at all) at instruments/mini-golf/index.html -- the exact
+// same local-file pattern CHESS_APP_URL/BEAT_BOT_APP_URL/ORGAN_APP_URL use.
+// Being a same-origin local asset rather than a live remote site means it
+// loads and plays the same with or without a connection, so there's no
+// online/offline branching needed here either.
+const MINI_GOLF_APP_URL = 'instruments/mini-golf/index.html';
+let miniGolfOverlayEl = null, miniGolfOverlayFrame = null;
+let miniGolfReturnState = 'play';
+let miniGolfHistoryPushed = false; // mirrors labHistoryPushed/chessHistoryPushed/beatBotHistoryPushed/organHistoryPushed -- see openMiniGolfApp()/closeMiniGolfApp()
+
+function createMiniGolfOverlay() {
+  const style = document.createElement('style');
+  style.textContent = `
+    #ricoMiniGolfApp {
+      position: fixed; inset: 0; z-index: 1000;
+      background: #000;
+      display: none; flex-direction: column;
+    }
+    #ricoMiniGolfApp.open { display: flex; }
+    #ricoMiniGolfApp .rmg-bar {
+      flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 10px 14px;
+      background: linear-gradient(#241a0e, #120d06);
+      border-bottom: 2px solid #e0b040;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    }
+    #ricoMiniGolfApp .rmg-title {
+      color: #f4ecd8; font: bold 14px monospace; letter-spacing: 0.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #ricoMiniGolfApp .rmg-close {
+      flex: 0 0 auto; cursor: pointer;
+      background: rgba(224,176,64,0.15);
+      border: 1.5px solid rgba(224,176,64,0.85);
+      color: #f4ecd8; border-radius: 8px;
+      padding: 7px 16px; font: bold 13px monospace;
+      -webkit-user-select: none; user-select: none;
+    }
+    #ricoMiniGolfApp .rmg-close:active { background: rgba(224,176,64,0.4); }
+    #ricoMiniGolfApp iframe {
+      flex: 1 1 auto; width: 100%; border: 0; background: #000;
+    }
+  `;
+  document.head.appendChild(style);
+
+  miniGolfOverlayEl = document.createElement('div');
+  miniGolfOverlayEl.id = 'ricoMiniGolfApp';
+
+  const bar = document.createElement('div');
+  bar.className = 'rmg-bar';
+  const title = document.createElement('div');
+  title.className = 'rmg-title';
+  title.textContent = 'GREEN MOUNTAIN MINI GOLF';
+  const closeBtn = document.createElement('div');
+  closeBtn.className = 'rmg-close';
+  closeBtn.textContent = '\u2190 BACK TO TOWN';
+  bindTap(closeBtn, closeMiniGolfApp);
+  bar.appendChild(title);
+  bar.appendChild(closeBtn);
+
+  miniGolfOverlayFrame = document.createElement('iframe');
+  miniGolfOverlayFrame.setAttribute('allow', 'autoplay');
+
+  miniGolfOverlayEl.appendChild(bar);
+  miniGolfOverlayEl.appendChild(miniGolfOverlayFrame);
+  document.body.appendChild(miniGolfOverlayEl);
+}
+createMiniGolfOverlay();
+
+// Opens the mini golf overlay and switches state to 'minigolfApp'. Called
+// from MINIGAME_ACTIONS.minigolf (E on the golf clubs, or tapping the
+// floating golf-bag sign), same entry points every other mini-game uses.
+function openMiniGolfApp() {
+  miniGolfReturnState = state;
+  miniGolfOverlayFrame.src = MINI_GOLF_APP_URL;
+  miniGolfOverlayEl.classList.add('open');
+  state = 'minigolfApp';
+  // Same throwaway-history-entry trick as openInstrument()/openChessApp()/
+  // openBeatBotApp()/openOrganApp() above, so the browser/OS back gesture
+  // closes the mini golf overlay instead of leaving the game entirely.
+  history.pushState({ ricoMiniGolfApp: true }, '');
+  miniGolfHistoryPushed = true;
+}
+
+// Tears the iframe back down and returns to ordinary gameplay in town.
+// fromPopState mirrors closeInstrument()/closeChessApp()/closeBeatBotApp()/
+// closeOrganApp()'s parameter -- true when triggered by the browser's back
+// button (whose history entry is already consumed), so we must not call
+// history.back() again in that case.
+function closeMiniGolfApp(fromPopState) {
+  miniGolfOverlayEl.classList.remove('open');
+  miniGolfOverlayFrame.src = 'about:blank';
+  state = miniGolfReturnState;
+  if (!fromPopState && miniGolfHistoryPushed) {
+    miniGolfHistoryPushed = false;
+    history.back();
+  } else {
+    miniGolfHistoryPushed = false;
+  }
+}
+
 // Character-intro splash video, played once between character select and
 // the first frame of gameplay. Same DOM-overlay approach as the lab-app
 // iframe above and for the same reason: video decode/composite is handled
@@ -9244,6 +9376,8 @@ window.addEventListener('popstate', () => {
     closeBeatBotApp(true);
   } else if (state === 'organApp') {
     closeOrganApp(true);
+  } else if (state === 'minigolfApp') {
+    closeMiniGolfApp(true);
   }
 });
 
@@ -9259,10 +9393,10 @@ canvas.addEventListener('pointerdown', (e) => {
     const vx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const vy = (e.clientY - rect.top) * (canvas.height / rect.height);
     handleLabTap(vx, vy);
-  } else if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp') {
+  } else if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp') {
     // The DOM overlay sits on top of (and outside) the canvas while an
-    // instrument/the chess app/the beat bot/the organ is loaded, so a
-    // pointerdown reaching the canvas itself means the overlay isn't up
+    // instrument/the chess app/the beat bot/the organ/mini golf is loaded,
+    // so a pointerdown reaching the canvas itself means the overlay isn't up
     // yet/already closing -- ignore it rather than falling through to the
     // generic interactPressed=true below.
   } else if (state === 'play') {
@@ -9508,6 +9642,13 @@ function update(dt) {
     // buyPressed is still consumed here too so the on-screen [X] touch
     // button works while the organ is open.
     if (buyPressed) closeOrganApp();
+  } else if (state === 'minigolfApp') {
+    // Same reasoning as 'labApp'/'chessApp'/'beatBotApp'/'organApp' just
+    // above: the DOM overlay (see createMiniGolfOverlay()) owns input while
+    // mini golf is loaded -- its own close button and [Esc] handle closing
+    // it directly. buyPressed is still consumed here too so the on-screen
+    // [X] touch button works while mini golf is open.
+    if (buyPressed) closeMiniGolfApp();
   } else if (state === 'hotkeys') {
     if (interactPressed || buyPressed) state = hotkeysReturnState;
   } else if (state === 'crate') {
@@ -9726,6 +9867,70 @@ function drawMinigameSoccerBall(wx, wy, time, seed, label) {
   return { cx, cy, hw: r + 14, hh: r + 22 };
 }
 
+// Alternate mini-game marker used when a map entry sets `icon: 'golfclubs'`
+// (currently just Green Mountain Mini Golf, out on the open grass in town)
+// -- same bob/label/hitbox contract as drawMinigameArcadeSign()/
+// drawMinigameSoccerBall() above so it drops into the exact same per-frame
+// loop and tap-shortcut handling. Drawn as a golf bag with three club heads
+// poking out, standing upright in the grass, so it reads as "clubs left out
+// here" rather than an arcade cabinet or a ball.
+function drawMinigameGolfClubs(wx, wy, time, seed, label) {
+  const s = MINIGAME_OBJECT_SCALE;
+  const bob = Math.sin(time * 0.003 + seed) * 3;
+  const cx = wx, cy = wy - 24 + bob;
+  const bagW = 12 * s, bagH = 26 * s;
+
+  // soft contact shadow on the grass, independent of the bag's bob
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.beginPath();
+  ctx.ellipse(wx, wy + 2, bagW * 0.9, bagW * 0.34, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // club shafts, fanned slightly, drawn behind the bag body
+  ctx.strokeStyle = '#c9c9c9';
+  ctx.lineWidth = 1.6 * s;
+  [-0.22, 0, 0.22].forEach((ang) => {
+    ctx.beginPath();
+    ctx.moveTo(cx, cy + bagH / 2 - 4 * s);
+    ctx.lineTo(cx + Math.sin(ang) * 16 * s, cy - bagH / 2 - 14 * s * Math.cos(ang));
+    ctx.stroke();
+  });
+  // club heads -- small dark wedges capping each shaft
+  ctx.fillStyle = '#2a2a2a';
+  [-0.22, 0, 0.22].forEach((ang) => {
+    const hx = cx + Math.sin(ang) * 16 * s, hy = cy - bagH / 2 - 14 * s * Math.cos(ang);
+    ctx.beginPath();
+    ctx.ellipse(hx, hy, 3.2 * s, 2 * s, ang, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // bag body
+  ctx.fillStyle = '#8a4a2c';
+  ctx.beginPath();
+  ctx.roundRect(cx - bagW / 2, cy - bagH / 2, bagW, bagH, 4 * s);
+  ctx.fill();
+  ctx.strokeStyle = '#5c2f1a';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  // bag trim stripe + pocket
+  ctx.fillStyle = '#e0b040';
+  ctx.fillRect(cx - bagW / 2, cy - 2 * s, bagW, 4 * s);
+  ctx.fillStyle = '#6e3a21';
+  ctx.beginPath();
+  ctx.roundRect(cx - bagW / 2 + 1.5 * s, cy + 5 * s, bagW - 3 * s, 9 * s, 2 * s);
+  ctx.fill();
+
+  // floating label above the bag -- same flash-between-label-and-tap-hint
+  // behavior as the arcade sign / soccer ball
+  const flashOnLabel = Math.floor(time / 1400) % 2 === 0;
+  ctx.fillStyle = '#ffd23c';
+  ctx.font = `bold ${Math.round(9 * s)}px monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillText(flashOnLabel ? (label || 'MINI-GAME') : 'TAP TO PLAY', cx, cy - bagH / 2 - 22 * s);
+
+  return { cx, cy, hw: bagW / 2 + 18, hh: bagH / 2 + 32 };
+}
+
 // Converts a tap already in 960x600 view-space (same space VIEW_W/VIEW_H
 // describe) into world coordinates, using whichever camera transform the
 // most recent render() frame actually drew with. Mirrors the inverse of the
@@ -9759,13 +9964,14 @@ function render(time) {
     drawSplash();
     return;
   }
-  if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'characterIntro') {
+  if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'characterIntro') {
     // Same reasoning as the labApp overlay: a DOM element (the <video>,
     // see createCharacterIntroOverlay(), the chess <iframe>, see
     // createChessOverlay(), the beat bot <iframe>, see
-    // createBeatBotOverlay(), or the organ <iframe>, see
-    // createOrganOverlay()) fully covers the canvas here, so there's
-    // nothing to gain from redrawing the world underneath it.
+    // createBeatBotOverlay(), the organ <iframe>, see createOrganOverlay(),
+    // or the mini golf <iframe>, see createMiniGolfOverlay()) fully covers
+    // the canvas here, so there's nothing to gain from redrawing the world
+    // underneath it.
     return;
   }
   if (WORLD_HIDDEN_STATES.has(state)) {
@@ -9835,6 +10041,8 @@ function render(time) {
       drawMinigameTileGlow(wx, wy, time, seed);
       const rect = mg.icon === 'soccerball'
         ? drawMinigameSoccerBall(wx, wy, time, seed, mg.label)
+        : mg.icon === 'golfclubs'
+        ? drawMinigameGolfClubs(wx, wy, time, seed, mg.label)
         : drawMinigameArcadeSign(wx, wy, time, seed, mg.label);
       minigameSignHitboxes.push({ map: player.map, id: mg.id, ...rect });
     });
