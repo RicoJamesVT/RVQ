@@ -8925,7 +8925,23 @@ function openBeatBotApp() {
 // consumed), so we must not call history.back() again in that case.
 function closeBeatBotApp(fromPopState) {
   beatBotOverlayEl.classList.remove('open');
+  // The beat bot's step-sequencer listens for its own keyboard input while
+  // open, so focus sits inside the <iframe>'s document the whole time it's
+  // in use. Some browsers (Safari/mobile in particular) don't automatically
+  // hand keyboard focus back to the top-level page just because the iframe
+  // gets hidden -- leaving it stuck there silently swallows every arrow-key
+  // event from here on, which is why the character can look "frozen" after
+  // returning from the beat bot. Explicitly blur the iframe and refocus the
+  // window so the game's own keydown/keyup listeners (and therefore
+  // movePlayer()) start receiving input again.
+  beatBotOverlayFrame.blur();
   beatBotOverlayFrame.src = 'about:blank';
+  window.focus();
+  // Belt-and-suspenders: if a key was held down when focus moved into the
+  // iframe, its keyup could have fired there instead of on the window,
+  // leaving that key stuck "on" in the `keys` map. Clear the slate so
+  // movePlayer() starts from a clean state either way.
+  for (const k in keys) keys[k] = false;
   state = beatBotReturnState;
   if (!fromPopState && beatBotHistoryPushed) {
     beatBotHistoryPushed = false;
