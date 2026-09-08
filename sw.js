@@ -1,13 +1,28 @@
 // Bump this string every time you deploy new levels/features/assets.
 // Bumping it is what makes the service worker fetch fresh files and
 // evict the old cache — that's the whole "auto update" mechanism.
-const CACHE_VERSION = 'rvq-v1';
+const CACHE_VERSION = 'rvq-v3';
 
 const APP_SHELL = [
   './',
   './index.html',
   './game.js',
   './manifest.json',
+  // These instrument pages are self-contained apps loaded into an <iframe>
+  // on demand (see openChessApp()/openInstrument()/openBeatBotApp()/
+  // openOrganApp()/openMiniGolfApp() in game.js). They'd otherwise only be
+  // cache-first, meaning each wouldn't be saved for offline play until the
+  // player opened it once while online. Precaching them here guarantees
+  // they all work offline from the very first install.
+  './instruments/wu-chess/index.html',
+  './instruments/mini-golf/index.html',
+  './instruments/mini-golf/game.js',
+  './instruments/rico-beat-bot/index.html',
+  './instruments/church-street-organ/index.html',
+  './instruments/rico-keys/index.html',
+  './instruments/rico-eq/index.html',
+  './instruments/rico-cuts/index.html',
+  './instruments/rico-pocket-sampler/index.html',
 ];
 
 self.addEventListener('install', (event) => {
