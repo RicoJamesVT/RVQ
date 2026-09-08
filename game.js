@@ -9061,6 +9061,18 @@ function openOrganApp() {
   organOverlayFrame.src = ORGAN_APP_URL;
   organOverlayEl.classList.add('open');
   state = 'organApp';
+  // Hand keyboard focus into the iframe once its document has actually
+  // loaded (contentWindow isn't reliably focusable the instant src is set).
+  // The organ's own keys call e.preventDefault() on pointerdown for touch
+  // support, which -- inside an <iframe> -- also blocks the browser's
+  // normal click-focuses-the-frame behavior. Without this, physical
+  // keyboard presses keep going to the outer game window (which doesn't
+  // know any organ notes) instead of the organ's own keydown listener,
+  // which is why the organ only ever responded to touch/mouse, never the
+  // keyboard.
+  organOverlayFrame.addEventListener('load', () => {
+    organOverlayFrame.contentWindow.focus();
+  }, { once: true });
   // Same throwaway-history-entry trick as openInstrument()/openChessApp()/
   // openBeatBotApp() above, so the browser/OS back gesture closes the
   // organ overlay instead of leaving the game entirely.
@@ -9075,7 +9087,16 @@ function openOrganApp() {
 // already consumed), so we must not call history.back() again in that case.
 function closeOrganApp(fromPopState) {
   organOverlayEl.classList.remove('open');
+  // Mirrors closeBeatBotApp()'s explicit blur/refocus: keyboard focus was
+  // handed into the iframe in openOrganApp(), and some browsers won't hand
+  // it back to the top-level page just because the iframe gets hidden --
+  // which would silently swallow movement keys afterward. Also clear
+  // `keys` in case a key was held down when focus moved, so its keyup
+  // ends up firing in the iframe instead of here.
+  organOverlayFrame.blur();
   organOverlayFrame.src = 'about:blank';
+  window.focus();
+  for (const k in keys) keys[k] = false;
   state = organReturnState;
   if (!fromPopState && organHistoryPushed) {
     organHistoryPushed = false;
