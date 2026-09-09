@@ -800,6 +800,15 @@ const MINIGAME_ACTIONS = {
   // iframe overlay, bundled locally so it works with no connection). See
   // openVtDirtApp()/createVtDirtOverlay() below.
   vtdirt: () => openVtDirtApp(),
+  // Gator Jam Slam -- a 2-on-2 swamp arcade basketball cabinet tucked
+  // inside TRUTH LAB (see the `truthlab` shop's `minigames` list), right
+  // alongside Bayou Break Station. Same "full standalone web app, not a
+  // canvas mini-game" shape as chess/beatbot/organ/mini golf/blackbook/
+  // Gator Grooves/Vinyl Snake/Bayou Break Station/VT Dirt above (own DOM/
+  // iframe overlay, bundled locally -- no external assets, no network
+  // calls -- so it works with no connection). See openGatorJamSlamApp()/
+  // createGatorJamSlamOverlay() below.
+  gatorjamslam: () => openGatorJamSlamApp(),
 };
 
 // ---- trophy case: personal bests for the 8 scored mini-games --------------
@@ -6364,6 +6373,7 @@ window.addEventListener('keydown', (e) => {
     if (k === 'escape' && state === 'crocSwampApp') { closeCrocSwampApp(); }
     if (k === 'escape' && state === 'vinylSnakeApp') { closeVinylSnakeApp(); }
     if (k === 'escape' && state === 'bayouBreakApp') { closeBayouBreakApp(); }
+    if (k === 'escape' && state === 'gatorJamSlamApp') { closeGatorJamSlamApp(); }
     if (k === 'escape' && state === 'vtDirtApp') { closeVtDirtApp(); }
     if (k === 'arrowleft') selectMove = -1;
     if (k === 'arrowright') selectMove = 1;
@@ -8014,8 +8024,18 @@ const shops = {
     // "full-screen DOM overlay with an <iframe>" pattern as chess/the beat
     // bot/the organ/mini golf/the blackbook/Gator Grooves/Vinyl Snake --
     // see MINIGAME_ACTIONS.bayoubreak/openBayouBreakApp().
+    //
+    // Gator Jam Slam -- a 2-on-2 swamp arcade basketball cabinet, mirrored
+    // on the open floor at (3,6): same clearance logic as Bayou Break
+    // Station above, just on the opposite side of the room, clear of the
+    // counter table (row 3), the corner crates (1,4)/(1,6)/(12,4)/(12,6),
+    // the record player (2,2)/TV (10,2), the couch (5,7)-(7,7), the door
+    // (6,9), and the Bayou Break Station cabinet at (10,6). Same
+    // "full-screen DOM overlay with an <iframe>" pattern -- see
+    // MINIGAME_ACTIONS.gatorjamslam/openGatorJamSlamApp().
     minigames: [
       { id: 'bayoubreak', tx: 10, ty: 6, label: 'PLAY BAYOU BREAK STATION' },
+      { id: 'gatorjamslam', tx: 3, ty: 6, label: 'PLAY GATOR JAM SLAM' },
     ],
   }),
 };
@@ -8060,7 +8080,7 @@ const player = {
   tempItem: null, tempItemTimer: 0,
 };
 const collected = new Set();
-let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | portal | fifa | minigame | hotkeys | crate | trophies | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | vinylSnakeApp | bayouBreakApp | vtDirtApp
+let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | portal | fifa | minigame | hotkeys | crate | trophies | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | vinylSnakeApp | bayouBreakApp | gatorJamSlamApp | vtDirtApp
 // State to snap back to when the [H] hotkeys popup is closed -- currently
 // always 'play' since that's the only state H can be opened from, but kept
 // as its own var in case another state wants to offer the popup later.
@@ -8655,7 +8675,7 @@ const music = {
 // enter/exit call sites, so it can't drift out of sync no matter which
 // of the several ways the player backs out of the lab popup (keyboard
 // [X], on-screen [X] button, closing the instrument iframe, etc.).
-const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'vinylSnakeApp', 'bayouBreakApp', 'vtDirtApp', 'characterIntro']);
+const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'vinylSnakeApp', 'bayouBreakApp', 'gatorJamSlamApp', 'vtDirtApp', 'characterIntro']);
 function syncMusicDuck() {
   music.duck(DUCKED_STATES.has(state));
 }
@@ -10646,6 +10666,124 @@ function closeBayouBreakApp(fromPopState) {
   }
 }
 
+// Gator Jam Slam -- a 2-on-2 swamp arcade basketball cabinet (side-view,
+// pick-up-and-play, turbo/on-fire mechanics) set up inside TRUTH LAB right
+// alongside Bayou Break Station (see the `truthlab` shop's `minigames`
+// list). Same "full-screen DOM overlay with an <iframe>" trick as chess/
+// the beat bot/the organ/mini golf/the blackbook/Gator Grooves/Vinyl
+// Snake/Bayou Break Station/VT Dirt above.
+//
+// Ships as a bundled, self-contained page (its own simulation, renderer,
+// and input handling in one UMD game.js, no framework, no external
+// assets, and no network calls at all) at
+// instruments/gator-jam-slam/index.html -- the exact same local-file
+// pattern CHESS_APP_URL/BEAT_BOT_APP_URL/ORGAN_APP_URL/MINI_GOLF_APP_URL/
+// BLACKBOOK_APP_URL/CROC_SWAMP_APP_URL/VINYL_SNAKE_APP_URL/
+// BAYOU_BREAK_APP_URL use. Being a same-origin local asset rather than a
+// live remote site means it loads and works the same with or without a
+// connection, so -- same as the others -- there's no online/offline
+// branching needed here either.
+const GATOR_JAM_SLAM_APP_URL = 'instruments/gator-jam-slam/index.html';
+let gatorJamSlamOverlayEl = null, gatorJamSlamOverlayFrame = null;
+let gatorJamSlamReturnState = 'play';
+let gatorJamSlamHistoryPushed = false; // mirrors labHistoryPushed/chessHistoryPushed/beatBotHistoryPushed/organHistoryPushed/miniGolfHistoryPushed/blackbookHistoryPushed/crocSwampHistoryPushed/vinylSnakeHistoryPushed/bayouBreakHistoryPushed -- see openGatorJamSlamApp()/closeGatorJamSlamApp()
+
+function createGatorJamSlamOverlay() {
+  const style = document.createElement('style');
+  style.textContent = `
+    #gatorJamSlamApp {
+      position: fixed; inset: 0; z-index: 1000;
+      background: #000;
+      display: none; flex-direction: column;
+    }
+    #gatorJamSlamApp.open { display: flex; }
+    #gatorJamSlamApp .gjs-bar {
+      flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 10px 14px;
+      background: linear-gradient(#16301f, #0b1a12);
+      border-bottom: 2px solid #5d8b3a;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    }
+    #gatorJamSlamApp .gjs-title {
+      color: #e9e2c9; font: bold 14px monospace; letter-spacing: 0.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #gatorJamSlamApp .gjs-close {
+      flex: 0 0 auto; cursor: pointer;
+      background: rgba(93,139,58,0.2);
+      border: 1.5px solid rgba(140,196,90,0.85);
+      color: #e9e2c9; border-radius: 8px;
+      padding: 7px 16px; font: bold 13px monospace;
+      -webkit-user-select: none; user-select: none;
+    }
+    #gatorJamSlamApp .gjs-close:active { background: rgba(93,139,58,0.4); }
+    #gatorJamSlamApp iframe {
+      flex: 1 1 auto; width: 100%; border: 0; background: #000;
+    }
+  `;
+  document.head.appendChild(style);
+
+  gatorJamSlamOverlayEl = document.createElement('div');
+  gatorJamSlamOverlayEl.id = 'gatorJamSlamApp';
+
+  const bar = document.createElement('div');
+  bar.className = 'gjs-bar';
+  const title = document.createElement('div');
+  title.className = 'gjs-title';
+  title.textContent = 'GATOR JAM SLAM';
+  const closeBtn = document.createElement('div');
+  closeBtn.className = 'gjs-close';
+  closeBtn.textContent = '\u2190 BACK TO TRUTH LAB';
+  bindTap(closeBtn, closeGatorJamSlamApp);
+  bar.appendChild(title);
+  bar.appendChild(closeBtn);
+
+  gatorJamSlamOverlayFrame = document.createElement('iframe');
+  gatorJamSlamOverlayFrame.setAttribute('allow', 'autoplay');
+
+  gatorJamSlamOverlayEl.appendChild(bar);
+  gatorJamSlamOverlayEl.appendChild(gatorJamSlamOverlayFrame);
+  document.body.appendChild(gatorJamSlamOverlayEl);
+}
+createGatorJamSlamOverlay();
+
+// Opens the Gator Jam Slam overlay and switches state to
+// 'gatorJamSlamApp'. Called from MINIGAME_ACTIONS.gatorjamslam (E on the
+// cabinet, or tapping its floating sign), same entry points every other
+// mini-game uses.
+function openGatorJamSlamApp() {
+  gatorJamSlamReturnState = state;
+  gatorJamSlamOverlayFrame.src = GATOR_JAM_SLAM_APP_URL;
+  gatorJamSlamOverlayEl.classList.add('open');
+  state = 'gatorJamSlamApp';
+  // Same throwaway-history-entry trick as openInstrument()/openChessApp()/
+  // openBeatBotApp()/openOrganApp()/openMiniGolfApp()/openBlackbookApp()/
+  // openCrocSwampApp()/openVinylSnakeApp()/openBayouBreakApp() above, so
+  // the browser/OS back gesture closes the Gator Jam Slam overlay instead
+  // of leaving the game entirely.
+  history.pushState({ ricoGatorJamSlamApp: true }, '');
+  gatorJamSlamHistoryPushed = true;
+}
+
+// Tears the iframe back down and returns to ordinary gameplay in TRUTH
+// LAB. fromPopState mirrors closeInstrument()/closeChessApp()/
+// closeBeatBotApp()/closeOrganApp()/closeMiniGolfApp()/closeBlackbookApp()/
+// closeCrocSwampApp()/closeVinylSnakeApp()/closeBayouBreakApp()'s
+// parameter -- true when triggered by the browser's back button (whose
+// history entry is already consumed), so we must not call history.back()
+// again in that case.
+function closeGatorJamSlamApp(fromPopState) {
+  gatorJamSlamOverlayEl.classList.remove('open');
+  gatorJamSlamOverlayFrame.src = 'about:blank';
+  state = gatorJamSlamReturnState;
+  if (!fromPopState && gatorJamSlamHistoryPushed) {
+    gatorJamSlamHistoryPushed = false;
+    history.back();
+  } else {
+    gatorJamSlamHistoryPushed = false;
+  }
+}
+
 // Character-intro splash video, played once between character select and
 // the first frame of gameplay. Same DOM-overlay approach as the lab-app
 // iframe above and for the same reason: video decode/composite is handled
@@ -10835,6 +10973,8 @@ window.addEventListener('popstate', () => {
     closeVinylSnakeApp(true);
   } else if (state === 'bayouBreakApp') {
     closeBayouBreakApp(true);
+  } else if (state === 'gatorJamSlamApp') {
+    closeGatorJamSlamApp(true);
   } else if (state === 'vtDirtApp') {
     closeVtDirtApp(true);
   }
@@ -10852,13 +10992,13 @@ canvas.addEventListener('pointerdown', (e) => {
     const vx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const vy = (e.clientY - rect.top) * (canvas.height / rect.height);
     handleLabTap(vx, vy);
-  } else if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'vtDirtApp') {
+  } else if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'vtDirtApp') {
     // The DOM overlay sits on top of (and outside) the canvas while an
     // instrument/the chess app/the beat bot/the organ/mini golf/the
-    // blackbook/Gator Grooves/Vinyl Snake/Bayou Break Station/VT Dirt is loaded, so a pointerdown
-    // reaching the canvas itself means the overlay isn't up yet/already
-    // closing -- ignore it rather than falling through to the generic
-    // interactPressed=true below.
+    // blackbook/Gator Grooves/Vinyl Snake/Bayou Break Station/Gator Jam
+    // Slam/VT Dirt is loaded, so a pointerdown reaching the canvas itself
+    // means the overlay isn't up yet/already closing -- ignore it rather
+    // than falling through to the generic interactPressed=true below.
   } else if (state === 'play') {
     // Tapping directly on a "TAP HERE TO PLAY AROUND" sign jumps straight
     // into that mini-game -- no need to walk up and face the exact tile.
@@ -11142,10 +11282,19 @@ function update(dt) {
     // here too so the on-screen [X] touch button works while Bayou
     // Break Station is open.
     if (buyPressed) closeBayouBreakApp();
-  } else if (state === 'vtDirtApp') {
+  } else if (state === 'gatorJamSlamApp') {
     // Same reasoning as 'labApp'/'chessApp'/'beatBotApp'/'organApp'/
     // 'minigolfApp'/'blackbookApp'/'crocSwampApp'/'vinylSnakeApp'/
     // 'bayouBreakApp' just above: the DOM overlay (see
+    // createGatorJamSlamOverlay()) owns input while Gator Jam Slam is
+    // loaded -- its own close button and [Esc] handle closing it directly.
+    // buyPressed is still consumed here too so the on-screen [X] touch
+    // button works while Gator Jam Slam is open.
+    if (buyPressed) closeGatorJamSlamApp();
+  } else if (state === 'vtDirtApp') {
+    // Same reasoning as 'labApp'/'chessApp'/'beatBotApp'/'organApp'/
+    // 'minigolfApp'/'blackbookApp'/'crocSwampApp'/'vinylSnakeApp'/
+    // 'bayouBreakApp'/'gatorJamSlamApp' just above: the DOM overlay (see
     // createVtDirtOverlay()) owns input while VT Dirt is loaded -- its own
     // close button and [Esc] handle closing it directly. buyPressed is
     // still consumed here too so the on-screen [X] touch button works
@@ -11541,7 +11690,7 @@ function render(time) {
     drawSplash();
     return;
   }
-  if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'vtDirtApp' || state === 'characterIntro') {
+  if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'vtDirtApp' || state === 'characterIntro') {
     // Same reasoning as the labApp overlay: a DOM element (the <video>,
     // see createCharacterIntroOverlay(), the chess <iframe>, see
     // createChessOverlay(), the beat bot <iframe>, see
@@ -11549,7 +11698,9 @@ function render(time) {
     // the mini golf <iframe>, see createMiniGolfOverlay(), the blackbook
     // <iframe>, see createBlackbookOverlay(), the Gator Grooves <iframe>,
     // see createCrocSwampOverlay(), the Vinyl Snake <iframe>, see
-    // createVinylSnakeOverlay(), or the VT Dirt <iframe>, see
+    // createVinylSnakeOverlay(), the Bayou Break Station <iframe>, see
+    // createBayouBreakOverlay(), the Gator Jam Slam <iframe>, see
+    // createGatorJamSlamOverlay(), or the VT Dirt <iframe>, see
     // createVtDirtOverlay()) fully covers the canvas here, so there's
     // nothing to gain from redrawing the world underneath it.
     return;
