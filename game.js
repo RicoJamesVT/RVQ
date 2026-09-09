@@ -361,12 +361,17 @@ function drawSkateTrail(time) {
 })();
 
 // ---------------------------------------------------------------- worlds & records
-// Each world owns its own 5 records + pad order. To add a new world, add an
-// entry here (a records object + a 5-slot padOrder) and set `world` on the maps
-// that belong to it. The HUD, record card, win screen and music sampler all
-// derive from the CURRENT world automatically, so adding a world gives you a
-// fresh set of 5 to find. Each record's `layer` should be one of the sampler
-// types the music engine already knows: drums / bass / horns / vox / lead.
+// Each world owns its own 5 records + pad order + `beat` (tempo, drum hits,
+// bassline, horn/vox/lead notes and oscillator types). To add a new world,
+// add an entry here (a records object, a 5-slot padOrder, and a beat) and
+// set `world` on the maps that belong to it. The HUD, record card, win
+// screen and music sampler all derive from the CURRENT world automatically,
+// so adding a world gives you a fresh set of 5 records to find AND its own
+// distinct-sounding beat — see music.schedule()/music.pump(), which read
+// worldDef().beat and currentWorldId()'s own layer set every step, rather
+// than one hardcoded pattern shared by every map. Each record's `layer`
+// should be one of the sampler types the music engine already knows:
+// drums / bass / horns / vox / lead.
 const WORLD_DEFS = {
   town: {
     name: 'Burlington',
@@ -388,6 +393,18 @@ const WORLD_DEFS = {
                flavor: 'No sleeve. No name. Just a hand-drawn star on the label. The holy grail.' },
     },
     padOrder: ['elm', 'cola', 'stab', 'choir', 'white'],
+    // Town's beat: a brisk, bright 92 BPM boom-bap break -- square-wave
+    // bass, sawtooth horn stabs, triangle vocal chops, square lead. This is
+    // the original pattern that used to be hardcoded straight into
+    // music.schedule(); it now just lives here as town's version.
+    beat: {
+      bpm: 92,
+      kickSteps: [0, 7, 10], snareSteps: [4, 12], hatOpenStep: 14,
+      bassWave: 'square',   bassPattern: [[0,45,2],[3,45,1],[6,48,2],[8,50,2],[11,45,1],[14,43,2]],
+      hornWave: 'sawtooth', hornSteps: [4, 11], hornNotes: [57, 60, 64],
+      voxWave: 'triangle',  voxSteps: [0, 8], voxNotesEven: [69, 67], voxNotesOdd: [72, 71],
+      leadWave: 'square',   leadNotes: [76, 74, 72, 69, 72, 74, 76, 79],
+    },
   },
   // The swamp — a template overworld, not yet connected to any other map.
   // `locked: true` keeps it out of player-facing lists (currently just the
@@ -414,12 +431,29 @@ const WORLD_DEFS = {
                     flavor: 'A single string soaked in swamp honey. It glows through the mist.' },
     },
     padOrder: ['moss', 'frog', 'choir', 'swampdrum', 'honeysuckle'],
+    // Swamp's beat: slower and murkier than town -- 78 BPM, a lazier/more
+    // syncopated kick, an octave-down triangle-wave bass (rounder, muddier
+    // than town's square bass), a soft sine horn pad instead of a sawtooth
+    // stab, a lower/more haunting vocal chop, and a mellow triangle-wave
+    // lead instead of town's brighter square lead.
+    beat: {
+      bpm: 78,
+      kickSteps: [0, 6, 9], snareSteps: [4, 12], hatOpenStep: 10,
+      bassWave: 'triangle', bassPattern: [[0,38,3],[4,36,1],[7,41,2],[10,38,1],[12,33,3]],
+      hornWave: 'sine',     hornSteps: [3, 10], hornNotes: [50, 53, 57],
+      voxWave: 'triangle',  voxSteps: [0, 8], voxNotesEven: [62, 60], voxNotesOdd: [65, 63],
+      leadWave: 'triangle', leadNotes: [69, 67, 64, 62, 64, 67, 69, 72],
+    },
   },
   // ADD MORE WORLDS HERE, e.g.:
   // subway: {
   //   name: 'The Subway',
   //   records: { /* ...5 records, each with layer drums/bass/horns/vox/lead... */ },
   //   padOrder: ['a','b','c','d','e'],
+  //   beat: { /* ...bpm, kickSteps/snareSteps/hatOpenStep, bassWave/bassPattern,
+  //              hornWave/hornSteps/hornNotes, voxWave/voxSteps/voxNotesEven/
+  //              voxNotesOdd, leadWave/leadNotes -- give it its own tempo and
+  //              notes so it doesn't just sound like town again... */ },
   // },
 };
 
@@ -8002,7 +8036,12 @@ function toggleTea() {
 const music = {
   ctx: null, master: null, duckGain: null, noiseBuf: null, muted: false,
   step: 0, nextTime: 0, BPM: 92,
-  layers: new Set(['tick']),
+  // Per-world layer tracking: each world keeps its own set of unlocked
+  // sampler layers (drums/bass/horns/vox/lead), keyed by worldId, so
+  // finding e.g. the swamp's Mud Kick drum layer doesn't also switch on
+  // drums back in town, and vice versa -- every map's beat builds up
+  // independently, on top of its own beat config (see WORLD_DEFS.*.beat).
+  layersByWorld: {},
   menuDusty: false,
   ducked: false,
 
@@ -8076,7 +8115,12 @@ const music = {
     this.master.gain.value = this.muted ? 0 : 0.28;
     toast = { text: this.muted ? 'Music: MUTED' : 'Music: ON', t: 1.2 };
   },
-  enable(layer) { this.layers.add(layer); },
+  // Returns (creating if needed) the layer Set for a given world id, always
+  // starting from the same 'tick' baseline `layers` used to default to.
+  layersFor(worldId) {
+    return this.layersByWorld[worldId] || (this.layersByWorld[worldId] = new Set(['tick']));
+  },
+  enable(layer) { this.layersFor(currentWorldId()).add(layer); },
   setMenuBreak(on) { this.menuDusty = on; },
   // Fully silences the background music bus (independent of the M-key
   // mute toggle) for rooms like Rico's Beat Lab where the player needs to
@@ -8124,7 +8168,11 @@ const music = {
 
   pump() {
     if (this.ctx.state === 'suspended') this.ctx.resume();
-    const stepDur = 60 / this.BPM / 4;
+    // Each world sets its own tempo via WORLD_DEFS.<id>.beat.bpm (see the
+    // worlds & records section above) -- falls back to the classic 92 BPM
+    // default if a world hasn't defined a beat yet.
+    const bpm = (worldDef().beat && worldDef().beat.bpm) || this.BPM;
+    const stepDur = 60 / bpm / 4;
     const now = this.ctx.currentTime;
     // If something stalled the main thread for a long stretch (tab backgrounded,
     // a very long GC pause, etc.), don't dump a burst of overdue notes all at
@@ -8154,7 +8202,9 @@ const music = {
   },
   schedule(gs, t, stepDur) {
     const s = gs % 16;
-    // old, dusty vinyl drum break while on the title screen
+    // old, dusty vinyl drum break while on the title screen -- fixed and
+    // world-independent on purpose, since no world is actually "current"
+    // yet at the title screen.
     if (this.menuDusty) {
       if ([0, 7, 10].includes(s)) this.kick(t);
       if (s === 4 || s === 12) this.snare(t);
@@ -8163,29 +8213,31 @@ const music = {
       return;
     }
     const bar = Math.floor(gs / 16);
-    const L = this.layers;
+    const worldId = currentWorldId();
+    // Falls back to town's beat if a world hasn't defined one yet, same
+    // spirit as worldDef()'s own `|| WORLD_DEFS.town` fallback.
+    const beat = worldDef().beat || WORLD_DEFS.town.beat;
+    const L = this.layersFor(worldId);
     if (L.has('drums')) {
-      if ([0, 7, 10].includes(s)) this.kick(t);
-      if (s === 4 || s === 12) this.snare(t);
-      if (s % 2 === 0) this.hat(t, s === 14, 0.10);
+      if (beat.kickSteps.includes(s)) this.kick(t);
+      if (beat.snareSteps.includes(s)) this.snare(t);
+      if (s % 2 === 0) this.hat(t, s === beat.hatOpenStep, 0.10);
     } else if (L.has('tick') && s % 4 === 0) {
       this.hat(t, false, 0.028);
     }
     if (L.has('bass')) {
-      const pat = [[0,45,2],[3,45,1],[6,48,2],[8,50,2],[11,45,1],[14,43,2]];
-      for (const [ps, n, d] of pat)
-        if (ps === s) this.note(t, 'square', n, d * stepDur, 0.10);
+      for (const [ps, n, d] of beat.bassPattern)
+        if (ps === s) this.note(t, beat.bassWave, n, d * stepDur, 0.10);
     }
-    if (L.has('horns') && (s === 4 || s === 11)) {
-      for (const n of [57, 60, 64]) this.note(t, 'sawtooth', n, 1.4 * stepDur, 0.05, 0.03);
+    if (L.has('horns') && beat.hornSteps.includes(s)) {
+      for (const n of beat.hornNotes) this.note(t, beat.hornWave, n, 1.4 * stepDur, 0.05, 0.03);
     }
-    if (L.has('vox') && (s === 0 || s === 8)) {
-      const notes = bar % 2 === 0 ? [69, 67] : [72, 71];
-      this.note(t, 'triangle', notes[s === 0 ? 0 : 1], 7.5 * stepDur, 0.07, 0.25, true);
+    if (L.has('vox') && beat.voxSteps.includes(s)) {
+      const notes = bar % 2 === 0 ? beat.voxNotesEven : beat.voxNotesOdd;
+      this.note(t, beat.voxWave, notes[s === beat.voxSteps[0] ? 0 : 1], 7.5 * stepDur, 0.07, 0.25, true);
     }
     if (L.has('lead') && bar % 2 === 1 && s % 2 === 0) {
-      const mel = [76, 74, 72, 69, 72, 74, 76, 79];
-      this.note(t, 'square', mel[s / 2], 1.6 * stepDur, 0.045, 0.02);
+      this.note(t, beat.leadWave, beat.leadNotes[s / 2], 1.6 * stepDur, 0.045, 0.02);
     }
   },
   kick(t) {
