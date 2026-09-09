@@ -1,7 +1,7 @@
 // Bump this string every time you deploy new levels/features/assets.
 // Bumping it is what makes the service worker fetch fresh files and
 // evict the old cache — that's the whole "auto update" mechanism.
-const CACHE_VERSION = 'rvq-v4';
+const CACHE_VERSION = 'rvq-v5';
 
 const APP_SHELL = [
   './',
@@ -48,6 +48,22 @@ const APP_SHELL = [
   './instruments/rico-pocket-sampler/style.css',
   './instruments/rico-pocket-sampler/game.js',
   './instruments/rico-pocket-sampler/default-kit.js',
+  // Bayou Break Station -- swamp synth + drum-pad/break-slicer instrument
+  // inside TRUTH LAB (see openBayouBreakApp() in game.js). Same self-
+  // contained iframe-app shape as the instruments above, so its page and
+  // every one of its .wav samples need to be listed here too -- otherwise
+  // only the index.html would be guaranteed offline (cache-first assets
+  // only get cached after being fetched once online) and the pads would
+  // come up silent on a first-ever offline visit.
+  './instruments/bayou-break-station/index.html',
+  './instruments/bayou-break-station/sounds/gator-kick.wav',
+  './instruments/bayou-break-station/sounds/mud-snare.wav',
+  './instruments/bayou-break-station/sounds/reed-hat.wav',
+  './instruments/bayou-break-station/sounds/marsh-hat.wav',
+  './instruments/bayou-break-station/sounds/bog-clap.wav',
+  './instruments/bayou-break-station/sounds/cypress-tom.wav',
+  './instruments/bayou-break-station/sounds/rust-bell.wav',
+  './instruments/bayou-break-station/sounds/cricket-shake.wav',
 ];
 
 self.addEventListener('install', (event) => {
