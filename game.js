@@ -809,6 +809,14 @@ const MINIGAME_ACTIONS = {
   // calls -- so it works with no connection). See openGatorJamSlamApp()/
   // createGatorJamSlamOverlay() below.
   gatorjamslam: () => openGatorJamSlamApp(),
+  // Bayou Boogie -- a four-lane lily-pad stepper tucked inside BURLINGTON
+  // RECORDS (see the `burlington` shop's `minigames` list), right alongside
+  // Vinyl Snake. Same "CLASSIC vs 3D" shape as darts/beatmatch/whackpigeon/
+  // cratedig/speedsweep/clawmachine/scratchdj above -- a real from-scratch
+  // canvas mini-game (plus Three.js remake), not a bundled standalone app
+  // like Vinyl Snake/Bayou Break Station/Gator Jam Slam. See
+  // createBayouBoogieModeSelect() above.
+  bayouboogie: () => enterMinigame(createBayouBoogieModeSelect()),
 };
 
 // ---- trophy case: personal bests for the 8 scored mini-games --------------
@@ -840,6 +848,8 @@ const MINIGAME_TROPHIES = [
     flavor: 'Two needles, two hands, no time to think about either.' },
   { id: 'penaltyshootout', label: 'Penalty Shootout', unit: 'pts',
     flavor: 'Five kicks against the keeper -- pick a corner and strike.' },
+  { id: 'bayouboogie', label: 'Bayou Boogie', unit: 'pts',
+    flavor: 'Four lanes, one boardwalk, Crawdad Drums keeping time.' },
 ];
 
 function trophyMetaFor(id) { return MINIGAME_TROPHIES.find((t) => t.id === id); }
@@ -6315,6 +6325,503 @@ function createScratchDJ3DGame() {
   };
 }
 
+// Bayou Boogie: a four-lane boardwalk stepper tucked inside BURLINGTON
+// RECORDS (see the `burlington` shop's `minigames` list), same "CLASSIC vs
+// 3D" shape as Darts/Beat Match/Whack-a-Pigeon/Crate Digging/Speed Sweep/
+// Claw Machine/Scratch-DJ above -- goes straight into the 3D version via
+// createModeSelectMenu(), classic kept only as the Three.js/WebGL-failure
+// fallback. Lily pads scroll down four lanes (left/down/up/right, mapped to
+// the arrow keys and WASD) toward a hit line/ring on a Crawdad Drums-style
+// beat that speeds up twice partway through; press the matching lane key
+// as each pad crosses the line. Unlike the round-paused shape those other
+// games use, this one runs continuously start to finish -- closer in spirit
+// to Speed Sweep or Beat Jam -- since a scrolling dance chart doesn't have
+// a natural "pause after every hit" moment.
+//
+// BAYOU_BOOGIE_LANES, bayouBoogieHitFor(), and buildBayouBoogieChart() are
+// shared by both renderers so classic and 3D score identically off the same
+// chart shape and feed the same 'bayouboogie' trophy, same reasoning as
+// DARTS_RINGS/hitFor() being shared module-level helpers above.
+const BAYOU_BOOGIE_LANES = [
+  { id: 'moss',    arrow: '\u25C0', keys: ['arrowleft', 'a'],  color: '#6be08a', hex: 0x6be08a }, // moss green
+  { id: 'mud',     arrow: '\u25BC', keys: ['arrowdown', 's'],  color: '#c98a3e', hex: 0xc98a3e }, // mud brown
+  { id: 'firefly', arrow: '\u25B2', keys: ['arrowup', 'w'],    color: '#f0c33e', hex: 0xf0c33e }, // firefly gold
+  { id: 'water',   arrow: '\u25B6', keys: ['arrowright', 'd'], color: '#4ad0c0', hex: 0x4ad0c0 }, // bayou teal
+];
+
+function bayouBoogieHitFor(dist) {
+  if (dist <= 0.055) return { label: 'PERFECT!', pts: 50 };
+  if (dist <= 0.12) return { label: 'GOOD', pts: 25 };
+  if (dist <= 0.20) return { label: 'OK', pts: 10 };
+  return { label: 'MISS', pts: 0 };
+}
+
+// Outer edge of the "OK" judgement -- a lane press outside this window (or
+// a note whose window fully elapses with no press) scores nothing and
+// breaks combo. NOTE_LEAD is how many seconds a lily pad spends travelling
+// from its spawn point to the hit line/ring, independent of chart tempo --
+// same "scroll speed stays constant, note density changes" relationship
+// classic rhythm games use.
+const BAYOU_BOOGIE_MISS_WINDOW = 0.20;
+const BAYOU_BOOGIE_NOTE_LEAD = 1.5;
+
+// Builds one fixed "song": 24 steps across three tempo stages that speed up
+// twice, each step landing in one of the four lanes. Lane picks avoid a
+// 3rd repeat in a row so the pattern reads as a dance step, not a mash.
+// Lanes are randomized fresh per playthrough (same spirit as e.g. Scratch-
+// DJ's `expectedHand` above), so classic and 3D won't play back the same
+// exact sequence even though they're built from this one shared function.
+function buildBayouBoogieChart() {
+  const STAGES = [
+    { count: 8, interval: 0.56 },
+    { count: 8, interval: 0.44 },
+    { count: 8, interval: 0.34 },
+  ];
+  const chart = [];
+  let t = BAYOU_BOOGIE_NOTE_LEAD + 0.4; // lead-in before the first pad lights up
+  let lastLane = -1, streak = 0;
+  for (const stage of STAGES) {
+    for (let i = 0; i < stage.count; i++) {
+      let lane;
+      do { lane = Math.floor(Math.random() * 4); } while (lane === lastLane && streak >= 2);
+      streak = lane === lastLane ? streak + 1 : 1;
+      lastLane = lane;
+      chart.push({ time: t, lane, resolved: false });
+      t += stage.interval;
+    }
+  }
+  return chart;
+}
+
+// Classic canvas version: four vertical lanes, lily pads scroll down toward
+// a hit line near the bottom. Canvas primitives only, no new assets, same
+// as every mini-game in this file. Continuous "play" phase (no per-hit
+// pause) rather than the round-based wait/result shape Beat Match/Scratch-
+// DJ use -- see the block comment above for why.
+function createBayouBoogieGame() {
+  const chart = buildBayouBoogieChart();
+  let phase = 'play'; // 'play' | 'ending' | 'done'
+  let elapsed = 0;
+  let score = 0;
+  let combo = 0;
+  let lastHitLabel = '';
+  let labelTimer = 0;
+  let doneDelay = 0;
+  let bestRecorded = false, isNewBest = false;
+  // edge-triggered lane input -- same "snapshot last-held state, only fire
+  // on the down transition" trick the staring contest's WATCHED_KEYS uses,
+  // so holding a lane key doesn't repeat-fire every frame.
+  const laneHeld = [false, false, false, false];
+  const laneFlash = [0, 0, 0, 0]; // per-lane glow timer, ticks down after a press
+
+  const LANE_W = 64, LANE_GAP = 20;
+  const totalW = LANE_W * 4 + LANE_GAP * 3;
+  const laneX0 = VIEW_W / 2 - totalW / 2;
+  const HIT_Y = 470, SPAWN_Y = 118;
+  function laneCx(i) { return laneX0 + i * (LANE_W + LANE_GAP) + LANE_W / 2; }
+
+  function attemptHit(lane) {
+    let best = null, bestDist = Infinity;
+    for (const n of chart) {
+      if (n.resolved || n.lane !== lane) continue;
+      const d = Math.abs(elapsed - n.time);
+      if (d < bestDist) { bestDist = d; best = n; }
+    }
+    laneFlash[lane] = 0.18;
+    if (best && bestDist <= BAYOU_BOOGIE_MISS_WINDOW) {
+      const res = bayouBoogieHitFor(bestDist);
+      best.resolved = true;
+      score += res.pts;
+      combo = res.pts > 0 ? combo + 1 : 0;
+      lastHitLabel = res.label;
+    } else {
+      combo = 0;
+      lastHitLabel = 'MISS';
+    }
+    labelTimer = 0.5;
+  }
+
+  return {
+    update(dt) {
+      if (phase === 'play') {
+        elapsed += dt;
+        // auto-miss any note whose window has fully passed with no press
+        for (const n of chart) {
+          if (!n.resolved && elapsed > n.time + BAYOU_BOOGIE_MISS_WINDOW) {
+            n.resolved = true;
+            combo = 0;
+          }
+        }
+        BAYOU_BOOGIE_LANES.forEach((laneDef, i) => {
+          const down = laneDef.keys.some((k) => keys[k]);
+          if (down && !laneHeld[i]) attemptHit(i);
+          laneHeld[i] = down;
+        });
+        if (chart.every((n) => n.resolved)) { phase = 'ending'; doneDelay = 0.8; }
+      } else if (phase === 'ending') {
+        doneDelay -= dt;
+        if (doneDelay <= 0) phase = 'done';
+      } else if (phase === 'done') {
+        if (!bestRecorded) { isNewBest = recordMinigameScore('bayouboogie', score); bestRecorded = true; }
+        if (interactPressed) exitMinigame();
+      }
+      if (labelTimer > 0) labelTimer -= dt;
+      for (let i = 0; i < 4; i++) if (laneFlash[i] > 0) laneFlash[i] -= dt;
+      // X always bails out early, no matter the phase
+      if (buyPressed) exitMinigame();
+    },
+    draw() {
+      ctx.fillStyle = 'rgba(8,6,12,0.9)';
+      ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
+      const cx = VIEW_W / 2;
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#6be08a';
+      ctx.font = 'bold 28px monospace';
+      ctx.fillText('BAYOU BOOGIE', cx, 56);
+      ctx.fillStyle = '#f4ecd8';
+      ctx.font = '17px monospace';
+      ctx.fillText(`SCORE ${score}   COMBO x${combo}`, cx, 80);
+
+      // lane tracks + hit ring row
+      for (let i = 0; i < 4; i++) {
+        const lx = laneCx(i);
+        const laneDef = BAYOU_BOOGIE_LANES[i];
+        ctx.strokeStyle = 'rgba(244,236,216,0.18)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(lx - LANE_W / 2, SPAWN_Y - 10, LANE_W, HIT_Y - SPAWN_Y + 30);
+
+        const flashK = Math.max(0, laneFlash[i] / 0.18);
+        ctx.globalAlpha = 0.5 + flashK * 0.5;
+        ctx.fillStyle = laneDef.color;
+        ctx.beginPath();
+        ctx.arc(lx, HIT_Y, 22 + flashK * 8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = '#f4ecd8';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(lx, HIT_Y, 22, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.fillStyle = '#181418';
+        ctx.font = 'bold 20px monospace';
+        ctx.fillText(laneDef.arrow, lx, HIT_Y + 7);
+      }
+
+      // scrolling lily pads
+      chart.forEach((n) => {
+        if (n.resolved) return;
+        const timeToHit = n.time - elapsed;
+        if (timeToHit > BAYOU_BOOGIE_NOTE_LEAD || timeToHit < -BAYOU_BOOGIE_MISS_WINDOW) return;
+        const k = 1 - timeToHit / BAYOU_BOOGIE_NOTE_LEAD;
+        const y = SPAWN_Y + k * (HIT_Y - SPAWN_Y);
+        const laneDef = BAYOU_BOOGIE_LANES[n.lane];
+        ctx.fillStyle = laneDef.color;
+        ctx.beginPath();
+        ctx.arc(laneCx(n.lane), y, 14, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(8,6,12,0.5)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      });
+
+      // lane key legend
+      ctx.fillStyle = '#6a6070';
+      ctx.font = '12px monospace';
+      for (let i = 0; i < 4; i++) {
+        ctx.fillText(BAYOU_BOOGIE_LANES[i].arrow, laneCx(i), HIT_Y + 42);
+      }
+
+      ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#6be08a' : '#f4ecd8';
+      ctx.font = 'bold 18px monospace';
+      if (phase === 'play' || phase === 'ending') {
+        ctx.fillText(labelTimer > 0 ? lastHitLabel : '- STEP THE LILY PADS ON THE BEAT -', cx, 522);
+      } else if (phase === 'done') {
+        ctx.fillText(`FINAL SCORE: ${score} - PRESS E TO LEAVE`, cx, 522);
+      }
+
+      if (phase === 'done') {
+        ctx.font = '16px monospace';
+        ctx.fillStyle = isNewBest ? '#8cff5f' : '#9a90a8';
+        ctx.fillText(isNewBest ? 'NEW BEST!' : `BEST: ${bestFor('bayouboogie')}`, cx, 542);
+      }
+
+      ctx.fillStyle = '#6a6070';
+      ctx.font = '15px monospace';
+      ctx.fillText('X to walk away anytime', cx, phase === 'done' ? 562 : 546);
+    },
+  };
+}
+
+// ---- bayou boogie mode chooser ----------------------------------------------
+function createBayouBoogieModeSelect() {
+  return createModeSelectMenu({
+    title: 'BAYOU BOOGIE',
+    pickLabel: 'PICK YOUR STAGE',
+    classicSub: 'The original four-lane boardwalk stepper',
+    threeDSub: 'Step out onto the lily pads -- full 3D',
+    createClassic: () => createBayouBoogieGame(),
+    createThreeD: () => createBayouBoogie3DGame(),
+  });
+}
+
+// ---- Bayou Boogie 3D ----------------------------------------------------------
+// The Three.js remake of Bayou Boogie. Identical gameplay contract to the
+// classic version -- same chart shape, same NOTE_LEAD/MISS_WINDOW timing,
+// same bayouBoogieHitFor() judging, same 'bayouboogie' trophy -- only the
+// rendering changed: a moonlit stretch of boardwalk over dark water, with
+// four lily-pad lanes running away from the player into the fog toward a
+// row of glowing target rings, fireflies drifting over the water for
+// atmosphere. The scene renders to an offscreen WebGL canvas (see
+// getMinigame3DRenderer()) that gets blitted into the main 2D canvas each
+// frame, so input handling, CSS scaling, and the rAF loop are all
+// untouched, and the HUD is drawn over the blit with the same monospace
+// styling every other mini-game uses.
+function createBayouBoogie3DGame() {
+  const T = window.THREE;
+  const { renderer, canvas: bb3DCanvas } = getMinigame3DRenderer('bayouboogie');
+  const chart = buildBayouBoogieChart();
+
+  // ---- gameplay state: mirrors createBayouBoogieGame exactly
+  let phase = 'play'; // 'play' | 'ending' | 'done'
+  let elapsed = 0;
+  let score = 0;
+  let combo = 0;
+  let lastHitLabel = '';
+  let labelTimer = 0;
+  let doneDelay = 0;
+  let bestRecorded = false, isNewBest = false;
+  const laneHeld = [false, false, false, false];
+  let t = 0;
+
+  // ---- scene ----
+  const LANE_X = [-1.05, -0.35, 0.35, 1.05];
+  const HIT_Z = -1.6, SPAWN_Z = -16;
+
+  const scene = new T.Scene();
+  scene.background = new T.Color(0x08140f);
+  scene.fog = new T.Fog(0x08140f, 6, 18);
+
+  const camera = new T.PerspectiveCamera(58, VIEW_W / VIEW_H, 0.1, 40);
+  const CAM_POS = new T.Vector3(0, 1.55, 1.9);
+  camera.position.copy(CAM_POS);
+  camera.lookAt(0, 0.9, -6);
+
+  // dark water plane surrounding the boardwalk
+  const water = new T.Mesh(
+    new T.PlaneGeometry(20, 26),
+    new T.MeshStandardMaterial({ color: 0x14261c, roughness: 0.35, metalness: 0.25 })
+  );
+  water.rotation.x = -Math.PI / 2;
+  water.position.set(0, -0.02, -9);
+  water.receiveShadow = true;
+  scene.add(water);
+
+  // boardwalk planks running down the middle, under the four lanes
+  const boardwalk = new T.Mesh(
+    new T.BoxGeometry(3.2, 0.08, 20),
+    new T.MeshStandardMaterial({ color: 0x3a2c1c, roughness: 0.9 })
+  );
+  boardwalk.position.set(0, 0, -9);
+  boardwalk.receiveShadow = true;
+  scene.add(boardwalk);
+
+  // one glowing target ring + point light per lane, at the hit line
+  const rings = BAYOU_BOOGIE_LANES.map((laneDef, i) => {
+    const ring = new T.Mesh(
+      new T.TorusGeometry(0.22, 0.03, 10, 28),
+      new T.MeshStandardMaterial({ color: laneDef.hex, emissive: laneDef.hex, emissiveIntensity: 0.5, roughness: 0.4 })
+    );
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.set(LANE_X[i], 0.05, HIT_Z);
+    scene.add(ring);
+    const light = new T.PointLight(laneDef.hex, 0.6, 3);
+    light.position.set(LANE_X[i], 0.4, HIT_Z);
+    scene.add(light);
+    return { ring, light, baseEmissive: 0.5, pulseT: 0, hitColor: laneDef.hex };
+  });
+
+  // lily pads: one mesh per chart note, pre-built and repositioned each
+  // frame off its note's timing -- a pool of meshes moved around rather
+  // than created/disposed per note, since many are in flight at once.
+  const padGeo = new T.CylinderGeometry(0.22, 0.24, 0.05, 16);
+  chart.forEach((n) => {
+    const laneDef = BAYOU_BOOGIE_LANES[n.lane];
+    const pad = new T.Mesh(padGeo, new T.MeshStandardMaterial({ color: laneDef.hex, roughness: 0.6 }));
+    pad.castShadow = true;
+    pad.visible = false;
+    scene.add(pad);
+    n.mesh = pad;
+  });
+
+  // lights: dim moonlit ambient plus a warm dock spotlight over the player
+  scene.add(new T.AmbientLight(0x1c2a20, 0.85));
+  const moon = new T.DirectionalLight(0xbcd8ff, 0.45);
+  moon.position.set(-3, 6, 2);
+  scene.add(moon);
+  const dockLight = new T.SpotLight(0xffe2c0, 0.8, 12, 0.6, 0.5);
+  dockLight.position.set(0, 3, 0.5);
+  dockLight.target.position.set(0, 0, -3);
+  scene.add(dockLight);
+  scene.add(dockLight.target);
+
+  // fireflies drifting over the water, purely atmospheric
+  const fireflies = [];
+  for (let i = 0; i < 8; i++) {
+    const fly = new T.Mesh(
+      new T.SphereGeometry(0.03, 8, 8),
+      new T.MeshStandardMaterial({ color: 0xf0e090, emissive: 0xf0e090, emissiveIntensity: 1.4 })
+    );
+    fly.position.set((Math.random() - 0.5) * 6, 0.6 + Math.random() * 0.8, -3 - Math.random() * 10);
+    scene.add(fly);
+    fireflies.push({ mesh: fly, phase: Math.random() * Math.PI * 2, baseY: fly.position.y });
+  }
+
+  function attemptHit(lane) {
+    let best = null, bestDist = Infinity;
+    for (const n of chart) {
+      if (n.resolved || n.lane !== lane) continue;
+      const d = Math.abs(elapsed - n.time);
+      if (d < bestDist) { bestDist = d; best = n; }
+    }
+    const ringEntry = rings[lane];
+    ringEntry.pulseT = 0.18;
+    if (best && bestDist <= BAYOU_BOOGIE_MISS_WINDOW) {
+      const res = bayouBoogieHitFor(bestDist);
+      best.resolved = true;
+      best.mesh.visible = false;
+      score += res.pts;
+      combo = res.pts > 0 ? combo + 1 : 0;
+      lastHitLabel = res.label;
+      ringEntry.hitColor = res.pts > 0 ? BAYOU_BOOGIE_LANES[lane].hex : 0x6a6070;
+    } else {
+      combo = 0;
+      lastHitLabel = 'MISS';
+      ringEntry.hitColor = 0x6a6070;
+    }
+    labelTimer = 0.5;
+  }
+
+  // Full teardown -- called right before every exitMinigame().
+  function cleanup() {
+    scene.traverse((obj) => {
+      if (obj.geometry) obj.geometry.dispose();
+      if (obj.material) {
+        if (Array.isArray(obj.material)) obj.material.forEach((m) => m.dispose());
+        else obj.material.dispose();
+      }
+    });
+    scene.clear();
+  }
+  function leave() { cleanup(); exitMinigame(); }
+
+  return {
+    update(dt) {
+      t += dt;
+
+      if (phase === 'play') {
+        elapsed += dt;
+        for (const n of chart) {
+          if (!n.resolved && elapsed > n.time + BAYOU_BOOGIE_MISS_WINDOW) {
+            n.resolved = true;
+            n.mesh.visible = false;
+            combo = 0;
+          }
+        }
+        BAYOU_BOOGIE_LANES.forEach((laneDef, i) => {
+          const down = laneDef.keys.some((k) => keys[k]);
+          if (down && !laneHeld[i]) attemptHit(i);
+          laneHeld[i] = down;
+        });
+        if (chart.every((n) => n.resolved)) { phase = 'ending'; doneDelay = 0.8; }
+      } else if (phase === 'ending') {
+        doneDelay -= dt;
+        if (doneDelay <= 0) phase = 'done';
+      } else if (phase === 'done') {
+        if (!bestRecorded) { isNewBest = recordMinigameScore('bayouboogie', score); bestRecorded = true; }
+        if (interactPressed) { leave(); return; }
+      }
+      if (labelTimer > 0) labelTimer -= dt;
+
+      // slide each in-flight lily pad from spawn to the hit ring
+      chart.forEach((n) => {
+        if (n.resolved) return;
+        const timeToHit = n.time - elapsed;
+        if (timeToHit > BAYOU_BOOGIE_NOTE_LEAD || timeToHit < -BAYOU_BOOGIE_MISS_WINDOW) { n.mesh.visible = false; return; }
+        n.mesh.visible = true;
+        const k = 1 - timeToHit / BAYOU_BOOGIE_NOTE_LEAD;
+        n.mesh.position.set(LANE_X[n.lane], 0.05, SPAWN_Z + k * (HIT_Z - SPAWN_Z));
+        n.mesh.rotation.y += dt * 0.6;
+      });
+
+      // ring pulses on a hit, then decays back to its resting glow
+      rings.forEach((r) => {
+        if (r.pulseT > 0) {
+          r.pulseT -= dt;
+          r.ring.material.color.setHex(r.hitColor);
+          r.ring.material.emissive.setHex(r.hitColor);
+          r.ring.material.emissiveIntensity = r.baseEmissive + (r.pulseT / 0.18) * 1.2;
+        } else {
+          r.ring.material.emissiveIntensity += (r.baseEmissive - r.ring.material.emissiveIntensity) * Math.min(1, dt * 4);
+        }
+      });
+
+      // fireflies drift lazily
+      fireflies.forEach((f) => {
+        f.mesh.position.y = f.baseY + Math.sin(t * 1.2 + f.phase) * 0.15;
+        f.mesh.position.x += Math.sin(t * 0.4 + f.phase) * 0.002;
+      });
+
+      // gentle idle sway on the player's POV camera
+      camera.position.set(CAM_POS.x + Math.sin(t * 0.5) * 0.02, CAM_POS.y + Math.sin(t * 0.7) * 0.01, CAM_POS.z);
+      camera.lookAt(0, 0.9, -6);
+
+      // X always bails out early, no matter the phase
+      if (buyPressed) { leave(); return; }
+    },
+    draw() {
+      renderer.render(scene, camera);
+      ctx.drawImage(bb3DCanvas, 0, 0);
+
+      // HUD: same layout and styling as the classic version
+      const cx = VIEW_W / 2;
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#6be08a';
+      ctx.font = 'bold 28px monospace';
+      ctx.fillText('BAYOU BOOGIE 3D', cx, 56);
+      ctx.fillStyle = '#f4ecd8';
+      ctx.font = '17px monospace';
+      ctx.fillText(`SCORE ${score}   COMBO x${combo}`, cx, 80);
+
+      // lane key legend
+      ctx.font = 'bold 16px monospace';
+      BAYOU_BOOGIE_LANES.forEach((laneDef, i) => {
+        ctx.fillStyle = laneDef.color;
+        ctx.fillText(laneDef.arrow, cx + (i - 1.5) * 46, 560);
+      });
+
+      ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#6be08a' : '#f4ecd8';
+      ctx.font = 'bold 18px monospace';
+      if (phase === 'play' || phase === 'ending') {
+        ctx.fillText(labelTimer > 0 ? lastHitLabel : '- STEP THE LILY PADS ON THE BEAT -', cx, 522);
+      } else if (phase === 'done') {
+        ctx.fillText(`FINAL SCORE: ${score} - PRESS E TO LEAVE`, cx, 522);
+      }
+
+      if (phase === 'done') {
+        ctx.font = '16px monospace';
+        ctx.fillStyle = isNewBest ? '#8cff5f' : '#9a90a8';
+        ctx.fillText(isNewBest ? 'NEW BEST!' : `BEST: ${bestFor('bayouboogie')}`, cx, 542);
+      }
+
+      ctx.fillStyle = '#6a6070';
+      ctx.font = '15px monospace';
+      ctx.fillText('X to walk away anytime', cx, 582);
+    },
+  };
+}
+
 window.addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
   if (['arrowup','arrowdown','arrowleft','arrowright',' '].includes(k) || k === ' ') e.preventDefault();
@@ -7947,8 +8454,16 @@ const shops = {
     // "full-screen DOM overlay with an <iframe>" pattern as chess/the beat
     // bot/the organ/mini golf/the blackbook/Gator Grooves -- see
     // MINIGAME_ACTIONS.vinylsnake/openVinylSnakeApp().
+    //
+    // Bayou Boogie cabinet, mirrored on open floor at (3,7) -- same
+    // clearance logic as Vinyl Snake above, just the opposite side of the
+    // room, clear of the counter table (row 3) and the corner crates
+    // (1,4)/(1,6)/(12,4)/(12,6). Real from-scratch canvas mini-game (plus
+    // Three.js remake), not a bundled standalone app -- see
+    // MINIGAME_ACTIONS.bayouboogie/createBayouBoogieModeSelect().
     minigames: [
       { id: 'vinylsnake', tx: 9, ty: 7, label: 'PLAY VINYL SNAKE' },
+      { id: 'bayouboogie', tx: 3, ty: 7, label: 'PLAY BAYOU BOOGIE' },
     ],
   }),
   // JOHNNY'S FUN PARK -- the swamp's fourth building: a little boardwalk
