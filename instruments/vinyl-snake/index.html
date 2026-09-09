@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Vinyl Snake</title>
+<style>
+  :root {
+    --bg: #1a1a1a;
+    --board-bg: #101010;
+    --grid-line: #1f1f1f;
+    --snake-head: #6be36b;
+    --snake-body: #3fae3f;
+    --accent: #e8b64a;
+    --text: #f0f0f0;
+    --muted: #999;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: radial-gradient(circle at 50% 20%, #2a2a2a, var(--bg));
+    color: var(--text);
+    font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  h1 {
+    margin: 0 0 4px 0;
+    font-size: 1.8em;
+    letter-spacing: 1px;
+    color: var(--accent);
+    text-shadow: 0 0 12px rgba(232, 182, 74, 0.4);
+  }
+  .subtitle {
+    margin: 0 0 16px 0;
+    color: var(--muted);
+    font-size: 0.9em;
+  }
+  .hud {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 12px;
+    font-size: 1.1em;
+  }
+  .hud span {
+    color: var(--accent);
+    font-weight: bold;
+  }
+  #gameCanvas {
+    background: var(--board-bg);
+    border: 3px solid var(--accent);
+    border-radius: 8px;
+    box-shadow: 0 0 30px rgba(0,0,0,0.6);
+    touch-action: none;
+    max-width: 90vw;
+    max-height: 60vh;
+  }
+  .controls {
+    margin-top: 14px;
+    color: var(--muted);
+    font-size: 0.85em;
+    text-align: center;
+  }
+  #overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    text-align: center;
+  }
+  #overlay.hidden { display: none; }
+  #overlay h2 {
+    color: var(--accent);
+    font-size: 2em;
+    margin-bottom: 6px;
+  }
+  #overlay p { color: var(--text); margin: 4px 0 18px 0; }
+  button {
+    background: var(--accent);
+    color: #1a1a1a;
+    border: none;
+    padding: 10px 24px;
+    font-size: 1em;
+    font-weight: bold;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: transform 0.1s ease;
+  }
+  button:hover { transform: scale(1.05); }
+  .dpad {
+    display: none;
+    grid-template-columns: repeat(3, 56px);
+    grid-template-rows: repeat(3, 56px);
+    gap: 6px;
+    margin-top: 16px;
+  }
+  .dpad button {
+    width: 56px;
+    height: 56px;
+    font-size: 1.3em;
+    padding: 0;
+  }
+  @media (pointer: coarse) {
+    .dpad { display: grid; }
+  }
+</style>
+</head>
+<body>
+
+<h1>🎵 Vinyl Snake 🎵</h1>
+<p class="subtitle">Slither through the crate and spin up your collection</p>
+
+<div class="hud">
+  <div>Score: <span id="score">0</span></div>
+  <div>Best: <span id="best">0</span></div>
+</div>
+
+<canvas id="gameCanvas" width="480" height="480"></canvas>
+
+<div class="controls">
+  Arrow keys / WASD to move &nbsp;•&nbsp; Space to pause
+</div>
+
+<div class="dpad" id="dpad">
+  <div></div><button data-dir="up">▲</button><div></div>
+  <button data-dir="left">◀</button><div></div><button data-dir="right">▶</button>
+  <div></div><button data-dir="down">▼</button><div></div>
+</div>
+
+<div id="overlay">
+  <h2 id="overlayTitle">Vinyl Snake</h2>
+  <p id="overlayText">Collect records, don't crash the crate!</p>
+  <button id="startBtn">Start Game</button>
+</div>
+
+<script>
+(function() {
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
+  const gridSize = 24;
+  const tileCount = canvas.width / gridSize;
+
+  const scoreEl = document.getElementById('score');
+  const bestEl = document.getElementById('best');
+  const overlay = document.getElementById('overlay');
+  const overlayTitle = document.getElementById('overlayTitle');
+  const overlayText = document.getElementById('overlayText');
+  const startBtn = document.getElementById('startBtn');
+  const dpad = document.getElementById('dpad');
+
+  let snake, dir, nextDir, record, score, best, running, paused, tickMs, loopId;
+
+  best = parseInt(localStorage_safe_get('vinylSnakeBest') || '0', 10);
+  bestEl.textContent = best;
+
+  function localStorage_safe_get(key) {
+    // Artifacts environment: avoid real localStorage; keep in-memory fallback.
+    return window.__vinylBestScore ? String(window.__vinylBestScore) : null;
+  }
+  function localStorage_safe_set(key, value) {
+    window.__vinylBestScore = value;
+  }
+
+  const recordColors = ['#e8b64a', '#e05c5c', '#5ca8e0', '#7ed17e', '#c47ee0'];
+
+  function initGame() {
+    snake = [
+      { x: 8, y: 12 },
+      { x: 7, y: 12 },
+      { x: 6, y: 12 }
+    ];
+    dir = { x: 1, y: 0 };
+    nextDir = { x: 1, y: 0 };
+    score = 0;
+    tickMs = 130;
+    scoreEl.textContent = score;
+    placeRecord();
+    running = true;
+    paused = false;
+  }
+
+  function placeRecord() {
+    let valid = false;
+    let pos;
+    while (!valid) {
+      pos = {
+        x: Math.floor(Math.random() * tileCount),
+        y: Math.floor(Math.random() * tileCount)
+      };
+      valid = !snake.some(seg => seg.x === pos.x && seg.y === pos.y);
+    }
+    record = { ...pos, color: recordColors[Math.floor(Math.random() * recordColors.length)], spin: 0 };
+  }
+
+  function drawGrid() {
+    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--board-bg');
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--grid-line');
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= tileCount; i++) {
+      ctx.beginPath();
+      ctx.moveTo(i * gridSize, 0);
+      ctx.lineTo(i * gridSize, canvas.height);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(0, i * gridSize);
+      ctx.lineTo(canvas.width, i * gridSize);
+      ctx.stroke();
+    }
+  }
+
+  function drawSnake() {
+    snake.forEach((seg, i) => {
+      const cx = seg.x * gridSize + gridSize / 2;
+      const cy = seg.y * gridSize + gridSize / 2;
+      const r = gridSize / 2 - 2;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fillStyle = i === 0 ? '#6be36b' : '#3fae3f';
+      ctx.fill();
+      if (i === 0) {
+        // eyes to show direction
+        ctx.fillStyle = '#1a1a1a';
+        const eyeOffset = 5;
+        let e1x = cx, e1y = cy, e2x = cx, e2y = cy;
+        if (dir.x === 1) { e1x += eyeOffset; e1y -= 4; e2x += eyeOffset; e2y += 4; }
+        else if (dir.x === -1) { e1x -= eyeOffset; e1y -= 4; e2x -= eyeOffset; e2y += 4; }
+        else if (dir.y === 1) { e1y += eyeOffset; e1x -= 4; e2y += eyeOffset; e2x += 4; }
+        else if (dir.y === -1) { e1y -= eyeOffset; e1x -= 4; e2y -= eyeOffset; e2x += 4; }
+        ctx.beginPath();
+        ctx.arc(e1x, e1y, 2, 0, Math.PI * 2);
+        ctx.arc(e2x, e2y, 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    });
+  }
+
+  function drawRecord() {
+    record.spin += 0.15;
+    const cx = record.x * gridSize + gridSize / 2;
+    const cy = record.y * gridSize + gridSize / 2;
+    const r = gridSize / 2 - 1;
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(record.spin);
+
+    // outer vinyl disc
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fillStyle = '#111';
+    ctx.fill();
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 1;
+    for (let ring = r - 2; ring > r * 0.4; ring -= 3) {
+      ctx.beginPath();
+      ctx.arc(0, 0, ring, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // label
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.38, 0, Math.PI * 2);
+    ctx.fillStyle = record.color;
+    ctx.fill();
+
+    // center hole
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.08, 0, Math.PI * 2);
+    ctx.fillStyle = '#101010';
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  function update() {
+    dir = nextDir;
+    const head = { x: snake[0].x + dir.x, y: snake[0].y + dir.y };
+
+    // wall collision
+    if (head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount) {
+      return gameOver();
+    }
+    // self collision
+    if (snake.some(seg => seg.x === head.x && seg.y === head.y)) {
+      return gameOver();
+    }
+
+    snake.unshift(head);
+
+    if (head.x === record.x && head.y === record.y) {
+      score++;
+      scoreEl.textContent = score;
+      if (tickMs > 60) tickMs -= 2;
+      placeRecord();
+    } else {
+      snake.pop();
+    }
+  }
+
+  function gameOver() {
+    running = false;
+    if (score > best) {
+      best = score;
+      localStorage_safe_set('vinylSnakeBest', best);
+      bestEl.textContent = best;
+    }
+    overlayTitle.textContent = 'Record Scratch! 💿';
+    overlayText.textContent = `You collected ${score} record${score === 1 ? '' : 's'}. Final score: ${score}`;
+    startBtn.textContent = 'Play Again';
+    overlay.classList.remove('hidden');
+  }
+
+  function draw() {
+    drawGrid();
+    drawRecord();
+    drawSnake();
+  }
+
+  function gameLoop() {
+    if (!running || paused) return;
+    update();
+    if (running) draw();
+    loopId = setTimeout(gameLoop, tickMs);
+  }
+
+  function setDirection(nx, ny) {
+    // prevent reversing directly into self
+    if (nx === -dir.x && ny === -dir.y) return;
+    nextDir = { x: nx, y: ny };
+  }
+
+  document.addEventListener('keydown', (e) => {
+    switch (e.key) {
+      case 'ArrowUp': case 'w': case 'W': setDirection(0, -1); e.preventDefault(); break;
+      case 'ArrowDown': case 's': case 'S': setDirection(0, 1); e.preventDefault(); break;
+      case 'ArrowLeft': case 'a': case 'A': setDirection(-1, 0); e.preventDefault(); break;
+      case 'ArrowRight': case 'd': case 'D': setDirection(1, 0); e.preventDefault(); break;
+      case ' ':
+        if (running) {
+          paused = !paused;
+          if (!paused) gameLoop();
+        }
+        e.preventDefault();
+        break;
+    }
+  });
+
+  dpad.addEventListener('click', (e) => {
+    const dirName = e.target.dataset.dir;
+    if (!dirName) return;
+    if (dirName === 'up') setDirection(0, -1);
+    if (dirName === 'down') setDirection(0, 1);
+    if (dirName === 'left') setDirection(-1, 0);
+    if (dirName === 'right') setDirection(1, 0);
+  });
+
+  // simple swipe support
+  let touchStartX = 0, touchStartY = 0;
+  canvas.addEventListener('touchstart', (e) => {
+    const t = e.touches[0];
+    touchStartX = t.clientX;
+    touchStartY = t.clientY;
+  });
+  canvas.addEventListener('touchend', (e) => {
+    const t = e.changedTouches[0];
+    const dx = t.clientX - touchStartX;
+    const dy = t.clientY - touchStartY;
+    if (Math.abs(dx) > Math.abs(dy)) {
+      setDirection(dx > 0 ? 1 : -1, 0);
+    } else {
+      setDirection(0, dy > 0 ? 1 : -1);
+    }
+  });
+
+  startBtn.addEventListener('click', () => {
+    overlay.classList.add('hidden');
+    clearTimeout(loopId);
+    initGame();
+    draw();
+    gameLoop();
+  });
+
+  // initial draw before first start
+  drawGrid();
+})();
+</script>
+</body>
+</html>
