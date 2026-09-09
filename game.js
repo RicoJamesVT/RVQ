@@ -563,6 +563,21 @@ const HENRYS_JUNK = [
     reply: 'Great stuff, all of it. None of it is one of the five, though.' },
 ];
 
+// TRUTH LAB's four themed dig crates -- same 1:1 pairing via c.truthLabSeed
+// as NECTARS_JUNK/HENRYS_JUNK above. Every crate here is quality hip hop
+// pulled from DJ BP's collection (Tha Truth's great friend and DJ) -- never
+// one of the 5 collectibles, but always worth a spin.
+const TRUTHLAB_JUNK = [
+  { line: 'A crate of rare boom-bap 12-inches, all pulled from DJ BP\'s personal collection -- deep cuts, mint sleeves, not a scratch on any of them.',
+    reply: 'None of these are the records you\'re looking for, but you\'re always welcome to spin whatever Tha Truth\'s got sitting around the lab.' },
+  { line: 'Golden-era classics, hand-picked by DJ BP himself -- the kind of records that taught a whole generation how to dig.',
+    reply: 'Not one of the five, but quality all the way through. Tha Truth would tell you to put one on anyway.' },
+  { line: 'A stack of underground hip hop white labels, no artist name on any of the sleeves -- just DJ BP\'s handwriting marking the best tracks.',
+    reply: 'Still not what you came for, but this lab\'s crates never miss. Worth a spin regardless.' },
+  { line: 'Classic breakbeat records, worn soft at the edges from years on DJ BP\'s own turntables before they ended up here in the lab.',
+    reply: 'Nothing you\'re hunting for tonight -- but Tha Truth keeps this crate stocked with heat just for the love of it.' },
+];
+
 // Fake front-page stories for the town's newspaper stands. Onion/Daily Show
 // style Vermont satire — one random headline+body pops up each time a stand
 // is read. Keep these silly and harmless, no real people, just generic
@@ -6750,7 +6765,7 @@ const travImg = new Image();
 travImg.src = 'assets/trav.png';
 
 // ---------------------------------------------------------------- maps
-const SOLID = new Set(['#', 'w', 'f', '~', 'W', 'T', 'C', 'c', 'K', 'J', 'S', 'A', 'N', 'F', 'R', 'V', 'Z']);
+const SOLID = new Set(['#', 'w', 'f', '~', 'W', 'T', 'C', 'c', 'K', 'J', 'S', 'A', 'N', 'F', 'R', 'V', 'Z', 'U', 'X']);
 
 function blankGrid(w, h, fill) {
   return Array.from({ length: h }, () => Array(w).fill(fill));
@@ -7014,6 +7029,15 @@ function makeSwamp() {
   for (let y = JFP_CLEAR_Y; y < JFP_CLEAR_Y + JFP_CLEAR_H; y++)
     for (let x = JFP_CLEAR_X; x < JFP_CLEAR_X + JFP_CLEAR_W; x++) g[y][x] = '.';
 
+  // TRUTH LAB clearing -- fifth swamp building, tucked into the lower-left
+  // area between the x=8 boardwalk spur and the GUT HUT clearing, clear of
+  // both. Its top row (row 13) sits directly against the boardwalk trunk
+  // (row 12), same "step off the boardwalk onto solid ground" logic as
+  // every other clearing here.
+  const TL_CLEAR_X = 10, TL_CLEAR_Y = 13, TL_CLEAR_W = 9, TL_CLEAR_H = 11;
+  for (let y = TL_CLEAR_Y; y < TL_CLEAR_Y + TL_CLEAR_H; y++)
+    for (let x = TL_CLEAR_X; x < TL_CLEAR_X + TL_CLEAR_W; x++) g[y][x] = '.';
+
   // sprinkle swamp trees over the mud (runs over the new clearing too, so
   // it reads as part of the same swamp rather than a bare patch)
   for (let y = 1; y < H - 1; y++)
@@ -7104,6 +7128,23 @@ function makeSwamp() {
     wall: '#2a8a9a', roof: '#155a66', doorX: JPOOL_DOOR_X,
   });
 
+  // TRUTH LAB -- fifth swamp building and the swamp's final stop: Tha
+  // Truth's own artist lounge, tucked into the clearing carved out above.
+  // Same solid-walls-plus-one-door construction as every other building
+  // here; doorX/doorY are exported below (truthLabDoor) for the transition
+  // wiring outside this function. Dark, moody exterior colors to match the
+  // black-walls lounge waiting inside (see the `truthlab` shop below).
+  const TL_X = 12, TL_Y = 15, TL_W = 6, TL_H = 4;
+  const TL_DOOR_X = TL_X + Math.floor(TL_W / 2);
+  const TL_DOOR_Y = TL_Y + TL_H - 1;
+  for (let y = TL_Y; y < TL_Y + TL_H; y++)
+    for (let x = TL_X; x < TL_X + TL_W; x++) g[y][x] = 'w';
+  g[TL_DOOR_Y][TL_DOOR_X] = 'D';
+  buildings.push({
+    x: TL_X, y: TL_Y, w: TL_W, h: TL_H, name: 'TRUTH LAB',
+    wall: '#1a1a1e', roof: '#0d0d10', doorX: TL_DOOR_X,
+  });
+
   // crates: five hidden records + a few junk ones. Mud Kick (swampdrum)
   // used to sit out here on the boardwalk spur -- it's been moved inside
   // GUT HUT (see the `guthut` shop below), so the swamp still has exactly
@@ -7121,7 +7162,7 @@ function makeSwamp() {
     [38, 12, { junkSeed: 1 }],
     [6, 12,  { junkSeed: 2 }],
     [8, 9,   { record: 'choir' }],
-    [17, 18, { junkSeed: 0 }],
+    [10, 21, { junkSeed: 0 }],
     [34, 17, { junkSeed: 6 }],
     [14, 12, { junkSeed: 3 }],
   ];
@@ -7140,6 +7181,7 @@ function makeSwamp() {
     burlingtonRecordsDoor: { x: BURL_DOOR_X, y: BURL_DOOR_Y },
     jfpDoor: { x: JFP_DOOR_X, y: JFP_DOOR_Y },
     jfpPoolDoor: { x: JPOOL_DOOR_X, y: JPOOL_DOOR_Y },
+    truthLabDoor: { x: TL_DOOR_X, y: TL_DOOR_Y },
     palette: {
       groundA: '#6a5a35', groundB: '#5c723a', groundDot: '#6d8a46',
       water: '#2c4330', waterHi: '#3d5a3e',
@@ -7227,6 +7269,13 @@ function makeShop(id, opts) {
   if (opts.micStand) { g[opts.micStand[1]][opts.micStand[0]] = 'Y'; }
   // A standee cow prop — e.g. VT Comedy Club's mascot parked in a corner.
   if (opts.cowTile) { g[opts.cowTile[1]][opts.cowTile[0]] = 'V'; }
+  // A single record player/turntable set up on its own little stand —
+  // e.g. TRUTH LAB's centerpiece. Single tile, non-shop-specific, so any
+  // room can opt in via opts.recordPlayerTile: [x, y].
+  if (opts.recordPlayerTile) { g[opts.recordPlayerTile[1]][opts.recordPlayerTile[0]] = 'U'; }
+  // A big wall-mounted TV — e.g. TRUTH LAB's lounge centerpiece. Single
+  // tile, non-shop-specific, so any room can opt in via opts.tvTile: [x, y].
+  if (opts.tvTile) { g[opts.tvTile[1]][opts.tvTile[0]] = 'X'; }
   (opts.gearTiles || []).forEach(([gx, gy]) => { g[gy][gx] = 'G'; });
   // Two-tile-wide recording desk (studio monitors + gear), with a hanging
   // neon sign above it — e.g. Zach's "SKYLAB" workstation in Green Door
@@ -7862,6 +7911,43 @@ const shops = {
   // built -- this just wires it into the shared `shops` map under the id
   // the transitions below expect.
   johnnyspool: makeJohnnysPool(),
+  // TRUTH LAB -- the swamp's fifth and final building: Tha Truth's own
+  // artist lounge, tucked away at the end of the boardwalk. Black walls,
+  // bright framed artwork, a record player, a couch, and a big TV --
+  // dressed for hanging out and listening back, not for shopping.
+  // `world: 'swamp'` again for consistency with the other swamp interiors.
+  // No collectible record lives in here -- all four crates are stocked
+  // with quality hip hop out of DJ BP's own collection (Tha Truth's great
+  // friend and DJ), so digging never advances the sampler, just the vibe.
+  truthlab: makeShop('truthlab', {
+    world: 'swamp',
+    floor: '#242226', plank: '#19171b', wallColor: '#0c0c0e',
+    // Bright, stylish framed pieces along the top wall -- the one splash
+    // of color against the otherwise all-black lounge walls.
+    paintings: {
+      '2,0': { base: '#ff2fa0', a: '#2fd8ff', b: '#f0c33e' },
+      '5,0': { base: '#2fd8ff', a: '#a855f7', b: '#ff2fa0' },
+      '8,0': { base: '#39ff8f', a: '#f0c33e', b: '#2fd8ff' },
+      '11,0': { base: '#a855f7', a: '#39ff8f', b: '#ff2fa0' },
+    },
+    // Record player on its own stand up near the counter, big TV mounted
+    // on the wall opposite it -- flanking Tha Truth's usual spot.
+    recordPlayerTile: [2, 2],
+    tvTile: [10, 2],
+    // A couch along the back of the floor, facing the room.
+    couchTiles: [[5, 7], [6, 7], [7, 7]],
+    couchPillow: { x: 6, y: 7 },
+    keeper: { name: 'TRUTH', shirt: '#1c1a1e', skin: '#8a5a34',
+      lines: [
+        'Welcome to the lab. Kick back, this is where I do my listening.',
+        'My guy DJ BP put a good chunk of this collection together. Dude\'s got ears like nobody else.',
+        'Go ahead and dig through the crates if you want -- all quality hip hop in here, courtesy of DJ BP.',
+        'None of what\'s in these crates is what you\'re out here chasing, but I\'m always down to spin whatever\'s sitting around the lab.',
+        'Big TV, the record player, that couch -- this room\'s built for hanging out, not for rushing through.',
+      ] },
+    // Four crates, all quality DJ BP hip hop -- see TRUTHLAB_JUNK above.
+    crates: [ { truthLabSeed: 0 }, { truthLabSeed: 1 }, { truthLabSeed: 2 }, { truthLabSeed: 3 } ],
+  }),
 };
 
 // door wiring: town door tile -> shop spawn; shop exit tile -> town spawn
@@ -7891,6 +7977,9 @@ transitions['johnnysfunpark:' + key(6, 9)] = { map: 'swamp', x: swamp.jfpDoor.x 
 // door already spawns the player on.
 transitions['swamp:' + key(swamp.jfpPoolDoor.x, swamp.jfpPoolDoor.y)] = { map: 'johnnyspool', x: 6.5, y: 7.5 };
 transitions['johnnyspool:' + key(6, 9)] = { map: 'swamp', x: swamp.jfpPoolDoor.x + 0.5, y: swamp.jfpPoolDoor.y + 1.6 };
+// TRUTH LAB door wiring -- same pattern as GUT HUT above.
+transitions['swamp:' + key(swamp.truthLabDoor.x, swamp.truthLabDoor.y)] = { map: 'truthlab', x: 6.5, y: 7.5 };
+transitions['truthlab:' + key(6, 9)] = { map: 'swamp', x: swamp.truthLabDoor.x + 0.5, y: swamp.truthLabDoor.y + 1.6 };
 const maps = { town, ...shops, swamp };
 
 // ---------------------------------------------------------------- state
@@ -8673,6 +8762,10 @@ function doInteract() {
     } else if (c.henrysSeed !== undefined) {
       const hj = HENRYS_JUNK[c.henrysSeed % HENRYS_JUNK.length];
       dialog = { name: 'CRATE', lines: [hj.line, hj.reply], i: 0 };
+      state = 'dialog';
+    } else if (c.truthLabSeed !== undefined) {
+      const tj = TRUTHLAB_JUNK[c.truthLabSeed % TRUTHLAB_JUNK.length];
+      dialog = { name: 'CRATE', lines: [tj.line, tj.reply], i: 0 };
       state = 'dialog';
     } else {
       dialog = { name: 'CRATE', lines: [JUNK[c.junkSeed % JUNK.length], 'Keep digging...'], i: 0 };
@@ -11305,6 +11398,8 @@ function drawTiles(map, time, camX = 0, camY = 0) {
         case 'S': drawCouch(px, py, !!(map.couchPillow && map.couchPillow.x === tx && map.couchPillow.y === ty)); break;
         case 'A': drawArmchair(px, py); break;
         case 'V': drawCow(px, py); break;
+        case 'U': drawRecordPlayerProp(px, py, time); break;
+        case 'X': drawBigTV(px, py, tx, ty, time); break;
         case 'Y': drawMicStand(px, py); break;
         case 'G': drawHipHopGear(px, py, tx, ty); break;
         case 'R': drawRecordingDesk(px, py, tx, ty, map.recordingDesk); break;
@@ -11978,6 +12073,65 @@ function drawCow(px, py) {
   // eye
   ctx.fillStyle = '#1c1414';
   ctx.beginPath(); ctx.arc(hx - 1, hy - 1, 1.4, 0, Math.PI * 2); ctx.fill();
+}
+
+// A record player set up on its own small stand/table -- e.g. TRUTH LAB's
+// centerpiece. Reuses drawTurntableDeck() (the same single-deck art used
+// for the beat-match/scratch-DJ mini-games) scaled down to sit on a tile,
+// with a little wooden stand underneath it and a few 45s leaned against
+// the base like they're waiting to get dropped on next.
+function drawRecordPlayerProp(px, py, time) {
+  // ground shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.beginPath();
+  ctx.ellipse(px + 16, py + TILE - 4, 13, 3, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // stand/table underneath
+  ctx.fillStyle = '#2a1e14';
+  ctx.fillRect(px + 2, py + 20, TILE - 4, 8);
+  ctx.fillStyle = '#4a3420';
+  ctx.fillRect(px + 2, py + 20, TILE - 4, 2);
+  ctx.fillStyle = '#1a120c';
+  ctx.fillRect(px + 3, py + 27, 3, 4);
+  ctx.fillRect(px + TILE - 6, py + 27, 3, 4);
+  // a couple of 45s leaned against the stand's leg
+  ctx.fillStyle = '#151015';
+  ctx.beginPath(); ctx.arc(px + 6, py + 26, 4, Math.PI * 0.15, Math.PI * 1.0); ctx.fill();
+  ctx.fillStyle = '#c0403a';
+  ctx.beginPath(); ctx.arc(px + 6, py + 26, 1.2, 0, Math.PI * 2); ctx.fill();
+  // the deck itself, scaled down to sit on top of the stand
+  drawTurntableDeck(px + 1, py - 2, 0.62, time, 1.7);
+}
+
+// A big flat TV, wall-mounted on a slim stand -- e.g. TRUTH LAB's lounge
+// centerpiece. Screen cycles a slow, lazy color wash rather than any
+// specific channel/show, so it reads as "always on" without depicting
+// anything in particular.
+function drawBigTV(px, py, tx, ty, time) {
+  const t = time || 0;
+  // mounting bracket/shadow against the wall
+  ctx.fillStyle = 'rgba(0,0,0,0.28)';
+  ctx.fillRect(px + 3, py + 3, TILE - 4, TILE - 10);
+  // bezel
+  ctx.fillStyle = '#111013';
+  ctx.fillRect(px + 1, py + 1, TILE - 2, TILE - 10);
+  ctx.fillStyle = '#1c1a1e';
+  ctx.fillRect(px + 2, py + 2, TILE - 4, TILE - 12);
+  // screen, slow color wash
+  const hue = (t * 12 + tx * 40 + ty * 17) % 360;
+  ctx.fillStyle = `hsl(${hue}, 55%, 30%)`;
+  ctx.fillRect(px + 4, py + 4, TILE - 8, TILE - 16);
+  ctx.fillStyle = 'rgba(255,255,255,0.10)';
+  ctx.fillRect(px + 4, py + 4, TILE - 8, 3);
+  ctx.fillStyle = 'rgba(0,0,0,0.18)';
+  ctx.fillRect(px + 4, py + TILE - 15, TILE - 8, 3);
+  // small stand legs
+  ctx.fillStyle = '#0a0a0c';
+  ctx.fillRect(px + 6, py + TILE - 9, 3, 6);
+  ctx.fillRect(px + TILE - 9, py + TILE - 9, 3, 6);
+  // power/standby light
+  ctx.fillStyle = Math.floor(t * 2) % 2 ? '#4ade80' : '#2f6a48';
+  ctx.beginPath(); ctx.arc(px + TILE / 2, py + TILE - 8, 1, 0, Math.PI * 2); ctx.fill();
 }
 
 function drawCrateProp(px, py, data, worldId) {
