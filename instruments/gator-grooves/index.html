@@ -1,0 +1,1097 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="theme-color" content="#0b1a12" />
+<title>Gator Grooves: Swamp Vinyl Feast</title>
+<style>
+  :root {
+    --swamp-deep: #0b1a12;
+    --swamp-mid: #163020;
+    --swamp-moss: #3f6b3a;
+    --gold: #e8b84b;
+    --acid: #b6e84b;
+    --bone: #f4 efe0;
+    --hot: #d64550;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    height: 100%;
+    background: #05100a;
+    overflow: hidden;
+    font-family: "Courier New", monospace;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  #game-wrap {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background:
+      radial-gradient(circle at 50% 0%, #16301f 0%, #05100a 70%);
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+  }
+  /* Touch controls */
+  #touch-ui {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 10;
+    display: none;
+  }
+  .tc-btn {
+    position: absolute;
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    border: 3px solid rgba(232,184,75,0.7);
+    background: rgba(11,26,18,0.55);
+    color: #e8b84b;
+    font-weight: bold;
+    font-size: 26px;
+    backdrop-filter: blur(2px);
+    user-select: none;
+    transition: transform 0.05s, background 0.05s;
+  }
+  .tc-btn:active, .tc-btn.pressed {
+    transform: scale(0.92);
+    background: rgba(182,232,75,0.35);
+  }
+  #btn-left  { left: 22px;  bottom: 34px; width: 74px; height: 74px; }
+  #btn-right { left: 112px; bottom: 34px; width: 74px; height: 74px; }
+  #btn-jump  { right: 24px; bottom: 96px; width: 90px; height: 90px; }
+  #btn-bite  { right: 118px; bottom: 30px; width: 84px; height: 84px; background: rgba(214,69,80,0.35); border-color: rgba(214,69,80,0.8); color:#f4efe0;}
+</style>
+</head>
+<body>
+<div id="game-wrap">
+  <canvas id="game"></canvas>
+</div>
+
+<!-- Mobile controls -->
+<div id="touch-ui">
+  <div id="btn-left"  class="tc-btn" data-key="left">&#9664;</div>
+  <div id="btn-right" class="tc-btn" data-key="right">&#9654;</div>
+  <div id="btn-jump"  class="tc-btn" data-key="jump">&#9650;</div>
+  <div id="btn-bite"  class="tc-btn" data-key="bite">CHOMP</div>
+</div>
+
+<script>
+/* ============================================================================
+   GATOR GROOVES — a swampy hip-hop side-scroller.
+   You are a crocodile munching vinyl records, battling snakes & swamp beasts.
+
+   HOW TO INSERT INTO YOUR EXISTING game.js:
+   ---------------------------------------------------------------------------
+   Everything the game needs lives inside the GatorGrooves module below.
+   To embed it in your own project, copy the entire GatorGrooves IIFE into your
+   game.js and start it with:
+
+       GatorGrooves.mount(document.getElementById('your-canvas-id'));
+
+   It creates its own render loop, input handling and audio. Call
+   GatorGrooves.destroy() to tear it down. No external dependencies.
+   ========================================================================== */
+
+const GatorGrooves = (function () {
+  "use strict";
+
+  // ---- Tunables -----------------------------------------------------------
+  const CONFIG = {
+    gravity: 0.9,
+    jumpVel: -16,
+    moveSpeed: 5.2,
+    groundRatio: 0.78,      // ground line as a fraction of view height
+    worldScrollBase: 2.2,   // baseline auto-scroll speed (endless swamp)
+    biteDuration: 14,       // frames the chomp hitbox is active
+    biteCooldown: 22,
+    invulnFrames: 70,
+    startLives: 3,
+    bpm: 92,                // hip-hop tempo drives the visual "bounce"
+  };
+
+  const PALETTE = {
+    skyTop: "#12331f",
+    skyBot: "#0a1c12",
+    water: "#0e2b22",
+    waterShine: "#2f6b57",
+    mudFar: "#16341f",
+    mudNear: "#0c2114",
+    croc: "#5f8f3e",
+    crocDark: "#3f6b2a",
+    crocBelly: "#cdd98a",
+    tooth: "#f4efe0",
+    eye: "#f4efe0",
+    vinyl: "#131313",
+    vinylLabel: "#d64550",
+    vinylLabelAlt: "#e8b84b",
+    snake: "#9d5bd6",
+    snakeDark: "#6c3aa0",
+    frog: "#7bc043",
+    gold: "#e8b84b",
+    acid: "#b6e84b",
+    bone: "#f4efe0",
+    hot: "#d64550",
+    shadow: "rgba(0,0,0,0.35)",
+  };
+
+  // ---- Module state -------------------------------------------------------
+  let canvas, ctx, W, H, ground, dpr = 1;
+  let raf = null, running = false, lastT = 0, acc = 0;
+  const STEP = 1000 / 60;
+
+  let audio = null;
+
+  const keys = { left: false, right: false, jump: false, bite: false };
+
+  let state; // full game state, reset on start
+
+  // ---- Utility ------------------------------------------------------------
+  const rand = (a, b) => a + Math.random() * (b - a);
+  const randi = (a, b) => Math.floor(rand(a, b + 1));
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const AABB = (a, b) =>
+    a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+
+  // ---- Audio (WebAudio, no files) ----------------------------------------
+  function initAudio() {
+    if (audio) return;
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      const ac = new AC();
+      const master = ac.createGain();
+      master.gain.value = 0.5;
+      master.connect(ac.destination);
+      audio = { ac, master, beatTimer: null, step: 0 };
+    } catch (e) { audio = null; }
+  }
+
+  function blip(freq, dur, type, vol, when) {
+    if (!audio) return;
+    const { ac, master } = audio;
+    const t = when || ac.currentTime;
+    const o = ac.createOscillator();
+    const g = ac.createGain();
+    o.type = type || "square";
+    o.frequency.setValueAtTime(freq, t);
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(vol || 0.3, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(master);
+    o.start(t); o.stop(t + dur + 0.02);
+  }
+
+  function noiseHit(dur, vol, when) {
+    if (!audio) return;
+    const { ac, master } = audio;
+    const t = when || ac.currentTime;
+    const len = Math.floor(ac.sampleRate * dur);
+    const buf = ac.createBuffer(1, len, ac.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+    const src = ac.createBufferSource();
+    src.buffer = buf;
+    const g = ac.createGain();
+    g.gain.value = vol || 0.3;
+    src.connect(g); g.connect(master);
+    src.start(t);
+  }
+
+  // Simple boom-bap loop synced to CONFIG.bpm
+  function startBeat() {
+    if (!audio) return;
+    stopBeat();
+    const spb = 60 / CONFIG.bpm; // seconds per beat
+    const stepDur = spb / 2;     // eighth notes
+    audio.step = 0;
+    const tick = () => {
+      if (!running) return;
+      const s = audio.step % 8;
+      // kick on 0 and 4
+      if (s === 0 || s === 4) blip(58, 0.18, "sine", 0.5);
+      // snare on 2 and 6
+      if (s === 2 || s === 6) noiseHit(0.12, 0.25);
+      // hats every eighth
+      noiseHit(0.03, 0.06);
+      // bass groove
+      const bassNotes = [110, 0, 0, 146, 110, 0, 98, 0];
+      if (bassNotes[s]) blip(bassNotes[s], 0.16, "triangle", 0.22);
+      audio.step++;
+    };
+    tick();
+    audio.beatTimer = setInterval(tick, stepDur * 1000);
+  }
+  function stopBeat() {
+    if (audio && audio.beatTimer) { clearInterval(audio.beatTimer); audio.beatTimer = null; }
+  }
+
+  // ---- Sizing -------------------------------------------------------------
+  function resize() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = canvas.clientWidth;
+    H = canvas.clientHeight;
+    canvas.width = Math.floor(W * dpr);
+    canvas.height = Math.floor(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ground = H * CONFIG.groundRatio;
+    if (state && state.player) {
+      // keep player grounded on resize
+      state.player.y = Math.min(state.player.y, ground - state.player.h);
+    }
+  }
+
+  // ---- Game object factories ---------------------------------------------
+  function makePlayer() {
+    return {
+      x: W * 0.22, y: ground - 64,
+      w: 74, h: 46,
+      vx: 0, vy: 0,
+      onGround: true,
+      facing: 1,
+      biteTimer: 0,
+      biteCd: 0,
+      invuln: 0,
+      tailWag: 0,
+    };
+  }
+
+  function spawnVinyl() {
+    const highLane = Math.random() < 0.4;
+    const y = highLane ? ground - randi(120, 190) : ground - randi(30, 70);
+    state.vinyls.push({
+      x: W + randi(20, 120),
+      y, w: 30, h: 30,
+      spin: 0,
+      bob: Math.random() * Math.PI * 2,
+    });
+  }
+
+  function spawnSnake() {
+    state.enemies.push({
+      type: "snake",
+      x: W + randi(30, 160),
+      y: ground - 26,
+      w: 52, h: 26,
+      vx: -rand(1.2, 2.4),
+      wig: Math.random() * Math.PI * 2,
+      hp: 1,
+      dead: false,
+    });
+  }
+
+  function spawnFrog() {
+    state.enemies.push({
+      type: "frog",
+      x: W + randi(40, 180),
+      y: ground - 34,
+      w: 40, h: 34,
+      vx: -rand(0.6, 1.2),
+      vy: 0,
+      onGround: true,
+      hopCd: randi(30, 70),
+      hp: 1,
+      dead: false,
+    });
+  }
+
+  function spawnGnat() {
+    // flying swamp gnat swarm — must jump+bite or dodge
+    state.enemies.push({
+      type: "gnat",
+      x: W + randi(20, 120),
+      y: ground - randi(90, 170),
+      w: 34, h: 24,
+      vx: -rand(2.0, 3.2),
+      wob: Math.random() * Math.PI * 2,
+      baseY: 0,
+      hp: 1,
+      dead: false,
+    });
+    const g = state.enemies[state.enemies.length - 1];
+    g.baseY = g.y;
+  }
+
+  function addParticle(x, y, color, spread) {
+    for (let i = 0; i < 8; i++) {
+      state.particles.push({
+        x, y,
+        vx: rand(-spread, spread),
+        vy: rand(-spread, 1),
+        life: randi(18, 34),
+        color,
+        size: rand(2, 5),
+      });
+    }
+  }
+
+  function floatText(x, y, text, color) {
+    state.floaters.push({ x, y, text, color, life: 46 });
+  }
+
+  // ---- Reset / start ------------------------------------------------------
+  function resetGame() {
+    state = {
+      scene: "title",        // title | play | over
+      player: makePlayer(),
+      vinyls: [],
+      enemies: [],
+      particles: [],
+      floaters: [],
+      bgLayers: buildParallax(),
+      lilypads: buildLilypads(),
+      score: 0,
+      combo: 0,
+      comboTimer: 0,
+      lives: CONFIG.startLives,
+      distance: 0,
+      scroll: CONFIG.worldScrollBase,
+      spawnV: 40,
+      spawnE: 90,
+      beat: 0,
+      frame: 0,
+      shake: 0,
+      best: state && state.best ? state.best : loadBest(),
+    };
+  }
+
+  function loadBest() {
+    try { return parseInt(localStorage.getItem("gg_best") || "0", 10) || 0; }
+    catch (e) { return 0; }
+  }
+  function saveBest(v) {
+    try { localStorage.setItem("gg_best", String(v)); } catch (e) {}
+  }
+
+  function buildParallax() {
+    // three layers of swampy silhouettes
+    const layers = [];
+    const defs = [
+      { speed: 0.2, color: "#0f2a1a", n: 6, hMin: 0.18, hMax: 0.30 },
+      { speed: 0.45, color: "#123521", n: 7, hMin: 0.12, hMax: 0.22 },
+      { speed: 0.8, color: "#16401f", n: 9, hMin: 0.06, hMax: 0.14 },
+    ];
+    defs.forEach((d) => {
+      const items = [];
+      for (let i = 0; i < d.n + 2; i++) {
+        items.push({ x: (i / d.n) * W * 1.2, w: rand(60, 150), h: rand(d.hMin, d.hMax) });
+      }
+      layers.push({ ...d, items });
+    });
+    return layers;
+  }
+
+  function buildLilypads() {
+    const pads = [];
+    for (let i = 0; i < 8; i++) {
+      pads.push({ x: rand(0, W), r: rand(12, 26), off: rand(0, 6.28), spd: rand(0.3, 0.7) });
+    }
+    return pads;
+  }
+
+  function startPlay() {
+    initAudio();
+    if (audio && audio.ac.state === "suspended") audio.ac.resume();
+    resetGame();
+    state.scene = "play";
+    startBeat();
+  }
+
+  // ---- Input --------------------------------------------------------------
+  function onKey(e, down) {
+    const k = e.key.toLowerCase();
+    let handled = true;
+    if (k === "arrowleft" || k === "a") keys.left = down;
+    else if (k === "arrowright" || k === "d") keys.right = down;
+    else if (k === "arrowup" || k === "w" || k === " ") keys.jump = down;
+    else if (k === "f" || k === "j" || k === "shift") keys.bite = down;
+    else if (k === "enter" && down) { handleAction(); }
+    else handled = false;
+    if (handled) e.preventDefault();
+  }
+
+  function handleAction() {
+    if (state.scene === "title" || state.scene === "over") startPlay();
+  }
+
+  function bindTouch() {
+    const ui = document.getElementById("touch-ui");
+    const isTouch =
+      ("ontouchstart" in window) ||
+      navigator.maxTouchPoints > 0 ||
+      (window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
+    if (isTouch) ui.style.display = "block";
+    // Safety net: if a real touch ever happens, make sure controls are visible.
+    window.addEventListener("touchstart", () => { ui.style.display = "block"; }, { passive: true, once: true });
+    ui.querySelectorAll(".tc-btn").forEach((btn) => {
+      const key = btn.dataset.key;
+      const set = (v) => (e) => {
+        e.preventDefault();
+        keys[key] = v;
+        btn.classList.toggle("pressed", v);
+        if (v && (state.scene === "title" || state.scene === "over")) startPlay();
+      };
+      btn.addEventListener("touchstart", set(true), { passive: false });
+      btn.addEventListener("touchend", set(false), { passive: false });
+      btn.addEventListener("touchcancel", set(false), { passive: false });
+      btn.addEventListener("mousedown", set(true));
+      btn.addEventListener("mouseup", set(false));
+      btn.addEventListener("mouseleave", set(false));
+    });
+    // tap canvas to start
+    canvas.addEventListener("pointerdown", () => {
+      if (state.scene !== "play") startPlay();
+    });
+  }
+
+  // ---- Update -------------------------------------------------------------
+  function update() {
+    state.frame++;
+    state.beat = (state.beat + CONFIG.bpm / 3600) % 1; // beat phase 0..1
+
+    if (state.scene !== "play") return;
+
+    const p = state.player;
+
+    // difficulty ramp
+    state.distance += state.scroll;
+    state.scroll = CONFIG.worldScrollBase + Math.min(3.5, state.distance / 6000);
+
+    // ----- player movement -----
+    let move = 0;
+    if (keys.left) move -= 1;
+    if (keys.right) move += 1;
+    p.vx = move * CONFIG.moveSpeed;
+    if (move !== 0) p.facing = move;
+
+    if (keys.jump && p.onGround) {
+      p.vy = CONFIG.jumpVel;
+      p.onGround = false;
+      blip(320, 0.12, "square", 0.25);
+      addParticle(p.x + p.w / 2, p.y + p.h, PALETTE.waterShine, 2);
+    }
+
+    // bite
+    if (keys.bite && p.biteCd <= 0) {
+      p.biteTimer = CONFIG.biteDuration;
+      p.biteCd = CONFIG.biteCooldown;
+      blip(140, 0.09, "sawtooth", 0.28);
+    }
+    if (p.biteTimer > 0) p.biteTimer--;
+    if (p.biteCd > 0) p.biteCd--;
+    if (p.invuln > 0) p.invuln--;
+
+    p.vy += CONFIG.gravity;
+    p.x += p.vx;
+    p.y += p.vy;
+    p.x = clamp(p.x, 10, W - p.w - 10);
+
+    if (p.y + p.h >= ground) {
+      p.y = ground - p.h;
+      p.vy = 0;
+      p.onGround = true;
+    }
+    p.tailWag += 0.3;
+
+    // bite hitbox
+    let bite = null;
+    if (p.biteTimer > 0) {
+      const bw = 34;
+      bite = {
+        x: p.facing > 0 ? p.x + p.w - 8 : p.x - bw + 8,
+        y: p.y + 4, w: bw, h: p.h - 4,
+      };
+    }
+
+    // combo timer decay
+    if (state.comboTimer > 0) state.comboTimer--;
+    else state.combo = 0;
+
+    // ----- spawns -----
+    if (--state.spawnV <= 0) {
+      spawnVinyl();
+      state.spawnV = randi(28, 60) - Math.min(18, state.distance / 900);
+    }
+    if (--state.spawnE <= 0) {
+      const r = Math.random();
+      if (r < 0.45) spawnSnake();
+      else if (r < 0.72) spawnFrog();
+      else spawnGnat();
+      state.spawnE = randi(60, 120) - Math.min(40, state.distance / 500);
+    }
+
+    // ----- vinyls -----
+    for (let i = state.vinyls.length - 1; i >= 0; i--) {
+      const v = state.vinyls[i];
+      v.x -= state.scroll;
+      v.spin += 0.35;
+      v.bob += 0.06;
+      const vy = v.y + Math.sin(v.bob) * 4;
+      const box = { x: v.x, y: vy, w: v.w, h: v.h };
+      const pbox = { x: p.x, y: p.y, w: p.w, h: p.h };
+      if (AABB(box, pbox)) {
+        state.combo++;
+        state.comboTimer = 90;
+        const pts = 10 * Math.max(1, state.combo);
+        state.score += pts;
+        floatText(v.x, vy - 6, "+" + pts, PALETTE.gold);
+        addParticle(v.x + 15, vy + 15, PALETTE.gold, 3);
+        blip(520 + state.combo * 20, 0.08, "square", 0.3);
+        blip(780, 0.06, "sine", 0.18);
+        state.vinyls.splice(i, 1);
+        continue;
+      }
+      if (v.x + v.w < -20) state.vinyls.splice(i, 1);
+    }
+
+    // ----- enemies -----
+    for (let i = state.enemies.length - 1; i >= 0; i--) {
+      const e = state.enemies[i];
+      e.x += e.vx - state.scroll;
+
+      if (e.type === "snake") {
+        e.wig += 0.2;
+        e.y = ground - 26 + Math.sin(e.wig) * 3;
+      } else if (e.type === "frog") {
+        e.vy += CONFIG.gravity * 0.6;
+        e.y += e.vy;
+        if (e.y + e.h >= ground) { e.y = ground - e.h; e.vy = 0; e.onGround = true; }
+        if (e.onGround && --e.hopCd <= 0) {
+          e.vy = -10; e.onGround = false; e.hopCd = randi(40, 80);
+        }
+      } else if (e.type === "gnat") {
+        e.wob += 0.15;
+        e.y = e.baseY + Math.sin(e.wob) * 18;
+      }
+
+      const ebox = { x: e.x, y: e.y, w: e.w, h: e.h };
+
+      // bite kills
+      if (bite && AABB(bite, ebox) && !e.dead) {
+        e.dead = true;
+        state.score += 25;
+        state.combo++;
+        state.comboTimer = 90;
+        floatText(e.x, e.y - 6, "CHOMP!", PALETTE.hot);
+        addParticle(e.x + e.w / 2, e.y + e.h / 2, PALETTE.snake, 4);
+        noiseHit(0.1, 0.3);
+        blip(90, 0.14, "sawtooth", 0.3);
+        state.shake = 6;
+        state.enemies.splice(i, 1);
+        continue;
+      }
+
+      // touch damages player
+      const pbox = { x: p.x + 6, y: p.y + 4, w: p.w - 12, h: p.h - 8 };
+      if (AABB(ebox, pbox) && p.invuln <= 0 && !e.dead) {
+        hurtPlayer();
+        addParticle(p.x + p.w / 2, p.y + p.h / 2, PALETTE.hot, 4);
+        state.enemies.splice(i, 1);
+        continue;
+      }
+
+      if (e.x + e.w < -40) state.enemies.splice(i, 1);
+    }
+
+    // ----- particles / floaters -----
+    for (let i = state.particles.length - 1; i >= 0; i--) {
+      const pt = state.particles[i];
+      pt.vy += 0.3;
+      pt.x += pt.vx; pt.y += pt.vy;
+      if (--pt.life <= 0) state.particles.splice(i, 1);
+    }
+    for (let i = state.floaters.length - 1; i >= 0; i--) {
+      const f = state.floaters[i];
+      f.y -= 0.8; f.x -= state.scroll * 0.5;
+      if (--f.life <= 0) state.floaters.splice(i, 1);
+    }
+
+    // ----- parallax scroll -----
+    state.bgLayers.forEach((layer) => {
+      layer.items.forEach((it) => {
+        it.x -= state.scroll * layer.speed;
+        if (it.x + it.w < 0) { it.x = W + rand(0, 120); it.h = rand(layer.hMin, layer.hMax); }
+      });
+    });
+    state.lilypads.forEach((lp) => {
+      lp.x -= state.scroll * 0.9;
+      lp.off += lp.spd * 0.05;
+      if (lp.x + lp.r < 0) { lp.x = W + rand(0, 80); lp.r = rand(12, 26); }
+    });
+
+    if (state.shake > 0) state.shake *= 0.85;
+
+    // passive distance score
+    if (state.frame % 6 === 0) state.score++;
+  }
+
+  function hurtPlayer() {
+    const p = state.player;
+    p.invuln = CONFIG.invulnFrames;
+    state.lives--;
+    state.combo = 0;
+    state.shake = 10;
+    noiseHit(0.2, 0.35);
+    blip(70, 0.25, "sawtooth", 0.3);
+    if (state.lives <= 0) gameOver();
+  }
+
+  function gameOver() {
+    state.scene = "over";
+    stopBeat();
+    if (state.score > state.best) { state.best = state.score; saveBest(state.best); }
+  }
+
+  // ---- Render -------------------------------------------------------------
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+
+    let sx = 0, sy = 0;
+    if (state.shake > 0.5) { sx = rand(-state.shake, state.shake); sy = rand(-state.shake, state.shake); }
+    ctx.save();
+    ctx.translate(sx, sy);
+
+    drawSky();
+    drawParallax();
+    drawWater();
+
+    if (state.scene === "play" || state.scene === "over") {
+      state.vinyls.forEach(drawVinyl);
+      state.enemies.forEach(drawEnemy);
+      drawPlayer();
+      drawParticles();
+      drawFloaters();
+    }
+
+    ctx.restore();
+
+    drawHUD();
+    if (state.scene === "title") drawTitle();
+    if (state.scene === "over") drawOver();
+  }
+
+  function drawSky() {
+    const g = ctx.createLinearGradient(0, 0, 0, ground);
+    g.addColorStop(0, PALETTE.skyTop);
+    g.addColorStop(1, PALETTE.skyBot);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, ground);
+    // hazy hip-hop moon that pulses with the beat
+    const pulse = 1 + Math.sin(state.beat * Math.PI * 2) * 0.06;
+    const mr = 46 * pulse;
+    ctx.save();
+    ctx.globalAlpha = 0.85;
+    const mg = ctx.createRadialGradient(W * 0.8, H * 0.2, 4, W * 0.8, H * 0.2, mr);
+    mg.addColorStop(0, "#f4efe0");
+    mg.addColorStop(0.6, "#e8b84b");
+    mg.addColorStop(1, "rgba(232,184,75,0)");
+    ctx.fillStyle = mg;
+    ctx.beginPath();
+    ctx.arc(W * 0.8, H * 0.2, mr, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawParallax() {
+    state.bgLayers.forEach((layer) => {
+      ctx.fillStyle = layer.color;
+      layer.items.forEach((it) => {
+        const h = it.h * H;
+        // gnarled swamp tree / bush silhouettes
+        ctx.beginPath();
+        ctx.moveTo(it.x, ground);
+        ctx.lineTo(it.x + it.w * 0.2, ground - h);
+        ctx.lineTo(it.x + it.w * 0.5, ground - h * 1.15);
+        ctx.lineTo(it.x + it.w * 0.8, ground - h);
+        ctx.lineTo(it.x + it.w, ground);
+        ctx.closePath();
+        ctx.fill();
+      });
+    });
+  }
+
+  function drawWater() {
+    ctx.fillStyle = PALETTE.water;
+    ctx.fillRect(0, ground, W, H - ground);
+    // moss bank
+    ctx.fillStyle = PALETTE.mudNear;
+    ctx.fillRect(0, ground - 6, W, 12);
+    ctx.fillStyle = PALETTE.mossLine || "#3f6b3a";
+    for (let x = 0; x < W; x += 14) {
+      const hh = 4 + Math.sin((x + state.distance) * 0.1) * 3;
+      ctx.fillRect(x, ground - 6 - hh, 6, hh);
+    }
+    // water shine lines
+    ctx.strokeStyle = PALETTE.waterShine;
+    ctx.globalAlpha = 0.25;
+    for (let i = 1; i <= 4; i++) {
+      const y = ground + i * ((H - ground) / 5);
+      ctx.beginPath();
+      for (let x = 0; x <= W; x += 12) {
+        const yy = y + Math.sin((x * 0.05) + state.frame * 0.05 + i) * 2;
+        if (x === 0) ctx.moveTo(x, yy); else ctx.lineTo(x, yy);
+      }
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    // lily pads
+    state.lilypads.forEach((lp) => {
+      const y = ground + 14 + Math.sin(lp.off) * 4;
+      ctx.fillStyle = "#2f6b3a";
+      ctx.beginPath();
+      ctx.arc(lp.x, y, lp.r, 0.3, Math.PI * 2 - 0.3);
+      ctx.fill();
+    });
+  }
+
+  function drawPlayer() {
+    const p = state.player;
+    if (p.invuln > 0 && Math.floor(p.invuln / 4) % 2 === 0) return; // blink
+    ctx.save();
+    ctx.translate(p.x + p.w / 2, p.y + p.h / 2);
+    ctx.scale(p.facing, 1);
+    ctx.translate(-p.w / 2, -p.h / 2);
+
+    // shadow
+    ctx.fillStyle = PALETTE.shadow;
+    ctx.beginPath();
+    ctx.ellipse(p.w / 2, ground - (p.y), p.w * 0.4, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // tail
+    const wag = Math.sin(p.tailWag) * 4;
+    ctx.fillStyle = PALETTE.crocDark;
+    ctx.beginPath();
+    ctx.moveTo(2, p.h * 0.5);
+    ctx.lineTo(-20, p.h * 0.35 + wag);
+    ctx.lineTo(2, p.h * 0.75);
+    ctx.closePath();
+    ctx.fill();
+
+    // body
+    ctx.fillStyle = PALETTE.croc;
+    roundRect(0, 8, p.w - 16, p.h - 8, 8);
+    ctx.fill();
+    // belly
+    ctx.fillStyle = PALETTE.crocBelly;
+    roundRect(6, p.h - 12, p.w - 30, 8, 4);
+    ctx.fill();
+
+    // back scales
+    ctx.fillStyle = PALETTE.crocDark;
+    for (let i = 0; i < 4; i++) {
+      ctx.beginPath();
+      ctx.moveTo(10 + i * 12, 8);
+      ctx.lineTo(16 + i * 12, 0);
+      ctx.lineTo(22 + i * 12, 8);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // head / snout
+    const open = p.biteTimer > 0 ? 10 : 3;
+    ctx.fillStyle = PALETTE.croc;
+    roundRect(p.w - 34, 10, 40, 20, 6);
+    ctx.fill();
+    // upper jaw
+    ctx.fillStyle = PALETTE.crocDark;
+    roundRect(p.w - 4, 12 - open / 2, 20, 8, 3);
+    ctx.fill();
+    // lower jaw
+    ctx.fillStyle = PALETTE.croc;
+    roundRect(p.w - 4, 24 + open / 2, 18, 6, 3);
+    ctx.fill();
+    // teeth
+    ctx.fillStyle = PALETTE.tooth;
+    for (let i = 0; i < 4; i++) {
+      ctx.beginPath();
+      ctx.moveTo(p.w - 2 + i * 5, 20 - open / 2);
+      ctx.lineTo(p.w + i * 5, 25);
+      ctx.lineTo(p.w - 4 + i * 5, 20 - open / 2);
+      ctx.closePath();
+      ctx.fill();
+    }
+    // eye
+    ctx.fillStyle = PALETTE.crocDark;
+    ctx.beginPath(); ctx.arc(p.w - 24, 8, 6, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = PALETTE.eye;
+    ctx.beginPath(); ctx.arc(p.w - 24, 8, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#111";
+    ctx.beginPath(); ctx.arc(p.w - 22, 8, 2, 0, Math.PI * 2); ctx.fill();
+
+    // gold chain (hip-hop drip)
+    ctx.strokeStyle = PALETTE.gold;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(p.w - 30, 26, 8, 0.1, Math.PI - 0.1);
+    ctx.stroke();
+    ctx.fillStyle = PALETTE.gold;
+    ctx.beginPath(); ctx.arc(p.w - 30, 34, 3, 0, Math.PI * 2); ctx.fill();
+
+    // legs
+    ctx.fillStyle = PALETTE.crocDark;
+    const legK = p.onGround ? Math.sin(state.frame * 0.4) * 3 : 4;
+    roundRect(14, p.h - 4, 8, 8 + legK, 2); ctx.fill();
+    roundRect(34, p.h - 4, 8, 8 - legK, 2); ctx.fill();
+
+    ctx.restore();
+  }
+
+  function drawVinyl(v) {
+    const y = v.y + Math.sin(v.bob) * 4;
+    ctx.save();
+    ctx.translate(v.x + v.w / 2, y + v.h / 2);
+    ctx.rotate(v.spin);
+    // disc
+    ctx.fillStyle = PALETTE.vinyl;
+    ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI * 2); ctx.fill();
+    // grooves
+    ctx.strokeStyle = "rgba(255,255,255,0.12)";
+    ctx.lineWidth = 1;
+    for (let r = 5; r < 15; r += 3) { ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.stroke(); }
+    // label
+    ctx.fillStyle = (Math.floor(v.x / 30) % 2) ? PALETTE.vinylLabel : PALETTE.vinylLabelAlt;
+    ctx.beginPath(); ctx.arc(0, 0, 5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#000";
+    ctx.beginPath(); ctx.arc(0, 0, 1.4, 0, Math.PI * 2); ctx.fill();
+    // shine
+    ctx.strokeStyle = "rgba(255,255,255,0.35)";
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(0, 0, 12, -0.9, -0.3); ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawEnemy(e) {
+    ctx.save();
+    if (e.type === "snake") {
+      // shadow
+      ctx.fillStyle = PALETTE.shadow;
+      ctx.beginPath(); ctx.ellipse(e.x + e.w / 2, ground, e.w * 0.4, 5, 0, 0, Math.PI * 2); ctx.fill();
+      // wiggly body
+      ctx.strokeStyle = PALETTE.snake;
+      ctx.lineWidth = 12;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      for (let i = 0; i <= e.w; i += 6) {
+        const yy = e.y + 12 + Math.sin(e.wig + i * 0.25) * 6;
+        if (i === 0) ctx.moveTo(e.x + i, yy); else ctx.lineTo(e.x + i, yy);
+      }
+      ctx.stroke();
+      // stripes
+      ctx.strokeStyle = PALETTE.snakeDark;
+      ctx.lineWidth = 4;
+      for (let i = 6; i < e.w; i += 12) {
+        const yy = e.y + 12 + Math.sin(e.wig + i * 0.25) * 6;
+        ctx.beginPath(); ctx.moveTo(e.x + i, yy - 6); ctx.lineTo(e.x + i, yy + 6); ctx.stroke();
+      }
+      // head
+      const hy = e.y + 12 + Math.sin(e.wig) * 6;
+      ctx.fillStyle = PALETTE.snake;
+      ctx.beginPath(); ctx.ellipse(e.x, hy, 10, 8, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = PALETTE.hot;
+      ctx.fillRect(e.x - 12, hy - 1, 6, 2); // tongue
+      ctx.fillStyle = "#fff";
+      ctx.beginPath(); ctx.arc(e.x - 2, hy - 2, 2, 0, Math.PI * 2); ctx.fill();
+    } else if (e.type === "frog") {
+      ctx.fillStyle = PALETTE.shadow;
+      ctx.beginPath(); ctx.ellipse(e.x + e.w / 2, ground, e.w * 0.4, 5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = PALETTE.frog;
+      roundRect(e.x, e.y + 8, e.w, e.h - 8, 10); ctx.fill();
+      // eyes
+      ctx.beginPath(); ctx.arc(e.x + 10, e.y + 8, 7, 0, Math.PI * 2); ctx.arc(e.x + e.w - 10, e.y + 8, 7, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#fff";
+      ctx.beginPath(); ctx.arc(e.x + 10, e.y + 7, 3, 0, Math.PI * 2); ctx.arc(e.x + e.w - 10, e.y + 7, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#111";
+      ctx.beginPath(); ctx.arc(e.x + 11, e.y + 7, 1.4, 0, Math.PI * 2); ctx.arc(e.x + e.w - 9, e.y + 7, 1.4, 0, Math.PI * 2); ctx.fill();
+      // legs
+      ctx.fillStyle = PALETTE.snakeDark;
+      ctx.fillStyle = "#5a9e33";
+      roundRect(e.x - 4, e.y + e.h - 8, 10, 6, 3); ctx.fill();
+      roundRect(e.x + e.w - 6, e.y + e.h - 8, 10, 6, 3); ctx.fill();
+    } else if (e.type === "gnat") {
+      // swarm cluster
+      ctx.fillStyle = "rgba(20,20,20,0.85)";
+      for (let i = 0; i < 5; i++) {
+        const ox = Math.sin(e.wob * 2 + i) * 8;
+        const oy = Math.cos(e.wob * 3 + i) * 6;
+        ctx.beginPath(); ctx.arc(e.x + e.w / 2 + ox, e.y + e.h / 2 + oy, 3, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.strokeStyle = "rgba(182,232,75,0.4)";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(e.x, e.y, e.w, e.h);
+    }
+    ctx.restore();
+  }
+
+  function drawParticles() {
+    state.particles.forEach((pt) => {
+      ctx.globalAlpha = clamp(pt.life / 30, 0, 1);
+      ctx.fillStyle = pt.color;
+      ctx.fillRect(pt.x, pt.y, pt.size, pt.size);
+    });
+    ctx.globalAlpha = 1;
+  }
+
+  function drawFloaters() {
+    ctx.textAlign = "center";
+    state.floaters.forEach((f) => {
+      ctx.globalAlpha = clamp(f.life / 30, 0, 1);
+      ctx.fillStyle = f.color;
+      ctx.font = "bold 16px 'Courier New', monospace";
+      ctx.fillText(f.text, f.x, f.y);
+    });
+    ctx.globalAlpha = 1;
+    ctx.textAlign = "left";
+  }
+
+  // ---- HUD & screens ------------------------------------------------------
+  function drawHUD() {
+    ctx.font = "bold 18px 'Courier New', monospace";
+    ctx.textAlign = "left";
+    ctx.fillStyle = PALETTE.bone;
+    ctx.fillText("SCORE " + state.score, 14, 26);
+    ctx.fillStyle = PALETTE.gold;
+    ctx.fillText("BEST " + state.best, 14, 48);
+
+    // combo
+    if (state.combo > 1) {
+      ctx.fillStyle = PALETTE.acid;
+      ctx.font = "bold 16px 'Courier New', monospace";
+      ctx.fillText("x" + state.combo + " COMBO", 14, 70);
+    }
+
+    // lives as little crocs
+    ctx.textAlign = "right";
+    for (let i = 0; i < state.lives; i++) {
+      const x = W - 20 - i * 26;
+      ctx.fillStyle = PALETTE.croc;
+      roundRect(x - 18, 14, 18, 10, 3); ctx.fill();
+      ctx.fillStyle = PALETTE.tooth;
+      ctx.fillRect(x, 18, 4, 3);
+    }
+    ctx.textAlign = "left";
+  }
+
+  function panel(title, lines, accent) {
+    ctx.fillStyle = "rgba(5,16,10,0.72)";
+    ctx.fillRect(0, 0, W, H);
+    ctx.textAlign = "center";
+
+    // title with bounce
+    const bounce = Math.sin(state.beat * Math.PI * 2) * 6;
+    ctx.fillStyle = accent || PALETTE.gold;
+    ctx.font = "bold " + Math.min(46, W / 9) + "px 'Courier New', monospace";
+    ctx.fillText(title, W / 2, H * 0.32 + bounce);
+
+    ctx.font = "16px 'Courier New', monospace";
+    ctx.fillStyle = PALETTE.bone;
+    lines.forEach((ln, i) => {
+      ctx.fillText(ln, W / 2, H * 0.32 + 44 + i * 26 + bounce * 0.3);
+    });
+    ctx.textAlign = "left";
+  }
+
+  function drawTitle() {
+    panel("GATOR GROOVES", [
+      "Munch vinyl. Battle the swamp.",
+      "",
+      "MOVE: A/D or Arrows   JUMP: W / Space",
+      "CHOMP: F / J / Shift",
+      "(or use the on-screen buttons)",
+      "",
+      "PRESS ENTER / TAP TO DROP THE BEAT",
+    ], PALETTE.gold);
+    // vinyl accent
+    drawSpinIcon(W / 2, H * 0.24, 22);
+  }
+
+  function drawOver() {
+    panel("SWAMP CLAIMED YA", [
+      "Score: " + state.score,
+      "Best: " + state.best,
+      "",
+      state.score >= state.best ? "NEW RECORD! (pun intended)" : "Keep grindin', G.",
+      "",
+      "PRESS ENTER / TAP TO RUN IT BACK",
+    ], PALETTE.hot);
+  }
+
+  function drawSpinIcon(cx, cy, r) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(state.frame * 0.05);
+    ctx.fillStyle = PALETTE.vinyl;
+    ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = PALETTE.hot;
+    ctx.beginPath(); ctx.arc(0, 0, r * 0.32, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#000";
+    ctx.beginPath(); ctx.arc(0, 0, 2, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
+  // rounded rect helper
+  function roundRect(x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  // ---- Loop ---------------------------------------------------------------
+  function loop(t) {
+    if (!running) return;
+    raf = requestAnimationFrame(loop);
+    if (!lastT) lastT = t;
+    let dt = t - lastT;
+    lastT = t;
+    if (dt > 100) dt = 100;
+    acc += dt;
+    while (acc >= STEP) { update(); acc -= STEP; }
+    draw();
+  }
+
+  // ---- Public API ---------------------------------------------------------
+  function mount(cv) {
+    canvas = cv;
+    ctx = canvas.getContext("2d");
+    resetGame();
+    resize();
+    window.addEventListener("resize", resize);
+    window.addEventListener("keydown", (e) => onKey(e, true));
+    window.addEventListener("keyup", (e) => onKey(e, false));
+    bindTouch();
+    running = true;
+    lastT = 0;
+    raf = requestAnimationFrame(loop);
+  }
+
+  function destroy() {
+    running = false;
+    if (raf) cancelAnimationFrame(raf);
+    stopBeat();
+    window.removeEventListener("resize", resize);
+  }
+
+  return { mount, destroy, CONFIG };
+})();
+
+// Auto-boot when used as a standalone page.
+GatorGrooves.mount(document.getElementById("game"));
+</script>
+</body>
+</html>
