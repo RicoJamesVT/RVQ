@@ -6908,6 +6908,13 @@ function makeSwamp() {
   for (let y = FOOD_CLEAR_Y; y < FOOD_CLEAR_Y + FOOD_CLEAR_H; y++)
     for (let x = FOOD_CLEAR_X; x < FOOD_CLEAR_X + FOOD_CLEAR_W; x++) g[y][x] = '.';
 
+  // BURLINGTON RECORDS clearing -- third swamp building, tucked into the
+  // upper-right corner clear of the x=34 spur, same "bottom row sits
+  // against the boardwalk trunk (row 12)" logic as FOOD_CLEAR above.
+  const BURL_CLEAR_X = 35, BURL_CLEAR_Y = 2, BURL_CLEAR_W = 8, BURL_CLEAR_H = 10;
+  for (let y = BURL_CLEAR_Y; y < BURL_CLEAR_Y + BURL_CLEAR_H; y++)
+    for (let x = BURL_CLEAR_X; x < BURL_CLEAR_X + BURL_CLEAR_W; x++) g[y][x] = '.';
+
   // sprinkle swamp trees over the mud (runs over the new clearing too, so
   // it reads as part of the same swamp rather than a bare patch)
   for (let y = 1; y < H - 1; y++)
@@ -6949,10 +6956,29 @@ function makeSwamp() {
     wall: '#5a4a2e', roof: '#302416', doorX: FOOD_DOOR_X,
   });
 
+  // BURLINGTON RECORDS -- third swamp building: a proper record shop that
+  // washed up out here off the boardwalk. Same solid-walls-plus-one-door
+  // construction as GUT HUT/SWAMP FOOD above; doorX/doorY are exported
+  // below (burlingtonRecordsDoor) for the transition wiring outside this
+  // function.
+  const BURL_X = 36, BURL_Y = 5, BURL_W = 6, BURL_H = 4;
+  const BURL_DOOR_X = BURL_X + Math.floor(BURL_W / 2);
+  const BURL_DOOR_Y = BURL_Y + BURL_H - 1;
+  for (let y = BURL_Y; y < BURL_Y + BURL_H; y++)
+    for (let x = BURL_X; x < BURL_X + BURL_W; x++) g[y][x] = 'w';
+  g[BURL_DOOR_Y][BURL_DOOR_X] = 'D';
+  buildings.push({
+    x: BURL_X, y: BURL_Y, w: BURL_W, h: BURL_H, name: 'BURLINGTON RECORDS',
+    wall: '#4a3a5e', roof: '#241c30', doorX: BURL_DOOR_X,
+  });
+
   // crates: five hidden records + a few junk ones. Mud Kick (swampdrum)
   // used to sit out here on the boardwalk spur -- it's been moved inside
   // GUT HUT (see the `guthut` shop below), so the swamp still has exactly
-  // five records total, just one of them behind a door now.
+  // five records total, just one of them behind a door now. Honeysuckle
+  // Lead has likewise moved in off the spur and into BURLINGTON RECORDS
+  // (see the `burlington` shop below) -- its old outdoor crate here is now
+  // junk so the swamp still reads as fully stocked with dig spots.
   const crates = {};
   const crateDefs = [
     [20, 12, { record: 'moss' }],
@@ -6961,7 +6987,7 @@ function makeSwamp() {
     [6, 12,  { junkSeed: 2 }],
     [8, 9,   { record: 'choir' }],
     [17, 18, { junkSeed: 0 }],
-    [34, 17, { record: 'honeysuckle' }],
+    [34, 17, { junkSeed: 6 }],
     [14, 12, { junkSeed: 3 }],
   ];
   for (const [x, y, d] of crateDefs) { g[y][x] = 'c'; crates[key(x, y)] = d; }
@@ -6976,6 +7002,7 @@ function makeSwamp() {
     buildings, doors: {}, crates, npcs: [], riverTiles: waterTiles,
     swamp: true, gutHutDoor: { x: HUT_DOOR_X, y: HUT_DOOR_Y },
     swampFoodDoor: { x: FOOD_DOOR_X, y: FOOD_DOOR_Y },
+    burlingtonRecordsDoor: { x: BURL_DOOR_X, y: BURL_DOOR_Y },
     palette: {
       groundA: '#6a5a35', groundB: '#5c723a', groundDot: '#6d8a46',
       water: '#2c4330', waterHi: '#3d5a3e',
@@ -7578,6 +7605,29 @@ const shops = {
       { id: 'crocswamp', tx: 10, ty: 6, label: 'PLAY GATOR GROOVES' },
     ],
   }),
+  // BURLINGTON RECORDS -- the swamp's third building: a proper record shop
+  // that set up out here off the boardwalk. `world: 'swamp'` again for
+  // consistency with GUT HUT/SWAMP FOOD above -- it's what makes
+  // Honeysuckle Lead register as a *swamp* record even though it's now
+  // found indoors. `recordShop: true` gets it the same crate-digger's-dream
+  // interior treatment (wall-mounted vinyl, bins, turntable booth, disco
+  // ball) as Pure Pop Records back in town -- see drawPurePopInterior().
+  burlington: makeShop('burlington', {
+    world: 'swamp',
+    floor: '#3a2e4a', plank: '#2c2238', wallColor: '#1c1526',
+    recordShop: true,
+    keeper: { name: 'REEDA', shirt: '#7a5aa0', skin: '#8a6a48',
+      lines: [
+        'Welcome to Burlington Records — yeah, out here in the swamp. Rent\'s cheaper, and the frogs don\'t complain about the volume.',
+        'Grew up crate-digging up in Burlington proper. Followed the boardwalk out here and never left.',
+        'Honeysuckle Lead came through in a water-damaged box of 45s. Sound\'s still clean, somehow.',
+        'Might be filed in one of these crates. Might not. My filing system is mostly "eventually".',
+      ],
+      foundLine: 'Honeysuckle Lead! Knew that one was in here somewhere. Let it glow.' },
+    // Four crates: Honeysuckle Lead (moved in off the boardwalk spur, see
+    // makeSwamp()) plus three junk crates.
+    crates: [ { junkSeed: 0 }, { record: 'honeysuckle' }, { junkSeed: 1 }, { junkSeed: 2 } ],
+  }),
 };
 
 // door wiring: town door tile -> shop spawn; shop exit tile -> town spawn
@@ -7595,6 +7645,9 @@ transitions['guthut:' + key(6, 9)] = { map: 'swamp', x: swamp.gutHutDoor.x + 0.5
 // SWAMP FOOD door wiring -- same pattern as GUT HUT above.
 transitions['swamp:' + key(swamp.swampFoodDoor.x, swamp.swampFoodDoor.y)] = { map: 'swampfood', x: 6.5, y: 7.5 };
 transitions['swampfood:' + key(6, 9)] = { map: 'swamp', x: swamp.swampFoodDoor.x + 0.5, y: swamp.swampFoodDoor.y + 1.6 };
+// BURLINGTON RECORDS door wiring -- same pattern as GUT HUT above.
+transitions['swamp:' + key(swamp.burlingtonRecordsDoor.x, swamp.burlingtonRecordsDoor.y)] = { map: 'burlington', x: 6.5, y: 7.5 };
+transitions['burlington:' + key(6, 9)] = { map: 'swamp', x: swamp.burlingtonRecordsDoor.x + 0.5, y: swamp.burlingtonRecordsDoor.y + 1.6 };
 const maps = { town, ...shops, swamp };
 
 // ---------------------------------------------------------------- state
