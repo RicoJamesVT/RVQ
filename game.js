@@ -7004,6 +7004,16 @@ function makeSwamp() {
   for (let y = BURL_CLEAR_Y; y < BURL_CLEAR_Y + BURL_CLEAR_H; y++)
     for (let x = BURL_CLEAR_X; x < BURL_CLEAR_X + BURL_CLEAR_W; x++) g[y][x] = '.';
 
+  // JOHNNY'S FUN PARK clearing -- fourth swamp building (plus its attached
+  // pool/deck structure), tucked into the lower-right corner below
+  // BURLINGTON RECORDS, clear of the x=34 spur. Tall enough to stack both
+  // structures with a walking gap between them; its top row (row 13) sits
+  // directly against the boardwalk trunk (row 12), same "step off the
+  // boardwalk onto solid ground" logic as the other clearings above.
+  const JFP_CLEAR_X = 35, JFP_CLEAR_Y = 13, JFP_CLEAR_W = 9, JFP_CLEAR_H = 13;
+  for (let y = JFP_CLEAR_Y; y < JFP_CLEAR_Y + JFP_CLEAR_H; y++)
+    for (let x = JFP_CLEAR_X; x < JFP_CLEAR_X + JFP_CLEAR_W; x++) g[y][x] = '.';
+
   // sprinkle swamp trees over the mud (runs over the new clearing too, so
   // it reads as part of the same swamp rather than a bare patch)
   for (let y = 1; y < H - 1; y++)
@@ -7061,17 +7071,53 @@ function makeSwamp() {
     wall: '#4a3a5e', roof: '#241c30', doorX: BURL_DOOR_X,
   });
 
+  // JOHNNY'S FUN PARK -- fourth swamp building: a little boardwalk fun
+  // park/arcade. Same solid-walls-plus-one-door construction as the three
+  // buildings above; doorX/doorY are exported below (jfpDoor) for the
+  // transition wiring outside this function.
+  const JFP_X = 36, JFP_Y = 16, JFP_W = 6, JFP_H = 4;
+  const JFP_DOOR_X = JFP_X + Math.floor(JFP_W / 2);
+  const JFP_DOOR_Y = JFP_Y + JFP_H - 1;
+  for (let y = JFP_Y; y < JFP_Y + JFP_H; y++)
+    for (let x = JFP_X; x < JFP_X + JFP_W; x++) g[y][x] = 'w';
+  g[JFP_DOOR_Y][JFP_DOOR_X] = 'D';
+  buildings.push({
+    x: JFP_X, y: JFP_Y, w: JFP_W, h: JFP_H, name: "JOHNNY'S FUN PARK",
+    wall: '#c05a3a', roof: '#7a2e1c', doorX: JFP_DOOR_X,
+  });
+
+  // JOHNNY'S POOL -- the fun park's attached outside area: a fenced-in
+  // swimming pool and deck, sat just south of the main building (with a
+  // one-tile walking gap between them) inside the same clearing. Built the
+  // same way as every other structure here -- solid walls, one door -- so
+  // it reads as its own little building on the map even though inside it
+  // functions as a pool/deck room, not a shop. doorX/doorY are exported
+  // below (jfpPoolDoor) for the transition wiring outside this function.
+  const JPOOL_X = 36, JPOOL_Y = 21, JPOOL_W = 6, JPOOL_H = 4;
+  const JPOOL_DOOR_X = JPOOL_X + Math.floor(JPOOL_W / 2);
+  const JPOOL_DOOR_Y = JPOOL_Y + JPOOL_H - 1;
+  for (let y = JPOOL_Y; y < JPOOL_Y + JPOOL_H; y++)
+    for (let x = JPOOL_X; x < JPOOL_X + JPOOL_W; x++) g[y][x] = 'w';
+  g[JPOOL_DOOR_Y][JPOOL_DOOR_X] = 'D';
+  buildings.push({
+    x: JPOOL_X, y: JPOOL_Y, w: JPOOL_W, h: JPOOL_H, name: "JOHNNY'S POOL",
+    wall: '#2a8a9a', roof: '#155a66', doorX: JPOOL_DOOR_X,
+  });
+
   // crates: five hidden records + a few junk ones. Mud Kick (swampdrum)
   // used to sit out here on the boardwalk spur -- it's been moved inside
   // GUT HUT (see the `guthut` shop below), so the swamp still has exactly
   // five records total, just one of them behind a door now. Honeysuckle
   // Lead has likewise moved in off the spur and into BURLINGTON RECORDS
   // (see the `burlington` shop below) -- its old outdoor crate here is now
-  // junk so the swamp still reads as fully stocked with dig spots.
+  // junk so the swamp still reads as fully stocked with dig spots. Frog
+  // Chorus Stab has now likewise moved in off the trunk and into JOHNNY'S
+  // FUN PARK (see the `johnnysfunpark` shop below) -- same deal, its old
+  // outdoor crate here is now junk.
   const crates = {};
   const crateDefs = [
     [20, 12, { record: 'moss' }],
-    [30, 12, { record: 'frog' }],
+    [30, 12, { junkSeed: 7 }],
     [38, 12, { junkSeed: 1 }],
     [6, 12,  { junkSeed: 2 }],
     [8, 9,   { record: 'choir' }],
@@ -7092,6 +7138,8 @@ function makeSwamp() {
     swamp: true, gutHutDoor: { x: HUT_DOOR_X, y: HUT_DOOR_Y },
     swampFoodDoor: { x: FOOD_DOOR_X, y: FOOD_DOOR_Y },
     burlingtonRecordsDoor: { x: BURL_DOOR_X, y: BURL_DOOR_Y },
+    jfpDoor: { x: JFP_DOOR_X, y: JFP_DOOR_Y },
+    jfpPoolDoor: { x: JPOOL_DOOR_X, y: JPOOL_DOOR_Y },
     palette: {
       groundA: '#6a5a35', groundB: '#5c723a', groundDot: '#6d8a46',
       water: '#2c4330', waterHi: '#3d5a3e',
@@ -7240,6 +7288,42 @@ function makeShop(id, opts) {
     map.crates[key(x, y)] = c;
   });
   if (opts.jukebox) { g[2][11] = 'J'; map.jukebox = true; }
+  return map;
+}
+
+// JOHNNY'S POOL -- the outside pool/deck area attached to JOHNNY'S FUN PARK.
+// Built on top of makeShop()'s standard 14x10 walled room (same border
+// walls, same door tile at the bottom) so it plugs into the map/transition
+// system exactly like every other interior, but then has most of its floor
+// carved into a swimming pool: rows 1-6 (the top two thirds of the room)
+// become open water, and rows 7-8 (the strip right in front of the door)
+// stay dry as a wooden deck. `noCounterTable` skips the usual shop counter
+// since this room isn't a shop, and the keeper is pushed down onto the deck
+// (row 7) instead of makeShop's default row-2 spot, so PADDLES reads as
+// standing poolside rather than floating in the pool. The pool itself is
+// just the ordinary '~' water tile (solid, same as swamp/river water)
+// filled in here -- no gameplay lives in it yet; that's the "swimming
+// game" to be added later. `opts.crates` is left empty since there's
+// nothing to dig for out here.
+function makeJohnnysPool() {
+  const map = makeShop('johnnyspool', {
+    world: 'swamp',
+    floor: '#8a6a3a', plank: '#6a4e26', wallColor: '#153038',
+    noCounterTable: true,
+    keeper: { x: 9, y: 8, name: 'PADDLES', shirt: '#e0562e', skin: '#8a6a48',
+      lines: [
+        'Deck\'s dry, pool\'s wet — that\'s the whole job description out here.',
+        'Johnny had this thing trucked in plank by plank. Don\'t ask how it doesn\'t leak. It just doesn\'t.',
+        'No diving, no cannonballs near the ladder, and no, the gators are not invited.',
+        'Give it a little while longer — got a real swim game coming for this pool.',
+      ] },
+    crates: [],
+  });
+  // Carve the pool: every interior tile in rows 1-6 becomes water, leaving
+  // the border walls (row 0), the deck (rows 7-8), and the door wall/exit
+  // tile (row 9) untouched.
+  for (let y = 1; y <= 6; y++)
+    for (let x = 1; x <= 12; x++) map.grid[y][x] = '~';
   return map;
 }
 
@@ -7749,6 +7833,35 @@ const shops = {
       { id: 'vinylsnake', tx: 9, ty: 7, label: 'PLAY VINYL SNAKE' },
     ],
   }),
+  // JOHNNY'S FUN PARK -- the swamp's fourth building: a little boardwalk
+  // arcade/fun park run by Johnny himself. `world: 'swamp'` again for
+  // consistency with the other three swamp shops -- it's what makes Frog
+  // Chorus Stab register as a *swamp* record even though it's now found
+  // indoors. `buntingFlags`/`carnivalProps` borrow the same festive-fairground
+  // dressing as the circus interior back in town, just re-colored for a
+  // swampy boardwalk fun park instead of a big top.
+  johnnysfunpark: makeShop('johnnysfunpark', {
+    world: 'swamp',
+    floor: '#8a6a2e', plank: '#6a4e20', wallColor: '#2a1c10',
+    buntingFlags: true,
+    carnivalProps: [[2, 7], [11, 7]],
+    keeper: { name: 'JOHNNY', shirt: '#e0a030', skin: '#8a6a48',
+      lines: [
+        'Welcome to Johnny\'s Fun Park! Boardwalk games, boardwalk prizes, boardwalk plumbing -- don\'t ask.',
+        'Built this whole place myself. Well -- me and whoever I could talk into carrying lumber.',
+        'Dig through them crates if you want. I stock the fun park the same way I run it: mostly by accident.',
+        'Got a pool and a deck out back too. My cousin PADDLES keeps an eye on it.',
+      ],
+      foundLine: 'Frog Chorus Stab! Knew I filed that one somewhere fun.' },
+    // Three crates: the swamp's Frog Chorus Stab 45 (moved in here from the
+    // boardwalk trunk, see makeSwamp()) plus two junk crates.
+    crates: [ { record: 'frog' }, { junkSeed: 8 }, { junkSeed: 9 } ],
+  }),
+  // JOHNNY'S POOL -- the fun park's attached outside area (a swimming pool
+  // and deck). See makeJohnnysPool() above for how the room itself is
+  // built -- this just wires it into the shared `shops` map under the id
+  // the transitions below expect.
+  johnnyspool: makeJohnnysPool(),
 };
 
 // door wiring: town door tile -> shop spawn; shop exit tile -> town spawn
@@ -7769,6 +7882,15 @@ transitions['swampfood:' + key(6, 9)] = { map: 'swamp', x: swamp.swampFoodDoor.x
 // BURLINGTON RECORDS door wiring -- same pattern as GUT HUT above.
 transitions['swamp:' + key(swamp.burlingtonRecordsDoor.x, swamp.burlingtonRecordsDoor.y)] = { map: 'burlington', x: 6.5, y: 7.5 };
 transitions['burlington:' + key(6, 9)] = { map: 'swamp', x: swamp.burlingtonRecordsDoor.x + 0.5, y: swamp.burlingtonRecordsDoor.y + 1.6 };
+// JOHNNY'S FUN PARK door wiring -- same pattern as GUT HUT above.
+transitions['swamp:' + key(swamp.jfpDoor.x, swamp.jfpDoor.y)] = { map: 'johnnysfunpark', x: 6.5, y: 7.5 };
+transitions['johnnysfunpark:' + key(6, 9)] = { map: 'swamp', x: swamp.jfpDoor.x + 0.5, y: swamp.jfpDoor.y + 1.6 };
+// JOHNNY'S POOL door wiring -- same pattern as GUT HUT above. Player spawns
+// at (6.5, 7.5) same as any other shop, which lands them right on the deck
+// (rows 7-8) rather than in the water, since that's the tile every shop
+// door already spawns the player on.
+transitions['swamp:' + key(swamp.jfpPoolDoor.x, swamp.jfpPoolDoor.y)] = { map: 'johnnyspool', x: 6.5, y: 7.5 };
+transitions['johnnyspool:' + key(6, 9)] = { map: 'swamp', x: swamp.jfpPoolDoor.x + 0.5, y: swamp.jfpPoolDoor.y + 1.6 };
 const maps = { town, ...shops, swamp };
 
 // ---------------------------------------------------------------- state
