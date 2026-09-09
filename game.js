@@ -680,6 +680,13 @@ const MINIGAME_ACTIONS = {
   // works with no connection). See openBlackbookApp()/
   // createBlackbookOverlay() below.
   blackbook: () => openBlackbookApp(),
+  // Gator Grooves -- a swampy hip-hop side-scroller cabinet inside Swamp
+  // Food (see the `swampfood` shop's `minigames` list). Same "full
+  // standalone web app, not a canvas mini-game" shape as chess/beatbot/
+  // organ/mini golf/blackbook above (own DOM/iframe overlay, bundled
+  // locally so it works with no connection). See openCrocSwampApp()/
+  // createCrocSwampOverlay() below.
+  crocswamp: () => openCrocSwampApp(),
 };
 
 // ---- trophy case: personal bests for the 8 scored mini-games --------------
@@ -6241,6 +6248,7 @@ window.addEventListener('keydown', (e) => {
     if (k === 'escape' && state === 'organApp') { closeOrganApp(); }
     if (k === 'escape' && state === 'minigolfApp') { closeMiniGolfApp(); }
     if (k === 'escape' && state === 'blackbookApp') { closeBlackbookApp(); }
+    if (k === 'escape' && state === 'crocSwampApp') { closeCrocSwampApp(); }
     if (k === 'arrowleft') selectMove = -1;
     if (k === 'arrowright') selectMove = 1;
     if (k === 'arrowup') menuMove = -1;
@@ -6892,6 +6900,14 @@ function makeSwamp() {
   for (let y = HUT_CLEAR_Y; y < HUT_CLEAR_Y + HUT_CLEAR_H; y++)
     for (let x = HUT_CLEAR_X; x < HUT_CLEAR_X + HUT_CLEAR_W; x++) g[y][x] = '.';
 
+  // SWAMP FOOD clearing -- same idea as the GUT HUT clearing above, but on
+  // the opposite (upper-left) side of the boardwalk trunk, clear of the
+  // x=8 spur. Its bottom row (row 11) sits directly against the boardwalk
+  // trunk (row 12), same "step off the boardwalk onto solid ground" logic.
+  const FOOD_CLEAR_X = 10, FOOD_CLEAR_Y = 2, FOOD_CLEAR_W = 9, FOOD_CLEAR_H = 10;
+  for (let y = FOOD_CLEAR_Y; y < FOOD_CLEAR_Y + FOOD_CLEAR_H; y++)
+    for (let x = FOOD_CLEAR_X; x < FOOD_CLEAR_X + FOOD_CLEAR_W; x++) g[y][x] = '.';
+
   // sprinkle swamp trees over the mud (runs over the new clearing too, so
   // it reads as part of the same swamp rather than a bare patch)
   for (let y = 1; y < H - 1; y++)
@@ -6915,6 +6931,22 @@ function makeSwamp() {
   buildings.push({
     x: HUT_X, y: HUT_Y, w: HUT_W, h: HUT_H, name: 'GUT HUT',
     wall: '#3a4a2e', roof: '#22301c', doorX: HUT_DOOR_X,
+  });
+
+  // SWAMP FOOD -- second swamp building, a little pet store stocked for
+  // swamp creatures (gator chow, frog flies, that sort of thing). Same
+  // solid-walls-plus-one-door construction as GUT HUT above; doorX/doorY
+  // are exported below (swampFoodDoor) for the transition wiring outside
+  // this function.
+  const FOOD_X = 12, FOOD_Y = 4, FOOD_W = 6, FOOD_H = 4;
+  const FOOD_DOOR_X = FOOD_X + Math.floor(FOOD_W / 2);
+  const FOOD_DOOR_Y = FOOD_Y + FOOD_H - 1;
+  for (let y = FOOD_Y; y < FOOD_Y + FOOD_H; y++)
+    for (let x = FOOD_X; x < FOOD_X + FOOD_W; x++) g[y][x] = 'w';
+  g[FOOD_DOOR_Y][FOOD_DOOR_X] = 'D';
+  buildings.push({
+    x: FOOD_X, y: FOOD_Y, w: FOOD_W, h: FOOD_H, name: 'SWAMP FOOD',
+    wall: '#5a4a2e', roof: '#302416', doorX: FOOD_DOOR_X,
   });
 
   // crates: five hidden records + a few junk ones. Mud Kick (swampdrum)
@@ -6943,6 +6975,7 @@ function makeSwamp() {
     id: 'swamp', world: 'swamp', w: W, h: H, grid: g, outside: true,
     buildings, doors: {}, crates, npcs: [], riverTiles: waterTiles,
     swamp: true, gutHutDoor: { x: HUT_DOOR_X, y: HUT_DOOR_Y },
+    swampFoodDoor: { x: FOOD_DOOR_X, y: FOOD_DOOR_Y },
     palette: {
       groundA: '#6a5a35', groundB: '#5c723a', groundDot: '#6d8a46',
       water: '#2c4330', waterHi: '#3d5a3e',
@@ -7511,6 +7544,40 @@ const shops = {
       { id: 'blackbook', tx: 10, ty: 5, label: "SKETCH IN THE BLACKBOOK" },
     ],
   }),
+  // SWAMP FOOD -- the swamp's second building: a cramped little pet store
+  // stocked for swamp creatures (gator chow, frog flies, turtle pellets).
+  // `world: 'swamp'` again just for consistency with GUT HUT above, though
+  // nothing in here is a hidden record -- both crates are junk on purpose,
+  // see the note on `crates` below.
+  swampfood: makeShop('swampfood', {
+    world: 'swamp',
+    floor: '#4a5a3a', plank: '#3a482e', wallColor: '#241e14',
+    paintings: {
+      '0,3': { base: '#6a8a4a', a: '#3f8f4f', b: '#d8c060' },
+      '0,6': { base: '#8f9a3f', a: '#5f9a7a', b: '#3f8f4f' },
+    },
+    gearTiles: [[3, 4], [10, 4], [3, 7], [10, 7]],
+    keeper: { name: 'MOSSY', shirt: '#5a7a3a', skin: '#7a5334',
+      lines: [
+        'Welcome to Swamp Food — feed, chow, and fly bait, all sourced right out back.',
+        'Gator chow, frog flies, turtle pellets. If it lives in this swamp, we\'ve got its dinner.',
+        'Careful with the crates — last customer opened one and a snapping turtle opened it right back.',
+        'Everything in stock, nothing on the shelves. This place runs on vibes and inventory in boxes.',
+      ] },
+    // Two crates in here, both junk on purpose -- Swamp Food is a supply
+    // shop, not a record spot, so neither one hides any of the swamp's
+    // five records (moss, frog, choir, swampdrum, honeysuckle).
+    crates: [ { junkSeed: 4 }, { junkSeed: 5 } ],
+    // Gator Grooves cabinet -- a swampy hip-hop side-scroller (crocodile
+    // munching vinyl records) tucked in the open floor between the two
+    // rows of gearTiles, clear of the counter, crates, and exit. Same
+    // "full-screen DOM overlay with an <iframe>" pattern as chess/the beat
+    // bot/the organ/mini golf/the blackbook -- see
+    // MINIGAME_ACTIONS.crocswamp/openCrocSwampApp().
+    minigames: [
+      { id: 'crocswamp', tx: 10, ty: 6, label: 'PLAY GATOR GROOVES' },
+    ],
+  }),
 };
 
 // door wiring: town door tile -> shop spawn; shop exit tile -> town spawn
@@ -7525,6 +7592,9 @@ const swamp = makeSwamp();
 // to town yet, see the comment on WORLD_DEFS.swamp).
 transitions['swamp:' + key(swamp.gutHutDoor.x, swamp.gutHutDoor.y)] = { map: 'guthut', x: 6.5, y: 7.5 };
 transitions['guthut:' + key(6, 9)] = { map: 'swamp', x: swamp.gutHutDoor.x + 0.5, y: swamp.gutHutDoor.y + 1.6 };
+// SWAMP FOOD door wiring -- same pattern as GUT HUT above.
+transitions['swamp:' + key(swamp.swampFoodDoor.x, swamp.swampFoodDoor.y)] = { map: 'swampfood', x: 6.5, y: 7.5 };
+transitions['swampfood:' + key(6, 9)] = { map: 'swamp', x: swamp.swampFoodDoor.x + 0.5, y: swamp.swampFoodDoor.y + 1.6 };
 const maps = { town, ...shops, swamp };
 
 // ---------------------------------------------------------------- state
@@ -7535,7 +7605,7 @@ const player = {
   tempItem: null, tempItemTimer: 0,
 };
 const collected = new Set();
-let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | portal | fifa | minigame | hotkeys | crate | trophies | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp
+let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | portal | fifa | minigame | hotkeys | crate | trophies | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp
 // State to snap back to when the [H] hotkeys popup is closed -- currently
 // always 'play' since that's the only state H can be opened from, but kept
 // as its own var in case another state wants to offer the popup later.
@@ -8112,7 +8182,7 @@ const music = {
 // enter/exit call sites, so it can't drift out of sync no matter which
 // of the several ways the player backs out of the lab popup (keyboard
 // [X], on-screen [X] button, closing the instrument iframe, etc.).
-const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'characterIntro']);
+const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'characterIntro']);
 function syncMusicDuck() {
   music.duck(DUCKED_STATES.has(state));
 }
@@ -9415,6 +9485,118 @@ function closeBlackbookApp(fromPopState) {
   }
 }
 
+// Gator Grooves -- a swampy hip-hop side-scroller (crocodile munching
+// vinyl records, dodging snakes/frogs/gnat swarms) inside Swamp Food (see
+// the `swampfood` shop's `minigames` list). Same "full-screen DOM overlay
+// with an <iframe>" trick as chess/the beat bot/the organ/mini golf/the
+// blackbook above.
+//
+// Ships as a bundled, self-contained page (its own canvas drawing engine
+// and WebAudio synth, no external assets and no network calls at all) at
+// instruments/gator-grooves/index.html -- the exact same local-file
+// pattern CHESS_APP_URL/BEAT_BOT_APP_URL/ORGAN_APP_URL/MINI_GOLF_APP_URL/
+// BLACKBOOK_APP_URL use. Being a same-origin local asset rather than a
+// live remote site means it loads and works the same with or without a
+// connection, so -- same as the others -- there's no online/offline
+// branching needed here either.
+const CROC_SWAMP_APP_URL = 'instruments/gator-grooves/index.html';
+let crocSwampOverlayEl = null, crocSwampOverlayFrame = null;
+let crocSwampReturnState = 'play';
+let crocSwampHistoryPushed = false; // mirrors labHistoryPushed/chessHistoryPushed/beatBotHistoryPushed/organHistoryPushed/miniGolfHistoryPushed/blackbookHistoryPushed -- see openCrocSwampApp()/closeCrocSwampApp()
+
+function createCrocSwampOverlay() {
+  const style = document.createElement('style');
+  style.textContent = `
+    #gatorGroovesApp {
+      position: fixed; inset: 0; z-index: 1000;
+      background: #000;
+      display: none; flex-direction: column;
+    }
+    #gatorGroovesApp.open { display: flex; }
+    #gatorGroovesApp .gg-bar {
+      flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 10px 14px;
+      background: linear-gradient(#16301f, #0b1a12);
+      border-bottom: 2px solid #e8b84b;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    }
+    #gatorGroovesApp .gg-title {
+      color: #f4efe0; font: bold 14px monospace; letter-spacing: 0.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #gatorGroovesApp .gg-close {
+      flex: 0 0 auto; cursor: pointer;
+      background: rgba(232,184,75,0.15);
+      border: 1.5px solid rgba(232,184,75,0.85);
+      color: #f4efe0; border-radius: 8px;
+      padding: 7px 16px; font: bold 13px monospace;
+      -webkit-user-select: none; user-select: none;
+    }
+    #gatorGroovesApp .gg-close:active { background: rgba(232,184,75,0.4); }
+    #gatorGroovesApp iframe {
+      flex: 1 1 auto; width: 100%; border: 0; background: #000;
+    }
+  `;
+  document.head.appendChild(style);
+
+  crocSwampOverlayEl = document.createElement('div');
+  crocSwampOverlayEl.id = 'gatorGroovesApp';
+
+  const bar = document.createElement('div');
+  bar.className = 'gg-bar';
+  const title = document.createElement('div');
+  title.className = 'gg-title';
+  title.textContent = 'GATOR GROOVES';
+  const closeBtn = document.createElement('div');
+  closeBtn.className = 'gg-close';
+  closeBtn.textContent = '\u2190 BACK TO SWAMP FOOD';
+  bindTap(closeBtn, closeCrocSwampApp);
+  bar.appendChild(title);
+  bar.appendChild(closeBtn);
+
+  crocSwampOverlayFrame = document.createElement('iframe');
+  crocSwampOverlayFrame.setAttribute('allow', 'autoplay');
+
+  crocSwampOverlayEl.appendChild(bar);
+  crocSwampOverlayEl.appendChild(crocSwampOverlayFrame);
+  document.body.appendChild(crocSwampOverlayEl);
+}
+createCrocSwampOverlay();
+
+// Opens the Gator Grooves overlay and switches state to 'crocSwampApp'.
+// Called from MINIGAME_ACTIONS.crocswamp (E on the cabinet, or tapping its
+// floating sign), same entry points every other mini-game uses.
+function openCrocSwampApp() {
+  crocSwampReturnState = state;
+  crocSwampOverlayFrame.src = CROC_SWAMP_APP_URL;
+  crocSwampOverlayEl.classList.add('open');
+  state = 'crocSwampApp';
+  // Same throwaway-history-entry trick as openInstrument()/openChessApp()/
+  // openBeatBotApp()/openOrganApp()/openMiniGolfApp()/openBlackbookApp()
+  // above, so the browser/OS back gesture closes the Gator Grooves overlay
+  // instead of leaving the game entirely.
+  history.pushState({ ricoCrocSwampApp: true }, '');
+  crocSwampHistoryPushed = true;
+}
+
+// Tears the iframe back down and returns to ordinary gameplay in Swamp
+// Food. fromPopState mirrors closeInstrument()/closeChessApp()/
+// closeBeatBotApp()/closeOrganApp()/closeMiniGolfApp()/closeBlackbookApp()'s
+// parameter -- true when triggered by the browser's back button (whose
+// history entry is already consumed), so we must not call history.back()
+// again in that case.
+function closeCrocSwampApp(fromPopState) {
+  crocSwampOverlayEl.classList.remove('open');
+  crocSwampOverlayFrame.src = 'about:blank';
+  state = crocSwampReturnState;
+  if (!fromPopState && crocSwampHistoryPushed) {
+    crocSwampHistoryPushed = false;
+    history.back();
+  } else {
+    crocSwampHistoryPushed = false;
+  }
+}
+
 // Character-intro splash video, played once between character select and
 // the first frame of gameplay. Same DOM-overlay approach as the lab-app
 // iframe above and for the same reason: video decode/composite is handled
@@ -9598,6 +9780,8 @@ window.addEventListener('popstate', () => {
     closeMiniGolfApp(true);
   } else if (state === 'blackbookApp') {
     closeBlackbookApp(true);
+  } else if (state === 'crocSwampApp') {
+    closeCrocSwampApp(true);
   }
 });
 
@@ -9613,12 +9797,13 @@ canvas.addEventListener('pointerdown', (e) => {
     const vx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const vy = (e.clientY - rect.top) * (canvas.height / rect.height);
     handleLabTap(vx, vy);
-  } else if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp') {
+  } else if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp') {
     // The DOM overlay sits on top of (and outside) the canvas while an
     // instrument/the chess app/the beat bot/the organ/mini golf/the
-    // blackbook is loaded, so a pointerdown reaching the canvas itself
-    // means the overlay isn't up yet/already closing -- ignore it rather
-    // than falling through to the generic interactPressed=true below.
+    // blackbook/Gator Grooves is loaded, so a pointerdown reaching the
+    // canvas itself means the overlay isn't up yet/already closing --
+    // ignore it rather than falling through to the generic
+    // interactPressed=true below.
   } else if (state === 'play') {
     // Tapping directly on a "TAP HERE TO PLAY AROUND" sign jumps straight
     // into that mini-game -- no need to walk up and face the exact tile.
@@ -9877,6 +10062,14 @@ function update(dt) {
     // buyPressed is still consumed here too so the on-screen [X] touch
     // button works while the blackbook is open.
     if (buyPressed) closeBlackbookApp();
+  } else if (state === 'crocSwampApp') {
+    // Same reasoning as 'labApp'/'chessApp'/'beatBotApp'/'organApp'/
+    // 'minigolfApp'/'blackbookApp' just above: the DOM overlay (see
+    // createCrocSwampOverlay()) owns input while Gator Grooves is loaded
+    // -- its own close button and [Esc] handle closing it directly.
+    // buyPressed is still consumed here too so the on-screen [X] touch
+    // button works while Gator Grooves is open.
+    if (buyPressed) closeCrocSwampApp();
   } else if (state === 'hotkeys') {
     if (interactPressed || buyPressed) state = hotkeysReturnState;
   } else if (state === 'crate') {
@@ -10192,14 +10385,15 @@ function render(time) {
     drawSplash();
     return;
   }
-  if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'characterIntro') {
+  if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'characterIntro') {
     // Same reasoning as the labApp overlay: a DOM element (the <video>,
     // see createCharacterIntroOverlay(), the chess <iframe>, see
     // createChessOverlay(), the beat bot <iframe>, see
     // createBeatBotOverlay(), the organ <iframe>, see createOrganOverlay(),
-    // the mini golf <iframe>, see createMiniGolfOverlay(), or the
-    // blackbook <iframe>, see createBlackbookOverlay()) fully covers
-    // the canvas here, so there's nothing to gain from redrawing the world
+    // the mini golf <iframe>, see createMiniGolfOverlay(), the blackbook
+    // <iframe>, see createBlackbookOverlay(), or the Gator Grooves
+    // <iframe>, see createCrocSwampOverlay()) fully covers the canvas
+    // here, so there's nothing to gain from redrawing the world
     // underneath it.
     return;
   }
