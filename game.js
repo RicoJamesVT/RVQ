@@ -10730,6 +10730,7 @@ function render(time) {
   // gameplay-overlay states that draw on top of a *visible* world reach
   // this point.
   drawHUD();
+  drawLabBeacon(time);
   if (state === 'dialog') drawDialog();
   if (state === 'record') drawRecordCard();
   if (state === 'labUnlock') drawLabUnlock();
@@ -11050,6 +11051,115 @@ function drawLabDoor(px, py, tx, ty, time) {
     ctx.fillStyle = '#8a7a50';
     ctx.fillRect(cx - 5, py + TILE - 16, 10, 8);
   }
+  ctx.restore();
+}
+
+// ---------------------------------------------------------------- lab door discoverability aids
+// Players kept walking right past Rico's Lab door after finding all 5 town
+// records -- it sits alone on the far west edge of Main Street, away from
+// where most of the record hunt happens, and the door's own glow (above)
+// only reads once it's already on screen. Two lightweight aids fix that,
+// both gated on completedWorlds.has('town') so nothing changes until the
+// door is actually unlocked:
+//  1. drawLabCarpet() -- a pulsing gold "runner" laid down the Main Street
+//     road tiles leading straight to the door, with little chevrons
+//     crawling west along it. Anyone walking down Main Street sees it.
+//  2. drawLabBeacon() -- a screen-edge arrow that stays visible and points
+//     toward the door even while it's off-camera, so there's something to
+//     follow from anywhere in town, not just from Main Street itself.
+const LAB_DOOR_TX = 0, LAB_DOOR_TY = 9; // matches g[9][0] = 'L' in makeOverworld()
+// Main Street runs the full width of town at row 9 (see makeOverworld()'s
+// `for (let x = 1; x < W-1; x++) { g[9][x] = 'r'; }`). The carpet covers
+// from just east of Green Door Studio's block up to the lab door itself, so
+// it reads as "this road leads there" without also cutting across the
+// fountain/plaza further into town.
+const LAB_CARPET_X0 = 1, LAB_CARPET_X1 = 11;
+
+function drawLabCarpet(time) {
+  if (!completedWorlds.has('town')) return;
+  const t = time || 0;
+  const pulse = 0.5 + 0.5 * Math.sin(t * 3);
+  const py = LAB_DOOR_TY * TILE;
+
+  for (let tx = LAB_CARPET_X0; tx <= LAB_CARPET_X1; tx++) {
+    const px = tx * TILE;
+    ctx.fillStyle = `rgba(224,176,64,${0.35 + pulse * 0.25})`;
+    ctx.fillRect(px + 4, py + 6, TILE - 8, TILE - 12);
+    ctx.strokeStyle = `rgba(255,238,190,${0.5 + pulse * 0.3})`;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(px + 4.5, py + 6.5, TILE - 9, TILE - 13);
+  }
+
+  // chevrons "crawling" west toward the door, one full tile of travel per
+  // loop so they read as a continuous flow rather than a single sweep
+  const flow = TILE - ((t * 40) % TILE);
+  ctx.fillStyle = '#fff6d6';
+  ctx.globalAlpha = 0.7;
+  for (let tx = LAB_CARPET_X0; tx <= LAB_CARPET_X1; tx++) {
+    const px = tx * TILE + flow;
+    const cy = py + TILE / 2;
+    ctx.beginPath();
+    ctx.moveTo(px, cy - 5);
+    ctx.lineTo(px - 7, cy);
+    ctx.lineTo(px, cy + 5);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+// Converts the lab door's fixed tile position into current screen-space
+// coordinates, using the same lastCam bookkeeping render() already updates
+// every frame for both outdoor (scrolling) and indoor (scaled) maps.
+function labDoorScreenPos() {
+  const wx = LAB_DOOR_TX * TILE + TILE / 2, wy = LAB_DOOR_TY * TILE + TILE / 2;
+  if (lastCam.outside) return { x: wx - lastCam.camX, y: wy - lastCam.camY };
+  return { x: wx * lastCam.zoom + lastCam.dx, y: wy * lastCam.zoom + lastCam.dy };
+}
+
+// Screen-edge "quest marker" arrow pointing at the lab door whenever it's
+// unlocked but off-camera. Only shown during ordinary town gameplay, and
+// hidden once the door itself is already on screen (its own glow takes over
+// at that point) so the two never compete.
+function drawLabBeacon(time) {
+  if (state !== 'play' || player.map !== 'town' || !completedWorlds.has('town')) return;
+  const pos = labDoorScreenPos();
+  const margin = 30;
+  if (pos.x > margin && pos.x < VIEW_W - margin && pos.y > margin && pos.y < VIEW_H - margin) return;
+
+  const cx = VIEW_W / 2, cy = VIEW_H / 2;
+  const angle = Math.atan2(pos.y - cy, pos.x - cx);
+  const halfW = VIEW_W / 2 - margin, halfH = VIEW_H / 2 - margin;
+  const cosA = Math.cos(angle), sinA = Math.sin(angle);
+  let scale = Infinity;
+  if (Math.abs(cosA) > 1e-4) scale = Math.min(scale, Math.abs(halfW / cosA));
+  if (Math.abs(sinA) > 1e-4) scale = Math.min(scale, Math.abs(halfH / sinA));
+  const ex = cx + cosA * scale, ey = cy + sinA * scale;
+
+  const t = time || 0;
+  const pulse = 0.5 + 0.5 * Math.sin(t * 4);
+
+  ctx.save();
+  drawGlow(ex, ey, 22, 'rgba(240,211,120,ALPHA)');
+  ctx.translate(ex, ey);
+  ctx.rotate(angle);
+  ctx.fillStyle = `rgba(240,211,120,${0.8 + pulse * 0.2})`;
+  ctx.beginPath();
+  ctx.moveTo(12, 0);
+  ctx.lineTo(-8, -8);
+  ctx.lineTo(-8, 8);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#241a0e';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.restore();
+
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#f4ecd8';
+  ctx.font = 'bold 10px monospace';
+  ctx.fillText("RICO'S LAB", ex - cosA * 18, ey - sinA * 18 + 4);
   ctx.restore();
 }
 
@@ -12562,6 +12672,7 @@ function drawPlantPot(x, y) {
 
 // ---------------------------------------------------------------- town decorations
 function drawTownDecorations(time) {
+  drawLabCarpet(time);
   drawGreenDoorArtArea();
   drawWallPainter(time);
   drawDeliScene(time);
