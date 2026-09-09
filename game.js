@@ -6585,6 +6585,13 @@ splashImg.fetchPriority = 'high';
 splashImg.loading = 'eager';
 splashImg.src = 'assets/splash.png';
 
+// Full-art "LEVEL 1" card shown by drawLevelIntro() in place of the plain
+// carved-text card, for the town/Burlington world specifically. Same
+// same-origin local-asset pattern as every other splash image here, so it
+// needs no extra online/offline handling.
+const level1IntroImg = new Image();
+level1IntroImg.src = 'assets/level1_intro_splash.png';
+
 const purePopPosterImg = new Image();
 purePopPosterImg.src = 'assets/purepop_poster.png';
 
@@ -17956,12 +17963,32 @@ function drawRetroTitle(text, cx, cy, size) {
 // drawStars() so it costs no new art, just two lines of text over a dark
 // backdrop that already exists elsewhere in the file.
 function drawLevelIntro(time) {
+  const num = levelNumberFor(levelIntroWorldId);
+
+  // Level 1 gets the full-art Burlington card; every other world (should
+  // one ever route through showLevelIntro() too) falls back to the plain
+  // carved-text card below.
+  if (num === 1 && level1IntroImg.complete && level1IntroImg.naturalWidth) {
+    const iw = level1IntroImg.naturalWidth, ih = level1IntroImg.naturalHeight;
+    const scale = Math.max(VIEW_W / iw, VIEW_H / ih);
+    const dw = iw * scale, dh = ih * scale;
+    const dx = (VIEW_W - dw) / 2, dy = (VIEW_H - dh) / 2;
+    ctx.drawImage(level1IntroImg, dx, dy, dw, dh);
+
+    ctx.fillStyle = 'rgba(8,6,12,0.55)';
+    ctx.fillRect(0, VIEW_H - 40, VIEW_W, 40);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#e0b040' : '#f4ecd8';
+    ctx.font = 'bold 15px monospace';
+    ctx.fillText('- PRESS E TO DROP IN -', VIEW_W / 2, VIEW_H - 14);
+    return;
+  }
+
   ctx.fillStyle = 'rgba(8,6,12,0.93)';
   ctx.fillRect(0, 0, VIEW_W, VIEW_H);
   drawStars(time);
 
   const def = WORLD_DEFS[levelIntroWorldId] || WORLD_DEFS.town;
-  const num = levelNumberFor(levelIntroWorldId);
 
   drawRetroTitle(`LEVEL ${num}`, VIEW_W / 2, VIEW_H / 2 - 14, 46);
   drawRetroTitle(def.name.toUpperCase(), VIEW_W / 2, VIEW_H / 2 + 40, 24);
