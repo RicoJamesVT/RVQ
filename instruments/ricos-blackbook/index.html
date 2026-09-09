@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Rico's Blackbook V3 — Handstyle Library</title>
+<style>
+:root{--ink:#17130f;--paper:#efe5cf;--gold:#f4c95d;--red:#e04b4b;--panel:#171717;--line:#756f64}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0b0b0b;color:#eee;font-family:Arial,Helvetica,sans-serif}
+button,select,input{font:inherit}
+button{cursor:pointer}
+#app{height:100%;display:flex;flex-direction:column;background:radial-gradient(circle at 50% 20%,#332a22,#0b0b0b 62%)}
+header{height:72px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:10px 15px;background:linear-gradient(#202020,#111);border-bottom:3px solid #050505}
+.brand h1{margin:0;font:900 23px/1.15 "Courier New",monospace;letter-spacing:2px;color:#f7eee0;padding-top:2px}.brand small{display:block;color:var(--gold);letter-spacing:3px;font:10px/1.3 "Courier New",monospace;margin-top:2px}
+.stats{display:flex;gap:14px}.stat{padding-left:12px;border-left:1px solid #444}.stat span{display:block;color:#999;font-size:8px;letter-spacing:1px}.stat b{color:var(--gold);font-size:15px}
+.actions{display:flex;gap:6px}.actions button,.tool,.mode{background:#282828;color:#eee;border:2px solid #4c4c4c;box-shadow:2px 2px #000;padding:8px;font-weight:800}.actions button:hover,.tool:hover,.mode:hover{background:#414141}
+.close{background:#9d2832!important}
+main{height:calc(100% - 72px);display:grid;grid-template-columns:180px minmax(0,1fr) 255px}
+aside{background:linear-gradient(90deg,#131313,#1b1b1b);padding:12px;overflow:auto}.left{border-right:3px solid #050505}.right{border-left:3px solid #050505}
+.label{font:800 9px "Courier New",monospace;color:var(--gold);letter-spacing:2px;margin:4px 0 9px}
+.divider{border-top:2px solid #333;margin:13px 0}
+.style-card{width:100%;text-align:left;background:#242424;color:#eee;border:2px solid #444;padding:9px;margin:0 0 7px;box-shadow:2px 2px #000}.style-card b{display:block;font-size:12px}.style-card span{display:block;color:#aaa;font-size:9px;margin-top:3px}.style-card.active{border-color:var(--gold);background:#3a3427}.style-card.active b{color:var(--gold)}
+.tool{display:block;width:100%;text-align:left;margin-bottom:7px}.tool.active,.mode.active{background:var(--gold);color:#111;border-color:#fff}
+.slider{width:100%}.control{font-size:9px;color:#aaa;margin:10px 0}.control b{float:right;color:var(--gold)}
+.colors{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.color{height:30px;border:2px solid #444;box-shadow:1px 1px #000}.color.active{outline:2px solid #fff}
+.workspace{padding:14px;display:flex;align-items:center;justify-content:center;min-width:0}
+.book{width:100%;height:100%;max-width:1280px;background:#2b2520;border:5px solid #090807;box-shadow:9px 9px #000,0 0 0 2px #5b5045 inset;padding:10px;position:relative}
+.book-top{height:46px;display:flex;align-items:center;justify-content:space-between;padding:4px 2px 6px;overflow:visible}.stickers{display:flex;gap:7px}.sticker{font:800 8px "Courier New";padding:5px 8px;background:var(--red);transform:rotate(-3deg);box-shadow:1px 1px #000}.sticker:nth-child(2){background:var(--gold);color:#111;transform:rotate(2deg)}.sticker:nth-child(3){background:#2f9d8f;transform:rotate(-1deg)}
+.lesson{font:900 10px "Courier New";color:#c7bda9;letter-spacing:1px}
+.paper{height:calc(100% - 66px);position:relative;overflow:hidden;background:var(--paper);box-shadow:inset 0 0 55px rgba(91,58,22,.18)}
+#referenceCanvas,#drawCanvas{position:absolute;inset:0;width:100%;height:100%}
+#referenceCanvas{z-index:2;pointer-events:none}#drawCanvas{z-index:4;touch-action:none;cursor:crosshair}
+.guides{position:absolute;inset:0;z-index:1;pointer-events:none;opacity:.3;background:repeating-linear-gradient(to bottom,transparent 0,transparent 45px,#6682a0 46px,transparent 47px)}
+.guides:after{content:"";position:absolute;left:0;right:0;top:71%;border-top:2px dashed #ca5d5d}
+.word{position:absolute;top:14px;left:18px;z-index:3;color:rgba(0,0,0,.33);font:800 12px "Courier New";letter-spacing:5px}
+.lesson-title{position:absolute;right:16px;top:14px;z-index:3;color:rgba(0,0,0,.32);font:800 9px "Courier New";letter-spacing:2px}
+.toast{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.9);z-index:10;background:#111;color:var(--gold);border:3px solid var(--gold);padding:16px 22px;font:900 13px "Courier New";letter-spacing:2px;opacity:0;pointer-events:none;transition:.2s}.toast.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+.footer{height:20px;display:flex;justify-content:space-between;align-items:end;color:#9b8f80;font:8px "Courier New";letter-spacing:1px}
+.mode{width:100%;text-align:left;margin-bottom:7px}
+.letters{display:grid;grid-template-columns:repeat(6,1fr);gap:4px}.letters button{padding:7px 0;background:#272727;color:#eee;border:1px solid #555;font-weight:900}.letters button.active{background:var(--gold);color:#111}
+.variants{display:grid;grid-template-columns:1fr 1fr;gap:6px}.variant{background:#252525;border:2px solid #444;color:#ddd;padding:8px;text-align:left;font-size:9px;font-weight:800}.variant.active{border-color:var(--gold);color:var(--gold)}
+.challenge{margin-top:12px;background:#242424;border:2px dashed #555;padding:10px}.challenge strong{display:block;color:var(--gold);font-size:12px;margin:4px 0}.challenge span{font-size:9px;color:#aaa;line-height:1.35}
+.tip{margin-top:14px;border-left:4px solid var(--gold);background:#242424;padding:9px;font-size:9px;line-height:1.4;color:#aaa}.tip b{display:block;color:var(--gold);margin-bottom:4px}
+
+/* Tablet / mobile landscape: keep controls visible but give the canvas priority */
+@media(max-width:950px){
+  header{height:76px;padding:7px 10px}
+  main{height:calc(100% - 76px);grid-template-columns:112px minmax(0,1fr)}
+  .right{display:none}.stats{display:none}
+  .brand h1{font-size:17px}.brand small{font-size:8px;letter-spacing:2px}
+  .workspace{padding:4px}.book{padding:6px}
+  .style-card{padding:7px;margin-bottom:5px}.style-card b{font-size:10px}
+  .style-card span{display:none}.left{padding:6px}
+  .tool{padding:6px;font-size:9px;margin-bottom:5px}
+  .colors{grid-template-columns:repeat(3,1fr)}.color{height:25px}
+}
+
+/* Portrait phones: stack the controls into a compact top drawer and maximize drawing area */
+@media(max-width:700px) and (orientation:portrait){
+  html,body{overflow:auto}
+  #app{min-height:100%;height:auto;overflow:visible}
+  header{height:68px;position:sticky;top:0;z-index:20}
+  .brand h1{font-size:15px}.brand small{font-size:7px}
+  .actions{gap:3px}.actions button{padding:6px;font-size:9px}
+  main{
+    height:auto;
+    min-height:calc(100vh - 68px);
+    display:flex;
+    flex-direction:column;
+  }
+  .left{
+    order:1;
+    width:100%;
+    border-right:0;
+    border-bottom:3px solid #050505;
+    padding:7px;
+    overflow:visible;
+    display:grid;
+    grid-template-columns:repeat(5,1fr);
+    gap:5px;
+  }
+  .left .label,.left .divider,.left .control,.left .colors{display:none}
+  .style-card{
+    margin:0;padding:7px 4px;text-align:center;min-height:46px;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .style-card b{font-size:8px;line-height:1.15}
+  .workspace{
+    order:2;
+    width:100%;
+    padding:4px;
+    height:calc(100vh - 125px);
+    min-height:440px;
+  }
+  .book{padding:5px;border-width:4px}
+  .book-top{height:30px;padding:2px 1px 3px}
+  .paper{height:calc(100% - 48px)}
+  .book-top .stickers .sticker{font-size:6px;padding:4px 5px}
+  .lesson{font-size:7px}
+  .footer{font-size:6px;height:16px}
+}
+
+/* Landscape phones: side rail stays compact, drawing section gets almost the full screen */
+@media(max-width:950px) and (orientation:landscape){
+  header{height:52px;padding:4px 8px}
+  main{height:calc(100vh - 52px);grid-template-columns:92px minmax(0,1fr)}
+  .brand h1{font-size:14px}.brand small{font-size:6px;letter-spacing:1px}
+  .actions button{padding:5px 7px;font-size:8px}
+  .left{padding:4px}
+  .left .label,.left .divider,.left .control{display:none}
+  .style-card{padding:5px 3px;margin-bottom:3px;min-height:31px}
+  .style-card b{font-size:7px}.style-card span{display:none}
+  .tool{padding:4px;font-size:7px;margin-bottom:3px}
+  .colors{grid-template-columns:repeat(3,1fr);gap:3px;margin-top:4px}.color{height:17px}
+  .workspace{padding:3px}.book{padding:4px}
+  .book-top{height:27px}.paper{height:calc(100% - 43px)}
+  .book-top .stickers .sticker{font-size:5px;padding:3px 4px}
+  .lesson{font-size:6px}.footer{display:none}
+}
+
+</style>
+</head>
+<body>
+<div id="app">
+<header>
+  <div class="brand"><h1>RICO'S BLACKBOOK</h1><small>V3.2 // BIG CANVAS + PORTRAIT/LANDSCAPE</small></div>
+  <div class="stats"><div class="stat"><span>STYLE SCORE</span><b id="score">0000</b></div><div class="stat"><span>COMBO</span><b id="combo">x0</b></div><div class="stat"><span>STROKES</span><b id="strokes">0</b></div></div>
+  <div class="actions"><button id="undo">↶</button><button id="redo">↷</button><button id="clear">CLEAR</button><button id="export">EXPORT</button><button class="close" id="close">✕</button></div>
+</header>
+<main>
+<aside class="left">
+  <div class="label">STYLE LIBRARY</div>
+  <button class="style-card active" data-style="classic"><b>01 — CLASSIC TAG</b><span>Fast, clean, flowing letters</span></button>
+  <button class="style-card" data-style="round"><b>02 — ROUND FLOW</b><span>Soft curves and smooth rhythm</span></button>
+  <button class="style-card" data-style="angular"><b>03 — ANGULAR HAND</b><span>Sharp corners and aggressive slant</span></button>
+  <button class="style-card" data-style="throwie"><b>04 — THROWIE</b><span>Big, bold, rounded forms</span></button>
+  <button class="style-card" data-style="wild"><b>05 — WILD IDEAS</b><span>Extensions, overlaps, advanced energy</span></button>
+
+  <div class="divider"></div><div class="label">TOOLS</div>
+  <button class="tool active" data-tool="marker">● MARKER</button>
+  <button class="tool" data-tool="chisel">◆ CHISEL TIP</button>
+  <button class="tool" data-tool="brush">✦ BRUSH PEN</button>
+  <button class="tool" data-tool="spray">✺ TEXTURE</button>
+  <button class="tool" id="eraser">▱ ERASER</button>
+  <div class="divider"></div>
+  <div class="control">TIP SIZE <b id="sizeOut">12</b><input id="size" class="slider" type="range" min="2" max="70" value="12"></div>
+  <div class="control">INK FLOW <b id="flowOut">100%</b><input id="flow" class="slider" type="range" min="15" max="100" value="100"></div>
+  <div class="divider"></div><div class="label">INK RACK</div>
+  <div class="colors" id="colors"></div>
+</aside>
+
+<section class="workspace">
+<div class="book">
+  <div class="book-top"><div class="stickers"><span>RQV</span><span>VINYL</span><span>BLACKBOOK</span></div><div class="lesson" id="styleName">CLASSIC TAG // STUDY SHEET</div></div>
+  <div class="paper" id="paper">
+    <div class="guides" id="guides"></div>
+    <canvas id="referenceCanvas"></canvas>
+    <canvas id="drawCanvas"></canvas>
+    <div class="word" id="word">RICO</div>
+    <div class="lesson-title" id="lessonTitle">TRACE THE REFERENCE</div>
+    <div class="toast" id="toast"></div>
+  </div>
+  <div class="footer"><span>BLACKBOOK SERIES // RICO'S VINYL QUEST</span><span id="footerText">STYLE 01 • VARIANT 01</span></div>
+</div>
+</section>
+
+<aside class="right">
+  <div class="label">PRACTICE MODE</div>
+  <button class="mode active" data-mode="trace">✎ TRACE MODE</button>
+  <button class="mode" data-mode="copy">◫ COPY MODE</button>
+  <button class="mode" data-mode="memory">◉ MEMORY MODE</button>
+  <button class="mode" data-mode="challenge">⚡ STYLE CHALLENGE</button>
+  <div class="divider"></div><div class="label">LETTER LAB</div>
+  <div class="letters" id="letters"></div>
+  <div class="divider"></div><div class="label">STYLE VARIANTS</div>
+  <div class="variants" id="variants"></div>
+  <div class="divider"></div><div class="label">WORD PROMPT</div>
+  <select id="wordSelect" style="width:100%;padding:8px;background:#272727;color:#eee;border:2px solid #555"></select>
+  <button class="mode" id="randomWord" style="margin-top:7px">↻ NEW WORD</button>
+  <div class="challenge"><div style="font-size:8px;color:#888">CURRENT LESSON</div><strong id="challengeName">CLASSIC FLOW</strong><span id="challengeHint">Follow the faint reference, then make it your own.</span></div>
+  <div class="tip"><b>STYLE TIP</b><span id="tipText">Start with clean structure. Personality comes from rhythm, spacing, and consistency.</span></div>
+</aside>
+</main>
+</div>
+
+<script>
+(function(){
+const refs = {
+ classic:{name:"CLASSIC TAG",variants:["Clean Flow","Forward Slant","Connected"],tips:["Start clean. Keep spacing consistent and let the motion connect naturally.","Use a slight forward slant to create speed and movement.","Try linking terminals without losing readability."]},
+ round:{name:"ROUND FLOW",variants:["Soft Bubble","Wide Round","Looped"],tips:["Use relaxed curves and keep corners soft.","Push the width while keeping the letter rhythm even.","Add loops sparingly and keep the motion smooth."]},
+ angular:{name:"ANGULAR HAND",variants:["Sharp Cut","Tall Slash","Arrow Bars"],tips:["Build from clear angles before adding extensions.","Tall letters can create a strong aggressive rhythm.","Use arrows as accents, not replacements for structure."]},
+ throwie:{name:"THROWIE",variants:["Fat Bubble","Stacked","Bouncy"],tips:["Think big shapes first, details second.","Keep overlaps simple and readable.","Vary the bounce while maintaining a consistent baseline."]},
+ wild:{name:"WILD IDEAS",variants:["Extensions","Overlaps","Energy Bars"],tips:["Begin with a readable skeleton, then add complexity.","Overlaps should feel intentional and balanced.","Use bars and extensions to direct the eye through the word."]}
+};
+const words=["RICO","VINYL","QUEST","STYLE","BLACKBOOK","BURLINGTON","CRATE","DIG","BEATS","FUNK","SOUL","JAZZ"];
+let style="classic",variant=0,letter="A",mode="trace",tool="marker",color="#17130f",size=12,flow=1,erase=false;
+let canvas=document.getElementById("drawCanvas"), ref=document.getElementById("referenceCanvas"), ctx=canvas.getContext("2d"), rctx=ref.getContext("2d");
+let drawing=false,last={x:0,y:0},strokes=0,score=0,combo=0,history=[],redo=[];
+
+function resize(){
+ const box=document.getElementById("paper").getBoundingClientRect(), dpr=Math.min(window.devicePixelRatio||1,2);
+ [canvas,ref].forEach(c=>{let old=document.createElement("canvas");old.width=c.width||1;old.height=c.height||1;old.getContext("2d").drawImage(c,0,0);c.width=Math.floor(box.width*dpr);c.height=Math.floor(box.height*dpr);c.style.width=box.width+"px";c.style.height=box.height+"px";c.getContext("2d").setTransform(dpr,0,0,dpr,0,0);if(c===canvas&&old.width>1)c.getContext("2d").drawImage(old,0,0,old.width,old.height,0,0,box.width,box.height);});
+ drawReference(); save();
+}
+function fontForStyle(){
+ if(style==="classic") return {font:'italic 900 190px "Courier New"',scaleX:.78,stroke:0};
+ if(style==="round") return {font:'900 200px Arial Rounded MT Bold, Arial',scaleX:1.05,stroke:8};
+ if(style==="angular") return {font:'italic 900 190px Impact, Arial Black',scaleX:.85,stroke:4};
+ if(style==="throwie") return {font:'900 210px Arial Black, Impact',scaleX:1.12,stroke:14};
+ return {font:'italic 900 185px Impact, Arial Black',scaleX:.95,stroke:7};
+}
+function drawReference(){
+ const box=document.getElementById("paper").getBoundingClientRect(),w=box.width,h=box.height;
+ rctx.clearRect(0,0,w,h);
+ if(mode==="memory") return;
+ const f=fontForStyle();
+ const ghost= mode==="copy" ? 0.18 : 0.10;
+ rctx.save();rctx.globalAlpha=ghost;rctx.fillStyle="#19130f";rctx.strokeStyle="#19130f";rctx.lineJoin="round";rctx.font=f.font;rctx.textAlign="center";rctx.textBaseline="middle";
+ const chars=(letter==="WORD"?document.getElementById("word").textContent:letter);
+ const x=w*.52,y=h*.46;
+ rctx.translate(x,y);rctx.scale(f.scaleX,1);rctx.fillText(chars,0,0);
+ if(f.stroke){rctx.lineWidth=f.stroke;rctx.strokeText(chars,0,0);}
+ if(style==="angular"||style==="wild"){rctx.lineWidth=10;rctx.beginPath();rctx.moveTo(-w*.24,h*.16);rctx.lineTo(-w*.12,h*.06);rctx.lineTo(-w*.19,h*.06);rctx.moveTo(w*.12,-h*.08);rctx.lineTo(w*.27,-h*.17);rctx.lineTo(w*.19,-h*.02);rctx.stroke();}
+ if(style==="wild"){rctx.lineWidth=8;rctx.beginPath();rctx.moveTo(-w*.30,-h*.13);rctx.lineTo(w*.30,h*.10);rctx.moveTo(-w*.20,h*.13);rctx.lineTo(w*.26,-h*.13);rctx.stroke();}
+ rctx.restore();
+}
+function p(e){const r=canvas.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top}}
+function prep(pressure=.65){ctx.globalAlpha=flow;ctx.strokeStyle=erase?"#efe5cf":color;ctx.fillStyle=erase?"#efe5cf":color;ctx.lineCap="round";ctx.lineJoin="round";return Math.max(1,size*(.45+pressure*.55))}
+function dot(x,y,pressure){let w=prep(pressure);ctx.beginPath();ctx.arc(x,y,w/2,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1}
+function line(a,b,pressure){let w=prep(pressure);ctx.beginPath();if(tool==="chisel"){ctx.lineCap="square";ctx.lineWidth=w*.58;ctx.moveTo(a.x-w*.15,a.y+w*.15);ctx.lineTo(b.x-w*.15,b.y+w*.15)}else if(tool==="brush"){ctx.lineWidth=w*(b.y>a.y?.9:.35);ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y)}else{ctx.lineWidth=tool==="marker"?w:w*.55;ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y)}ctx.stroke();ctx.globalAlpha=1}
+function spray(x,y){let r=size*1.5,n=Math.floor(12+size*.7);ctx.globalAlpha=flow*.24;ctx.fillStyle=erase?"#efe5cf":color;for(let i=0;i<n;i++){let a=Math.random()*Math.PI*2,d=Math.sqrt(Math.random())*r;ctx.beginPath();ctx.arc(x+Math.cos(a)*d,y+Math.sin(a)*d,.5+Math.random()*1.8,0,Math.PI*2);ctx.fill()}ctx.globalAlpha=1}
+canvas.addEventListener("pointerdown",e=>{drawing=true;let q=p(e);last=q;canvas.setPointerCapture&&canvas.setPointerCapture(e.pointerId);tool==="spray"?spray(q.x,q.y):dot(q.x,q.y,e.pressure||.65)});
+canvas.addEventListener("pointermove",e=>{if(!drawing)return;let q=p(e);tool==="spray"?spray(q.x,q.y):line(last,q,e.pressure||.65);last=q});
+window.addEventListener("pointerup",()=>{if(!drawing)return;drawing=false;strokes++;combo++;score+=mode==="challenge"?20:5;updateStats();save()});
+function save(){if(!canvas.width)return;let s=canvas.toDataURL();if(history[history.length-1]!==s){history.push(s);if(history.length>30)history.shift()}redo=[]}
+function restore(s){let img=new Image();img.onload=()=>{let b=canvas.getBoundingClientRect();ctx.clearRect(0,0,b.width,b.height);ctx.drawImage(img,0,0,b.width,b.height)};img.src=s}
+document.getElementById("undo").onclick=()=>{if(history.length>1){redo.push(history.pop());restore(history[history.length-1])}};
+document.getElementById("redo").onclick=()=>{if(redo.length){let s=redo.pop();history.push(s);restore(s)}};
+document.getElementById("clear").onclick=()=>{let b=canvas.getBoundingClientRect();ctx.clearRect(0,0,b.width,b.height);strokes=0;combo=0;updateStats();save();toast("FRESH PAGE")};
+document.getElementById("export").onclick=()=>{let o=document.createElement("canvas");o.width=canvas.width;o.height=canvas.height;let x=o.getContext("2d");x.fillStyle="#efe5cf";x.fillRect(0,0,o.width,o.height);x.drawImage(canvas,0,0);let a=document.createElement("a");a.download="ricos-blackbook-v3.png";a.href=o.toDataURL("image/png");a.click();toast("SKETCH EXPORTED")};
+document.getElementById("close").onclick=()=>{document.getElementById("app").style.display="none";toast("BLACKBOOK CLOSED")};
+
+document.querySelectorAll(".style-card").forEach(b=>b.onclick=()=>{style=b.dataset.style;variant=0;document.querySelectorAll(".style-card").forEach(x=>x.classList.toggle("active",x===b));renderStyle()});
+document.querySelectorAll(".tool[data-tool]").forEach(b=>b.onclick=()=>{tool=b.dataset.tool;erase=false;document.querySelectorAll(".tool").forEach(x=>x.classList.remove("active"));b.classList.add("active")});
+document.getElementById("eraser").onclick=()=>{erase=!erase;document.getElementById("eraser").classList.toggle("active",erase)};
+document.getElementById("size").oninput=e=>{size=+e.target.value;document.getElementById("sizeOut").textContent=size};
+document.getElementById("flow").oninput=e=>{flow=+e.target.value/100;document.getElementById("flowOut").textContent=e.target.value+"%"};
+
+const palette=["#17130f","#e53935","#f4c95d","#2a9d8f","#4361ee","#7209b7","#f72585","#ff6b35","#fff","#5bc0eb","#9bc53d","#c34271"];
+palette.forEach(c=>{let b=document.createElement("button");b.className="color";b.style.background=c;b.onclick=()=>{color=c;erase=false;document.querySelectorAll(".color").forEach(x=>x.classList.remove("active"));b.classList.add("active")};document.getElementById("colors").appendChild(b)});
+
+"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").forEach(l=>{let b=document.createElement("button");b.textContent=l;b.onclick=()=>{letter=l;document.querySelectorAll(".letters button").forEach(x=>x.classList.remove("active"));b.classList.add("active");drawReference();lesson()};document.getElementById("letters").appendChild(b)});
+document.querySelector(".letters button").classList.add("active");
+document.querySelectorAll(".mode").forEach(b=>b.onclick=()=>{mode=b.dataset.mode;document.querySelectorAll(".mode").forEach(x=>x.classList.toggle("active",x===b));if(mode==="challenge"){letter="WORD";toast("STYLE CHALLENGE: "+document.getElementById("word").textContent)}drawReference();lesson()});
+words.forEach(w=>{let o=document.createElement("option");o.value=w;o.textContent=w;document.getElementById("wordSelect").appendChild(o)});
+document.getElementById("wordSelect").onchange=e=>{document.getElementById("word").textContent=e.target.value;if(letter==="WORD")drawReference()};
+document.getElementById("randomWord").onclick=()=>{let w=words[Math.floor(Math.random()*words.length)];document.getElementById("word").textContent=w;document.getElementById("wordSelect").value=w;letter="WORD";mode="challenge";document.querySelectorAll(".mode").forEach(x=>x.classList.toggle("active",x.dataset.mode==="challenge"));drawReference();lesson();toast("NEW WORD: "+w)};
+
+function renderStyle(){
+ document.getElementById("styleName").textContent=refs[style].name+" // STUDY SHEET";
+ let box=document.getElementById("variants");box.innerHTML="";
+ refs[style].variants.forEach((v,i)=>{let b=document.createElement("button");b.className="variant"+(i===variant?" active":"");b.textContent="0"+(i+1)+" "+v;b.onclick=()=>{variant=i;renderStyle();toast(v.toUpperCase())};box.appendChild(b)});
+ drawReference();lesson();
+}
+function lesson(){
+ document.getElementById("lessonTitle").textContent=mode==="trace"?"TRACE THE REFERENCE":mode==="copy"?"STUDY + COPY":mode==="memory"?"WRITE FROM MEMORY":"STYLE CHALLENGE";
+ document.getElementById("challengeName").textContent=refs[style].name+" — "+refs[style].variants[variant];
+ document.getElementById("challengeHint").textContent=mode==="challenge"?"Build the word in this style, then add your own personality.":"Practice the structure first, then experiment with your own flow.";
+ document.getElementById("tipText").textContent=refs[style].tips[variant];
+ document.getElementById("footerText").textContent="STYLE 0"+(["classic","round","angular","throwie","wild"].indexOf(style)+1)+" • VARIANT 0"+(variant+1);
+}
+function updateStats(){document.getElementById("score").textContent=String(score).padStart(4,"0");document.getElementById("combo").textContent="x"+combo;document.getElementById("strokes").textContent=strokes}
+function toast(t){let e=document.getElementById("toast");e.textContent=t;e.classList.add("show");clearTimeout(window.__toast);window.__toast=setTimeout(()=>e.classList.remove("show"),1300)}
+window.addEventListener("resize",()=>setTimeout(resize,80));window.addEventListener("orientationchange",()=>setTimeout(resize,250));
+renderStyle();lesson();requestAnimationFrame(resize);
+})();
+</script>
+</body>
+</html>
