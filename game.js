@@ -6997,9 +6997,20 @@ function makeSwamp() {
   const g = blankGrid(W, H, '~');          // start as all water
   const rng = mulberry32(90240214);
 
-  // boardwalk trunk + vertical spurs (the walkable paths through the water)
-  for (let x = 0; x < W; x++) g[12][x] = 'b';
-  for (let y = 5; y < 22; y++) { g[y][8] = 'b'; g[y][34] = 'b'; }
+  // boardwalk trunk + vertical spurs (the walkable paths through the water).
+  // Widened from 1 tile to 3 tiles across so the paths read as roomier to
+  // walk down, and so a crate placed on the path (see crateDefs below)
+  // never fully blocks it -- there's always a clear tile beside it to route
+  // around. The extra rows/columns only matter out over open water; where
+  // they cross a building clearing below, the clearing carve (further down)
+  // overwrites them with plain walkable ground anyway, and the tree
+  // sprinkle after that only touches '.' tiles, never 'b', so none of this
+  // widened boardwalk can get blocked by a randomly placed tree either.
+  for (let x = 0; x < W; x++) { g[11][x] = 'b'; g[12][x] = 'b'; g[13][x] = 'b'; }
+  for (let y = 5; y < 22; y++) {
+    g[y][7] = 'b'; g[y][8] = 'b'; g[y][9] = 'b';
+    g[y][33] = 'b'; g[y][34] = 'b'; g[y][35] = 'b';
+  }
 
   // carve muddy ground islands
   for (let i = 0; i < 11; i++) {
@@ -7163,6 +7174,19 @@ function makeSwamp() {
     x: TL_X, y: TL_Y, w: TL_W, h: TL_H, name: 'TRUTH LAB',
     wall: '#1a1a1e', roof: '#0d0d10', doorX: TL_DOOR_X,
   });
+
+  // Guarantee every door has a clear step-out tile. The tree sprinkle above
+  // runs before any of these buildings exist, so it has no idea a door is
+  // about to land there -- it can (and, with this map's fixed seed, did for
+  // GUT HUT) drop a tree directly in front of a doorway and seal it shut.
+  // Force the tile just south of each door back to open ground.
+  for (const [dx, dy] of [
+    [HUT_DOOR_X, HUT_DOOR_Y], [FOOD_DOOR_X, FOOD_DOOR_Y],
+    [BURL_DOOR_X, BURL_DOOR_Y], [JFP_DOOR_X, JFP_DOOR_Y],
+    [JPOOL_DOOR_X, JPOOL_DOOR_Y], [TL_DOOR_X, TL_DOOR_Y],
+  ]) {
+    if (g[dy + 1] && g[dy + 1][dx] === '#') g[dy + 1][dx] = '.';
+  }
 
   // crates: five hidden records + a few junk ones. Mud Kick (swampdrum)
   // used to sit out here on the boardwalk spur -- it's been moved inside
