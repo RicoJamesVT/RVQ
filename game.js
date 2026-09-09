@@ -792,6 +792,14 @@ const MINIGAME_ACTIONS = {
   // network calls -- so it works with no connection). See
   // openBayouBreakApp()/createBayouBreakOverlay() below.
   bayoubreak: () => openBayouBreakApp(),
+  // VT Dirt -- a dirt bike trials/motocross mini-game parked out on the open
+  // mud in the swamp overworld itself (see the swamp map's `minigames` list
+  // below), not tucked inside any building. Same "full standalone web app,
+  // not a canvas mini-game" shape as chess/beatbot/organ/mini golf/
+  // blackbook/Gator Grooves/Vinyl Snake/Bayou Break Station above (own DOM/
+  // iframe overlay, bundled locally so it works with no connection). See
+  // openVtDirtApp()/createVtDirtOverlay() below.
+  vtdirt: () => openVtDirtApp(),
 };
 
 // ---- trophy case: personal bests for the 8 scored mini-games --------------
@@ -6356,6 +6364,7 @@ window.addEventListener('keydown', (e) => {
     if (k === 'escape' && state === 'crocSwampApp') { closeCrocSwampApp(); }
     if (k === 'escape' && state === 'vinylSnakeApp') { closeVinylSnakeApp(); }
     if (k === 'escape' && state === 'bayouBreakApp') { closeBayouBreakApp(); }
+    if (k === 'escape' && state === 'vtDirtApp') { closeVtDirtApp(); }
     if (k === 'arrowleft') selectMove = -1;
     if (k === 'arrowright') selectMove = 1;
     if (k === 'arrowup') menuMove = -1;
@@ -7220,6 +7229,22 @@ function makeSwamp() {
       gator: true, snakeRow: 12,
       frogSpurs: [{ col: 8, y0: 5, y1: 21 }, { col: 34, y0: 5, y1: 21 }],
     },
+    // A dirt bike left out on the open mud, southwest of the boardwalk
+    // trunk -- tx/ty (14, 21) sits in a clear patch of ground well clear of
+    // TRUTH LAB's clearing/door, the x=8 boardwalk spur, every crate
+    // (20,12)/(30,12)/(38,12)/(6,12)/(8,9)/(10,21)/(34,17)/(14,12), and
+    // every newsstand (9,2)/(16,10)/(18,15)/(37,15)/(25,22) -- verified
+    // against the deterministic swamp layout (same seed as the `rng`
+    // above), same "checked against the fixed layout" approach the
+    // newsstand placement above uses. `icon: 'dirtbike'` swaps the usual
+    // floating arcade-cabinet sign for a dirt-bike sprite (see
+    // drawMinigameDirtBike()), the same way the soccer ball/golf clubs do
+    // elsewhere, so it reads as "ride this" out here in the swamp. Opens
+    // the full standalone VT Dirt app in its own DOM overlay; see
+    // openVtDirtApp()/createVtDirtOverlay().
+    minigames: [
+      { id: 'vtdirt', tx: 14, ty: 21, label: 'PLAY VT DIRT', icon: 'dirtbike' },
+    ],
   };
 }
 
@@ -8011,7 +8036,7 @@ const player = {
   tempItem: null, tempItemTimer: 0,
 };
 const collected = new Set();
-let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | portal | fifa | minigame | hotkeys | crate | trophies | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | vinylSnakeApp | bayouBreakApp
+let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | portal | fifa | minigame | hotkeys | crate | trophies | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | vinylSnakeApp | bayouBreakApp | vtDirtApp
 // State to snap back to when the [H] hotkeys popup is closed -- currently
 // always 'play' since that's the only state H can be opened from, but kept
 // as its own var in case another state wants to offer the popup later.
@@ -8606,7 +8631,7 @@ const music = {
 // enter/exit call sites, so it can't drift out of sync no matter which
 // of the several ways the player backs out of the lab popup (keyboard
 // [X], on-screen [X] button, closing the instrument iframe, etc.).
-const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'vinylSnakeApp', 'bayouBreakApp', 'characterIntro']);
+const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'vinylSnakeApp', 'bayouBreakApp', 'vtDirtApp', 'characterIntro']);
 function syncMusicDuck() {
   music.duck(DUCKED_STATES.has(state));
 }
@@ -10034,6 +10059,119 @@ function closeMiniGolfApp(fromPopState) {
   }
 }
 
+// ---------------------------------------------------------------- VT Dirt overlay
+// A dirt bike left out on the open mud in the swamp overworld (see
+// MINIGAME_ACTIONS.vtdirt and the swamp map's `minigames` list) launches a
+// full standalone web app, not a from-scratch canvas mini-game -- so it
+// reuses the same "full-screen DOM overlay with an <iframe>" trick as
+// chess/the beat bot/the organ/mini golf above. Kept as its own overlay
+// (rather than folding into any of those) since it's reached from a totally
+// different tile/state and has nothing to do with any of them.
+//
+// VT Dirt ships as a bundled, self-contained instrument page (its own
+// canvas trials/motocross renderer and physics, no external assets and no
+// network calls at all) at instruments/vt-dirt/index.html -- the exact same
+// local-file pattern CHESS_APP_URL/BEAT_BOT_APP_URL/ORGAN_APP_URL/
+// MINI_GOLF_APP_URL use. Being a same-origin local asset rather than a live
+// remote site means it loads and plays the same with or without a
+// connection, so there's no online/offline branching needed here either.
+const VT_DIRT_APP_URL = 'instruments/vt-dirt/index.html';
+let vtDirtOverlayEl = null, vtDirtOverlayFrame = null;
+let vtDirtReturnState = 'play';
+let vtDirtHistoryPushed = false; // mirrors labHistoryPushed/.../miniGolfHistoryPushed -- see openVtDirtApp()/closeVtDirtApp()
+
+function createVtDirtOverlay() {
+  const style = document.createElement('style');
+  style.textContent = `
+    #ricoVtDirtApp {
+      position: fixed; inset: 0; z-index: 1000;
+      background: #000;
+      display: none; flex-direction: column;
+    }
+    #ricoVtDirtApp.open { display: flex; }
+    #ricoVtDirtApp .rvd-bar {
+      flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 10px 14px;
+      background: linear-gradient(#241a0e, #120d06);
+      border-bottom: 2px solid #e0b040;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    }
+    #ricoVtDirtApp .rvd-title {
+      color: #f4ecd8; font: bold 14px monospace; letter-spacing: 0.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #ricoVtDirtApp .rvd-close {
+      flex: 0 0 auto; cursor: pointer;
+      background: rgba(224,176,64,0.15);
+      border: 1.5px solid rgba(224,176,64,0.85);
+      color: #f4ecd8; border-radius: 8px;
+      padding: 7px 16px; font: bold 13px monospace;
+      -webkit-user-select: none; user-select: none;
+    }
+    #ricoVtDirtApp .rvd-close:active { background: rgba(224,176,64,0.4); }
+    #ricoVtDirtApp iframe {
+      flex: 1 1 auto; width: 100%; border: 0; background: #000;
+    }
+  `;
+  document.head.appendChild(style);
+
+  vtDirtOverlayEl = document.createElement('div');
+  vtDirtOverlayEl.id = 'ricoVtDirtApp';
+
+  const bar = document.createElement('div');
+  bar.className = 'rvd-bar';
+  const title = document.createElement('div');
+  title.className = 'rvd-title';
+  title.textContent = 'VT DIRT';
+  const closeBtn = document.createElement('div');
+  closeBtn.className = 'rvd-close';
+  closeBtn.textContent = '\u2190 BACK TO THE SWAMP';
+  bindTap(closeBtn, closeVtDirtApp);
+  bar.appendChild(title);
+  bar.appendChild(closeBtn);
+
+  vtDirtOverlayFrame = document.createElement('iframe');
+  vtDirtOverlayFrame.setAttribute('allow', 'autoplay');
+
+  vtDirtOverlayEl.appendChild(bar);
+  vtDirtOverlayEl.appendChild(vtDirtOverlayFrame);
+  document.body.appendChild(vtDirtOverlayEl);
+}
+createVtDirtOverlay();
+
+// Opens the VT Dirt overlay and switches state to 'vtDirtApp'. Called from
+// MINIGAME_ACTIONS.vtdirt (E on the dirt bike, or tapping the floating
+// dirt-bike sign), same entry points every other mini-game uses.
+function openVtDirtApp() {
+  vtDirtReturnState = state;
+  vtDirtOverlayFrame.src = VT_DIRT_APP_URL;
+  vtDirtOverlayEl.classList.add('open');
+  state = 'vtDirtApp';
+  // Same throwaway-history-entry trick as openInstrument()/openChessApp()/
+  // openBeatBotApp()/openOrganApp()/openMiniGolfApp() above, so the
+  // browser/OS back gesture closes the VT Dirt overlay instead of leaving
+  // the game entirely.
+  history.pushState({ ricoVtDirtApp: true }, '');
+  vtDirtHistoryPushed = true;
+}
+
+// Tears the iframe back down and returns to ordinary gameplay in the swamp.
+// fromPopState mirrors closeInstrument()/closeChessApp()/closeBeatBotApp()/
+// closeOrganApp()/closeMiniGolfApp()'s parameter -- true when triggered by
+// the browser's back button (whose history entry is already consumed), so
+// we must not call history.back() again in that case.
+function closeVtDirtApp(fromPopState) {
+  vtDirtOverlayEl.classList.remove('open');
+  vtDirtOverlayFrame.src = 'about:blank';
+  state = vtDirtReturnState;
+  if (!fromPopState && vtDirtHistoryPushed) {
+    vtDirtHistoryPushed = false;
+    history.back();
+  } else {
+    vtDirtHistoryPushed = false;
+  }
+}
+
 // Rico's Blackbook -- BOXGUTS' handstyle library, letter lab, and trace/
 // copy/memory/challenge practice modes, opened from inside GUT HUT (see the
 // `guthut` shop's `minigames` list). Same "full-screen DOM overlay with an
@@ -10673,6 +10811,8 @@ window.addEventListener('popstate', () => {
     closeVinylSnakeApp(true);
   } else if (state === 'bayouBreakApp') {
     closeBayouBreakApp(true);
+  } else if (state === 'vtDirtApp') {
+    closeVtDirtApp(true);
   }
 });
 
@@ -10688,10 +10828,10 @@ canvas.addEventListener('pointerdown', (e) => {
     const vx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const vy = (e.clientY - rect.top) * (canvas.height / rect.height);
     handleLabTap(vx, vy);
-  } else if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp') {
+  } else if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'vtDirtApp') {
     // The DOM overlay sits on top of (and outside) the canvas while an
     // instrument/the chess app/the beat bot/the organ/mini golf/the
-    // blackbook/Gator Grooves/Vinyl Snake/Bayou Break Station is loaded, so a pointerdown
+    // blackbook/Gator Grooves/Vinyl Snake/Bayou Break Station/VT Dirt is loaded, so a pointerdown
     // reaching the canvas itself means the overlay isn't up yet/already
     // closing -- ignore it rather than falling through to the generic
     // interactPressed=true below.
@@ -10978,6 +11118,15 @@ function update(dt) {
     // here too so the on-screen [X] touch button works while Bayou
     // Break Station is open.
     if (buyPressed) closeBayouBreakApp();
+  } else if (state === 'vtDirtApp') {
+    // Same reasoning as 'labApp'/'chessApp'/'beatBotApp'/'organApp'/
+    // 'minigolfApp'/'blackbookApp'/'crocSwampApp'/'vinylSnakeApp'/
+    // 'bayouBreakApp' just above: the DOM overlay (see
+    // createVtDirtOverlay()) owns input while VT Dirt is loaded -- its own
+    // close button and [Esc] handle closing it directly. buyPressed is
+    // still consumed here too so the on-screen [X] touch button works
+    // while VT Dirt is open.
+    if (buyPressed) closeVtDirtApp();
   } else if (state === 'hotkeys') {
     if (interactPressed || buyPressed) state = hotkeysReturnState;
   } else if (state === 'crate') {
@@ -11260,6 +11409,81 @@ function drawMinigameGolfClubs(wx, wy, time, seed, label) {
   return { cx, cy, hw: bagW / 2 + 18, hh: bagH / 2 + 32 };
 }
 
+// Alternate mini-game marker used when a map entry sets `icon: 'dirtbike'`
+// (currently just VT Dirt, parked out on the open mud in the swamp) --
+// same bob/label/hitbox contract as drawMinigameArcadeSign()/
+// drawMinigameSoccerBall()/drawMinigameGolfClubs() above so it drops into
+// the exact same per-frame loop and tap-shortcut handling. Drawn as a small
+// dirt bike leaned on its kickstand -- two wheels, a low frame, and
+// handlebars -- so it reads as "ride this" rather than an arcade cabinet.
+function drawMinigameDirtBike(wx, wy, time, seed, label) {
+  const s = MINIGAME_OBJECT_SCALE;
+  const bob = Math.sin(time * 0.003 + seed) * 3;
+  const cx = wx, cy = wy - 16 + bob;
+  const wheelR = 7 * s;
+
+  // soft contact shadow on the mud, independent of the bike's bob
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.beginPath();
+  ctx.ellipse(wx, wy + 2, wheelR * 1.6, wheelR * 0.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  const rearX = cx - 10 * s, frontX = cx + 10 * s, wheelY = cy + 8 * s;
+
+  // wheels
+  ctx.strokeStyle = '#1a1a1a';
+  ctx.lineWidth = 3 * s;
+  [rearX, frontX].forEach((wxl) => {
+    ctx.beginPath();
+    ctx.arc(wxl, wheelY, wheelR, 0, Math.PI * 2);
+    ctx.stroke();
+  });
+  ctx.fillStyle = '#3a3a3a';
+  [rearX, frontX].forEach((wxl) => {
+    ctx.beginPath();
+    ctx.arc(wxl, wheelY, wheelR * 0.35, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // frame + fork, connecting the two wheel hubs up to the seat/bars
+  ctx.strokeStyle = '#c0392b';
+  ctx.lineWidth = 3 * s;
+  ctx.beginPath();
+  ctx.moveTo(rearX, wheelY);
+  ctx.lineTo(cx - 2 * s, cy - 4 * s);
+  ctx.lineTo(cx + 6 * s, cy - 2 * s);
+  ctx.lineTo(frontX, wheelY);
+  ctx.moveTo(cx + 6 * s, cy - 2 * s);
+  ctx.lineTo(cx + 9 * s, cy - 12 * s);
+  ctx.stroke();
+
+  // seat
+  ctx.fillStyle = '#1a1a1a';
+  ctx.fillRect(cx - 6 * s, cy - 6 * s, 9 * s, 3 * s);
+
+  // handlebars
+  ctx.strokeStyle = '#e0e0e0';
+  ctx.lineWidth = 2 * s;
+  ctx.beginPath();
+  ctx.moveTo(cx + 4 * s, cy - 12 * s);
+  ctx.lineTo(cx + 13 * s, cy - 12 * s);
+  ctx.stroke();
+
+  // number plate accent, swamp/dirt-bike style
+  ctx.fillStyle = '#f0c33e';
+  ctx.fillRect(cx - 1 * s, cy - 3 * s, 6 * s, 4 * s);
+
+  // floating label above the bike -- same flash-between-label-and-tap-hint
+  // behavior as the arcade sign / soccer ball / golf clubs
+  const flashOnLabel = Math.floor(time / 1400) % 2 === 0;
+  ctx.fillStyle = '#ffd23c';
+  ctx.font = `bold ${Math.round(9 * s)}px monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillText(flashOnLabel ? (label || 'MINI-GAME') : 'TAP TO PLAY', cx, cy - 12 * s - 10);
+
+  return { cx, cy, hw: wheelR * 2 + 12, hh: 18 * s + 28 };
+}
+
 // Converts a tap already in 960x600 view-space (same space VIEW_W/VIEW_H
 // describe) into world coordinates, using whichever camera transform the
 // most recent render() frame actually drew with. Mirrors the inverse of the
@@ -11293,15 +11517,16 @@ function render(time) {
     drawSplash();
     return;
   }
-  if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'characterIntro') {
+  if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'vtDirtApp' || state === 'characterIntro') {
     // Same reasoning as the labApp overlay: a DOM element (the <video>,
     // see createCharacterIntroOverlay(), the chess <iframe>, see
     // createChessOverlay(), the beat bot <iframe>, see
     // createBeatBotOverlay(), the organ <iframe>, see createOrganOverlay(),
     // the mini golf <iframe>, see createMiniGolfOverlay(), the blackbook
     // <iframe>, see createBlackbookOverlay(), the Gator Grooves <iframe>,
-    // see createCrocSwampOverlay(), or the Vinyl Snake <iframe>, see
-    // createVinylSnakeOverlay()) fully covers the canvas here, so there's
+    // see createCrocSwampOverlay(), the Vinyl Snake <iframe>, see
+    // createVinylSnakeOverlay(), or the VT Dirt <iframe>, see
+    // createVtDirtOverlay()) fully covers the canvas here, so there's
     // nothing to gain from redrawing the world underneath it.
     return;
   }
@@ -11374,6 +11599,8 @@ function render(time) {
         ? drawMinigameSoccerBall(wx, wy, time, seed, mg.label)
         : mg.icon === 'golfclubs'
         ? drawMinigameGolfClubs(wx, wy, time, seed, mg.label)
+        : mg.icon === 'dirtbike'
+        ? drawMinigameDirtBike(wx, wy, time, seed, mg.label)
         : drawMinigameArcadeSign(wx, wy, time, seed, mg.label);
       minigameSignHitboxes.push({ map: player.map, id: mg.id, ...rect });
     });
