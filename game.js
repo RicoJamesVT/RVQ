@@ -673,6 +673,13 @@ const MINIGAME_ACTIONS = {
   // DOM overlay with an <iframe>" trick. See openMiniGolfApp()/
   // createMiniGolfOverlay() below.
   minigolf: () => openMiniGolfApp(),
+  // Rico's Blackbook -- BOXGUTS' handstyle library/trace book, sitting open
+  // inside GUT HUT (see the `guthut` shop's `minigames` list). Same "full
+  // standalone web app, not a canvas mini-game" shape as chess/beatbot/
+  // organ/mini golf above (own DOM/iframe overlay, bundled locally so it
+  // works with no connection). See openBlackbookApp()/
+  // createBlackbookOverlay() below.
+  blackbook: () => openBlackbookApp(),
 };
 
 // ---- trophy case: personal bests for the 8 scored mini-games --------------
@@ -6233,6 +6240,7 @@ window.addEventListener('keydown', (e) => {
     if (k === 'escape' && state === 'beatBotApp') { closeBeatBotApp(); }
     if (k === 'escape' && state === 'organApp') { closeOrganApp(); }
     if (k === 'escape' && state === 'minigolfApp') { closeMiniGolfApp(); }
+    if (k === 'escape' && state === 'blackbookApp') { closeBlackbookApp(); }
     if (k === 'arrowleft') selectMove = -1;
     if (k === 'arrowright') selectMove = 1;
     if (k === 'arrowup') menuMove = -1;
@@ -6874,12 +6882,45 @@ function makeSwamp() {
       }
   }
 
-  // sprinkle swamp trees over the mud
+  // GUT HUT clearing -- a dedicated stretch of dry ground (separate from
+  // the randomly-carved islands above) big enough to hold the swamp's
+  // first building plus room to walk around it. Sits right up against the
+  // main boardwalk trunk (row 12), so stepping off the boardwalk at any of
+  // these columns drops the player straight onto solid ground -- no extra
+  // bridge tiles needed.
+  const HUT_CLEAR_X = 23, HUT_CLEAR_Y = 13, HUT_CLEAR_W = 10, HUT_CLEAR_H = 11;
+  for (let y = HUT_CLEAR_Y; y < HUT_CLEAR_Y + HUT_CLEAR_H; y++)
+    for (let x = HUT_CLEAR_X; x < HUT_CLEAR_X + HUT_CLEAR_W; x++) g[y][x] = '.';
+
+  // sprinkle swamp trees over the mud (runs over the new clearing too, so
+  // it reads as part of the same swamp rather than a bare patch)
   for (let y = 1; y < H - 1; y++)
     for (let x = 1; x < W - 1; x++)
       if (g[y][x] === '.' && rng() < 0.10) g[y][x] = '#';
 
-  // crates: five hidden records + a few junk ones
+  // GUT HUT -- the swamp's first building: BOXGUTS' hideaway art studio,
+  // tucked into the clearing carved out above. Built the same way
+  // makeOverworld()'s building() helper works (solid 'w' walls, one
+  // walkable 'D' door tile at the bottom-center), but the swamp isn't on
+  // that shared helper so it's written out directly here. doorX/doorY are
+  // exported below (gutHutDoor) so the transition wiring outside this
+  // function knows exactly which tile to hook up.
+  const buildings = [];
+  const HUT_X = 25, HUT_Y = 15, HUT_W = 6, HUT_H = 4;
+  const HUT_DOOR_X = HUT_X + Math.floor(HUT_W / 2);
+  const HUT_DOOR_Y = HUT_Y + HUT_H - 1;
+  for (let y = HUT_Y; y < HUT_Y + HUT_H; y++)
+    for (let x = HUT_X; x < HUT_X + HUT_W; x++) g[y][x] = 'w';
+  g[HUT_DOOR_Y][HUT_DOOR_X] = 'D';
+  buildings.push({
+    x: HUT_X, y: HUT_Y, w: HUT_W, h: HUT_H, name: 'GUT HUT',
+    wall: '#3a4a2e', roof: '#22301c', doorX: HUT_DOOR_X,
+  });
+
+  // crates: five hidden records + a few junk ones. Mud Kick (swampdrum)
+  // used to sit out here on the boardwalk spur -- it's been moved inside
+  // GUT HUT (see the `guthut` shop below), so the swamp still has exactly
+  // five records total, just one of them behind a door now.
   const crates = {};
   const crateDefs = [
     [20, 12, { record: 'moss' }],
@@ -6887,7 +6928,6 @@ function makeSwamp() {
     [38, 12, { junkSeed: 1 }],
     [6, 12,  { junkSeed: 2 }],
     [8, 9,   { record: 'choir' }],
-    [34, 7,  { record: 'swampdrum' }],
     [17, 18, { junkSeed: 0 }],
     [34, 17, { record: 'honeysuckle' }],
     [14, 12, { junkSeed: 3 }],
@@ -6901,8 +6941,8 @@ function makeSwamp() {
 
   return {
     id: 'swamp', world: 'swamp', w: W, h: H, grid: g, outside: true,
-    buildings: [], doors: {}, crates, npcs: [], riverTiles: waterTiles,
-    swamp: true,
+    buildings, doors: {}, crates, npcs: [], riverTiles: waterTiles,
+    swamp: true, gutHutDoor: { x: HUT_DOOR_X, y: HUT_DOOR_Y },
     palette: {
       groundA: '#6a5a35', groundB: '#5c723a', groundDot: '#6d8a46',
       water: '#2c4330', waterHi: '#3d5a3e',
@@ -7428,6 +7468,49 @@ const shops = {
       { id: 'organ', tx: 6, ty: 4, label: 'PLAY THE ORGAN' },
     ],
   }),
+  // GUT HUT -- BOXGUTS' place out in the swamp: part graffiti studio, part
+  // recording nook, tucked away off the boardwalk. `world: 'swamp'` is the
+  // important bit here -- it's what makes currentWorldId()/recKey() treat
+  // the Mud Kick 45 hidden in these crates as a *swamp* record (same as if
+  // it were still sitting out on the boardwalk spur) instead of a town one.
+  guthut: makeShop('guthut', {
+    world: 'swamp',
+    floor: '#33422b', plank: '#283420', wallColor: '#1a2416',
+    paintFloor: true,
+    confettiColors: ['#8fbf3f', '#d8c060', '#5f9a7a', '#3f8f4f'],
+    artTable: true,
+    // a few small tagged canvases along the back wall, swamp-record colors
+    paintings: {
+      '0,2': { base: '#3f8f4f', a: '#8fbf3f', b: '#d8c060' },
+      '0,4': { base: '#5f9a7a', a: '#3f8f4f', b: '#8f9a3f' },
+      '0,6': { base: '#d8c060', a: '#5f9a7a', b: '#3f8f4f' },
+    },
+    muralWall: true,
+    graffitiWalls: true,
+    cypherVibe: true,
+    micStand: [7, 5],
+    gearTiles: [[3, 3], [8, 3], [4, 7], [10, 7]],
+    keeper: { name: 'BOXGUTS', shirt: '#3a4a2e', skin: '#7a5334',
+      lines: [
+        'Yo — welcome to the Gut Hut. Off the boardwalk, back where the water goes quiet. My spot.',
+        'Boxguts. Emcee first, but out here I write on more than paper — check the walls, that\'s all me too.',
+        'Swamp Camp built this whole place plank by plank. You don\'t find it unless somebody already showed you the way.',
+        'Dig through them crates if you want. Been meaning to sort \'em, just ain\'t got round to it.',
+        'That blackbook\'s open right there if you want to run some letters. Trace it, copy it, however you learn.',
+        'Vermont hip hop reaches all the way out to the bayou mud. Bars don\'t care where you\'re standing.',
+      ],
+      foundLine: 'Mud Kick made it out the swamp, huh? Go put some bottom end under whatever you\'re building.' },
+    // Four crates: the swamp's Mud Kick 45 (moved in here from the
+    // boardwalk spur, see makeSwamp()) plus three junk crates.
+    crates: [ { record: 'swampdrum' }, { junkSeed: 0 }, { junkSeed: 1 }, { junkSeed: 2 } ],
+    // Rico's Blackbook -- BOXGUTS' own handstyle library/practice book,
+    // left open on the floor clear of the table, crates, mic stand, and
+    // gear. Full standalone web app, same as chess/beatbot/organ/mini golf
+    // -- see MINIGAME_ACTIONS.blackbook/openBlackbookApp().
+    minigames: [
+      { id: 'blackbook', tx: 10, ty: 5, label: "SKETCH IN THE BLACKBOOK" },
+    ],
+  }),
 };
 
 // door wiring: town door tile -> shop spawn; shop exit tile -> town spawn
@@ -7437,6 +7520,11 @@ for (const [id, d] of Object.entries(doors)) {
   transitions[id + ':' + key(6, 9)] = { map: 'town', x: d.doorX + 0.5, y: d.doorY + 1.6 };
 }
 const swamp = makeSwamp();
+// GUT HUT door wiring -- same pattern as the loop above, written out by
+// hand since the swamp isn't on the shared `doors` map (it's not connected
+// to town yet, see the comment on WORLD_DEFS.swamp).
+transitions['swamp:' + key(swamp.gutHutDoor.x, swamp.gutHutDoor.y)] = { map: 'guthut', x: 6.5, y: 7.5 };
+transitions['guthut:' + key(6, 9)] = { map: 'swamp', x: swamp.gutHutDoor.x + 0.5, y: swamp.gutHutDoor.y + 1.6 };
 const maps = { town, ...shops, swamp };
 
 // ---------------------------------------------------------------- state
@@ -7447,7 +7535,7 @@ const player = {
   tempItem: null, tempItemTimer: 0,
 };
 const collected = new Set();
-let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | portal | fifa | minigame | hotkeys | crate | trophies | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp
+let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | portal | fifa | minigame | hotkeys | crate | trophies | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp
 // State to snap back to when the [H] hotkeys popup is closed -- currently
 // always 'play' since that's the only state H can be opened from, but kept
 // as its own var in case another state wants to offer the popup later.
@@ -8024,7 +8112,7 @@ const music = {
 // enter/exit call sites, so it can't drift out of sync no matter which
 // of the several ways the player backs out of the lab popup (keyboard
 // [X], on-screen [X] button, closing the instrument iframe, etc.).
-const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'beatBotApp', 'organApp', 'minigolfApp', 'characterIntro']);
+const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'characterIntro']);
 function syncMusicDuck() {
   music.duck(DUCKED_STATES.has(state));
 }
@@ -9218,6 +9306,115 @@ function closeMiniGolfApp(fromPopState) {
   }
 }
 
+// Rico's Blackbook -- BOXGUTS' handstyle library, letter lab, and trace/
+// copy/memory/challenge practice modes, opened from inside GUT HUT (see the
+// `guthut` shop's `minigames` list). Same "full-screen DOM overlay with an
+// <iframe>" trick as chess/the beat bot/the organ/mini golf above.
+//
+// Ships as a bundled, self-contained page (its own canvas drawing engine,
+// no external assets and no network calls at all) at
+// instruments/ricos-blackbook/index.html -- the exact same local-file
+// pattern CHESS_APP_URL/BEAT_BOT_APP_URL/ORGAN_APP_URL/MINI_GOLF_APP_URL
+// use. Being a same-origin local asset rather than a live remote site means
+// it loads and works the same with or without a connection, so -- same as
+// mini golf -- there's no online/offline branching needed here either.
+const BLACKBOOK_APP_URL = 'instruments/ricos-blackbook/index.html';
+let blackbookOverlayEl = null, blackbookOverlayFrame = null;
+let blackbookReturnState = 'play';
+let blackbookHistoryPushed = false; // mirrors labHistoryPushed/chessHistoryPushed/beatBotHistoryPushed/organHistoryPushed/miniGolfHistoryPushed -- see openBlackbookApp()/closeBlackbookApp()
+
+function createBlackbookOverlay() {
+  const style = document.createElement('style');
+  style.textContent = `
+    #ricoBlackbookApp {
+      position: fixed; inset: 0; z-index: 1000;
+      background: #000;
+      display: none; flex-direction: column;
+    }
+    #ricoBlackbookApp.open { display: flex; }
+    #ricoBlackbookApp .rbb-bar {
+      flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 10px 14px;
+      background: linear-gradient(#241a0e, #120d06);
+      border-bottom: 2px solid #e0b040;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    }
+    #ricoBlackbookApp .rbb-title {
+      color: #f4ecd8; font: bold 14px monospace; letter-spacing: 0.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #ricoBlackbookApp .rbb-close {
+      flex: 0 0 auto; cursor: pointer;
+      background: rgba(224,176,64,0.15);
+      border: 1.5px solid rgba(224,176,64,0.85);
+      color: #f4ecd8; border-radius: 8px;
+      padding: 7px 16px; font: bold 13px monospace;
+      -webkit-user-select: none; user-select: none;
+    }
+    #ricoBlackbookApp .rbb-close:active { background: rgba(224,176,64,0.4); }
+    #ricoBlackbookApp iframe {
+      flex: 1 1 auto; width: 100%; border: 0; background: #000;
+    }
+  `;
+  document.head.appendChild(style);
+
+  blackbookOverlayEl = document.createElement('div');
+  blackbookOverlayEl.id = 'ricoBlackbookApp';
+
+  const bar = document.createElement('div');
+  bar.className = 'rbb-bar';
+  const title = document.createElement('div');
+  title.className = 'rbb-title';
+  title.textContent = "RICO'S BLACKBOOK";
+  const closeBtn = document.createElement('div');
+  closeBtn.className = 'rbb-close';
+  closeBtn.textContent = '\u2190 BACK TO GUT HUT';
+  bindTap(closeBtn, closeBlackbookApp);
+  bar.appendChild(title);
+  bar.appendChild(closeBtn);
+
+  blackbookOverlayFrame = document.createElement('iframe');
+  blackbookOverlayFrame.setAttribute('allow', 'autoplay');
+
+  blackbookOverlayEl.appendChild(bar);
+  blackbookOverlayEl.appendChild(blackbookOverlayFrame);
+  document.body.appendChild(blackbookOverlayEl);
+}
+createBlackbookOverlay();
+
+// Opens the blackbook overlay and switches state to 'blackbookApp'. Called
+// from MINIGAME_ACTIONS.blackbook (E on the blackbook, or tapping its
+// floating sign), same entry points every other mini-game uses.
+function openBlackbookApp() {
+  blackbookReturnState = state;
+  blackbookOverlayFrame.src = BLACKBOOK_APP_URL;
+  blackbookOverlayEl.classList.add('open');
+  state = 'blackbookApp';
+  // Same throwaway-history-entry trick as openInstrument()/openChessApp()/
+  // openBeatBotApp()/openOrganApp()/openMiniGolfApp() above, so the
+  // browser/OS back gesture closes the blackbook overlay instead of
+  // leaving the game entirely.
+  history.pushState({ ricoBlackbookApp: true }, '');
+  blackbookHistoryPushed = true;
+}
+
+// Tears the iframe back down and returns to ordinary gameplay in GUT HUT.
+// fromPopState mirrors closeInstrument()/closeChessApp()/closeBeatBotApp()/
+// closeOrganApp()/closeMiniGolfApp()'s parameter -- true when triggered by
+// the browser's back button (whose history entry is already consumed), so
+// we must not call history.back() again in that case.
+function closeBlackbookApp(fromPopState) {
+  blackbookOverlayEl.classList.remove('open');
+  blackbookOverlayFrame.src = 'about:blank';
+  state = blackbookReturnState;
+  if (!fromPopState && blackbookHistoryPushed) {
+    blackbookHistoryPushed = false;
+    history.back();
+  } else {
+    blackbookHistoryPushed = false;
+  }
+}
+
 // Character-intro splash video, played once between character select and
 // the first frame of gameplay. Same DOM-overlay approach as the lab-app
 // iframe above and for the same reason: video decode/composite is handled
@@ -9399,6 +9596,8 @@ window.addEventListener('popstate', () => {
     closeOrganApp(true);
   } else if (state === 'minigolfApp') {
     closeMiniGolfApp(true);
+  } else if (state === 'blackbookApp') {
+    closeBlackbookApp(true);
   }
 });
 
@@ -9414,12 +9613,12 @@ canvas.addEventListener('pointerdown', (e) => {
     const vx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const vy = (e.clientY - rect.top) * (canvas.height / rect.height);
     handleLabTap(vx, vy);
-  } else if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp') {
+  } else if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp') {
     // The DOM overlay sits on top of (and outside) the canvas while an
-    // instrument/the chess app/the beat bot/the organ/mini golf is loaded,
-    // so a pointerdown reaching the canvas itself means the overlay isn't up
-    // yet/already closing -- ignore it rather than falling through to the
-    // generic interactPressed=true below.
+    // instrument/the chess app/the beat bot/the organ/mini golf/the
+    // blackbook is loaded, so a pointerdown reaching the canvas itself
+    // means the overlay isn't up yet/already closing -- ignore it rather
+    // than falling through to the generic interactPressed=true below.
   } else if (state === 'play') {
     // Tapping directly on a "TAP HERE TO PLAY AROUND" sign jumps straight
     // into that mini-game -- no need to walk up and face the exact tile.
@@ -9670,6 +9869,14 @@ function update(dt) {
     // it directly. buyPressed is still consumed here too so the on-screen
     // [X] touch button works while mini golf is open.
     if (buyPressed) closeMiniGolfApp();
+  } else if (state === 'blackbookApp') {
+    // Same reasoning as 'labApp'/'chessApp'/'beatBotApp'/'organApp'/
+    // 'minigolfApp' just above: the DOM overlay (see
+    // createBlackbookOverlay()) owns input while the blackbook is loaded
+    // -- its own close button and [Esc] handle closing it directly.
+    // buyPressed is still consumed here too so the on-screen [X] touch
+    // button works while the blackbook is open.
+    if (buyPressed) closeBlackbookApp();
   } else if (state === 'hotkeys') {
     if (interactPressed || buyPressed) state = hotkeysReturnState;
   } else if (state === 'crate') {
@@ -9985,12 +10192,13 @@ function render(time) {
     drawSplash();
     return;
   }
-  if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'characterIntro') {
+  if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'characterIntro') {
     // Same reasoning as the labApp overlay: a DOM element (the <video>,
     // see createCharacterIntroOverlay(), the chess <iframe>, see
     // createChessOverlay(), the beat bot <iframe>, see
     // createBeatBotOverlay(), the organ <iframe>, see createOrganOverlay(),
-    // or the mini golf <iframe>, see createMiniGolfOverlay()) fully covers
+    // the mini golf <iframe>, see createMiniGolfOverlay(), or the
+    // blackbook <iframe>, see createBlackbookOverlay()) fully covers
     // the canvas here, so there's nothing to gain from redrawing the world
     // underneath it.
     return;
