@@ -609,6 +609,46 @@ const VERMONT_NEWS = [
     body: 'Editors confirm today\'s front page was filled entirely with vibes, one weather observation, and a strong opinion about zucchini.' },
 ];
 
+// Fake front-page stories for the swamp's newsstands -- same Onion-style
+// silliness as VERMONT_NEWS above, just re-themed around boardwalk life,
+// gators, snakes, and frogs instead of mud season and moose. Keep these
+// harmless and generic, no real people, same as the town set.
+const SWAMP_NEWS_PAPER = 'THE SWAMP GAZETTE';
+const SWAMP_NEWS = [
+  { headline: 'LOCAL GATOR VOTED "MOST LIKELY TO BE MISTAKEN FOR A LOG" THIRD YEAR RUNNING',
+    body: 'The gator, reached for comment, did not move, which committee members called "extremely on-brand."' },
+  { headline: 'BOARDWALK PLANK #114 CREAKS OMINOUSLY, COMMUNITY DIVIDED ON REPLACING IT',
+    body: 'Some residents call the creak "structurally concerning." Others call it "the plank\'s whole personality" and want it left alone.' },
+  { headline: 'FROG CHORUS RUNS FOUR MINUTES LONG AGAIN, NEIGHBORS TOO POLITE TO SAY ANYTHING',
+    body: 'Witnesses describe the nightly performance as "committed" and "not actually stopping when you clap.\"' },
+  { headline: 'SNAKE SPOTTED SUNNING ON WARM PLANK, DECLINES TO MOVE FOR FOOT TRAFFIC',
+    body: 'Boardwalk regulars have taken to simply stepping over it. The snake calls this "the natural order of things."' },
+  { headline: 'MYSTERY RIPPLE IN THE WATER TURNS OUT TO BE, ONCE AGAIN, JUST A VERY LARGE FISH',
+    body: 'Onlookers report a collective sigh of relief, followed by mild disappointment.' },
+  { headline: 'GUT HUT ANNOUNCES NEW MURAL, SWAMP RESPONDS WITH CAUTIOUS ENTHUSIASM',
+    body: 'Early reviews praise the color palette. One heron declined to comment but was seen looking at it for a while.' },
+  { headline: 'SWAMP FOOD REPORTS RECORD WEEK FOR "MYSTERY CHOW" SALES',
+    body: 'Staff confirm the mystery chow remains, as always, a mystery. Sales are up regardless.' },
+  { headline: 'MOSQUITO POPULATION ACHIEVES WHAT LOCALS CALL "CRITICAL MASS"',
+    body: 'Swamp-goers describe the evening air as "thick, buzzing, and frankly a little personal."' },
+  { headline: 'LOCAL TURTLE COMPLETES ANNUAL LOG-TO-LOG MIGRATION IN RECORD 45 MINUTES',
+    body: 'Spectators along the boardwalk called it "a nail-biter right up until the very last foot."' },
+  { headline: 'BURLINGTON RECORDS EMPLOYEE INSISTS SWAMP HUMIDITY "REALLY OPENS UP THE VINYL"',
+    body: 'Audiophiles remain skeptical, though several admit the crates do smell "interesting."' },
+  { headline: 'DUCKWEED COVERS ENTIRE NORTH POND OVERNIGHT, POND UNBOTHERED',
+    body: 'Environmental officials call it "totally normal swamp behavior." The pond had no comment, being a pond.' },
+  { headline: 'ANOTHER GATOR SPOTTED, LOCALS NOTE IT MIGHT BE THE SAME GATOR AS BEFORE',
+    body: 'Experts are unable to confirm either way. The gator, again, did not move.' },
+  { headline: 'BOXGUTS SEEN SKETCHING BY THE WATER AGAIN, SWAMP CONSIDERS IT GOOD LUCK',
+    body: 'No official ruling on the luck claim, but nobody\'s willing to test it by telling him to stop.' },
+  { headline: 'FIREFLY SEASON DECLARED "OFFICIALLY UNDERWAY" BY UNANIMOUS BOARDWALK VOTE',
+    body: 'The vote was symbolic, since fireflies do not care about boardwalk politics, but everyone felt better afterward.' },
+  { headline: 'FROG ATTEMPTS TO HOP ONTO BOARDWALK, BOARDWALK WINS',
+    body: 'The frog is reportedly fine and has already tried again twice since the incident.' },
+  { headline: 'GAZETTE ANNOUNCES IT IS, ONCE AGAIN, OUT OF ACTUAL NEWS',
+    body: 'Editors confirm today\'s front page was filled entirely with pond ripples, one gator sighting, and a strong opinion about mosquitoes.' },
+];
+
 // ---------------------------------------------------------------- input
 const keys = {};
 let interactPressed = false;
@@ -7050,7 +7090,29 @@ function makeSwamp() {
       water: '#2c4330', waterHi: '#3d5a3e',
       trunk: '#4a3a24', leafDark: '#2f5a28', leafMid: '#3c6a30', leafLight: '#4a7c3c',
     },
-    ambient: { bikeRows: [], walkerRow: -1, dogRow: -1 },  // fish only, no traffic
+    // Five newsstands scattered across the open mud islands, spread across
+    // all four corners of the map plus one central spot so a stand is never
+    // too far off whichever path the player wandered down. Each sits on a
+    // tile whose full 3x3 neighborhood is clear ground -- verified against
+    // the deterministic swamp layout (same seed as the `rng` above) so none
+    // of them land on water, boardwalk, a building, or another crate/prop.
+    newsstands: [
+      { id: 'news1', tx: 9, ty: 2 },   // near SWAMP FOOD, NW island
+      { id: 'news2', tx: 16, ty: 10 }, // central island, between the spurs
+      { id: 'news3', tx: 18, ty: 15 }, // just outside GUT HUT's clearing
+      { id: 'news4', tx: 37, ty: 15 }, // near BURLINGTON RECORDS, east side
+      { id: 'news5', tx: 25, ty: 22 }, // southern island, off on its own
+    ],
+    // No people/bike/dog traffic out here -- replaced with swamp-native
+    // roaming life (see spawnGator/spawnSnake/spawnFrog): gators drift
+    // through the open water, snakes slither the length of the boardwalk
+    // trunk (row 12, guaranteed clear the entire width of the map), and
+    // frogs hop up and down the two north-south boardwalk spurs (x=8, x=34).
+    ambient: {
+      bikeRows: [], walkerRow: -1, dogRow: -1,
+      gator: true, snakeRow: 12,
+      frogSpurs: [{ col: 8, y0: 5, y1: 21 }, { col: 34, y0: 5, y1: 21 }],
+    },
   };
 }
 
@@ -8502,8 +8564,13 @@ function doInteract() {
     dialog = { name: n.name, lines: resolveLines(n.lines), i: 0 };
     state = 'dialog';
   } else if (target.type === 'newspaper') {
-    const story = VERMONT_NEWS[Math.floor(Math.random() * VERMONT_NEWS.length)];
-    dialog = { name: VERMONT_NEWS_PAPER, lines: [story.headline, story.body], i: 0 };
+    // swamp newsstands carry the local swamp-themed paper; every other
+    // outdoor map still gets the town's Green Mountain Bugle.
+    const swamp = maps[player.map] && maps[player.map].swamp;
+    const paperName = swamp ? SWAMP_NEWS_PAPER : VERMONT_NEWS_PAPER;
+    const stories = swamp ? SWAMP_NEWS : VERMONT_NEWS;
+    const story = stories[Math.floor(Math.random() * stories.length)];
+    dialog = { name: paperName, lines: [story.headline, story.body], i: 0 };
     state = 'dialog';
   } else if (target.type === 'minigame') {
     const start = MINIGAME_ACTIONS[target.data.id];
@@ -8530,7 +8597,7 @@ function doBuy() {
 
 // ---------------------------------------------------------------- ambient town life (people, bikes, dogs, fish)
 const ambient = [];
-const ambientTimers = { bike: 4, walker: 3, dog: 6, fish: 2 };
+const ambientTimers = { bike: 4, walker: 3, dog: 6, fish: 2, gator: 5, snake: 6, frog: 4 };
 
 function updateAmbient(dt) {
   const map = maps[player.map];
@@ -8547,12 +8614,36 @@ function updateAmbient(dt) {
   if (ambientTimers.fish <= 0 && map.riverTiles && map.riverTiles.length) {
     spawnFish(map); ambientTimers.fish = 2 + Math.random() * 3;
   }
+  // Swamp-only critters -- each spawn helper checks its own map.ambient
+  // flag and no-ops if the current map doesn't set it, same pattern as
+  // spawnBike/spawnDog above, so this is a no-op on every non-swamp map.
+  ambientTimers.gator -= dt;
+  if (ambientTimers.gator <= 0) { spawnGator(map); ambientTimers.gator = 9 + Math.random() * 8; }
+  ambientTimers.snake -= dt;
+  if (ambientTimers.snake <= 0) { spawnSnake(map); ambientTimers.snake = 8 + Math.random() * 9; }
+  ambientTimers.frog -= dt;
+  if (ambientTimers.frog <= 0) { spawnFrog(map); ambientTimers.frog = 6 + Math.random() * 7; }
 
   for (let i = ambient.length - 1; i >= 0; i--) {
     const a = ambient[i];
     a.t += dt;
     if (a.type === 'fish') {
       if (a.t > a.life) ambient.splice(i, 1);
+      continue;
+    }
+    if (a.type === 'gator') {
+      // slow horizontal drift, then submerges (despawns) after `life`
+      // seconds rather than crossing the whole map -- keeps it from
+      // gliding over mud islands it has no business being on top of
+      a.x += a.vx * dt;
+      if (a.t > a.life) ambient.splice(i, 1);
+      continue;
+    }
+    if (a.type === 'frog') {
+      // hops vertically up/down its boardwalk spur instead of the usual
+      // horizontal drift
+      a.y += a.vy * dt;
+      if (a.y < a.minY - 20 || a.y > a.maxY + 20) ambient.splice(i, 1);
       continue;
     }
     a.x += a.vx * dt;
@@ -8612,6 +8703,62 @@ function spawnFish(map) {
   });
 }
 
+// Gator: surfaces at a random water tile, drifts slowly for a few seconds,
+// then submerges again. Deliberately short-range and slow (unlike
+// bike/dog/snake's full cross-map traversal) since the swamp's water isn't
+// one clear lane -- it's broken up by mud islands, so a gator that tried to
+// swim the width of the map would end up gliding over dry ground partway
+// through. Reuses map.riverTiles, the same water-tile list spawnFish uses.
+function spawnGator(map) {
+  const amb = map.ambient || {};
+  if (!amb.gator || !map.riverTiles || !map.riverTiles.length) return;
+  const tile = map.riverTiles[Math.floor(Math.random() * map.riverTiles.length)];
+  const dir = Math.random() < 0.5 ? 1 : -1;
+  ambient.push({
+    type: 'gator', x: tile.x * TILE + 6, y: tile.y * TILE + 10,
+    vx: dir * 13, dir, t: 0, life: 3.5 + Math.random() * 2.5,
+  });
+}
+
+// Snake: slithers the full width of the boardwalk trunk (row 12 on the
+// swamp map), the one row guaranteed to be clear, walkable ground across
+// the entire map -- same "spawn off one edge, drift to the other" shape as
+// spawnBike/spawnDog above, just slower and on a different lane.
+function spawnSnake(map) {
+  const amb = map.ambient || {};
+  const row = amb.snakeRow;
+  if (row === undefined || row < 0) return;
+  const dir = Math.random() < 0.5 ? 1 : -1;
+  const bodies = ['#5a7a3a', '#7a6a26', '#3a5a4a', '#8a3a2a'];
+  const body = bodies[Math.floor(Math.random() * bodies.length)];
+  ambient.push({
+    type: 'snake', x: dir > 0 ? -20 : map.w * TILE + 20, y: row * TILE + 24,
+    vx: dir * 32, dir, t: 0,
+    body, bodyDark: shadeColor(body, -35), bodyLight: shadeColor(body, 30),
+  });
+}
+
+// Frog: hops up or down one of the two north-south boardwalk spurs
+// (map.ambient.frogSpurs), rather than the horizontal drift every other
+// ambient actor uses -- picked because the spurs are the only clear
+// vertical lanes on the map, same reasoning as the snake's horizontal one.
+function spawnFrog(map) {
+  const amb = map.ambient || {};
+  const spurs = amb.frogSpurs;
+  if (!spurs || !spurs.length) return;
+  const spur = spurs[Math.floor(Math.random() * spurs.length)];
+  const dir = Math.random() < 0.5 ? 1 : -1;
+  const skins = ['#4a8a3a', '#6a9a28', '#3a7a5a'];
+  const skin = skins[Math.floor(Math.random() * skins.length)];
+  ambient.push({
+    type: 'frog', x: spur.col * TILE + 16,
+    y: dir > 0 ? spur.y0 * TILE - 20 : spur.y1 * TILE + 20,
+    vy: dir * 24, dir, t: 0,
+    minY: spur.y0 * TILE, maxY: spur.y1 * TILE,
+    skin, skinDark: shadeColor(skin, -35), skinLight: shadeColor(skin, 30),
+  });
+}
+
 // Darken (negative percent) or lighten (positive percent) a '#rrggbb' color.
 // Used to build the shadow/highlight tones for the layered pixel-art look.
 function shadeColor(hex, amount) {
@@ -8631,6 +8778,9 @@ function drawAmbient() {
     else if (a.type === 'walker') drawWalkerActor(a);
     else if (a.type === 'dog') drawDogActor(a);
     else if (a.type === 'fish') drawFishActor(a);
+    else if (a.type === 'gator') drawGatorActor(a);
+    else if (a.type === 'snake') drawSnakeActor(a);
+    else if (a.type === 'frog') drawFrogActor(a);
   }
 }
 
@@ -8803,6 +8953,148 @@ function drawFishActor(a) {
   ctx.beginPath();
   ctx.ellipse(a.x, a.y, 8 + p * 10, 3 + p * 4, 0, 0, Math.PI * 2);
   ctx.stroke();
+  ctx.restore();
+}
+
+// Gator: low, mostly-submerged silhouette -- just eyes/snout-ridge riding
+// above the waterline plus a barely-visible body under a translucent
+// "water surface" tint, with the same fade-in/fade-out envelope as
+// drawFishActor (surfaces, drifts, submerges again).
+function drawGatorActor(a) {
+  const p = a.t / a.life;
+  const alpha = p < 0.15 ? p / 0.15 : p > 0.85 ? (1 - p) / 0.15 : 1;
+  const flip = a.dir < 0;
+  ctx.save();
+  ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+  ctx.translate(a.x, a.y);
+  if (flip) ctx.scale(-1, 1);
+
+  // submerged body -- dark, dulled by the water tint over it
+  ctx.fillStyle = 'rgba(30,42,26,0.55)';
+  ctx.beginPath();
+  ctx.ellipse(0, 2, 15, 5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ridged back breaking the surface
+  ctx.fillStyle = '#3a4a2e';
+  for (let i = -10; i <= 8; i += 6) {
+    ctx.beginPath();
+    ctx.moveTo(i, -1);
+    ctx.lineTo(i + 3, -4);
+    ctx.lineTo(i + 6, -1);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // snout ridge + eyes, the classic "just watching you" gator silhouette
+  ctx.fillStyle = '#2e3c22';
+  ctx.fillRect(11, -1, 8, 3);
+  ctx.fillStyle = '#e8d878';
+  ctx.fillRect(13, -3, 2, 2);
+  ctx.fillRect(17, -3, 2, 2);
+  ctx.fillStyle = '#1a1410';
+  ctx.fillRect(13.5, -2.5, 1, 1);
+  ctx.fillRect(17.5, -2.5, 1, 1);
+
+  // faint ripple ring, grows slowly over the gator's lifetime
+  ctx.strokeStyle = 'rgba(200,220,200,0.35)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.ellipse(0, 2, 16 + p * 8, 5 + p * 3, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+// Snake: slithers along the boardwalk in a simple sine-wave S-curve, drawn
+// as a chain of overlapping segments that shrink toward the tail.
+function drawSnakeActor(a) {
+  const flip = a.dir < 0;
+  ctx.save();
+  ctx.translate(a.x, a.y);
+  if (flip) ctx.scale(-1, 1);
+
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.fillRect(-14, 6, 28, 3);
+
+  const segs = 7;
+  for (let i = segs - 1; i >= 0; i--) {
+    const sx = -i * 4;
+    const sy = Math.sin(a.t * 7 - i * 0.9) * 3;
+    const r = i === 0 ? 4.5 : 3.6 - i * 0.15;
+    ctx.fillStyle = i % 2 === 0 ? a.body : a.bodyDark;
+    ctx.beginPath();
+    ctx.ellipse(sx, sy, r, r * 0.7, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // head: a slightly lighter, forward-facing segment with two small eyes
+  // and a flicking tongue
+  const headY = Math.sin(a.t * 7) * 3;
+  ctx.fillStyle = a.bodyLight;
+  ctx.beginPath();
+  ctx.ellipse(3, headY, 4.5, 3.2, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#1a1410';
+  ctx.fillRect(4, headY - 2, 1, 1);
+  ctx.fillRect(4, headY + 1, 1, 1);
+  if (Math.floor(a.t * 6) % 3 === 0) {
+    ctx.strokeStyle = '#c04030';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(7, headY);
+    ctx.lineTo(11, headY - 1.5);
+    ctx.moveTo(7, headY);
+    ctx.lineTo(11, headY + 1.5);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// Frog: hops in short arcs (scale + vertical bob keyed off its own travel
+// distance) up or down a boardwalk spur rather than walking smoothly.
+function drawFrogActor(a) {
+  const hopPhase = (Math.abs(a.y - (a.dir > 0 ? a.minY : a.maxY)) / 14) % 1;
+  const hop = Math.sin(hopPhase * Math.PI); // 0 at each landing, 1 mid-hop
+  const squash = 1 - hop * 0.25;
+  ctx.save();
+  ctx.translate(a.x, a.y);
+
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.beginPath();
+  ctx.ellipse(0, 8, 7 * squash, 2.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.translate(0, -hop * 6);
+  ctx.scale(squash, 1 / squash);
+
+  // legs (simple splayed rectangles, more splayed mid-hop)
+  const legSpread = 3 + hop * 3;
+  ctx.fillStyle = a.skinDark;
+  ctx.fillRect(-legSpread - 2, 2, 4, 5);
+  ctx.fillRect(legSpread - 2, 2, 4, 5);
+
+  // body
+  ctx.fillStyle = a.skin;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 7, 5.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = a.skinLight;
+  ctx.beginPath();
+  ctx.ellipse(0, -2, 5, 2.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // eyes on top, froggy style
+  ctx.fillStyle = a.skin;
+  ctx.beginPath();
+  ctx.arc(-3, -5, 2.2, 0, Math.PI * 2);
+  ctx.arc(3, -5, 2.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#1a1410';
+  ctx.beginPath();
+  ctx.arc(-3, -5, 1, 0, Math.PI * 2);
+  ctx.arc(3, -5, 1, 0, Math.PI * 2);
+  ctx.fill();
+
   ctx.restore();
 }
 
