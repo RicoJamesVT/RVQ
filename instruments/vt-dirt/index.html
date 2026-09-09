@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>VT DIRT</title>
+<style>
+  :root {
+    --mud-dark: #2b1d12;
+    --mud-mid: #4a331d;
+    --mud-light: #6e4c28;
+    --clay: #a5622f;
+    --moss: #5c6b3a;
+    --sky-top: #7d8ba0;
+    --sky-bot: #b9a98c;
+    --hud-bg: #1c140c;
+    --spark: #e8c468;
+    --danger: #b23a2e;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: #0d0906;
+    font-family: 'Arial Black', 'Segoe UI', sans-serif;
+    overflow: hidden;
+    touch-action: none;
+  }
+  #wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    width: 100%;
+    color: #f2e8d8;
+  }
+  #stage {
+    position: relative;
+    width: min(96vw, 900px);
+    aspect-ratio: 16 / 9;
+    border: 6px solid var(--mud-dark);
+    border-radius: 4px;
+    box-shadow: 0 0 0 2px var(--clay), 0 12px 30px rgba(0,0,0,0.6);
+    background: linear-gradient(var(--sky-top), var(--sky-bot));
+    overflow: hidden;
+  }
+  canvas { display: block; width: 100%; height: 100%; }
+
+  #titleBar {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 10px;
+    letter-spacing: 1px;
+  }
+  #titleBar h1 {
+    margin: 0;
+    font-size: clamp(22px, 4vw, 34px);
+    color: var(--spark);
+    text-shadow: 3px 3px 0 var(--mud-dark), 0 0 14px rgba(0,0,0,0.5);
+    transform: skewX(-6deg);
+  }
+  #titleBar span {
+    font-size: 12px;
+    color: #cbb896;
+    font-weight: normal;
+  }
+
+  .overlay {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 14px;
+    background: rgba(20,13,8,0.82);
+    text-align: center;
+    padding: 20px;
+  }
+  .overlay h2 {
+    margin: 0;
+    color: var(--spark);
+    font-size: clamp(20px, 4vw, 30px);
+    letter-spacing: 1px;
+  }
+  .overlay p {
+    margin: 0;
+    color: #e7dcc4;
+    font-size: 13px;
+    max-width: 480px;
+    line-height: 1.6;
+  }
+  .overlay .keys {
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin: 6px 0;
+  }
+  .key {
+    background: var(--mud-mid);
+    border: 2px solid var(--clay);
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 12px;
+    color: #f2e8d8;
+  }
+  button.go {
+    background: var(--clay);
+    color: #1c140c;
+    border: none;
+    padding: 12px 26px;
+    font-size: 15px;
+    font-weight: bold;
+    border-radius: 4px;
+    cursor: pointer;
+    letter-spacing: 1px;
+    box-shadow: 0 4px 0 #6b3616;
+    transition: transform 0.05s;
+  }
+  button.go:active { transform: translateY(3px); box-shadow: 0 1px 0 #6b3616; }
+
+  #hud {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 12px;
+    font-size: 12px;
+    color: #f4ecd8;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+    pointer-events: none;
+    z-index: 5;
+  }
+  #hud .box {
+    background: rgba(20,13,8,0.55);
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 1px solid rgba(165,98,47,0.6);
+  }
+  #throttleBar {
+    position: absolute;
+    bottom: 10px; left: 10px;
+    width: 90px; height: 10px;
+    background: rgba(20,13,8,0.6);
+    border: 1px solid var(--clay);
+    border-radius: 4px;
+    overflow: hidden;
+    z-index: 5;
+  }
+  #throttleFill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--moss), var(--spark));
+  }
+  #footer {
+    margin-top: 10px;
+    font-size: 11px;
+    color: #9c8c6f;
+    text-align: center;
+  }
+  #mobileControls {
+    display: none;
+    position: absolute;
+    bottom: 8px; right: 8px;
+    gap: 8px;
+    z-index: 6;
+  }
+  #mobileControls.show { display: flex; }
+  .mbtn {
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    background: rgba(165,98,47,0.55);
+    border: 2px solid rgba(232,196,104,0.7);
+    color: #f4ecd8;
+    font-size: 11px;
+    display: flex; align-items: center; justify-content: center;
+    user-select: none;
+  }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="titleBar">
+    <h1>VT DIRT</h1>
+    <span>mud-track racer</span>
+  </div>
+  <div id="stage">
+    <canvas id="game"></canvas>
+    <div id="hud">
+      <div class="box" id="distBox">DIST 0m / 1200m</div>
+      <div class="box" id="timeBox">TIME 0.0s</div>
+      <div class="box" id="bestBox">BEST --</div>
+    </div>
+    <div id="throttleBar"><div id="throttleFill"></div></div>
+    <div id="mobileControls">
+      <div class="mbtn" id="mLean1">BACK<br>FLIP</div>
+      <div class="mbtn" id="mGas">GAS</div>
+      <div class="mbtn" id="mLean2">FRONT<br>FLIP</div>
+    </div>
+
+    <div class="overlay" id="startOverlay">
+      <h2>MUDSLINGER SPEEDWAY</h2>
+      <p>Race through a soggy dirt track full of huge launch ramps, ruts and thick mud pits. Keep the throttle pinned, catch big air, and hold a direction to throw front flips and backflips. Land off-angle and you'll eat dirt.</p>
+      <div class="keys">
+        <div class="key">&#8593; / W &mdash; Throttle</div>
+        <div class="key">&#8592; &mdash; Hold in air for a BACKFLIP</div>
+        <div class="key">&#8594; &mdash; Hold in air for a FRONT FLIP</div>
+        <div class="key">&#8595; / S &mdash; Brake</div>
+      </div>
+      <button class="go" id="startBtn">START ENGINE</button>
+    </div>
+
+    <div class="overlay" id="endOverlay" style="display:none;">
+      <h2 id="endTitle">WIPEOUT</h2>
+      <p id="endText">You buried the front wheel in the mud.</p>
+      <button class="go" id="retryBtn">TRY AGAIN</button>
+    </div>
+  </div>
+  <div id="footer">Reach the finish line without crashing. Big jumps are your chance to flip &mdash; land close to upright to stick it, or you'll go down.</div>
+</div>
+
+<script>
+(function(){
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const stage = document.getElementById('stage');
+
+  function resize(){
+    const rect = stage.getBoundingClientRect();
+    canvas.width = rect.width * devicePixelRatio;
+    canvas.height = rect.height * devicePixelRatio;
+    ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+  }
+  window.addEventListener('resize', resize);
+
+  // ---------- World / track generation ----------
+  const TRACK_LENGTH = 1200; // meters (world units)
+  const GROUND_BASE = 0.62; // fraction of canvas height for baseline ground
+
+  // Track segments: each defines a height function contribution and mud zones
+  let segments = [];
+  let mudZones = [];
+
+  function buildTrack(seedOffset){
+    segments = [];
+    mudZones = [];
+    let x = 40;
+    let rand = mulberry32(1337 + seedOffset);
+    while (x < TRACK_LENGTH - 20) {
+      const kind = rand();
+      let len, height, type;
+      if (kind < 0.32) {
+        // jump hill / launch ramp -- taller and a bit steeper for real Excitebike-style air
+        len = 10 + rand()*8;
+        height = 4.5 + rand()*5.5;
+        type = 'hill';
+      } else if (kind < 0.55) {
+        // rolling bump
+        len = 10 + rand()*8;
+        height = 1.2 + rand()*1.4;
+        type = 'bump';
+      } else if (kind < 0.8) {
+        // flat mud pit
+        len = 12 + rand()*14;
+        height = 0;
+        type = 'flat';
+        mudZones.push({start:x, end:x+len, depth: 0.5 + rand()*0.5});
+      } else {
+        len = 16 + rand()*10;
+        height = 0;
+        type = 'flat';
+      }
+      segments.push({start:x, len, height, type});
+      x += len + 3 + rand()*4;
+    }
+    segments.push({start:x, len: 40, height:0, type:'finishpad'});
+  }
+
+  function mulberry32(a) {
+    return function() {
+      a |= 0; a = a + 0x6D2B79F5 | 0;
+      let t = Math.imul(a ^ a >>> 15, 1 | a);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    }
+  }
+
+  // height at world x (in meters), smooth via cosine interpolation between segment shapes
+  function heightAt(x){
+    let h = 0;
+    for (const seg of segments) {
+      if (x >= seg.start - 6 && x <= seg.start + seg.len + 6) {
+        const local = (x - seg.start) / seg.len;
+        if (seg.type === 'hill') {
+          if (local >= 0 && local <= 1) {
+            h += Math.sin(local * Math.PI) * seg.height;
+          } else if (local < 0) {
+            const t = 1 + local*3; // ramp in
+            if (t>0) h += Math.max(0, Math.sin(Math.max(0,t)*Math.PI*0.5))*0;
+          }
+        } else if (seg.type === 'bump') {
+          if (local >= 0 && local <= 1) {
+            h += Math.sin(local * Math.PI) * seg.height * 0.8;
+          }
+        }
+      }
+    }
+    return h;
+  }
+
+  function isMud(x){
+    for (const m of mudZones) if (x >= m.start && x <= m.end) return m.depth;
+    return 0;
+  }
+
+  function isFinish(x){
+    return x >= TRACK_LENGTH - 6;
+  }
+
+  // ---------- Bike state ----------
+  let bike, cameraX, running, crashed, finished, elapsed, distanceShown, best;
+  let keys = {up:false, down:false, left:false, right:false};
+
+  function resetBike(){
+    bike = {
+      x: 0,
+      groundY: heightAt(0),
+      vy: 0,
+      angle: 0,      // radians, 0 = flat, positive = nose up
+      angVel: 0,
+      airborne: false,
+      speed: 0,       // meters/sec forward
+      wheelieOK: true,
+      crashTimer: 0,
+      mudSplash: [],
+      launchAngle: 0,
+      trickText: '',
+      trickTimer: 0
+    };
+    cameraX = 0;
+    running = false;
+    crashed = false;
+    finished = false;
+    elapsed = 0;
+    distanceShown = 0;
+  }
+
+  const MAX_SPEED = 34;       // m/s on clean flat ground
+  const ACCEL = 16;
+  const BRAKE = 20;
+  const DRAG = 3.0;
+  const GRAVITY = 34;         // lower gravity = bigger, floatier Excitebike-style air
+  const JUMP_LAUNCH_FACTOR = 0.85;
+  const FLIP_ACCEL = 9;       // rad/s^2 while holding a lean key in the air
+  const MAX_ANG_VEL = 9;      // rad/s cap on spin speed
+  const LANDING_ANGLE_TOLERANCE = 0.55; // how far off upright you can land and still stick it
+
+  function normalizeAngle(a){
+    return ((a + Math.PI) % (Math.PI*2) + Math.PI*2) % (Math.PI*2) - Math.PI;
+  }
+
+  function update(dt){
+    if (!running || crashed || finished) return;
+
+    elapsed += dt;
+
+    const groundHNow = heightAt(bike.x);
+    const groundHAhead = heightAt(bike.x + 0.6);
+    const slope = (groundHAhead - groundHNow) / 0.6; // rise/run in meters
+
+    const mudDepth = isMud(bike.x);
+
+    // throttle / brake
+    let targetAccel = 0;
+    if (keys.up) targetAccel = ACCEL;
+    if (keys.down) targetAccel = -BRAKE;
+
+    // mud drag (only affects when on ground)
+    const mudDrag = bike.airborne ? 0 : mudDepth * 14;
+
+    if (!bike.airborne) {
+      bike.speed += targetAccel*dt;
+      bike.speed -= DRAG*dt*0.3;
+      bike.speed -= mudDrag*dt;
+    } else {
+      // slight air deceleration
+      bike.speed -= 1.2*dt;
+    }
+    bike.speed = Math.max(0, Math.min(MAX_SPEED, bike.speed));
+
+    // horizontal movement
+    bike.x += bike.speed * dt;
+
+    if (isFinish(bike.x) && !finished) {
+      finished = true;
+      running = false;
+      showEnd(true);
+      return;
+    }
+
+    if (!bike.airborne) {
+      // Stick to ground, detect launch off a rising-then-falling hill crest
+      const curH = heightAt(bike.x);
+      const nextSlope = (heightAt(bike.x+1.0) - curH) / 1.0;
+      bike.groundY = curH;
+      // auto-tilt bike to follow terrain slope while grounded
+      const desiredAngle = Math.atan(slope) ;
+      bike.angle += (desiredAngle - bike.angle) * Math.min(1, dt*10);
+      bike.angVel = 0;
+
+      // launch if slope steeply downward after being on an upward/peak section and speed high enough
+      if (nextSlope < -0.25 && bike.speed > 9) {
+        bike.airborne = true;
+        bike.vy = -bike.speed * JUMP_LAUNCH_FACTOR * Math.min(1.4, (0.3-nextSlope));
+        bike.vy = Math.min(bike.vy, -8);   // guarantee real air even off small lips
+        bike.vy = Math.max(bike.vy, -32);  // cap so big jumps stay on-screen
+        bike.angVel = 0;
+        bike.launchAngle = bike.angle;
+      }
+
+      // mud splash particles
+      if (mudDepth > 0 && bike.speed > 2 && Math.random() < 0.6) {
+        bike.mudSplash.push({
+          x: bike.x, y: bike.groundY,
+          vx: -bike.speed*0.4 + (Math.random()-0.5)*4,
+          vy: -(2+Math.random()*4),
+          life: 0.5+Math.random()*0.4,
+          t:0
+        });
+      }
+    } else {
+      // airborne physics
+      bike.vy += GRAVITY*dt;
+      bike.groundY -= -bike.vy*dt*0; // no-op placeholder
+      bike.airY = (bike.airY||0) - bike.vy*dt*0; // unused
+      bike.groundYAir = (bike.groundYAir||0);
+
+      bike.height = (bike.height===undefined? 0 : bike.height) ;
+      // track vertical offset separately
+      bike.airOffset = (bike.airOffset||0) + bike.vy*dt*-1*0; // placeholder to avoid confusion below
+    }
+
+    // Simplify air handling using explicit altitude variable
+    if (bike.airborne) {
+      bike.altitude = (bike.altitude||0) + (-bike.vy)*dt;
+    }
+
+    // player lean control while airborne
+    if (bike.airborne) {
+      // left = spin nose-up into a backflip, right = spin nose-down into a front flip
+      const leanInput = (keys.left?1:0) - (keys.right?1:0);
+      bike.angVel += leanInput * FLIP_ACCEL * dt;
+      bike.angVel *= 0.995; // slight decay so a flip you started carries through after you let go
+      bike.angVel = Math.max(-MAX_ANG_VEL, Math.min(MAX_ANG_VEL, bike.angVel));
+      bike.angle += bike.angVel*dt;
+      // intentionally unclamped -- this is how full 360 flips happen
+    }
+
+    // landing check
+    if (bike.airborne) {
+      const groundNow = heightAt(bike.x);
+      const virtualY = groundNow + (bike.altitude||0);
+      if ((bike.altitude||0) <= 0) {
+        // land
+        bike.airborne = false;
+        bike.altitude = 0;
+        const totalRotation = bike.angle - (bike.launchAngle||0);
+        const normAngle = normalizeAngle(bike.angle);
+        const impactAngle = Math.abs(normAngle);
+        const impactSpeedDown = Math.abs(bike.vy);
+        bike.vy = 0;
+        if (impactAngle > LANDING_ANGLE_TOLERANCE || impactSpeedDown > 40) {
+          crash('You landed off-balance and went over the bars.');
+          return;
+        } else {
+          // clean landing -- snap off any full rotations and credit the flip
+          bike.angle = normAngle;
+          bike.speed *= (1 - Math.min(0.4, impactAngle*0.5));
+          bike.angVel = 0;
+          const flips = Math.round(totalRotation / (Math.PI*2));
+          if (flips !== 0) {
+            const name = flips > 0 ? 'BACKFLIP' : 'FRONT FLIP';
+            const n = Math.abs(flips);
+            bike.trickText = (n > 1 ? n + 'x ' : '') + name + '!';
+            bike.trickTimer = 1.6;
+          }
+        }
+      }
+    }
+
+    cameraX = bike.x - 3;
+
+    // update mud splash particles
+    for (const p of bike.mudSplash) {
+      p.t += dt;
+      p.x += p.vx*dt;
+      p.y += p.vy*dt;
+      p.vy += 18*dt;
+    }
+    bike.mudSplash = bike.mudSplash.filter(p => p.t < p.life);
+
+    if (bike.trickTimer > 0) bike.trickTimer = Math.max(0, bike.trickTimer - dt);
+
+    distanceShown = Math.floor(bike.x);
+  }
+
+  function crash(reason){
+    crashed = true;
+    running = false;
+    showEnd(false, reason);
+  }
+
+  // ---------- Rendering ----------
+  const WORLD_TO_PX = 22; // pixels per meter at zoom 1
+  function worldToScreen(x, y){
+    const cw = canvas.width/devicePixelRatio;
+    const ch = canvas.height/devicePixelRatio;
+    const sx = (x - cameraX) * WORLD_TO_PX + cw*0.28;
+    const groundLine = ch*GROUND_BASE;
+    const sy = groundLine - y*WORLD_TO_PX;
+    return [sx, sy, groundLine];
+  }
+
+  // inverse of worldToScreen's x mapping - given a screen x, what world x is it?
+  function screenXToWorld(sx, cw){
+    return cameraX + (sx - cw*0.28) / WORLD_TO_PX;
+  }
+
+  function mod(n, m) { return ((n % m) + m) % m; }
+
+  function drawSky(cw,ch){
+    const grad = ctx.createLinearGradient(0,0,0,ch);
+    grad.addColorStop(0,'#7d8ba0');
+    grad.addColorStop(0.7,'#9a978a');
+    grad.addColorStop(1,'#b9a98c');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0,0,cw,ch);
+
+    const horizon = ch*GROUND_BASE;
+
+    // far ridge layer - slow parallax, tiled seamlessly with continuous wrap
+    drawHillLayer(cw, horizon, {
+      spacing: 300, speed: 0.10, amp: 55, width: 190,
+      color: 'rgba(80,68,52,0.30)', yOffset: -6
+    });
+    // mid ridge layer - a bit faster, slightly closer/larger
+    drawHillLayer(cw, horizon, {
+      spacing: 210, speed: 0.22, amp: 40, width: 150,
+      color: 'rgba(70,58,42,0.40)', yOffset: 4
+    });
+
+    // drifting cloud wisps, very slow layer for extra sense of continuous motion
+    ctx.fillStyle = 'rgba(255,250,240,0.12)';
+    for (let i=0;i<4;i++){
+      const spacing = 340;
+      const bx = mod(i*spacing - cameraX*0.05, spacing + cw) - spacing*0.5;
+      const by = horizon*0.28 + (i%2)*18;
+      ctx.beginPath();
+      ctx.ellipse(bx, by, 60, 12, 0, 0, Math.PI*2);
+      ctx.fill();
+    }
+  }
+
+  function drawHillLayer(cw, horizon, opt){
+    ctx.fillStyle = opt.color;
+    const count = Math.ceil(cw/opt.spacing) + 3;
+    const shift = mod(cameraX*opt.speed, opt.spacing);
+    for (let i=-1;i<count;i++){
+      const bx = i*opt.spacing - shift + opt.spacing*0.5;
+      ctx.beginPath();
+      ctx.ellipse(bx, horizon+opt.yOffset, opt.width, opt.amp, 0, Math.PI, 0);
+      ctx.fill();
+    }
+  }
+
+  // sample ground points across the visible span, used for a smoothly
+  // interpolated (curved) silhouette instead of a jagged polyline
+  function sampleGround(startX, endX, step){
+    const pts = [];
+    for (let x = startX; x <= endX + step; x += step) {
+      const h = heightAt(x);
+      pts.push(worldToScreen(x, h));
+    }
+    return pts;
+  }
+
+  function strokeSmoothPath(pts){
+    if (pts.length < 2) return;
+    ctx.moveTo(pts[0][0], pts[0][1]);
+    for (let i=0; i<pts.length-1; i++) {
+      const [x0,y0] = pts[i];
+      const [x1,y1] = pts[i+1];
+      const mx = (x0+x1)/2, my = (y0+y1)/2;
+      ctx.quadraticCurveTo(x0, y0, mx, my);
+    }
+    const last = pts[pts.length-1];
+    ctx.lineTo(last[0], last[1]);
+  }
+
+  function drawGround(cw,ch){
+    const startX = screenXToWorld(-4, cw);
+    const endX = screenXToWorld(cw+4, cw);
+    const step = 0.28; // fine sampling for a smooth, fluid curve
+    const groundPts = sampleGround(startX, endX, step);
+
+    ctx.beginPath();
+    strokeSmoothPath(groundPts);
+    const [exSx] = worldToScreen(endX, 0);
+    ctx.lineTo(exSx, ch);
+    const [stSx] = worldToScreen(startX, 0);
+    ctx.lineTo(stSx, ch);
+    ctx.closePath();
+    const gGrad = ctx.createLinearGradient(0, ch*GROUND_BASE-30, 0, ch);
+    gGrad.addColorStop(0, '#6e4c28');
+    gGrad.addColorStop(0.35, '#4a331d');
+    gGrad.addColorStop(1, '#2b1d12');
+    ctx.fillStyle = gGrad;
+    ctx.fill();
+
+    // subtle flowing texture streaks across the ground to sell continuous
+    // motion — a repeating diagonal pattern scrolled by camera position
+    ctx.save();
+    ctx.beginPath();
+    strokeSmoothPath(groundPts);
+    ctx.lineTo(exSx, ch);
+    ctx.lineTo(stSx, ch);
+    ctx.closePath();
+    ctx.clip();
+    ctx.strokeStyle = 'rgba(120,92,58,0.14)';
+    ctx.lineWidth = 3;
+    const streakSpacing = 26;
+    const streakShift = mod(cameraX*WORLD_TO_PX, streakSpacing);
+    for (let sx = -streakShift - ch; sx < cw + ch; sx += streakSpacing) {
+      ctx.beginPath();
+      ctx.moveTo(sx, ch*GROUND_BASE - 30);
+      ctx.lineTo(sx + ch*0.5, ch + 20);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // mud zones overlay
+    for (const m of mudZones) {
+      if (m.end < startX || m.start > endX) continue;
+      const mPts = sampleGround(Math.max(m.start,startX), Math.min(m.end,endX), 0.28);
+      ctx.beginPath();
+      strokeSmoothPath(mPts);
+      const [ex] = worldToScreen(Math.min(m.end,endX), 0);
+      ctx.lineTo(ex, ch);
+      const [sx0] = worldToScreen(Math.max(m.start,startX), 0);
+      ctx.lineTo(sx0, ch);
+      ctx.closePath();
+      ctx.fillStyle = `rgba(20,14,8,${0.35 + m.depth*0.25})`;
+      ctx.fill();
+      // glossy mud sheen
+      ctx.save();
+      ctx.clip();
+      ctx.fillStyle = 'rgba(160,120,70,0.18)';
+      for (let x = Math.max(m.start,startX); x <= Math.min(m.end,endX); x += 3) {
+        const h = heightAt(x);
+        const [sx, sy] = worldToScreen(x, h);
+        ctx.beginPath();
+        ctx.ellipse(sx, sy+3, 6, 2, 0, 0, Math.PI*2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    // finish pad striping
+    if (endX > TRACK_LENGTH - 6) {
+      for (let x = TRACK_LENGTH-6; x < TRACK_LENGTH+10; x+=2) {
+        if (x < startX || x > endX) continue;
+        const h = heightAt(x);
+        const [sx, sy] = worldToScreen(x,h);
+        ctx.fillStyle = (Math.floor(x*2)%2===0) ? '#f2e8d8' : '#1c140c';
+        ctx.fillRect(sx-1, sy-18, 2, 18);
+      }
+    }
+  }
+
+  function drawBike(){
+    const alt = bike.altitude||0;
+    const [sx, syGround] = worldToScreen(bike.x, heightAt(bike.x));
+    const sy = syGround - alt*WORLD_TO_PX;
+
+    ctx.save();
+    ctx.translate(sx, sy);
+    ctx.rotate(-bike.angle);
+
+    // shadow (only meaningful on ground, fade if airborne)
+    ctx.save();
+    ctx.rotate(bike.angle);
+    ctx.translate(-sx,-sy);
+    const shadowAlpha = bike.airborne ? Math.max(0.05, 0.3 - alt*0.03) : 0.3;
+    ctx.fillStyle = `rgba(10,7,4,${shadowAlpha})`;
+    ctx.beginPath();
+    ctx.ellipse(sx, syGround+4, 16, 4, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+
+    // wheels
+    ctx.fillStyle = '#161010';
+    ctx.strokeStyle = '#e8c468';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.arc(-13, 6, 7, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.arc(13, 6, 7, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+
+    // wheel spatter tint if muddy
+    const mud = isMud(bike.x);
+    if (mud>0 && !bike.airborne) {
+      ctx.strokeStyle = 'rgba(60,40,20,0.9)';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(-13,6,7,0,Math.PI*1.3); ctx.stroke();
+      ctx.beginPath(); ctx.arc(13,6,7,0,Math.PI*1.3); ctx.stroke();
+    }
+
+    // body / frame
+    ctx.fillStyle = '#a5622f';
+    ctx.beginPath();
+    ctx.moveTo(-13,6);
+    ctx.lineTo(-6,-6);
+    ctx.lineTo(6,-9);
+    ctx.lineTo(13,6);
+    ctx.lineTo(4,4);
+    ctx.lineTo(-4,4);
+    ctx.closePath();
+    ctx.fill();
+
+    // seat
+    ctx.fillStyle = '#3a2a18';
+    ctx.fillRect(-6,-9,10,3);
+
+    // rider
+    ctx.fillStyle = '#1c140c';
+    ctx.beginPath();
+    ctx.ellipse(-1,-14,4.4,4.4,0,0,Math.PI*2); // helmet
+    ctx.fill();
+    ctx.fillStyle = '#5c6b3a';
+    ctx.fillRect(-5,-13,8,10); // torso
+    ctx.strokeStyle = '#1c140c';
+    ctx.lineWidth = 2.4;
+    ctx.beginPath(); ctx.moveTo(3,-11); ctx.lineTo(9,-6); ctx.stroke(); // arm to bars
+    ctx.beginPath(); ctx.moveTo(-2,-3); ctx.lineTo(-9,6); ctx.stroke(); // leg back
+
+    // handlebar accent
+    ctx.strokeStyle = '#e8c468';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.moveTo(6,-9); ctx.lineTo(11,-11); ctx.stroke();
+
+    ctx.restore();
+
+    // trick popup text, floats up and fades after a clean flip landing
+    if (bike.trickTimer > 0) {
+      const alpha = Math.min(1, bike.trickTimer / 1.6);
+      const rise = (1.6 - bike.trickTimer) * 22;
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 17px "Arial Black", sans-serif';
+      ctx.lineWidth = 3.5;
+      ctx.strokeStyle = '#1c140c';
+      ctx.strokeText(bike.trickText, sx, sy - 34 - rise);
+      ctx.fillStyle = '#e8c468';
+      ctx.fillText(bike.trickText, sx, sy - 34 - rise);
+      ctx.restore();
+    }
+
+    // mud splash particles (world space, not rotated with bike)
+    for (const p of bike.mudSplash) {
+      const [px, py] = worldToScreen(p.x, heightAt(p.x));
+      const alpha = 1 - p.t/p.life;
+      ctx.fillStyle = `rgba(60,40,22,${alpha*0.9})`;
+      ctx.beginPath();
+      ctx.arc(px, py - p.y*0, 2.2, 0, Math.PI*2);
+      ctx.fill();
+    }
+  }
+
+  function render(){
+    const cw = canvas.width/devicePixelRatio;
+    const ch = canvas.height/devicePixelRatio;
+    ctx.clearRect(0,0,cw,ch);
+    drawSky(cw,ch);
+    drawGround(cw,ch);
+    drawBike();
+
+    // throttle bar
+    const fill = document.getElementById('throttleFill');
+    fill.style.width = Math.round((bike.speed/MAX_SPEED)*100) + '%';
+
+    document.getElementById('distBox').textContent = `DIST ${Math.min(distanceShown,TRACK_LENGTH)}m / ${TRACK_LENGTH}m`;
+    document.getElementById('timeBox').textContent = `TIME ${elapsed.toFixed(1)}s`;
+  }
+
+  // ---------- main loop ----------
+  let lastT = null;
+  function loop(t){
+    if (lastT === null) lastT = t;
+    let dt = (t - lastT)/1000;
+    dt = Math.min(dt, 0.033);
+    lastT = t;
+    update(dt);
+    render();
+    requestAnimationFrame(loop);
+  }
+
+  // ---------- UI wiring ----------
+  const startOverlay = document.getElementById('startOverlay');
+  const endOverlay = document.getElementById('endOverlay');
+  const endTitle = document.getElementById('endTitle');
+  const endText = document.getElementById('endText');
+  const bestBox = document.getElementById('bestBox');
+
+  best = null;
+
+  function showEnd(won, reason){
+    setTimeout(()=>{
+      endOverlay.style.display = 'flex';
+      if (won) {
+        endTitle.textContent = 'FINISH!';
+        endTitle.style.color = '#9fd18a';
+        endText.textContent = `You crossed the line in ${elapsed.toFixed(1)}s.`;
+        if (best === null || elapsed < best) {
+          best = elapsed;
+          bestBox.textContent = `BEST ${best.toFixed(1)}s`;
+        }
+      } else {
+        endTitle.textContent = 'WIPEOUT';
+        endTitle.style.color = '#e6a08a';
+        endText.textContent = reason || 'You went down in the mud.';
+      }
+    }, 250);
+  }
+
+  function startRace(){
+    buildTrack(Math.floor(Math.random()*10000));
+    resetBike();
+    running = true;
+    startOverlay.style.display = 'none';
+    endOverlay.style.display = 'none';
+  }
+
+  document.getElementById('startBtn').addEventListener('click', startRace);
+  document.getElementById('retryBtn').addEventListener('click', startRace);
+
+  window.addEventListener('keydown', (e)=>{
+    if (['ArrowUp','w','W'].includes(e.key)) keys.up = true;
+    if (['ArrowDown','s','S'].includes(e.key)) keys.down = true;
+    if (['ArrowLeft','a','A'].includes(e.key)) keys.left = true;
+    if (['ArrowRight','d','D'].includes(e.key)) keys.right = true;
+    if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) e.preventDefault();
+  });
+  window.addEventListener('keyup', (e)=>{
+    if (['ArrowUp','w','W'].includes(e.key)) keys.up = false;
+    if (['ArrowDown','s','S'].includes(e.key)) keys.down = false;
+    if (['ArrowLeft','a','A'].includes(e.key)) keys.left = false;
+    if (['ArrowRight','d','D'].includes(e.key)) keys.right = false;
+  });
+
+  // mobile controls
+  function bindHold(el, onDown, onUp){
+    el.addEventListener('pointerdown', (e)=>{ e.preventDefault(); onDown(); });
+    el.addEventListener('pointerup', onUp);
+    el.addEventListener('pointerleave', onUp);
+    el.addEventListener('pointercancel', onUp);
+  }
+  const mGas = document.getElementById('mGas');
+  const mLean1 = document.getElementById('mLean1');
+  const mLean2 = document.getElementById('mLean2');
+  bindHold(mGas, ()=>keys.up=true, ()=>keys.up=false);
+  bindHold(mLean1, ()=>keys.left=true, ()=>keys.left=false);
+  bindHold(mLean2, ()=>keys.right=true, ()=>keys.right=false);
+
+  if ('ontouchstart' in window) {
+    document.getElementById('mobileControls').classList.add('show');
+  }
+
+  resetBike();
+  buildTrack(1);
+  resize();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
