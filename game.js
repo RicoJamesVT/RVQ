@@ -687,6 +687,13 @@ const MINIGAME_ACTIONS = {
   // locally so it works with no connection). See openCrocSwampApp()/
   // createCrocSwampOverlay() below.
   crocswamp: () => openCrocSwampApp(),
+  // Vinyl Snake -- a crate-digging take on classic Snake inside Burlington
+  // Records (see the `burlington` shop's `minigames` list). Same "full
+  // standalone web app, not a canvas mini-game" shape as chess/beatbot/
+  // organ/mini golf/blackbook/Gator Grooves above (own DOM/iframe overlay,
+  // bundled locally so it works with no connection). See
+  // openVinylSnakeApp()/createVinylSnakeOverlay() below.
+  vinylsnake: () => openVinylSnakeApp(),
 };
 
 // ---- trophy case: personal bests for the 8 scored mini-games --------------
@@ -6249,6 +6256,7 @@ window.addEventListener('keydown', (e) => {
     if (k === 'escape' && state === 'minigolfApp') { closeMiniGolfApp(); }
     if (k === 'escape' && state === 'blackbookApp') { closeBlackbookApp(); }
     if (k === 'escape' && state === 'crocSwampApp') { closeCrocSwampApp(); }
+    if (k === 'escape' && state === 'vinylSnakeApp') { closeVinylSnakeApp(); }
     if (k === 'arrowleft') selectMove = -1;
     if (k === 'arrowright') selectMove = 1;
     if (k === 'arrowup') menuMove = -1;
@@ -7627,6 +7635,16 @@ const shops = {
     // Four crates: Honeysuckle Lead (moved in off the boardwalk spur, see
     // makeSwamp()) plus three junk crates.
     crates: [ { junkSeed: 0 }, { record: 'honeysuckle' }, { junkSeed: 1 }, { junkSeed: 2 } ],
+    // Vinyl Snake cabinet, on open floor -- same (9,7) "clear of the
+    // counter table (row 3) and the corner crates (1,4)/(1,6)/(12,4)/
+    // (12,6)" spot Pure Pop Records uses for Crate Digging, since this
+    // shop shares that same default layout. Full standalone web app, same
+    // "full-screen DOM overlay with an <iframe>" pattern as chess/the beat
+    // bot/the organ/mini golf/the blackbook/Gator Grooves -- see
+    // MINIGAME_ACTIONS.vinylsnake/openVinylSnakeApp().
+    minigames: [
+      { id: 'vinylsnake', tx: 9, ty: 7, label: 'PLAY VINYL SNAKE' },
+    ],
   }),
 };
 
@@ -7658,7 +7676,7 @@ const player = {
   tempItem: null, tempItemTimer: 0,
 };
 const collected = new Set();
-let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | portal | fifa | minigame | hotkeys | crate | trophies | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp
+let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | portal | fifa | minigame | hotkeys | crate | trophies | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | vinylSnakeApp
 // State to snap back to when the [H] hotkeys popup is closed -- currently
 // always 'play' since that's the only state H can be opened from, but kept
 // as its own var in case another state wants to offer the popup later.
@@ -8235,7 +8253,7 @@ const music = {
 // enter/exit call sites, so it can't drift out of sync no matter which
 // of the several ways the player backs out of the lab popup (keyboard
 // [X], on-screen [X] button, closing the instrument iframe, etc.).
-const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'characterIntro']);
+const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'vinylSnakeApp', 'characterIntro']);
 function syncMusicDuck() {
   music.duck(DUCKED_STATES.has(state));
 }
@@ -9650,6 +9668,118 @@ function closeCrocSwampApp(fromPopState) {
   }
 }
 
+// Vinyl Snake -- a crate-digging take on classic Snake, tucked inside
+// Burlington Records (see the `burlington` shop's `minigames` list). Same
+// "full-screen DOM overlay with an <iframe>" trick as chess/the beat bot/
+// the organ/mini golf/the blackbook/Gator Grooves above.
+//
+// Ships as a bundled, self-contained page (its own canvas game loop, no
+// external assets, no network calls, and no real localStorage -- best
+// scores just live in an in-memory variable on the page -- at
+// instruments/vinyl-snake/index.html, the exact same local-file pattern
+// CHESS_APP_URL/BEAT_BOT_APP_URL/ORGAN_APP_URL/MINI_GOLF_APP_URL/
+// BLACKBOOK_APP_URL/CROC_SWAMP_APP_URL use. Being a same-origin local
+// asset rather than a live remote site means it loads and works the same
+// with or without a connection, so -- same as the others -- there's no
+// online/offline branching needed here either.
+const VINYL_SNAKE_APP_URL = 'instruments/vinyl-snake/index.html';
+let vinylSnakeOverlayEl = null, vinylSnakeOverlayFrame = null;
+let vinylSnakeReturnState = 'play';
+let vinylSnakeHistoryPushed = false; // mirrors labHistoryPushed/chessHistoryPushed/beatBotHistoryPushed/organHistoryPushed/miniGolfHistoryPushed/blackbookHistoryPushed/crocSwampHistoryPushed -- see openVinylSnakeApp()/closeVinylSnakeApp()
+
+function createVinylSnakeOverlay() {
+  const style = document.createElement('style');
+  style.textContent = `
+    #vinylSnakeApp {
+      position: fixed; inset: 0; z-index: 1000;
+      background: #000;
+      display: none; flex-direction: column;
+    }
+    #vinylSnakeApp.open { display: flex; }
+    #vinylSnakeApp .vs-bar {
+      flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 10px 14px;
+      background: linear-gradient(#2a2a2a, #141414);
+      border-bottom: 2px solid #e8b64a;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    }
+    #vinylSnakeApp .vs-title {
+      color: #f0f0f0; font: bold 14px monospace; letter-spacing: 0.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #vinylSnakeApp .vs-close {
+      flex: 0 0 auto; cursor: pointer;
+      background: rgba(232,182,74,0.15);
+      border: 1.5px solid rgba(232,182,74,0.85);
+      color: #f0f0f0; border-radius: 8px;
+      padding: 7px 16px; font: bold 13px monospace;
+      -webkit-user-select: none; user-select: none;
+    }
+    #vinylSnakeApp .vs-close:active { background: rgba(232,182,74,0.4); }
+    #vinylSnakeApp iframe {
+      flex: 1 1 auto; width: 100%; border: 0; background: #000;
+    }
+  `;
+  document.head.appendChild(style);
+
+  vinylSnakeOverlayEl = document.createElement('div');
+  vinylSnakeOverlayEl.id = 'vinylSnakeApp';
+
+  const bar = document.createElement('div');
+  bar.className = 'vs-bar';
+  const title = document.createElement('div');
+  title.className = 'vs-title';
+  title.textContent = 'VINYL SNAKE';
+  const closeBtn = document.createElement('div');
+  closeBtn.className = 'vs-close';
+  closeBtn.textContent = '\u2190 BACK TO BURLINGTON RECORDS';
+  bindTap(closeBtn, closeVinylSnakeApp);
+  bar.appendChild(title);
+  bar.appendChild(closeBtn);
+
+  vinylSnakeOverlayFrame = document.createElement('iframe');
+  vinylSnakeOverlayFrame.setAttribute('allow', 'autoplay');
+
+  vinylSnakeOverlayEl.appendChild(bar);
+  vinylSnakeOverlayEl.appendChild(vinylSnakeOverlayFrame);
+  document.body.appendChild(vinylSnakeOverlayEl);
+}
+createVinylSnakeOverlay();
+
+// Opens the Vinyl Snake overlay and switches state to 'vinylSnakeApp'.
+// Called from MINIGAME_ACTIONS.vinylsnake (E on the cabinet, or tapping
+// its floating sign), same entry points every other mini-game uses.
+function openVinylSnakeApp() {
+  vinylSnakeReturnState = state;
+  vinylSnakeOverlayFrame.src = VINYL_SNAKE_APP_URL;
+  vinylSnakeOverlayEl.classList.add('open');
+  state = 'vinylSnakeApp';
+  // Same throwaway-history-entry trick as openInstrument()/openChessApp()/
+  // openBeatBotApp()/openOrganApp()/openMiniGolfApp()/openBlackbookApp()/
+  // openCrocSwampApp() above, so the browser/OS back gesture closes the
+  // Vinyl Snake overlay instead of leaving the game entirely.
+  history.pushState({ ricoVinylSnakeApp: true }, '');
+  vinylSnakeHistoryPushed = true;
+}
+
+// Tears the iframe back down and returns to ordinary gameplay in
+// Burlington Records. fromPopState mirrors closeInstrument()/
+// closeChessApp()/closeBeatBotApp()/closeOrganApp()/closeMiniGolfApp()/
+// closeBlackbookApp()/closeCrocSwampApp()'s parameter -- true when
+// triggered by the browser's back button (whose history entry is already
+// consumed), so we must not call history.back() again in that case.
+function closeVinylSnakeApp(fromPopState) {
+  vinylSnakeOverlayEl.classList.remove('open');
+  vinylSnakeOverlayFrame.src = 'about:blank';
+  state = vinylSnakeReturnState;
+  if (!fromPopState && vinylSnakeHistoryPushed) {
+    vinylSnakeHistoryPushed = false;
+    history.back();
+  } else {
+    vinylSnakeHistoryPushed = false;
+  }
+}
+
 // Character-intro splash video, played once between character select and
 // the first frame of gameplay. Same DOM-overlay approach as the lab-app
 // iframe above and for the same reason: video decode/composite is handled
@@ -9835,6 +9965,8 @@ window.addEventListener('popstate', () => {
     closeBlackbookApp(true);
   } else if (state === 'crocSwampApp') {
     closeCrocSwampApp(true);
+  } else if (state === 'vinylSnakeApp') {
+    closeVinylSnakeApp(true);
   }
 });
 
@@ -9850,12 +9982,12 @@ canvas.addEventListener('pointerdown', (e) => {
     const vx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const vy = (e.clientY - rect.top) * (canvas.height / rect.height);
     handleLabTap(vx, vy);
-  } else if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp') {
+  } else if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp') {
     // The DOM overlay sits on top of (and outside) the canvas while an
     // instrument/the chess app/the beat bot/the organ/mini golf/the
-    // blackbook/Gator Grooves is loaded, so a pointerdown reaching the
-    // canvas itself means the overlay isn't up yet/already closing --
-    // ignore it rather than falling through to the generic
+    // blackbook/Gator Grooves/Vinyl Snake is loaded, so a pointerdown
+    // reaching the canvas itself means the overlay isn't up yet/already
+    // closing -- ignore it rather than falling through to the generic
     // interactPressed=true below.
   } else if (state === 'play') {
     // Tapping directly on a "TAP HERE TO PLAY AROUND" sign jumps straight
@@ -10123,6 +10255,14 @@ function update(dt) {
     // buyPressed is still consumed here too so the on-screen [X] touch
     // button works while Gator Grooves is open.
     if (buyPressed) closeCrocSwampApp();
+  } else if (state === 'vinylSnakeApp') {
+    // Same reasoning as 'labApp'/'chessApp'/'beatBotApp'/'organApp'/
+    // 'minigolfApp'/'blackbookApp'/'crocSwampApp' just above: the DOM
+    // overlay (see createVinylSnakeOverlay()) owns input while Vinyl
+    // Snake is loaded -- its own close button and [Esc] handle closing
+    // it directly. buyPressed is still consumed here too so the
+    // on-screen [X] touch button works while Vinyl Snake is open.
+    if (buyPressed) closeVinylSnakeApp();
   } else if (state === 'hotkeys') {
     if (interactPressed || buyPressed) state = hotkeysReturnState;
   } else if (state === 'crate') {
@@ -10438,16 +10578,16 @@ function render(time) {
     drawSplash();
     return;
   }
-  if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'characterIntro') {
+  if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'characterIntro') {
     // Same reasoning as the labApp overlay: a DOM element (the <video>,
     // see createCharacterIntroOverlay(), the chess <iframe>, see
     // createChessOverlay(), the beat bot <iframe>, see
     // createBeatBotOverlay(), the organ <iframe>, see createOrganOverlay(),
     // the mini golf <iframe>, see createMiniGolfOverlay(), the blackbook
-    // <iframe>, see createBlackbookOverlay(), or the Gator Grooves
-    // <iframe>, see createCrocSwampOverlay()) fully covers the canvas
-    // here, so there's nothing to gain from redrawing the world
-    // underneath it.
+    // <iframe>, see createBlackbookOverlay(), the Gator Grooves <iframe>,
+    // see createCrocSwampOverlay(), or the Vinyl Snake <iframe>, see
+    // createVinylSnakeOverlay()) fully covers the canvas here, so there's
+    // nothing to gain from redrawing the world underneath it.
     return;
   }
   if (WORLD_HIDDEN_STATES.has(state)) {
