@@ -783,6 +783,15 @@ const MINIGAME_ACTIONS = {
   // bundled locally so it works with no connection). See
   // openVinylSnakeApp()/createVinylSnakeOverlay() below.
   vinylsnake: () => openVinylSnakeApp(),
+  // Bayou Break Station -- a dirty little swamp synth + drum-pad/break-
+  // slicer instrument tucked inside TRUTH LAB (see the `truthlab` shop's
+  // `minigames` list). Same "full standalone web app, not a canvas
+  // mini-game" shape as chess/beatbot/organ/mini golf/blackbook/Gator
+  // Grooves/Vinyl Snake above (own DOM/iframe overlay, bundled locally --
+  // own WebAudio synth plus local .wav samples, no external assets and no
+  // network calls -- so it works with no connection). See
+  // openBayouBreakApp()/createBayouBreakOverlay() below.
+  bayoubreak: () => openBayouBreakApp(),
 };
 
 // ---- trophy case: personal bests for the 8 scored mini-games --------------
@@ -6346,6 +6355,7 @@ window.addEventListener('keydown', (e) => {
     if (k === 'escape' && state === 'blackbookApp') { closeBlackbookApp(); }
     if (k === 'escape' && state === 'crocSwampApp') { closeCrocSwampApp(); }
     if (k === 'escape' && state === 'vinylSnakeApp') { closeVinylSnakeApp(); }
+    if (k === 'escape' && state === 'bayouBreakApp') { closeBayouBreakApp(); }
     if (k === 'arrowleft') selectMove = -1;
     if (k === 'arrowright') selectMove = 1;
     if (k === 'arrowup') menuMove = -1;
@@ -7947,6 +7957,17 @@ const shops = {
       ] },
     // Four crates, all quality DJ BP hip hop -- see TRUTHLAB_JUNK above.
     crates: [ { truthLabSeed: 0 }, { truthLabSeed: 1 }, { truthLabSeed: 2 }, { truthLabSeed: 3 } ],
+    // Bayou Break Station -- a dirty little swamp synth + chopped-break
+    // drum machine, set up on the open floor at (10,6): clear of the
+    // counter table (row 3), the corner crates (1,4)/(1,6)/(12,4)/(12,6),
+    // the record player (2,2)/TV (10,2), the couch (5,7)-(7,7), and the
+    // door (6,9) -- same spot swampfood's Gator Grooves cabinet uses. Same
+    // "full-screen DOM overlay with an <iframe>" pattern as chess/the beat
+    // bot/the organ/mini golf/the blackbook/Gator Grooves/Vinyl Snake --
+    // see MINIGAME_ACTIONS.bayoubreak/openBayouBreakApp().
+    minigames: [
+      { id: 'bayoubreak', tx: 10, ty: 6, label: 'PLAY BAYOU BREAK STATION' },
+    ],
   }),
 };
 
@@ -7990,7 +8011,7 @@ const player = {
   tempItem: null, tempItemTimer: 0,
 };
 const collected = new Set();
-let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | portal | fifa | minigame | hotkeys | crate | trophies | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | vinylSnakeApp
+let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | portal | fifa | minigame | hotkeys | crate | trophies | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | vinylSnakeApp | bayouBreakApp
 // State to snap back to when the [H] hotkeys popup is closed -- currently
 // always 'play' since that's the only state H can be opened from, but kept
 // as its own var in case another state wants to offer the popup later.
@@ -8585,7 +8606,7 @@ const music = {
 // enter/exit call sites, so it can't drift out of sync no matter which
 // of the several ways the player backs out of the lab popup (keyboard
 // [X], on-screen [X] button, closing the instrument iframe, etc.).
-const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'vinylSnakeApp', 'characterIntro']);
+const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'vinylSnakeApp', 'bayouBreakApp', 'characterIntro']);
 function syncMusicDuck() {
   music.duck(DUCKED_STATES.has(state));
 }
@@ -10346,6 +10367,123 @@ function closeVinylSnakeApp(fromPopState) {
   }
 }
 
+// Bayou Break Station -- a dirty little swamp synth + chopped-break drum
+// machine (keyboard synth, 8 swamp-drum pads, and a break slicer) tucked
+// inside TRUTH LAB (see the `truthlab` shop's `minigames` list). Same
+// "full-screen DOM overlay with an <iframe>" trick as chess/the beat bot/
+// the organ/mini golf/the blackbook/Gator Grooves/Vinyl Snake above.
+//
+// Ships as a bundled, self-contained page (its own WebAudio synth engine
+// and local .wav drum samples, no external assets -- no remote font
+// imports either -- and no network calls at all) at
+// instruments/bayou-break-station/index.html -- the exact same local-file
+// pattern CHESS_APP_URL/BEAT_BOT_APP_URL/ORGAN_APP_URL/MINI_GOLF_APP_URL/
+// BLACKBOOK_APP_URL/CROC_SWAMP_APP_URL/VINYL_SNAKE_APP_URL use. Being a
+// same-origin local asset rather than a live remote site (and its sample
+// pads/break slicer loading their .wav files via same-origin fetch()
+// calls rather than any remote URL) means it loads and every sound plays
+// the same with or without a connection, so -- same as the others --
+// there's no online/offline branching needed here either.
+const BAYOU_BREAK_APP_URL = 'instruments/bayou-break-station/index.html';
+let bayouBreakOverlayEl = null, bayouBreakOverlayFrame = null;
+let bayouBreakReturnState = 'play';
+let bayouBreakHistoryPushed = false; // mirrors labHistoryPushed/chessHistoryPushed/beatBotHistoryPushed/organHistoryPushed/miniGolfHistoryPushed/blackbookHistoryPushed/crocSwampHistoryPushed/vinylSnakeHistoryPushed -- see openBayouBreakApp()/closeBayouBreakApp()
+
+function createBayouBreakOverlay() {
+  const style = document.createElement('style');
+  style.textContent = `
+    #bayouBreakApp {
+      position: fixed; inset: 0; z-index: 1000;
+      background: #000;
+      display: none; flex-direction: column;
+    }
+    #bayouBreakApp.open { display: flex; }
+    #bayouBreakApp .bb-bar {
+      flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 10px 14px;
+      background: linear-gradient(#16301f, #0b1a12);
+      border-bottom: 2px solid #e8a83d;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    }
+    #bayouBreakApp .bb-title {
+      color: #e9e2c9; font: bold 14px monospace; letter-spacing: 0.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #bayouBreakApp .bb-close {
+      flex: 0 0 auto; cursor: pointer;
+      background: rgba(232,168,61,0.15);
+      border: 1.5px solid rgba(232,168,61,0.85);
+      color: #e9e2c9; border-radius: 8px;
+      padding: 7px 16px; font: bold 13px monospace;
+      -webkit-user-select: none; user-select: none;
+    }
+    #bayouBreakApp .bb-close:active { background: rgba(232,168,61,0.4); }
+    #bayouBreakApp iframe {
+      flex: 1 1 auto; width: 100%; border: 0; background: #000;
+    }
+  `;
+  document.head.appendChild(style);
+
+  bayouBreakOverlayEl = document.createElement('div');
+  bayouBreakOverlayEl.id = 'bayouBreakApp';
+
+  const bar = document.createElement('div');
+  bar.className = 'bb-bar';
+  const title = document.createElement('div');
+  title.className = 'bb-title';
+  title.textContent = 'BAYOU BREAK STATION';
+  const closeBtn = document.createElement('div');
+  closeBtn.className = 'bb-close';
+  closeBtn.textContent = '\u2190 BACK TO TRUTH LAB';
+  bindTap(closeBtn, closeBayouBreakApp);
+  bar.appendChild(title);
+  bar.appendChild(closeBtn);
+
+  bayouBreakOverlayFrame = document.createElement('iframe');
+  bayouBreakOverlayFrame.setAttribute('allow', 'autoplay');
+
+  bayouBreakOverlayEl.appendChild(bar);
+  bayouBreakOverlayEl.appendChild(bayouBreakOverlayFrame);
+  document.body.appendChild(bayouBreakOverlayEl);
+}
+createBayouBreakOverlay();
+
+// Opens the Bayou Break Station overlay and switches state to
+// 'bayouBreakApp'. Called from MINIGAME_ACTIONS.bayoubreak (E on the
+// instrument, or tapping its floating sign), same entry points every
+// other mini-game uses.
+function openBayouBreakApp() {
+  bayouBreakReturnState = state;
+  bayouBreakOverlayFrame.src = BAYOU_BREAK_APP_URL;
+  bayouBreakOverlayEl.classList.add('open');
+  state = 'bayouBreakApp';
+  // Same throwaway-history-entry trick as openInstrument()/openChessApp()/
+  // openBeatBotApp()/openOrganApp()/openMiniGolfApp()/openBlackbookApp()/
+  // openCrocSwampApp()/openVinylSnakeApp() above, so the browser/OS back
+  // gesture closes the Bayou Break Station overlay instead of leaving the
+  // game entirely.
+  history.pushState({ ricoBayouBreakApp: true }, '');
+  bayouBreakHistoryPushed = true;
+}
+
+// Tears the iframe back down and returns to ordinary gameplay in TRUTH
+// LAB. fromPopState mirrors closeInstrument()/closeChessApp()/
+// closeBeatBotApp()/closeOrganApp()/closeMiniGolfApp()/closeBlackbookApp()/
+// closeCrocSwampApp()/closeVinylSnakeApp()'s parameter -- true when
+// triggered by the browser's back button (whose history entry is already
+// consumed), so we must not call history.back() again in that case.
+function closeBayouBreakApp(fromPopState) {
+  bayouBreakOverlayEl.classList.remove('open');
+  bayouBreakOverlayFrame.src = 'about:blank';
+  state = bayouBreakReturnState;
+  if (!fromPopState && bayouBreakHistoryPushed) {
+    bayouBreakHistoryPushed = false;
+    history.back();
+  } else {
+    bayouBreakHistoryPushed = false;
+  }
+}
+
 // Character-intro splash video, played once between character select and
 // the first frame of gameplay. Same DOM-overlay approach as the lab-app
 // iframe above and for the same reason: video decode/composite is handled
@@ -10533,6 +10671,8 @@ window.addEventListener('popstate', () => {
     closeCrocSwampApp(true);
   } else if (state === 'vinylSnakeApp') {
     closeVinylSnakeApp(true);
+  } else if (state === 'bayouBreakApp') {
+    closeBayouBreakApp(true);
   }
 });
 
@@ -10548,10 +10688,10 @@ canvas.addEventListener('pointerdown', (e) => {
     const vx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const vy = (e.clientY - rect.top) * (canvas.height / rect.height);
     handleLabTap(vx, vy);
-  } else if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp') {
+  } else if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp') {
     // The DOM overlay sits on top of (and outside) the canvas while an
     // instrument/the chess app/the beat bot/the organ/mini golf/the
-    // blackbook/Gator Grooves/Vinyl Snake is loaded, so a pointerdown
+    // blackbook/Gator Grooves/Vinyl Snake/Bayou Break Station is loaded, so a pointerdown
     // reaching the canvas itself means the overlay isn't up yet/already
     // closing -- ignore it rather than falling through to the generic
     // interactPressed=true below.
@@ -10829,6 +10969,15 @@ function update(dt) {
     // it directly. buyPressed is still consumed here too so the
     // on-screen [X] touch button works while Vinyl Snake is open.
     if (buyPressed) closeVinylSnakeApp();
+  } else if (state === 'bayouBreakApp') {
+    // Same reasoning as 'labApp'/'chessApp'/'beatBotApp'/'organApp'/
+    // 'minigolfApp'/'blackbookApp'/'crocSwampApp'/'vinylSnakeApp' just
+    // above: the DOM overlay (see createBayouBreakOverlay()) owns input
+    // while Bayou Break Station is loaded -- its own close button and
+    // [Esc] handle closing it directly. buyPressed is still consumed
+    // here too so the on-screen [X] touch button works while Bayou
+    // Break Station is open.
+    if (buyPressed) closeBayouBreakApp();
   } else if (state === 'hotkeys') {
     if (interactPressed || buyPressed) state = hotkeysReturnState;
   } else if (state === 'crate') {
@@ -11144,7 +11293,7 @@ function render(time) {
     drawSplash();
     return;
   }
-  if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'characterIntro') {
+  if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'characterIntro') {
     // Same reasoning as the labApp overlay: a DOM element (the <video>,
     // see createCharacterIntroOverlay(), the chess <iframe>, see
     // createChessOverlay(), the beat bot <iframe>, see
