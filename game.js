@@ -7739,6 +7739,29 @@ function makeSwamp() {
     wall: '#1a1a1e', roof: '#0d0d10', doorX: TL_DOOR_X,
   });
 
+  // Vermont Lake Monsters ballpark -- a big solid outdoor landmark dropped
+  // into the open mud between the two boardwalk spurs, north of the
+  // boardwalk trunk and above HUT_CLEAR. Same "no door, just walk around
+  // (or through) it" construction as the Vermont Green FC soccer stadium
+  // back in town (see STADIUM_* in makeOverworld() and drawStadium()):
+  // solid 'w' bowl, walkable '.' field carved out of the middle, and a
+  // west/east gate punched through at the same row so the player can walk
+  // straight onto the field from either side. Rendered by
+  // drawBaseballStadium() (see drawSwampDecorations()).
+  const BB_X = 24, BB_Y = 2, BB_W = 7, BB_H = 7;
+  for (let yy = BB_Y; yy < BB_Y + BB_H; yy++)
+    for (let xx = BB_X; xx < BB_X + BB_W; xx++) g[yy][xx] = 'w';
+  for (let yy = BB_Y + 1; yy < BB_Y + BB_H - 1; yy++)
+    for (let xx = BB_X + 1; xx < BB_X + BB_W - 1; xx++) g[yy][xx] = '.';
+  const BB_OPEN_Y = BB_Y + Math.floor(BB_H / 2); // must match drawBaseballStadium()'s gate row
+  g[BB_OPEN_Y][BB_X] = '.';                // west opening
+  g[BB_OPEN_Y][BB_X + BB_W - 1] = '.';     // east opening
+  // guarantee the ground just outside each gate is walkable -- the mud-island
+  // carve and tree sprinkle above ran before this stadium existed, so a tree
+  // could otherwise have landed directly in a gateway
+  if (g[BB_OPEN_Y][BB_X - 1] === '#') g[BB_OPEN_Y][BB_X - 1] = '.';
+  if (g[BB_OPEN_Y][BB_X + BB_W] === '#') g[BB_OPEN_Y][BB_X + BB_W] = '.';
+
   // Guarantee every door has a clear step-out tile. The tree sprinkle above
   // runs before any of these buildings exist, so it has no idea a door is
   // about to land there -- it can (and, with this map's fixed seed, did for
@@ -13431,6 +13454,8 @@ function drawSwampDecorations(time, map, camX, camY) {
   // canvas clips whatever's off-screen" approach drawCoffeeCart()/
   // drawIceCreamVan() use back in town.
   drawSwampJuiceCart();
+  // Vermont Lake Monsters ballpark -- see BB_* in makeSwamp().
+  drawBaseballStadium();
 }
 
 // A little roadside juice stand parked on open ground just west of GUT HUT,
@@ -15343,6 +15368,141 @@ function drawStadium() {
   ctx.beginPath();
   ctx.arc(cx, midY, 18, 0, Math.PI * 2);
   ctx.stroke();
+
+  ctx.restore();
+}
+
+// The Vermont Lake Monsters ballpark out in the swamp -- same overall recipe
+// as drawStadium() above (solid rounded facade, corner floodlights, a gate
+// gap on each side lined up with the walkable openings carved into the
+// collision grid), just re-themed for baseball: a dirt infield diamond and
+// pitcher's mound sit inside a grass outfield instead of a soccer pitch, and
+// the facade carries the team's own colors and name plus a small original
+// monster-head crest (an in-the-team's-colors silhouette, not a
+// reproduction of the club's actual logo art). Unlike the soccer stadium,
+// nothing south of this map is planned yet, so the bowl is drawn at its
+// full height rather than clipped to 3/4.
+function drawBaseballStadium() {
+  const TX = 24, TY = 2, TW = 7, TH = 7; // must match BB_* in makeSwamp()
+  const px = TX * TILE, py = TY * TILE;
+  const w = TW * TILE, h = TH * TILE;
+  const cx = px + w / 2;
+
+  const NAVY_DK  = '#0b2540';
+  const NAVY_MD  = '#123a63';
+  const BLUE_LT  = '#2f7bbd';
+  const GREEN    = '#5cb247';
+  const GREEN_DK = '#2f7a3a';
+  const STAND    = '#1c4a30';
+  const GOLD     = '#e8952c';
+  const DIRT     = '#b98a54';
+  const GRASS    = '#3f9142';
+  const FIELD_LN = 'rgba(255,255,255,0.85)';
+
+  ctx.save();
+
+  // floodlight towers, top two corners
+  drawFloodlight(px - 6, py - 34);
+  drawFloodlight(px + w - 16, py - 34);
+
+  // outer wall / facade, rounded corners
+  ctx.fillStyle = NAVY_DK;
+  roundRectPath(px - 8, py, w + 16, h, 16);
+  ctx.fill();
+
+  // facade band across the top with the team name
+  ctx.fillStyle = NAVY_MD;
+  ctx.fillRect(px - 8, py, w + 16, 42);
+  ctx.fillStyle = GOLD;
+  ctx.fillRect(px - 8, py + 42, w + 16, 4);
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = GREEN;
+  ctx.font = 'bold 11px monospace';
+  ctx.fillText('VERMONT', cx + 8, py + 15);
+  ctx.fillStyle = GOLD;
+  ctx.font = 'bold 11px monospace';
+  ctx.fillText('LAKE MONSTERS', cx + 8, py + 29);
+
+  // small original monster-head crest on the facade, left of the text: a
+  // couple of curved blue "mane" spikes over a green head with two white,
+  // gold-pupilled eyes -- built from the team's own colors, not traced from
+  // any existing artwork.
+  const crestX = px + 8, crestY = py + 22;
+  ctx.fillStyle = BLUE_LT;
+  ctx.beginPath();
+  ctx.moveTo(crestX - 7, crestY + 7);
+  ctx.lineTo(crestX - 3, crestY - 9);
+  ctx.lineTo(crestX + 1, crestY + 1);
+  ctx.lineTo(crestX + 5, crestY - 8);
+  ctx.lineTo(crestX + 8, crestY + 6);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = GREEN;
+  ctx.beginPath();
+  ctx.ellipse(crestX, crestY + 8, 9, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#f4f4ea';
+  ctx.beginPath(); ctx.ellipse(crestX - 3, crestY + 6, 2.6, 3, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(crestX + 4, crestY + 5, 2.6, 3, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = GOLD;
+  ctx.beginPath(); ctx.arc(crestX - 3, crestY + 6, 1.1, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(crestX + 4, crestY + 5, 1.1, 0, Math.PI * 2); ctx.fill();
+
+  // west & east entrance gaps in the outer wall, at the same map row as the
+  // walkable openings carved into the collision grid (BB_OPEN_Y in
+  // makeSwamp) so the visual lines up with where the player can walk in.
+  const gateY = py + TILE * Math.floor(TH / 2), gateH = TILE;
+  ctx.fillStyle = GREEN_DK;
+  ctx.fillRect(px - 12, gateY, 26, gateH);       // west gate
+  ctx.fillRect(px + w - 14, gateY, 26, gateH);   // east gate
+
+  // inner stand ring, with a faint row of seat-dot texture
+  ctx.fillStyle = STAND;
+  ctx.fillRect(px + 14, py + 52, w - 28, h - 60);
+  ctx.fillStyle = 'rgba(0,0,0,0.14)';
+  for (let ty = py + 60; ty < py + h - 6; ty += 8) {
+    for (let tx = px + 20; tx < px + w - 16; tx += 7) ctx.fillRect(tx, ty, 3, 3);
+  }
+
+  // field: grass outfield, dirt infield diamond, pitcher's mound, home plate
+  const fx = px + 30, fy = py + 74, fw = w - 60, ffh = h - 104;
+  ctx.fillStyle = GRASS;
+  ctx.fillRect(fx, fy, fw, ffh);
+
+  const homeX = fx + fw / 2, homeY = fy + ffh - 8;
+  const diaR = Math.min(fw, ffh) * 0.42;
+  ctx.fillStyle = DIRT;
+  ctx.beginPath();
+  ctx.moveTo(homeX, homeY);
+  ctx.lineTo(homeX - diaR, homeY - diaR);
+  ctx.lineTo(homeX, homeY - diaR * 2);
+  ctx.lineTo(homeX + diaR, homeY - diaR);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = FIELD_LN;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // pitcher's mound
+  ctx.fillStyle = DIRT;
+  ctx.beginPath();
+  ctx.arc(homeX, homeY - diaR, 5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = FIELD_LN;
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // home plate
+  ctx.fillStyle = '#e8e4d8';
+  ctx.beginPath();
+  ctx.moveTo(homeX - 4, homeY);
+  ctx.lineTo(homeX + 4, homeY);
+  ctx.lineTo(homeX + 4, homeY - 3);
+  ctx.lineTo(homeX, homeY - 6);
+  ctx.lineTo(homeX - 4, homeY - 3);
+  ctx.closePath();
+  ctx.fill();
 
   ctx.restore();
 }
