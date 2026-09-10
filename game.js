@@ -849,6 +849,17 @@ const MINIGAME_ACTIONS = {
   // so it works with no connection). See openRicoDawApp()/
   // createRicoDawOverlay() below.
   ricodaw: () => openRicoDawApp(),
+  // Rico's Filter Lab -- a Web Audio filter module (cutoff/resonance/drive/
+  // dry-wet, switchable low-pass/high-pass/band-pass, plus a randomize
+  // button) tucked inside GUT HUT (see the `guthut` shop's `minigames`
+  // list), right alongside Rico's Blackbook. Same "full standalone web app,
+  // not a canvas mini-game" shape as chess/beatbot/organ/mini golf/
+  // blackbook/Gator Grooves/Vinyl Snake/Bayou Break Station/VT Dirt/Gator
+  // Jam Slam/Rico1200/Rico's Mini DAW above (own DOM/iframe overlay,
+  // bundled locally -- own WebAudio filter chain, no external assets and no
+  // network calls -- so it works with no connection). See
+  // openFilterLabApp()/createFilterLabOverlay() below.
+  filterlab: () => openFilterLabApp(),
 };
 
 // ---- trophy case: personal bests for the 8 scored mini-games --------------
@@ -6917,6 +6928,7 @@ window.addEventListener('keydown', (e) => {
     if (k === 'escape' && state === 'digDashApp') { closeDigDashApp(); }
     if (k === 'escape' && state === 'rico1200App') { closeRico1200App(); }
     if (k === 'escape' && state === 'ricoDawApp') { closeRicoDawApp(); }
+    if (k === 'escape' && state === 'filterLabApp') { closeFilterLabApp(); }
     if (k === 'arrowleft') selectMove = -1;
     if (k === 'arrowright') selectMove = 1;
     if (k === 'arrowup') menuMove = -1;
@@ -8433,8 +8445,18 @@ const shops = {
     // left open on the floor clear of the table, crates, mic stand, and
     // gear. Full standalone web app, same as chess/beatbot/organ/mini golf
     // -- see MINIGAME_ACTIONS.blackbook/openBlackbookApp().
+    //
+    // Rico's Filter Lab -- a Web Audio filter module, set up on the open
+    // floor at (4,5), mirroring the blackbook (10,5) on the opposite side
+    // of the mic stand (7,5) -- clear of the table (row 3), the gearTiles
+    // (3,3)/(8,3)/(4,7)/(10,7), the crates (1,4)/(1,6)/(12,4)/(12,6), and
+    // the door (6,9). Full standalone web app, same "full-screen DOM
+    // overlay with an <iframe>" pattern as chess/beatbot/organ/mini golf/
+    // the blackbook above -- see MINIGAME_ACTIONS.filterlab/
+    // openFilterLabApp().
     minigames: [
       { id: 'blackbook', tx: 10, ty: 5, label: "SKETCH IN THE BLACKBOOK" },
+      { id: 'filterlab', tx: 4, ty: 5, label: "PLAY RICO'S FILTER LAB" },
     ],
   }),
   // SWAMP FOOD -- the swamp's second building: a cramped little pet store
@@ -8662,7 +8684,7 @@ const player = {
   tempItem: null, tempItemTimer: 0,
 };
 const collected = new Set();
-let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | portal | fifa | minigame | hotkeys | crate | trophies | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | vinylSnakeApp | bayouBreakApp | gatorJamSlamApp | vtDirtApp | digDashApp | rico1200App | ricoDawApp
+let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | portal | fifa | minigame | hotkeys | crate | trophies | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | vinylSnakeApp | bayouBreakApp | gatorJamSlamApp | vtDirtApp | digDashApp | rico1200App | ricoDawApp | filterLabApp
 // State to snap back to when the [H] hotkeys popup is closed -- currently
 // always 'play' since that's the only state H can be opened from, but kept
 // as its own var in case another state wants to offer the popup later.
@@ -9257,7 +9279,7 @@ const music = {
 // enter/exit call sites, so it can't drift out of sync no matter which
 // of the several ways the player backs out of the lab popup (keyboard
 // [X], on-screen [X] button, closing the instrument iframe, etc.).
-const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'vinylSnakeApp', 'bayouBreakApp', 'gatorJamSlamApp', 'vtDirtApp', 'digDashApp', 'rico1200App', 'ricoDawApp', 'characterIntro']);
+const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'vinylSnakeApp', 'bayouBreakApp', 'gatorJamSlamApp', 'vtDirtApp', 'digDashApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro']);
 function syncMusicDuck() {
   music.duck(DUCKED_STATES.has(state));
 }
@@ -11714,6 +11736,118 @@ function closeRicoDawApp(fromPopState) {
   }
 }
 
+// Rico's Filter Lab -- a Web Audio filter module (cutoff/resonance/drive/
+// dry-wet, switchable low-pass/high-pass/band-pass, plus a randomize
+// button), opened from inside GUT HUT (see the `guthut` shop's `minigames`
+// list), right alongside Rico's Blackbook. Same "full-screen DOM overlay
+// with an <iframe>" trick as chess/the beat bot/the organ/mini golf/the
+// blackbook/Gator Grooves/Vinyl Snake/Bayou Break Station/VT Dirt/Gator Jam
+// Slam/Rico1200/Rico's Mini DAW above.
+//
+// Ships as a bundled, self-contained page (its own WebAudio filter chain,
+// no external assets and no network calls at all) at
+// instruments/ricos-filter-lab/index.html -- the exact same local-file
+// pattern CHESS_APP_URL/BEAT_BOT_APP_URL/ORGAN_APP_URL/MINI_GOLF_APP_URL/
+// BLACKBOOK_APP_URL/.../RICO_DAW_APP_URL use. Being a same-origin local
+// asset rather than a live remote site means it loads and works the same
+// with or without a connection, so -- same as the others -- there's no
+// online/offline branching needed here either.
+const FILTER_LAB_APP_URL = 'instruments/ricos-filter-lab/index.html';
+let filterLabOverlayEl = null, filterLabOverlayFrame = null;
+let filterLabReturnState = 'play';
+let filterLabHistoryPushed = false; // mirrors labHistoryPushed/chessHistoryPushed/beatBotHistoryPushed/organHistoryPushed/miniGolfHistoryPushed/blackbookHistoryPushed/.../ricoDawHistoryPushed -- see openFilterLabApp()/closeFilterLabApp()
+
+function createFilterLabOverlay() {
+  const style = document.createElement('style');
+  style.textContent = `
+    #ricoFilterLabApp {
+      position: fixed; inset: 0; z-index: 1000;
+      background: #000;
+      display: none; flex-direction: column;
+    }
+    #ricoFilterLabApp.open { display: flex; }
+    #ricoFilterLabApp .rfl-bar {
+      flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 10px 14px;
+      background: linear-gradient(#241a0e, #120d06);
+      border-bottom: 2px solid #e0b040;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    }
+    #ricoFilterLabApp .rfl-title {
+      color: #f4ecd8; font: bold 14px monospace; letter-spacing: 0.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #ricoFilterLabApp .rfl-close {
+      flex: 0 0 auto; cursor: pointer;
+      background: rgba(224,176,64,0.15);
+      border: 1.5px solid rgba(224,176,64,0.85);
+      color: #f4ecd8; border-radius: 8px;
+      padding: 7px 16px; font: bold 13px monospace;
+      -webkit-user-select: none; user-select: none;
+    }
+    #ricoFilterLabApp .rfl-close:active { background: rgba(224,176,64,0.4); }
+    #ricoFilterLabApp iframe {
+      flex: 1 1 auto; width: 100%; border: 0; background: #000;
+    }
+  `;
+  document.head.appendChild(style);
+
+  filterLabOverlayEl = document.createElement('div');
+  filterLabOverlayEl.id = 'ricoFilterLabApp';
+
+  const bar = document.createElement('div');
+  bar.className = 'rfl-bar';
+  const title = document.createElement('div');
+  title.className = 'rfl-title';
+  title.textContent = "RICO'S FILTER LAB";
+  const closeBtn = document.createElement('div');
+  closeBtn.className = 'rfl-close';
+  closeBtn.textContent = '\u2190 BACK TO GUT HUT';
+  bindTap(closeBtn, closeFilterLabApp);
+  bar.appendChild(title);
+  bar.appendChild(closeBtn);
+
+  filterLabOverlayFrame = document.createElement('iframe');
+  filterLabOverlayFrame.setAttribute('allow', 'autoplay');
+
+  filterLabOverlayEl.appendChild(bar);
+  filterLabOverlayEl.appendChild(filterLabOverlayFrame);
+  document.body.appendChild(filterLabOverlayEl);
+}
+createFilterLabOverlay();
+
+// Opens the Filter Lab overlay and switches state to 'filterLabApp'. Called
+// from MINIGAME_ACTIONS.filterlab (E on the cabinet, or tapping its
+// floating sign), same entry points every other mini-game uses.
+function openFilterLabApp() {
+  filterLabReturnState = state;
+  filterLabOverlayFrame.src = FILTER_LAB_APP_URL;
+  filterLabOverlayEl.classList.add('open');
+  state = 'filterLabApp';
+  // Same throwaway-history-entry trick as openInstrument()/openChessApp()/
+  // .../openRicoDawApp() above, so the browser/OS back gesture closes the
+  // Filter Lab overlay instead of leaving the game entirely.
+  history.pushState({ ricoFilterLabApp: true }, '');
+  filterLabHistoryPushed = true;
+}
+
+// Tears the iframe back down and returns to ordinary gameplay in GUT HUT.
+// fromPopState mirrors closeInstrument()/closeChessApp()/.../
+// closeRicoDawApp()'s parameter -- true when triggered by the browser's
+// back button (whose history entry is already consumed), so we must not
+// call history.back() again in that case.
+function closeFilterLabApp(fromPopState) {
+  filterLabOverlayEl.classList.remove('open');
+  filterLabOverlayFrame.src = 'about:blank';
+  state = filterLabReturnState;
+  if (!fromPopState && filterLabHistoryPushed) {
+    filterLabHistoryPushed = false;
+    history.back();
+  } else {
+    filterLabHistoryPushed = false;
+  }
+}
+
 // Character-intro splash video, played once between character select and
 // the first frame of gameplay. Same DOM-overlay approach as the lab-app
 // iframe above and for the same reason: video decode/composite is handled
@@ -11913,6 +12047,8 @@ window.addEventListener('popstate', () => {
     closeRico1200App(true);
   } else if (state === 'ricoDawApp') {
     closeRicoDawApp(true);
+  } else if (state === 'filterLabApp') {
+    closeFilterLabApp(true);
   }
 });
 
@@ -11928,11 +12064,11 @@ canvas.addEventListener('pointerdown', (e) => {
     const vx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const vy = (e.clientY - rect.top) * (canvas.height / rect.height);
     handleLabTap(vx, vy);
-  } else if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'vtDirtApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp') {
+  } else if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'vtDirtApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp') {
     // The DOM overlay sits on top of (and outside) the canvas while an
     // instrument/the chess app/the beat bot/the organ/mini golf/the
     // blackbook/Gator Grooves/Vinyl Snake/Bayou Break Station/Gator Jam
-    // Slam/VT Dirt/Dig Dash/Rico1200/Rico's Mini DAW is loaded, so a pointerdown
+    // Slam/VT Dirt/Dig Dash/Rico1200/Rico's Mini DAW/Filter Lab is loaded, so a pointerdown
     // reaching the canvas itself means the overlay isn't up yet/already
     // closing -- ignore it rather than falling through to the generic
     // interactPressed=true below.
@@ -12264,6 +12400,16 @@ function update(dt) {
     // closing it directly. buyPressed is still consumed here too so the
     // on-screen [X] touch button works while Rico's Mini DAW is open.
     if (buyPressed) closeRicoDawApp();
+  } else if (state === 'filterLabApp') {
+    // Same reasoning as 'labApp'/'chessApp'/'beatBotApp'/'organApp'/
+    // 'minigolfApp'/'blackbookApp'/'crocSwampApp'/'vinylSnakeApp'/
+    // 'bayouBreakApp'/'gatorJamSlamApp'/'vtDirtApp'/'rico1200App'/
+    // 'ricoDawApp' just above: the DOM overlay (see
+    // createFilterLabOverlay()) owns input while Rico's Filter Lab is
+    // loaded -- its own close button and [Esc] handle closing it directly.
+    // buyPressed is still consumed here too so the on-screen [X] touch
+    // button works while Rico's Filter Lab is open.
+    if (buyPressed) closeFilterLabApp();
   } else if (state === 'hotkeys') {
     if (interactPressed || buyPressed) state = hotkeysReturnState;
   } else if (state === 'crate') {
@@ -12654,7 +12800,7 @@ function render(time) {
     drawSplash();
     return;
   }
-  if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'vtDirtApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'characterIntro') {
+  if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'vtDirtApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro') {
     // Same reasoning as the labApp overlay: a DOM element (the <video>,
     // see createCharacterIntroOverlay(), the chess <iframe>, see
     // createChessOverlay(), the beat bot <iframe>, see
@@ -12666,8 +12812,9 @@ function render(time) {
     // createBayouBreakOverlay(), the Gator Jam Slam <iframe>, see
     // createGatorJamSlamOverlay(), the VT Dirt <iframe>, see
     // createVtDirtOverlay(), the Rico1200 <iframe>, see
-    // createRico1200Overlay(), or the Rico's Mini DAW <iframe>, see
-    // createRicoDawOverlay()) fully covers the canvas here, so there's
+    // createRico1200Overlay(), the Rico's Mini DAW <iframe>, see
+    // createRicoDawOverlay(), or the Filter Lab <iframe>, see
+    // createFilterLabOverlay()) fully covers the canvas here, so there's
     // nothing to gain from redrawing the world underneath it.
     return;
   }
