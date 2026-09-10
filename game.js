@@ -826,6 +826,17 @@ const MINIGAME_ACTIONS = {
   // sampler, no external assets and no network calls -- so it works with no
   // connection). See openRico1200App()/createRico1200Overlay() below.
   rico1200: () => openRico1200App(),
+  // Rico's Mini DAW -- a tiny Bitwig-style clip launcher/groovebox (4
+  // tracks, 4 scenes, a 16-step editor) tucked inside BURLINGTON RECORDS
+  // (see the `burlington` shop's `minigames` list), right alongside Vinyl
+  // Snake and Bayou Boogie. Same "full standalone web app, not a canvas
+  // mini-game" shape as chess/beatbot/organ/mini golf/blackbook/Gator
+  // Grooves/Vinyl Snake/Bayou Break Station/VT Dirt/Gator Jam Slam/
+  // Rico1200 above (own DOM/iframe overlay, bundled locally -- own
+  // WebAudio drum/synth engine, no external assets and no network calls --
+  // so it works with no connection). See openRicoDawApp()/
+  // createRicoDawOverlay() below.
+  ricodaw: () => openRicoDawApp(),
 };
 
 // ---- trophy case: personal bests for the 8 scored mini-games --------------
@@ -6892,6 +6903,7 @@ window.addEventListener('keydown', (e) => {
     if (k === 'escape' && state === 'gatorJamSlamApp') { closeGatorJamSlamApp(); }
     if (k === 'escape' && state === 'vtDirtApp') { closeVtDirtApp(); }
     if (k === 'escape' && state === 'rico1200App') { closeRico1200App(); }
+    if (k === 'escape' && state === 'ricoDawApp') { closeRicoDawApp(); }
     if (k === 'arrowleft') selectMove = -1;
     if (k === 'arrowright') selectMove = 1;
     if (k === 'arrowup') menuMove = -1;
@@ -8482,9 +8494,17 @@ const shops = {
     // (1,4)/(1,6)/(12,4)/(12,6). Real from-scratch canvas mini-game (plus
     // Three.js remake), not a bundled standalone app -- see
     // MINIGAME_ACTIONS.bayouboogie/createBayouBoogieModeSelect().
+    // Rico's Mini DAW cabinet, centered on open floor at (6,7), evenly
+    // flanked by Bayou Boogie (3,7) and Vinyl Snake (9,7) along the same
+    // row -- clear of the counter table (row 3), the corner crates
+    // (1,4)/(1,6)/(12,4)/(12,6), and the door (6,9). Full standalone web
+    // app, same "full-screen DOM overlay with an <iframe>" pattern as
+    // Vinyl Snake/Bayou Break Station/Rico1200 above -- see
+    // MINIGAME_ACTIONS.ricodaw/openRicoDawApp().
     minigames: [
       { id: 'vinylsnake', tx: 9, ty: 7, label: 'PLAY VINYL SNAKE' },
       { id: 'bayouboogie', tx: 3, ty: 7, label: 'PLAY BAYOU BOOGIE' },
+      { id: 'ricodaw', tx: 6, ty: 7, label: "PLAY RICO'S MINI DAW" },
     ],
   }),
   // JOHNNY'S FUN PARK -- the swamp's fourth building: a little boardwalk
@@ -8616,7 +8636,7 @@ const player = {
   tempItem: null, tempItemTimer: 0,
 };
 const collected = new Set();
-let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | portal | fifa | minigame | hotkeys | crate | trophies | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | vinylSnakeApp | bayouBreakApp | gatorJamSlamApp | vtDirtApp | rico1200App
+let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | portal | fifa | minigame | hotkeys | crate | trophies | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | vinylSnakeApp | bayouBreakApp | gatorJamSlamApp | vtDirtApp | rico1200App | ricoDawApp
 // State to snap back to when the [H] hotkeys popup is closed -- currently
 // always 'play' since that's the only state H can be opened from, but kept
 // as its own var in case another state wants to offer the popup later.
@@ -9211,7 +9231,7 @@ const music = {
 // enter/exit call sites, so it can't drift out of sync no matter which
 // of the several ways the player backs out of the lab popup (keyboard
 // [X], on-screen [X] button, closing the instrument iframe, etc.).
-const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'vinylSnakeApp', 'bayouBreakApp', 'gatorJamSlamApp', 'vtDirtApp', 'rico1200App', 'characterIntro']);
+const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'vinylSnakeApp', 'bayouBreakApp', 'gatorJamSlamApp', 'vtDirtApp', 'rico1200App', 'ricoDawApp', 'characterIntro']);
 function syncMusicDuck() {
   music.duck(DUCKED_STATES.has(state));
 }
@@ -11439,6 +11459,123 @@ function closeRico1200App(fromPopState) {
   }
 }
 
+// ---------------------------------------------------------------- Burlington Records Rico's Mini DAW overlay
+// Rico's Mini DAW -- a tiny Bitwig-style clip launcher/groovebox (4 tracks
+// -- kick/snare/hi-hat/synth --, 4 scenes, a 16-step editor) parked inside
+// BURLINGTON RECORDS, right alongside Vinyl Snake and Bayou Boogie (see
+// MINIGAME_ACTIONS.ricodaw and the `burlington` shop's `minigames` list).
+// Like chess/the beat bot/the organ/mini golf/the blackbook/Gator Grooves/
+// Vinyl Snake/Bayou Break Station/VT Dirt/Gator Jam Slam/Rico1200 above,
+// it's a full standalone HTML/CSS/JS page rather than a canvas mini-game,
+// so it reuses the exact same "full-screen DOM overlay with an <iframe>"
+// trick. Kept as its own overlay (rather than folding into Vinyl Snake's)
+// since it's reached from its own tile/sign and has nothing to do with
+// that game.
+//
+// Rico's Mini DAW ships as a bundled, self-contained instrument page (its
+// own canvas clip-launcher UI plus a WebAudio drum/synth engine --
+// synthesized kick/snare/hi-hat/synth voices, no sample files, no external
+// assets, and no network calls at all) at instruments/rico-daw/index.html,
+// the same local-file pattern every other _APP_URL above uses. Being a
+// same-origin local asset rather than a live remote site means it loads
+// and plays the same with or without a connection, so there's no online/
+// offline branching needed here either.
+const RICO_DAW_APP_URL = 'instruments/rico-daw/index.html';
+let ricoDawOverlayEl = null, ricoDawOverlayFrame = null;
+let ricoDawReturnState = 'play';
+let ricoDawHistoryPushed = false; // mirrors labHistoryPushed/.../rico1200HistoryPushed -- see openRicoDawApp()/closeRicoDawApp()
+
+function createRicoDawOverlay() {
+  const style = document.createElement('style');
+  style.textContent = `
+    #ricoDawApp {
+      position: fixed; inset: 0; z-index: 1000;
+      background: #000;
+      display: none; flex-direction: column;
+    }
+    #ricoDawApp.open { display: flex; }
+    #ricoDawApp .rdaw-bar {
+      flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 10px 14px;
+      background: linear-gradient(#241a30, #120d18);
+      border-bottom: 2px solid #ff9f43;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    }
+    #ricoDawApp .rdaw-title {
+      color: #e8e8ec; font: bold 14px monospace; letter-spacing: 0.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #ricoDawApp .rdaw-close {
+      flex: 0 0 auto; cursor: pointer;
+      background: rgba(255,159,67,0.15);
+      border: 1.5px solid rgba(255,159,67,0.85);
+      color: #e8e8ec; border-radius: 8px;
+      padding: 7px 16px; font: bold 13px monospace;
+      -webkit-user-select: none; user-select: none;
+    }
+    #ricoDawApp .rdaw-close:active { background: rgba(255,159,67,0.4); }
+    #ricoDawApp iframe {
+      flex: 1 1 auto; width: 100%; border: 0; background: #000;
+    }
+  `;
+  document.head.appendChild(style);
+
+  ricoDawOverlayEl = document.createElement('div');
+  ricoDawOverlayEl.id = 'ricoDawApp';
+
+  const bar = document.createElement('div');
+  bar.className = 'rdaw-bar';
+  const title = document.createElement('div');
+  title.className = 'rdaw-title';
+  title.textContent = "BURLINGTON RECORDS \u2014 RICO'S MINI DAW";
+  const closeBtn = document.createElement('div');
+  closeBtn.className = 'rdaw-close';
+  closeBtn.textContent = '\u2190 BACK TO BURLINGTON RECORDS';
+  bindTap(closeBtn, closeRicoDawApp);
+  bar.appendChild(title);
+  bar.appendChild(closeBtn);
+
+  ricoDawOverlayFrame = document.createElement('iframe');
+  ricoDawOverlayFrame.setAttribute('allow', 'autoplay');
+
+  ricoDawOverlayEl.appendChild(bar);
+  ricoDawOverlayEl.appendChild(ricoDawOverlayFrame);
+  document.body.appendChild(ricoDawOverlayEl);
+}
+createRicoDawOverlay();
+
+// Opens the Rico's Mini DAW overlay and switches state to 'ricoDawApp'.
+// Called from MINIGAME_ACTIONS.ricodaw (E on the cabinet, or tapping its
+// floating sign), same entry points every other mini-game uses.
+function openRicoDawApp() {
+  ricoDawReturnState = state;
+  ricoDawOverlayFrame.src = RICO_DAW_APP_URL;
+  ricoDawOverlayEl.classList.add('open');
+  state = 'ricoDawApp';
+  // Same throwaway-history-entry trick as openInstrument()/openChessApp()/
+  // .../openRico1200App() above, so the browser/OS back gesture closes the
+  // Rico's Mini DAW overlay instead of leaving the game entirely.
+  history.pushState({ ricoDawApp: true }, '');
+  ricoDawHistoryPushed = true;
+}
+
+// Tears the iframe back down and returns to ordinary gameplay in
+// Burlington Records. fromPopState mirrors closeInstrument()/
+// closeChessApp()/.../closeRico1200App()'s parameter -- true when
+// triggered by the browser's back button (whose history entry is already
+// consumed), so we must not call history.back() again in that case.
+function closeRicoDawApp(fromPopState) {
+  ricoDawOverlayEl.classList.remove('open');
+  ricoDawOverlayFrame.src = 'about:blank';
+  state = ricoDawReturnState;
+  if (!fromPopState && ricoDawHistoryPushed) {
+    ricoDawHistoryPushed = false;
+    history.back();
+  } else {
+    ricoDawHistoryPushed = false;
+  }
+}
+
 // Character-intro splash video, played once between character select and
 // the first frame of gameplay. Same DOM-overlay approach as the lab-app
 // iframe above and for the same reason: video decode/composite is handled
@@ -11634,6 +11771,8 @@ window.addEventListener('popstate', () => {
     closeVtDirtApp(true);
   } else if (state === 'rico1200App') {
     closeRico1200App(true);
+  } else if (state === 'ricoDawApp') {
+    closeRicoDawApp(true);
   }
 });
 
@@ -11649,13 +11788,14 @@ canvas.addEventListener('pointerdown', (e) => {
     const vx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const vy = (e.clientY - rect.top) * (canvas.height / rect.height);
     handleLabTap(vx, vy);
-  } else if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'vtDirtApp' || state === 'rico1200App') {
+  } else if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'vtDirtApp' || state === 'rico1200App' || state === 'ricoDawApp') {
     // The DOM overlay sits on top of (and outside) the canvas while an
     // instrument/the chess app/the beat bot/the organ/mini golf/the
     // blackbook/Gator Grooves/Vinyl Snake/Bayou Break Station/Gator Jam
-    // Slam/VT Dirt/Rico1200 is loaded, so a pointerdown reaching the canvas
-    // itself means the overlay isn't up yet/already closing -- ignore it
-    // rather than falling through to the generic interactPressed=true below.
+    // Slam/VT Dirt/Rico1200/Rico's Mini DAW is loaded, so a pointerdown
+    // reaching the canvas itself means the overlay isn't up yet/already
+    // closing -- ignore it rather than falling through to the generic
+    // interactPressed=true below.
   } else if (state === 'play') {
     // Tapping directly on a "TAP HERE TO PLAY AROUND" sign jumps straight
     // into that mini-game -- no need to walk up and face the exact tile.
@@ -11966,6 +12106,15 @@ function update(dt) {
     // buyPressed is still consumed here too so the on-screen [X] touch
     // button works while Rico1200 is open.
     if (buyPressed) closeRico1200App();
+  } else if (state === 'ricoDawApp') {
+    // Same reasoning as 'labApp'/'chessApp'/'beatBotApp'/'organApp'/
+    // 'minigolfApp'/'blackbookApp'/'crocSwampApp'/'vinylSnakeApp'/
+    // 'bayouBreakApp'/'gatorJamSlamApp'/'vtDirtApp'/'rico1200App' just
+    // above: the DOM overlay (see createRicoDawOverlay()) owns input while
+    // Rico's Mini DAW is loaded -- its own close button and [Esc] handle
+    // closing it directly. buyPressed is still consumed here too so the
+    // on-screen [X] touch button works while Rico's Mini DAW is open.
+    if (buyPressed) closeRicoDawApp();
   } else if (state === 'hotkeys') {
     if (interactPressed || buyPressed) state = hotkeysReturnState;
   } else if (state === 'crate') {
@@ -12356,7 +12505,7 @@ function render(time) {
     drawSplash();
     return;
   }
-  if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'vtDirtApp' || state === 'rico1200App' || state === 'characterIntro') {
+  if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'vtDirtApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'characterIntro') {
     // Same reasoning as the labApp overlay: a DOM element (the <video>,
     // see createCharacterIntroOverlay(), the chess <iframe>, see
     // createChessOverlay(), the beat bot <iframe>, see
@@ -12367,8 +12516,9 @@ function render(time) {
     // createVinylSnakeOverlay(), the Bayou Break Station <iframe>, see
     // createBayouBreakOverlay(), the Gator Jam Slam <iframe>, see
     // createGatorJamSlamOverlay(), the VT Dirt <iframe>, see
-    // createVtDirtOverlay(), or the Rico1200 <iframe>, see
-    // createRico1200Overlay()) fully covers the canvas here, so there's
+    // createVtDirtOverlay(), the Rico1200 <iframe>, see
+    // createRico1200Overlay(), or the Rico's Mini DAW <iframe>, see
+    // createRicoDawOverlay()) fully covers the canvas here, so there's
     // nothing to gain from redrawing the world underneath it.
     return;
   }
