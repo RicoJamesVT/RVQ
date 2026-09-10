@@ -800,6 +800,17 @@ const MINIGAME_ACTIONS = {
   // iframe overlay, bundled locally so it works with no connection). See
   // openVtDirtApp()/createVtDirtOverlay() below.
   vtdirt: () => openVtDirtApp(),
+  // Home Run Derby -- a baseball left out at home plate on the Vermont Lake
+  // Monsters field, inside the ballpark out in the swamp overworld (see the
+  // swamp map's `minigames` list below). `icon: 'baseball'` swaps the usual
+  // floating arcade-cabinet sign for a baseball sitting on the dirt (see
+  // drawMinigameBaseball()), so it reads as "step up and swing" the same way
+  // the dirt bike/golf clubs/soccer ball do. Same "full standalone web app,
+  // not a canvas mini-game" shape as chess/beatbot/organ/mini golf/VT Dirt
+  // above (own DOM/iframe overlay, bundled locally so it works with no
+  // connection). See openHomeRunDerbyApp()/createHomeRunDerbyOverlay()
+  // below.
+  homerunderby: () => openHomeRunDerbyApp(),
   // Vinyl Ninja -- a fruit-ninja-style slice-the-records arcade game, parked
   // out on the open mud in the swamp overworld itself (see the swamp map's
   // `minigames` list below), right alongside VT Dirt. `icon: 'samuraisword'`
@@ -7900,6 +7911,18 @@ function makeSwamp() {
     minigames: [
       { id: 'vtdirt', tx: 14, ty: 21, label: 'PLAY VT DIRT', icon: 'dirtbike' },
       { id: 'vinylninja', tx: 20, ty: 19, label: 'PLAY VINYL NINJA', icon: 'samuraisword' },
+      // Home Run Derby -- a baseball sitting at home plate, inside the
+      // Vermont Lake Monsters ballpark (see BB_X/BB_Y/BB_W/BB_H above and
+      // drawBaseballStadium()). tx/ty (27, 6) sits well inside the stadium's
+      // walkable interior (x: BB_X+1..BB_X+BB_W-2 = 25..29, y:
+      // BB_Y+1..BB_Y+BB_H-2 = 3..7), just off the diamond near home plate
+      // and clear of both the west (x=24) and east (x=30) gate tiles at row
+      // BB_OPEN_Y (5). `icon: 'baseball'` swaps the usual floating
+      // arcade-cabinet sign for a baseball sitting on the dirt (see
+      // drawMinigameBaseball()), so it reads as "step up and swing" rather
+      // than an arcade cabinet, the same way the soccer ball does out on
+      // the pitch back in town.
+      { id: 'homerunderby', tx: 27, ty: 6, label: 'HOME RUN DERBY', icon: 'baseball' },
     ],
   };
 }
@@ -10900,6 +10923,122 @@ function closeVtDirtApp(fromPopState) {
   }
 }
 
+// ---------------------------------------------------------------- Home Run Derby overlay
+// A baseball left out at home plate on the Vermont Lake Monsters field, in
+// the middle of the swamp's ballpark (see MINIGAME_ACTIONS.homerunderby and
+// the swamp map's `minigames` list) -- launches a full standalone web app,
+// not a from-scratch canvas mini-game, so it reuses the same "full-screen
+// DOM overlay with an <iframe>" trick as chess/the beat bot/the organ/mini
+// golf/VT Dirt above. Kept as its own overlay (rather than folding into any
+// of those) since it's reached from a totally different tile/state and has
+// nothing to do with any of them.
+//
+// Home Run Derby ships as a bundled, self-contained instrument page (its own
+// canvas batting-cage renderer and physics, no external assets and no
+// network calls at all) at instruments/home-run-derby/index.html -- the
+// exact same local-file pattern CHESS_APP_URL/BEAT_BOT_APP_URL/
+// ORGAN_APP_URL/MINI_GOLF_APP_URL/VT_DIRT_APP_URL use. Being a same-origin
+// local asset rather than a live remote site means it loads and plays the
+// same with or without a connection, so there's no online/offline branching
+// needed here either.
+const HOME_RUN_DERBY_APP_URL = 'instruments/home-run-derby/index.html';
+let homeRunDerbyOverlayEl = null, homeRunDerbyOverlayFrame = null;
+let homeRunDerbyReturnState = 'play';
+let homeRunDerbyHistoryPushed = false; // mirrors labHistoryPushed/.../vtDirtHistoryPushed -- see openHomeRunDerbyApp()/closeHomeRunDerbyApp()
+
+function createHomeRunDerbyOverlay() {
+  const style = document.createElement('style');
+  style.textContent = `
+    #ricoHomeRunDerbyApp {
+      position: fixed; inset: 0; z-index: 1000;
+      background: #000;
+      display: none; flex-direction: column;
+    }
+    #ricoHomeRunDerbyApp.open { display: flex; }
+    #ricoHomeRunDerbyApp .rhrd-bar {
+      flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 10px 14px;
+      background: linear-gradient(#0b2540, #050c18);
+      border-bottom: 2px solid #e0b040;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    }
+    #ricoHomeRunDerbyApp .rhrd-title {
+      color: #f4ecd8; font: bold 14px monospace; letter-spacing: 0.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #ricoHomeRunDerbyApp .rhrd-close {
+      flex: 0 0 auto; cursor: pointer;
+      background: rgba(224,176,64,0.15);
+      border: 1.5px solid rgba(224,176,64,0.85);
+      color: #f4ecd8; border-radius: 8px;
+      padding: 7px 16px; font: bold 13px monospace;
+      -webkit-user-select: none; user-select: none;
+    }
+    #ricoHomeRunDerbyApp .rhrd-close:active { background: rgba(224,176,64,0.4); }
+    #ricoHomeRunDerbyApp iframe {
+      flex: 1 1 auto; width: 100%; border: 0; background: #000;
+    }
+  `;
+  document.head.appendChild(style);
+
+  homeRunDerbyOverlayEl = document.createElement('div');
+  homeRunDerbyOverlayEl.id = 'ricoHomeRunDerbyApp';
+
+  const bar = document.createElement('div');
+  bar.className = 'rhrd-bar';
+  const title = document.createElement('div');
+  title.className = 'rhrd-title';
+  title.textContent = 'HOME RUN DERBY';
+  const closeBtn = document.createElement('div');
+  closeBtn.className = 'rhrd-close';
+  closeBtn.textContent = '\u2190 BACK TO THE SWAMP';
+  bindTap(closeBtn, closeHomeRunDerbyApp);
+  bar.appendChild(title);
+  bar.appendChild(closeBtn);
+
+  homeRunDerbyOverlayFrame = document.createElement('iframe');
+  homeRunDerbyOverlayFrame.setAttribute('allow', 'autoplay');
+
+  homeRunDerbyOverlayEl.appendChild(bar);
+  homeRunDerbyOverlayEl.appendChild(homeRunDerbyOverlayFrame);
+  document.body.appendChild(homeRunDerbyOverlayEl);
+}
+createHomeRunDerbyOverlay();
+
+// Opens the Home Run Derby overlay and switches state to 'homeRunDerbyApp'.
+// Called from MINIGAME_ACTIONS.homerunderby (E on the baseball at home
+// plate, or tapping the floating baseball sign), same entry points every
+// other mini-game uses.
+function openHomeRunDerbyApp() {
+  homeRunDerbyReturnState = state;
+  homeRunDerbyOverlayFrame.src = HOME_RUN_DERBY_APP_URL;
+  homeRunDerbyOverlayEl.classList.add('open');
+  state = 'homeRunDerbyApp';
+  // Same throwaway-history-entry trick as openInstrument()/openChessApp()/
+  // openBeatBotApp()/openOrganApp()/openMiniGolfApp()/openVtDirtApp() above,
+  // so the browser/OS back gesture closes the Home Run Derby overlay
+  // instead of leaving the game entirely.
+  history.pushState({ ricoHomeRunDerbyApp: true }, '');
+  homeRunDerbyHistoryPushed = true;
+}
+
+// Tears the iframe back down and returns to ordinary gameplay in the swamp.
+// fromPopState mirrors closeInstrument()/closeChessApp()/closeBeatBotApp()/
+// closeOrganApp()/closeMiniGolfApp()/closeVtDirtApp()'s parameter -- true
+// when triggered by the browser's back button (whose history entry is
+// already consumed), so we must not call history.back() again in that case.
+function closeHomeRunDerbyApp(fromPopState) {
+  homeRunDerbyOverlayEl.classList.remove('open');
+  homeRunDerbyOverlayFrame.src = 'about:blank';
+  state = homeRunDerbyReturnState;
+  if (!fromPopState && homeRunDerbyHistoryPushed) {
+    homeRunDerbyHistoryPushed = false;
+    history.back();
+  } else {
+    homeRunDerbyHistoryPushed = false;
+  }
+}
+
 // ---------------------------------------------------------------- Vinyl Ninja splash + overlay
 // Vinyl Ninja -- a fruit-ninja-style slice-the-records arcade game, reached
 // by walking up to the samurai sword left stuck in the mud out in the swamp
@@ -13027,6 +13166,71 @@ function drawMinigameDirtBike(wx, wy, time, seed, label) {
   return { cx, cy, hw: wheelR * 2 + 12, hh: 18 * s + 28 };
 }
 
+// Alternate mini-game marker used when a map entry sets `icon: 'baseball'`
+// (currently just Home Run Derby, sitting at home plate in the Vermont Lake
+// Monsters ballpark out in the swamp) -- same bob/label/hitbox contract as
+// drawMinigameArcadeSign()/drawMinigameSoccerBall()/drawMinigameGolfClubs()/
+// drawMinigameDirtBike() above so it drops into the exact same per-frame
+// loop and tap-shortcut handling. Drawn as a plain white baseball with red
+// stitching, sitting on the infield dirt, so it reads as "step up and
+// swing" rather than an arcade cabinet -- the same way the soccer ball
+// reads as "kick this" out on the pitch back in town.
+function drawMinigameBaseball(wx, wy, time, seed, label) {
+  const s = MINIGAME_OBJECT_SCALE;
+  const bob = Math.sin(time * 0.003 + seed) * 3;
+  const cx = wx, cy = wy - 10 + bob;
+  const r = 7 * s;
+
+  // soft contact shadow on the dirt, independent of the ball's bob
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.beginPath();
+  ctx.ellipse(wx, wy + 2, r * 0.9, r * 0.32, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ball body
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fillStyle = '#f4ecd8';
+  ctx.fill();
+  ctx.strokeStyle = '#8a7c5c';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // two curved red stitch seams, just enough at this size to read as a
+  // baseball rather than a plain circle
+  ctx.strokeStyle = '#c0392b';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(cx - r * 0.55, cy, r * 0.85, -0.9, 0.9);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(cx + r * 0.55, cy, r * 0.85, Math.PI - 0.9, Math.PI + 0.9);
+  ctx.stroke();
+  // a few short stitch ticks along each seam
+  ctx.lineWidth = 0.8;
+  [-0.55, 0.55].forEach((side) => {
+    for (let t = -0.6; t <= 0.6; t += 0.4) {
+      const ang = side < 0 ? t : Math.PI + t;
+      const sx = cx + side * r * 0.55 + Math.cos(ang) * r * 0.85;
+      const sy = cy + Math.sin(ang) * r * 0.85;
+      ctx.beginPath();
+      ctx.moveTo(sx - 1.5, sy - 1.5);
+      ctx.lineTo(sx + 1.5, sy + 1.5);
+      ctx.stroke();
+    }
+  });
+
+  // floating label above the ball -- same flash-between-label-and-tap-hint
+  // behavior as the arcade sign / soccer ball / golf clubs / dirt bike
+  const flashOnLabel = Math.floor(time / 1400) % 2 === 0;
+  ctx.fillStyle = '#ffd23c';
+  ctx.font = `bold ${Math.round(9 * s)}px monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillText(flashOnLabel ? (label || 'MINI-GAME') : 'TAP TO PLAY', cx, cy - r - 10);
+
+  return { cx, cy, hw: r + 14, hh: r + 22 };
+}
+
 // Alternate mini-game marker used when a map entry sets
 // `icon: 'samuraisword'` (currently just Vinyl Ninja, stuck in the mud out
 // in the swamp) -- same bob/label/hitbox contract as
@@ -13228,6 +13432,8 @@ function render(time) {
         ? drawMinigameDirtBike(wx, wy, time, seed, mg.label)
         : mg.icon === 'samuraisword'
         ? drawMinigameSamuraiSword(wx, wy, time, seed, mg.label)
+        : mg.icon === 'baseball'
+        ? drawMinigameBaseball(wx, wy, time, seed, mg.label)
         : drawMinigameArcadeSign(wx, wy, time, seed, mg.label);
       minigameSignHitboxes.push({ map: player.map, id: mg.id, ...rect });
     });
