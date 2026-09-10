@@ -9383,6 +9383,14 @@ const VENDOR_CARTS = [
   { id: 'coldbrew', map: 'town', label: 'BUY A COLD BREW', x: 27 * TILE + 5 + 28, y: 18 * TILE + 4 + 40, radius: 42 },
   // ice cream van tucked in town's lower-right corner
   { id: 'icecream', map: 'town', label: 'BUY ICE CREAM', x: 35.2 * TILE + 46, y: 21.4 * TILE + 63, radius: 46 },
+  // Swamp Juice cart -- set up on open ground just west of GUT HUT (tile
+  // 23,20), clear of the building (25-30,15-18), its door push-out tile
+  // (28,19), and the TRUTH LAB clearing further west (10-19,13-24). Same
+  // "cart_x + half its drawn width, cart_y + an offset below it"
+  // interaction-point pattern as the cold brew cart above -- the base
+  // 23*TILE+4, 20*TILE+2 here matches the top-left corner drawSwampJuiceCart()
+  // draws from below.
+  { id: 'swampjuice', map: 'swamp', label: 'BUY SWAMP JUICE', x: 23 * TILE + 4 + 27, y: 20 * TILE + 2 + 40, radius: 42 },
 ];
 
 function facingTile() {
@@ -9508,6 +9516,10 @@ function doBuy() {
     player.tempItem = 'coldBrew';
     player.tempItemTimer = 6;
     toast = { text: 'Cold Brew!', t: 1.2 };
+  } else if (target.data.id === 'swampjuice') {
+    player.tempItem = 'swampJuice';
+    player.tempItemTimer = 6;
+    toast = { text: 'Swamp Juice!', t: 1.2 };
   }
 }
 
@@ -13414,6 +13426,74 @@ function drawSwampDecorations(time, map, camX, camY) {
         ctx.fillRect(px + 4, py + 8, 6, 9);
       }
     }
+  // Swamp Juice cart -- fixed-position cosmetic sprite (not tied to any
+  // water tile like the lily pads/cattails above), same "always drawn,
+  // canvas clips whatever's off-screen" approach drawCoffeeCart()/
+  // drawIceCreamVan() use back in town.
+  drawSwampJuiceCart();
+}
+
+// A little roadside juice stand parked on open ground just west of GUT HUT,
+// selling Swamp Juice -- the swamp's answer to the coffee cart back in
+// town. Same fixed-position, no-walk-in cosmetic sprite as drawCoffeeCart()/
+// drawIceCreamVan() (see VENDOR_CARTS/doBuy() for the actual "buy a drink"
+// interaction), just swamp-themed: weathered boardwalk-plank wood instead
+// of a chrome cart, and a big glass jug of glowing green juice on tap
+// instead of a coffee urn.
+function drawSwampJuiceCart() {
+  const x = 23 * TILE + 4;
+  const y = 20 * TILE + 2;
+
+  // wheels
+  ctx.fillStyle = '#202126';
+  ctx.beginPath();
+  ctx.arc(x + 8, y + 27, 5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(x + 48, y + 27, 5, 0, Math.PI * 2);
+  ctx.fill();
+
+  // weathered plank counter
+  ctx.fillStyle = '#6a4e20';
+  ctx.fillRect(x + 3, y + 5, 50, 23);
+  ctx.strokeStyle = '#3a2c14';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x + 3, y + 5, 50, 23);
+  ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+  ctx.lineWidth = 1;
+  for (let px = x + 10; px < x + 50; px += 10) {
+    ctx.beginPath(); ctx.moveTo(px, y + 6); ctx.lineTo(px, y + 27); ctx.stroke();
+  }
+
+  // green-and-mud striped awning
+  ctx.fillStyle = '#3f8f4f';
+  ctx.fillRect(x, y, 56, 7);
+  ctx.fillStyle = '#d8c060';
+  for (let i = 0; i < 4; i++) ctx.fillRect(x + 4 + i * 13, y, 7, 7);
+
+  // sign
+  ctx.fillStyle = '#2a3a1e';
+  ctx.fillRect(x + 12, y + 9, 32, 8);
+  ctx.fillStyle = '#8fbf3f';
+  ctx.font = 'bold 6px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('SWAMP JUICE', x + 28, y + 15);
+
+  // glass jug of glowing green juice, on tap
+  ctx.fillStyle = 'rgba(224,236,216,0.5)';
+  ctx.fillRect(x + 8, y + 17, 12, 10);
+  ctx.fillStyle = '#39ff6a';
+  ctx.fillRect(x + 9, y + 20, 10, 6);
+  ctx.fillStyle = '#1fd94f';
+  ctx.fillRect(x + 9, y + 20, 10, 2);
+  ctx.fillStyle = '#3a2c14';
+  ctx.fillRect(x + 12, y + 26, 4, 2); // spigot
+
+  // a poured cup sitting ready on the counter
+  ctx.fillStyle = 'rgba(224,236,216,0.6)';
+  ctx.fillRect(x + 37, y + 18, 8, 8);
+  ctx.fillStyle = '#39ff6a';
+  ctx.fillRect(x + 38, y + 21, 6, 4);
 }
 
 // Green Door Studio's keeper table, styled after the reference photo: a
@@ -18401,6 +18481,8 @@ function drawPlayer(time) {
     drawPlayerColdBrew(spriteTopY);
   } else if (player.tempItem === 'iceCream') {
     drawPlayerIceCream(spriteTopY);
+  } else if (player.tempItem === 'swampJuice') {
+    drawPlayerSwampJuice(spriteTopY);
   } else {
     if (player.holdingCoffee) drawPlayerColdBrew(spriteTopY);
     if (player.holdingTea) drawPlayerIcedTea(spriteTopY);
@@ -18419,6 +18501,35 @@ function drawPlayerColdBrew(spriteTopY) {
   ctx.fillRect(hx - 3, hy + 3, 6, 9);
   ctx.fillStyle = 'rgba(255,255,255,0.35)';
   ctx.fillRect(hx - 3, hy + 4, 1, 6);
+  ctx.fillStyle = '#cfcac0';
+  ctx.fillRect(hx - 5, hy - 2, 10, 3);
+  ctx.strokeStyle = '#f4ecd8';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(hx + 1, hy - 2);
+  ctx.lineTo(hx + 3, hy - 9);
+  ctx.stroke();
+}
+
+// A bright green cup of Swamp Juice, held at Rico's side -- bought from the
+// swamp's juice cart. Same to-go-cup silhouette as drawPlayerColdBrew above
+// (cup, lid, straw), just re-themed: a clear plastic cup instead of a paper
+// one so the glowing green drink actually reads as the star of the prop.
+function drawPlayerSwampJuice(spriteTopY) {
+  const hx = player.x + (player.dir === 'left' ? -13 : 13), hy = spriteTopY + SPR_H * 0.5;
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx.fillRect(hx - 5, hy + 13, 10, 2);
+  // clear cup wall
+  ctx.fillStyle = 'rgba(224,236,216,0.5)';
+  ctx.fillRect(hx - 4, hy, 8, 13);
+  // bright green juice filling most of the cup
+  ctx.fillStyle = '#39ff6a';
+  ctx.fillRect(hx - 3, hy + 3, 6, 9);
+  ctx.fillStyle = '#1fd94f';
+  ctx.fillRect(hx - 3, hy + 3, 6, 2);
+  ctx.fillStyle = 'rgba(255,255,255,0.45)';
+  ctx.fillRect(hx - 3, hy + 4, 1, 6);
+  // lid
   ctx.fillStyle = '#cfcac0';
   ctx.fillRect(hx - 5, hy - 2, 10, 3);
   ctx.strokeStyle = '#f4ecd8';
