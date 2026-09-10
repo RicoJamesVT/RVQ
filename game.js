@@ -8559,9 +8559,14 @@ const shops = {
     // on the wall opposite it -- flanking Tha Truth's usual spot.
     recordPlayerTile: [2, 2],
     tvTile: [10, 2],
-    // A couch along the back of the floor, facing the room.
-    couchTiles: [[5, 7], [6, 7], [7, 7]],
-    couchPillow: { x: 6, y: 7 },
+    // A couch along the back of the floor, facing the room. Sits one row
+    // further back than you might expect (row 6, not row 7) specifically
+    // to stay clear of (6,7) -- every shop door transition spawns the
+    // player at (6.5, 7.5) on entry (see the `transitions` wiring below),
+    // so a solid couch tile sitting on (6,7) would spawn the player
+    // embedded in it, unable to move in any direction.
+    couchTiles: [[5, 6], [6, 6], [7, 6]],
+    couchPillow: { x: 6, y: 6 },
     keeper: { name: 'TRUTH', shirt: '#1c1a1e', skin: '#8a5a34',
       lines: [
         'Welcome to the lab. Kick back, this is where I do my listening.',
@@ -8575,7 +8580,7 @@ const shops = {
     // Bayou Break Station -- a dirty little swamp synth + chopped-break
     // drum machine, set up on the open floor at (10,6): clear of the
     // counter table (row 3), the corner crates (1,4)/(1,6)/(12,4)/(12,6),
-    // the record player (2,2)/TV (10,2), the couch (5,7)-(7,7), and the
+    // the record player (2,2)/TV (10,2), the couch (5,6)-(7,6), and the
     // door (6,9) -- same spot swampfood's Gator Grooves cabinet uses. Same
     // "full-screen DOM overlay with an <iframe>" pattern as chess/the beat
     // bot/the organ/mini golf/the blackbook/Gator Grooves/Vinyl Snake --
@@ -8585,7 +8590,7 @@ const shops = {
     // on the open floor at (3,6): same clearance logic as Bayou Break
     // Station above, just on the opposite side of the room, clear of the
     // counter table (row 3), the corner crates (1,4)/(1,6)/(12,4)/(12,6),
-    // the record player (2,2)/TV (10,2), the couch (5,7)-(7,7), the door
+    // the record player (2,2)/TV (10,2), the couch (5,6)-(7,6), the door
     // (6,9), and the Bayou Break Station cabinet at (10,6). Same
     // "full-screen DOM overlay with an <iframe>" pattern -- see
     // MINIGAME_ACTIONS.gatorjamslam/openGatorJamSlamApp().
