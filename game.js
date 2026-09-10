@@ -800,6 +800,26 @@ const MINIGAME_ACTIONS = {
   // iframe overlay, bundled locally so it works with no connection). See
   // openVtDirtApp()/createVtDirtOverlay() below.
   vtdirt: () => openVtDirtApp(),
+  // Vinyl Ninja -- a fruit-ninja-style slice-the-records arcade game, parked
+  // out on the open mud in the swamp overworld itself (see the swamp map's
+  // `minigames` list below), right alongside VT Dirt. `icon: 'samuraisword'`
+  // swaps the usual floating arcade-cabinet sign for a katana stuck point-
+  // down in the mud (see drawMinigameSamuraiSword()), so it reads as "pick
+  // this up" out here the same way the dirt bike does. Unlike every other
+  // full standalone web app above, stepping up to it first shows a splash
+  // screen (the "KANGA'S WAX NINJA" key art) rather than jumping straight
+  // into the iframe -- see openVinylNinjaSplash()/drawVinylNinjaSplash()
+  // below -- and only opens the actual DOM/iframe overlay
+  // (openVinylNinjaApp()/createVinylNinjaOverlay()) once the player presses
+  // E or taps again from that splash. Same "own DOM/iframe overlay, bundled
+  // locally so it works with no connection" shape as chess/beatbot/organ/
+  // mini golf/blackbook/Gator Grooves/Vinyl Snake/Bayou Break Station/VT
+  // Dirt/Dig Dash/Gator Jam Slam above -- its own WebGL scene reuses the
+  // same vendored lib/three.min.js the rest of the game already ships, and
+  // its title/HUD type is embedded straight into the page as base64 font
+  // data instead of an external Google Fonts stylesheet, so, same as the
+  // rest of this list, there's no online/offline branching needed here.
+  vinylninja: () => openVinylNinjaSplash(),
   // Dig Dash -- a cozy 3D endless runner (crate-digging critter chasing
   // floating vinyl down a sunset record-shop street, dodging crates/
   // speaker stacks/carts) tucked inside Swamp Food (see the `swampfood`
@@ -6925,6 +6945,7 @@ window.addEventListener('keydown', (e) => {
     if (k === 'escape' && state === 'bayouBreakApp') { closeBayouBreakApp(); }
     if (k === 'escape' && state === 'gatorJamSlamApp') { closeGatorJamSlamApp(); }
     if (k === 'escape' && state === 'vtDirtApp') { closeVtDirtApp(); }
+    if (k === 'escape' && state === 'vinylNinjaApp') { closeVinylNinjaApp(); }
     if (k === 'escape' && state === 'digDashApp') { closeDigDashApp(); }
     if (k === 'escape' && state === 'rico1200App') { closeRico1200App(); }
     if (k === 'escape' && state === 'ricoDawApp') { closeRicoDawApp(); }
@@ -7189,6 +7210,15 @@ splashImg.src = 'assets/splash.png';
 // needs no extra online/offline handling.
 const level1IntroImg = new Image();
 level1IntroImg.src = 'assets/level1_intro_splash.png';
+
+// "KANGA'S WAX NINJA" key-art splash shown by drawVinylNinjaSplash() the
+// moment the player steps up to the samurai sword out in the swamp, before
+// Vinyl Ninja's own DOM/iframe overlay opens. Same same-origin local-asset
+// pattern as every other splash image here, so it needs no extra online/
+// offline handling. See MINIGAME_ACTIONS.vinylninja/openVinylNinjaSplash()
+// below.
+const vinylNinjaSplashImg = new Image();
+vinylNinjaSplashImg.src = 'assets/vinyl_ninja_splash.png';
 
 const purePopPosterImg = new Image();
 purePopPosterImg.src = 'assets/purepop_poster.png';
@@ -7853,8 +7883,23 @@ function makeSwamp() {
     // elsewhere, so it reads as "ride this" out here in the swamp. Opens
     // the full standalone VT Dirt app in its own DOM overlay; see
     // openVtDirtApp()/createVtDirtOverlay().
+    //
+    // A samurai sword left stuck point-down in the mud, tx/ty (20, 19) --
+    // roughly midway between GUT HUT's clearing and the baseball stadium,
+    // well clear of every door, crate, newsstand, and the dirt bike above
+    // (checked against the same deterministic swamp layout the rest of
+    // this file relies on). `icon: 'samuraisword'` swaps the usual floating
+    // arcade-cabinet sign for the sword sprite (see
+    // drawMinigameSamuraiSword()), same "reads as an object to walk up to
+    // and pick up, not a cabinet" idea as the dirt bike. Facing it and
+    // pressing E (or tapping it) doesn't open Vinyl Ninja directly -- it
+    // shows the "KANGA'S WAX NINJA" splash first; see
+    // MINIGAME_ACTIONS.vinylninja/openVinylNinjaSplash()/
+    // drawVinylNinjaSplash() and openVinylNinjaApp()/
+    // createVinylNinjaOverlay() below.
     minigames: [
       { id: 'vtdirt', tx: 14, ty: 21, label: 'PLAY VT DIRT', icon: 'dirtbike' },
+      { id: 'vinylninja', tx: 20, ty: 19, label: 'PLAY VINYL NINJA', icon: 'samuraisword' },
     ],
   };
 }
@@ -8707,7 +8752,7 @@ const player = {
   tempItem: null, tempItemTimer: 0,
 };
 const collected = new Set();
-let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | portal | fifa | minigame | hotkeys | crate | trophies | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | vinylSnakeApp | bayouBreakApp | gatorJamSlamApp | vtDirtApp | digDashApp | rico1200App | ricoDawApp | filterLabApp
+let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | portal | fifa | minigame | hotkeys | crate | trophies | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | vinylSnakeApp | bayouBreakApp | gatorJamSlamApp | vtDirtApp | digDashApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp
 // State to snap back to when the [H] hotkeys popup is closed -- currently
 // always 'play' since that's the only state H can be opened from, but kept
 // as its own var in case another state wants to offer the popup later.
@@ -9302,7 +9347,7 @@ const music = {
 // enter/exit call sites, so it can't drift out of sync no matter which
 // of the several ways the player backs out of the lab popup (keyboard
 // [X], on-screen [X] button, closing the instrument iframe, etc.).
-const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'vinylSnakeApp', 'bayouBreakApp', 'gatorJamSlamApp', 'vtDirtApp', 'digDashApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro']);
+const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'vinylSnakeApp', 'bayouBreakApp', 'gatorJamSlamApp', 'vtDirtApp', 'digDashApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp']);
 function syncMusicDuck() {
   music.duck(DUCKED_STATES.has(state));
 }
@@ -10855,6 +10900,168 @@ function closeVtDirtApp(fromPopState) {
   }
 }
 
+// ---------------------------------------------------------------- Vinyl Ninja splash + overlay
+// Vinyl Ninja -- a fruit-ninja-style slice-the-records arcade game, reached
+// by walking up to the samurai sword left stuck in the mud out in the swamp
+// (see MINIGAME_ACTIONS.vinylninja and the swamp map's `minigames` list).
+// Unlike VT Dirt/Dig Dash/every other standalone app above, this one shows
+// a full-screen splash card first (the "KANGA'S WAX NINJA" key art) instead
+// of opening straight into the iframe -- same "scale-to-fit art plus a
+// blinking continue prompt" shape as drawLabUnlock()/drawLevelIntro()'s
+// level-1 card, drawn over the still-running swamp scene the same way
+// drawLabUnlock() draws over town. Pressing E or tapping again from the
+// splash is what actually calls openVinylNinjaApp() below.
+let vinylNinjaSplashReturnState = 'play';
+
+// Opens the splash and switches state to 'vinylNinjaSplash'. Called from
+// MINIGAME_ACTIONS.vinylninja (E on the sword, or tapping its floating
+// sign).
+function openVinylNinjaSplash() {
+  vinylNinjaSplashReturnState = state;
+  state = 'vinylNinjaSplash';
+}
+
+// Full-screen splash card -- see drawLevelIntro()'s level-1 branch and
+// drawLabUnlock() for the same "scale art to fully cover the view, blink a
+// continue prompt at the bottom" shape this reuses. Drawn on top of the
+// ordinary swamp render() pass (not one of the WORLD_HIDDEN_STATES/DOM-
+// overlay states), so the swamp stays visible/dimmed underneath exactly
+// like drawLabUnlock() over town.
+function drawVinylNinjaSplash() {
+  ctx.fillStyle = 'rgba(8,6,12,0.6)';
+  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
+  if (vinylNinjaSplashImg.complete && vinylNinjaSplashImg.naturalWidth) {
+    const iw = vinylNinjaSplashImg.naturalWidth, ih = vinylNinjaSplashImg.naturalHeight;
+    const scale = Math.max(VIEW_W / iw, VIEW_H / ih);
+    const dw = iw * scale, dh = ih * scale;
+    const dx = (VIEW_W - dw) / 2, dy = (VIEW_H - dh) / 2;
+    ctx.drawImage(vinylNinjaSplashImg, dx, dy, dw, dh);
+    ctx.fillStyle = 'rgba(8,6,12,0.35)';
+    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+  } else {
+    // fallback text-only version, in case the art hasn't loaded in yet
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#e0b040';
+    ctx.font = 'bold 26px monospace';
+    ctx.fillText('VINYL NINJA', VIEW_W / 2, VIEW_H / 2 - 10);
+    ctx.fillStyle = '#f4ecd8';
+    ctx.font = '14px monospace';
+    ctx.fillText('Slice the records. Dodge the bombs.', VIEW_W / 2, VIEW_H / 2 + 16);
+  }
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#e0b040' : '#f4ecd8';
+  ctx.font = 'bold 16px monospace';
+  ctx.fillText('- PRESS E TO DROP IN -', VIEW_W / 2, VIEW_H - 24);
+}
+
+// Vinyl Ninja ships as a bundled, self-contained page (its own WebGL scene
+// via the same vendored lib/three.min.js the rest of the game already
+// ships, plus its title/HUD type embedded as base64 font data instead of a
+// Google Fonts stylesheet) at instruments/vinyl-ninja/index.html -- the
+// exact same local-file pattern CHESS_APP_URL/BEAT_BOT_APP_URL/
+// ORGAN_APP_URL/MINI_GOLF_APP_URL/VT_DIRT_APP_URL use. Being a same-origin
+// local asset with no remote font/script fetches means it loads and plays
+// the same with or without a connection, so -- same as VT Dirt -- there's
+// no online/offline branching needed here either.
+const VINYL_NINJA_APP_URL = 'instruments/vinyl-ninja/index.html';
+let vinylNinjaOverlayEl = null, vinylNinjaOverlayFrame = null;
+let vinylNinjaReturnState = 'play';
+let vinylNinjaHistoryPushed = false; // mirrors labHistoryPushed/.../vtDirtHistoryPushed -- see openVinylNinjaApp()/closeVinylNinjaApp()
+
+function createVinylNinjaOverlay() {
+  const style = document.createElement('style');
+  style.textContent = `
+    #ricoVinylNinjaApp {
+      position: fixed; inset: 0; z-index: 1000;
+      background: #000;
+      display: none; flex-direction: column;
+    }
+    #ricoVinylNinjaApp.open { display: flex; }
+    #ricoVinylNinjaApp .rvn-bar {
+      flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 10px 14px;
+      background: linear-gradient(#241a0e, #120d06);
+      border-bottom: 2px solid #e0b040;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    }
+    #ricoVinylNinjaApp .rvn-title {
+      color: #f4ecd8; font: bold 14px monospace; letter-spacing: 0.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #ricoVinylNinjaApp .rvn-close {
+      flex: 0 0 auto; cursor: pointer;
+      background: rgba(224,176,64,0.15);
+      border: 1.5px solid rgba(224,176,64,0.85);
+      color: #f4ecd8; border-radius: 8px;
+      padding: 7px 16px; font: bold 13px monospace;
+      -webkit-user-select: none; user-select: none;
+    }
+    #ricoVinylNinjaApp .rvn-close:active { background: rgba(224,176,64,0.4); }
+    #ricoVinylNinjaApp iframe {
+      flex: 1 1 auto; width: 100%; border: 0; background: #000;
+    }
+  `;
+  document.head.appendChild(style);
+
+  vinylNinjaOverlayEl = document.createElement('div');
+  vinylNinjaOverlayEl.id = 'ricoVinylNinjaApp';
+
+  const bar = document.createElement('div');
+  bar.className = 'rvn-bar';
+  const title = document.createElement('div');
+  title.className = 'rvn-title';
+  title.textContent = 'VINYL NINJA';
+  const closeBtn = document.createElement('div');
+  closeBtn.className = 'rvn-close';
+  closeBtn.textContent = '\u2190 BACK TO THE SWAMP';
+  bindTap(closeBtn, closeVinylNinjaApp);
+  bar.appendChild(title);
+  bar.appendChild(closeBtn);
+
+  vinylNinjaOverlayFrame = document.createElement('iframe');
+  vinylNinjaOverlayFrame.setAttribute('allow', 'autoplay');
+
+  vinylNinjaOverlayEl.appendChild(bar);
+  vinylNinjaOverlayEl.appendChild(vinylNinjaOverlayFrame);
+  document.body.appendChild(vinylNinjaOverlayEl);
+}
+createVinylNinjaOverlay();
+
+// Opens the Vinyl Ninja overlay and switches state to 'vinylNinjaApp'.
+// Called once the player presses E (or taps) from the splash screen (see
+// drawVinylNinjaSplash()/the 'vinylNinjaSplash' state handling in the
+// input loop) -- not directly from MINIGAME_ACTIONS.vinylninja, which
+// opens the splash first.
+function openVinylNinjaApp() {
+  vinylNinjaReturnState = vinylNinjaSplashReturnState;
+  vinylNinjaOverlayFrame.src = VINYL_NINJA_APP_URL;
+  vinylNinjaOverlayEl.classList.add('open');
+  state = 'vinylNinjaApp';
+  // Same throwaway-history-entry trick as openInstrument()/openChessApp()/
+  // .../openVtDirtApp() above, so the browser/OS back gesture closes the
+  // Vinyl Ninja overlay instead of leaving the game entirely.
+  history.pushState({ ricoVinylNinjaApp: true }, '');
+  vinylNinjaHistoryPushed = true;
+}
+
+// Tears the iframe back down and returns to ordinary gameplay in the swamp.
+// fromPopState mirrors closeVtDirtApp()'s parameter -- true when triggered
+// by the browser's back button (whose history entry is already consumed),
+// so we must not call history.back() again in that case.
+function closeVinylNinjaApp(fromPopState) {
+  vinylNinjaOverlayEl.classList.remove('open');
+  vinylNinjaOverlayFrame.src = 'about:blank';
+  state = vinylNinjaReturnState;
+  if (!fromPopState && vinylNinjaHistoryPushed) {
+    vinylNinjaHistoryPushed = false;
+    history.back();
+  } else {
+    vinylNinjaHistoryPushed = false;
+  }
+}
+
 // Rico's Blackbook -- BOXGUTS' handstyle library, letter lab, and trace/
 // copy/memory/challenge practice modes, opened from inside GUT HUT (see the
 // `guthut` shop's `minigames` list). Same "full-screen DOM overlay with an
@@ -12076,6 +12283,8 @@ window.addEventListener('popstate', () => {
     closeGatorJamSlamApp(true);
   } else if (state === 'vtDirtApp') {
     closeVtDirtApp(true);
+  } else if (state === 'vinylNinjaApp') {
+    closeVinylNinjaApp(true);
   } else if (state === 'digDashApp') {
     closeDigDashApp(true);
   } else if (state === 'rico1200App') {
@@ -12099,11 +12308,11 @@ canvas.addEventListener('pointerdown', (e) => {
     const vx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const vy = (e.clientY - rect.top) * (canvas.height / rect.height);
     handleLabTap(vx, vy);
-  } else if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'vtDirtApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp') {
+  } else if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'vtDirtApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp') {
     // The DOM overlay sits on top of (and outside) the canvas while an
     // instrument/the chess app/the beat bot/the organ/mini golf/the
     // blackbook/Gator Grooves/Vinyl Snake/Bayou Break Station/Gator Jam
-    // Slam/VT Dirt/Dig Dash/Rico1200/Rico's Mini DAW/Filter Lab is loaded, so a pointerdown
+    // Slam/VT Dirt/Dig Dash/Rico1200/Rico's Mini DAW/Filter Lab/Vinyl Ninja is loaded, so a pointerdown
     // reaching the canvas itself means the overlay isn't up yet/already
     // closing -- ignore it rather than falling through to the generic
     // interactPressed=true below.
@@ -12286,6 +12495,13 @@ function update(dt) {
     }
   } else if (state === 'labUnlock') {
     if (interactPressed) state = 'win';
+  } else if (state === 'vinylNinjaSplash') {
+    // Splash before the actual Vinyl Ninja iframe -- see
+    // drawVinylNinjaSplash()/openVinylNinjaSplash() and
+    // MINIGAME_ACTIONS.vinylninja. E (or a tap, which also sets
+    // interactPressed via the generic pointerdown fallback) advances
+    // straight into the DOM/iframe overlay.
+    if (interactPressed) openVinylNinjaApp();
   } else if (state === 'win') {
     if (interactPressed) state = 'play';
   } else if (state === 'portal') {
@@ -12408,6 +12624,15 @@ function update(dt) {
     // still consumed here too so the on-screen [X] touch button works
     // while VT Dirt is open.
     if (buyPressed) closeVtDirtApp();
+  } else if (state === 'vinylNinjaApp') {
+    // Same reasoning as 'labApp'/'chessApp'/'beatBotApp'/'organApp'/
+    // 'minigolfApp'/'blackbookApp'/'crocSwampApp'/'vinylSnakeApp'/
+    // 'bayouBreakApp'/'gatorJamSlamApp'/'vtDirtApp' just above: the DOM
+    // overlay (see createVinylNinjaOverlay()) owns input while Vinyl Ninja
+    // is loaded -- its own close button and [Esc] handle closing it
+    // directly. buyPressed is still consumed here too so the on-screen [X]
+    // touch button works while Vinyl Ninja is open.
+    if (buyPressed) closeVinylNinjaApp();
   } else if (state === 'digDashApp') {
     // Same reasoning as 'labApp'/'chessApp'/'beatBotApp'/'organApp'/
     // 'minigolfApp'/'blackbookApp'/'crocSwampApp'/'vinylSnakeApp'/
@@ -12802,6 +13027,82 @@ function drawMinigameDirtBike(wx, wy, time, seed, label) {
   return { cx, cy, hw: wheelR * 2 + 12, hh: 18 * s + 28 };
 }
 
+// Alternate mini-game marker used when a map entry sets
+// `icon: 'samuraisword'` (currently just Vinyl Ninja, stuck in the mud out
+// in the swamp) -- same bob/label/hitbox contract as
+// drawMinigameArcadeSign()/drawMinigameSoccerBall()/drawMinigameGolfClubs()/
+// drawMinigameDirtBike() above so it drops into the exact same per-frame
+// loop and tap-shortcut handling. Drawn as a katana planted blade-down in
+// the ground -- guard, wrapped grip, and pommel above the mud line, blade
+// beneath it -- so it reads as "pick this up" rather than an arcade
+// cabinet, the same way the dirt bike reads as "ride this".
+function drawMinigameSamuraiSword(wx, wy, time, seed, label) {
+  const s = MINIGAME_OBJECT_SCALE;
+  const bob = Math.sin(time * 0.003 + seed) * 3;
+  const cx = wx, cy = wy - 16 + bob;
+
+  // soft contact shadow on the mud, independent of the sword's bob
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.beginPath();
+  ctx.ellipse(wx, wy + 4, 11 * s, 4 * s, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  const hiltTopY = cy - 20 * s, guardY = cy - 8 * s, groundY = wy + 3;
+
+  // blade, planted in the mud below the guard -- a slim triangle tapering
+  // to a point, mostly hidden below ground level with just enough poking
+  // out to read as "sunk into the dirt"
+  ctx.fillStyle = '#d8dce2';
+  ctx.beginPath();
+  ctx.moveTo(cx - 2.2 * s, guardY);
+  ctx.lineTo(cx + 2.2 * s, guardY);
+  ctx.lineTo(cx + 0.6 * s, groundY + 10 * s);
+  ctx.lineTo(cx - 0.6 * s, groundY + 10 * s);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#8a919c';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // square guard (tsuba)
+  ctx.fillStyle = '#e0b040';
+  ctx.beginPath();
+  ctx.roundRect(cx - 6 * s, guardY - 2 * s, 12 * s, 4 * s, 1.5 * s);
+  ctx.fill();
+  ctx.strokeStyle = '#8a6a20';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // wrapped grip, above the guard
+  ctx.fillStyle = '#1a1a1a';
+  ctx.fillRect(cx - 2.6 * s, hiltTopY, 5.2 * s, guardY - hiltTopY);
+  ctx.strokeStyle = '#c0392b';
+  ctx.lineWidth = 1.2 * s;
+  for (let i = 0; i < 4; i++) {
+    const wy2 = hiltTopY + (guardY - hiltTopY) * ((i + 0.5) / 4);
+    ctx.beginPath();
+    ctx.moveTo(cx - 2.6 * s, wy2 - 2 * s);
+    ctx.lineTo(cx + 2.6 * s, wy2 + 2 * s);
+    ctx.stroke();
+  }
+
+  // pommel cap
+  ctx.fillStyle = '#e0b040';
+  ctx.beginPath();
+  ctx.ellipse(cx, hiltTopY, 3 * s, 2 * s, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // floating label above the sword -- same flash-between-label-and-tap-hint
+  // behavior as the arcade sign / soccer ball / golf clubs / dirt bike
+  const flashOnLabel = Math.floor(time / 1400) % 2 === 0;
+  ctx.fillStyle = '#ffd23c';
+  ctx.font = `bold ${Math.round(9 * s)}px monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillText(flashOnLabel ? (label || 'MINI-GAME') : 'TAP TO PLAY', cx, hiltTopY - 10);
+
+  return { cx, cy, hw: 16 * s + 12, hh: 30 * s + 28 };
+}
+
 // Converts a tap already in 960x600 view-space (same space VIEW_W/VIEW_H
 // describe) into world coordinates, using whichever camera transform the
 // most recent render() frame actually drew with. Mirrors the inverse of the
@@ -12835,7 +13136,7 @@ function render(time) {
     drawSplash();
     return;
   }
-  if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'vtDirtApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro') {
+  if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'vtDirtApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp') {
     // Same reasoning as the labApp overlay: a DOM element (the <video>,
     // see createCharacterIntroOverlay(), the chess <iframe>, see
     // createChessOverlay(), the beat bot <iframe>, see
@@ -12848,8 +13149,9 @@ function render(time) {
     // createGatorJamSlamOverlay(), the VT Dirt <iframe>, see
     // createVtDirtOverlay(), the Rico1200 <iframe>, see
     // createRico1200Overlay(), the Rico's Mini DAW <iframe>, see
-    // createRicoDawOverlay(), or the Filter Lab <iframe>, see
-    // createFilterLabOverlay()) fully covers the canvas here, so there's
+    // createRicoDawOverlay(), the Filter Lab <iframe>, see
+    // createFilterLabOverlay(), or the Vinyl Ninja <iframe>, see
+    // createVinylNinjaOverlay()) fully covers the canvas here, so there's
     // nothing to gain from redrawing the world underneath it.
     return;
   }
@@ -12924,6 +13226,8 @@ function render(time) {
         ? drawMinigameGolfClubs(wx, wy, time, seed, mg.label)
         : mg.icon === 'dirtbike'
         ? drawMinigameDirtBike(wx, wy, time, seed, mg.label)
+        : mg.icon === 'samuraisword'
+        ? drawMinigameSamuraiSword(wx, wy, time, seed, mg.label)
         : drawMinigameArcadeSign(wx, wy, time, seed, mg.label);
       minigameSignHitboxes.push({ map: player.map, id: mg.id, ...rect });
     });
@@ -12947,6 +13251,7 @@ function render(time) {
   if (state === 'dialog') drawDialog();
   if (state === 'record') drawRecordCard();
   if (state === 'labUnlock') drawLabUnlock();
+  if (state === 'vinylNinjaSplash') drawVinylNinjaSplash();
   if (state === 'win') drawWin();
   if (state === 'portal') drawPortalPopup();
   if (state === 'labLocked') drawLabLockedPopup();
