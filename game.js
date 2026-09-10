@@ -817,6 +817,15 @@ const MINIGAME_ACTIONS = {
   // like Vinyl Snake/Bayou Break Station/Gator Jam Slam. See
   // createBayouBoogieModeSelect() above.
   bayouboogie: () => enterMinigame(createBayouBoogieModeSelect()),
+  // Rico1200 -- Rico's Beat Lab, a 32-pad sampler/step-sequencer instrument
+  // tucked inside Pure Pop Records (see the `thrift` shop's `minigames`
+  // list), right alongside Crate Digging. Same "full standalone web app,
+  // not a canvas mini-game" shape as chess/beatbot/organ/mini golf/
+  // blackbook/Gator Grooves/Vinyl Snake/Bayou Break Station/VT Dirt/Gator
+  // Jam Slam above (own DOM/iframe overlay, bundled locally -- own WebAudio
+  // sampler, no external assets and no network calls -- so it works with no
+  // connection). See openRico1200App()/createRico1200Overlay() below.
+  rico1200: () => openRico1200App(),
 };
 
 // ---- trophy case: personal bests for the 8 scored mini-games --------------
@@ -6882,6 +6891,7 @@ window.addEventListener('keydown', (e) => {
     if (k === 'escape' && state === 'bayouBreakApp') { closeBayouBreakApp(); }
     if (k === 'escape' && state === 'gatorJamSlamApp') { closeGatorJamSlamApp(); }
     if (k === 'escape' && state === 'vtDirtApp') { closeVtDirtApp(); }
+    if (k === 'escape' && state === 'rico1200App') { closeRico1200App(); }
     if (k === 'arrowleft') selectMove = -1;
     if (k === 'arrowright') selectMove = 1;
     if (k === 'arrowup') menuMove = -1;
@@ -8170,8 +8180,19 @@ const shops = {
     // Crate Digging mini-game, set back on open floor -- clear of the
     // counter table (row 3), the keeper, and the four dig crates against
     // the left/right walls (cols 1 and 12).
+    //
+    // Rico1200 -- Rico's Beat Lab, a 32-pad sampler/step-sequencer, mirrored
+    // on the open floor at (3,7): same clearance logic as Crate Digging
+    // above, just the opposite side of the room, clear of the counter table
+    // (row 3), the keeper, the four dig crates (cols 1/12, rows 4/6), and
+    // the door (6,9). Full standalone web app, same "full-screen DOM
+    // overlay with an <iframe>" pattern as chess/the beat bot/the organ/
+    // mini golf/the blackbook/Gator Grooves/Vinyl Snake/Bayou Break
+    // Station/VT Dirt/Gator Jam Slam -- see
+    // MINIGAME_ACTIONS.rico1200/openRico1200App().
     minigames: [
       { id: 'cratedig', tx: 9, ty: 7, label: 'DIG THE CRATES' },
+      { id: 'rico1200', tx: 3, ty: 7, label: 'PLAY RICO1200' },
     ],
   }),
   nectars: makeShop('nectars', {
@@ -8595,7 +8616,7 @@ const player = {
   tempItem: null, tempItemTimer: 0,
 };
 const collected = new Set();
-let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | portal | fifa | minigame | hotkeys | crate | trophies | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | vinylSnakeApp | bayouBreakApp | gatorJamSlamApp | vtDirtApp
+let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | portal | fifa | minigame | hotkeys | crate | trophies | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | vinylSnakeApp | bayouBreakApp | gatorJamSlamApp | vtDirtApp | rico1200App
 // State to snap back to when the [H] hotkeys popup is closed -- currently
 // always 'play' since that's the only state H can be opened from, but kept
 // as its own var in case another state wants to offer the popup later.
@@ -9190,7 +9211,7 @@ const music = {
 // enter/exit call sites, so it can't drift out of sync no matter which
 // of the several ways the player backs out of the lab popup (keyboard
 // [X], on-screen [X] button, closing the instrument iframe, etc.).
-const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'vinylSnakeApp', 'bayouBreakApp', 'gatorJamSlamApp', 'vtDirtApp', 'characterIntro']);
+const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'vinylSnakeApp', 'bayouBreakApp', 'gatorJamSlamApp', 'vtDirtApp', 'rico1200App', 'characterIntro']);
 function syncMusicDuck() {
   music.duck(DUCKED_STATES.has(state));
 }
@@ -11299,6 +11320,125 @@ function closeGatorJamSlamApp(fromPopState) {
   }
 }
 
+// ---------------------------------------------------------------- Pure Pop Records Rico1200 overlay
+// Rico1200 -- Rico's Beat Lab (a 32-pad sampler/step-sequencer beat-lab
+// instrument) parked inside Pure Pop Records, right alongside Crate Digging
+// (see MINIGAME_ACTIONS.rico1200 and the `thrift` shop's `minigames` list).
+// Like chess/the beat bot/the organ/mini golf/the blackbook/Gator Grooves/
+// Vinyl Snake/Bayou Break Station/VT Dirt/Gator Jam Slam above, it's a full
+// standalone HTML/CSS/JS page rather than a canvas mini-game, so it reuses
+// the exact same "full-screen DOM overlay with an <iframe>" trick. Kept as
+// its own overlay (rather than folding into any of the overlays above)
+// since it's reached from a different door/state and has nothing to do with
+// any of those.
+//
+// Rico1200 ships as a bundled, self-contained instrument page (its own
+// WebAudio sampler/sequencer -- import audio files, record from the mic,
+// chop/trim/pitch/pan/loop pads, a 16-step sequencer, save/load projects to
+// a local JSON file -- no external assets and no network calls at all) at
+// instruments/rico1200/index.html, the same local-file pattern every other
+// _APP_URL above uses. Being a same-origin local asset rather than a live
+// remote site means it loads and plays the same with or without a
+// connection, so there's no online/offline branching needed here.
+const RICO1200_APP_URL = 'instruments/rico1200/index.html';
+let rico1200OverlayEl = null, rico1200OverlayFrame = null;
+let rico1200ReturnState = 'play';
+let rico1200HistoryPushed = false; // mirrors labHistoryPushed/.../gatorJamSlamHistoryPushed -- see openRico1200App()/closeRico1200App()
+
+function createRico1200Overlay() {
+  const style = document.createElement('style');
+  style.textContent = `
+    #ricoRico1200App {
+      position: fixed; inset: 0; z-index: 1000;
+      background: #000;
+      display: none; flex-direction: column;
+    }
+    #ricoRico1200App.open { display: flex; }
+    #ricoRico1200App .r12a-bar {
+      flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 10px 14px;
+      background: linear-gradient(#241a0e, #120d06);
+      border-bottom: 2px solid #e0b040;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    }
+    #ricoRico1200App .r12a-title {
+      color: #f4ecd8; font: bold 14px monospace; letter-spacing: 0.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #ricoRico1200App .r12a-close {
+      flex: 0 0 auto; cursor: pointer;
+      background: rgba(224,176,64,0.15);
+      border: 1.5px solid rgba(224,176,64,0.85);
+      color: #f4ecd8; border-radius: 8px;
+      padding: 7px 16px; font: bold 13px monospace;
+      -webkit-user-select: none; user-select: none;
+    }
+    #ricoRico1200App .r12a-close:active { background: rgba(224,176,64,0.4); }
+    #ricoRico1200App iframe {
+      flex: 1 1 auto; width: 100%; border: 0; background: #000;
+    }
+  `;
+  document.head.appendChild(style);
+
+  rico1200OverlayEl = document.createElement('div');
+  rico1200OverlayEl.id = 'ricoRico1200App';
+
+  const bar = document.createElement('div');
+  bar.className = 'r12a-bar';
+  const title = document.createElement('div');
+  title.className = 'r12a-title';
+  title.textContent = 'PURE POP RECORDS \u2014 RICO1200';
+  const closeBtn = document.createElement('div');
+  closeBtn.className = 'r12a-close';
+  closeBtn.textContent = '\u2190 BACK TO THE SHOP';
+  bindTap(closeBtn, closeRico1200App);
+  bar.appendChild(title);
+  bar.appendChild(closeBtn);
+
+  rico1200OverlayFrame = document.createElement('iframe');
+  rico1200OverlayFrame.setAttribute('allow', 'autoplay; microphone');
+
+  rico1200OverlayEl.appendChild(bar);
+  rico1200OverlayEl.appendChild(rico1200OverlayFrame);
+  document.body.appendChild(rico1200OverlayEl);
+}
+createRico1200Overlay();
+
+// Opens the Rico1200 overlay and switches state to 'rico1200App'. Called
+// from MINIGAME_ACTIONS.rico1200 (E on the instrument, or tapping its
+// floating sign), same entry points every other mini-game uses.
+function openRico1200App() {
+  rico1200ReturnState = state;
+  rico1200OverlayFrame.src = RICO1200_APP_URL;
+  rico1200OverlayEl.classList.add('open');
+  state = 'rico1200App';
+  // Same throwaway-history-entry trick as openInstrument()/openChessApp()/
+  // openBeatBotApp()/openOrganApp()/openMiniGolfApp()/openBlackbookApp()/
+  // openCrocSwampApp()/openVinylSnakeApp()/openBayouBreakApp()/
+  // openVtDirtApp()/openGatorJamSlamApp() above, so the browser/OS back
+  // gesture closes the Rico1200 overlay instead of leaving the game
+  // entirely.
+  history.pushState({ ricoRico1200App: true }, '');
+  rico1200HistoryPushed = true;
+}
+
+// Tears the iframe back down and returns to ordinary gameplay in Pure Pop
+// Records. fromPopState mirrors closeInstrument()/closeChessApp()/.../
+// closeGatorJamSlamApp()'s parameter -- true when triggered by the
+// browser's back button (whose history entry is already consumed), so we
+// must not call history.back() again in that case.
+function closeRico1200App(fromPopState) {
+  rico1200OverlayEl.classList.remove('open');
+  rico1200OverlayFrame.src = 'about:blank';
+  state = rico1200ReturnState;
+  if (!fromPopState && rico1200HistoryPushed) {
+    rico1200HistoryPushed = false;
+    history.back();
+  } else {
+    rico1200HistoryPushed = false;
+  }
+}
+
 // Character-intro splash video, played once between character select and
 // the first frame of gameplay. Same DOM-overlay approach as the lab-app
 // iframe above and for the same reason: video decode/composite is handled
@@ -11492,6 +11632,8 @@ window.addEventListener('popstate', () => {
     closeGatorJamSlamApp(true);
   } else if (state === 'vtDirtApp') {
     closeVtDirtApp(true);
+  } else if (state === 'rico1200App') {
+    closeRico1200App(true);
   }
 });
 
@@ -11507,13 +11649,13 @@ canvas.addEventListener('pointerdown', (e) => {
     const vx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const vy = (e.clientY - rect.top) * (canvas.height / rect.height);
     handleLabTap(vx, vy);
-  } else if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'vtDirtApp') {
+  } else if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'vtDirtApp' || state === 'rico1200App') {
     // The DOM overlay sits on top of (and outside) the canvas while an
     // instrument/the chess app/the beat bot/the organ/mini golf/the
     // blackbook/Gator Grooves/Vinyl Snake/Bayou Break Station/Gator Jam
-    // Slam/VT Dirt is loaded, so a pointerdown reaching the canvas itself
-    // means the overlay isn't up yet/already closing -- ignore it rather
-    // than falling through to the generic interactPressed=true below.
+    // Slam/VT Dirt/Rico1200 is loaded, so a pointerdown reaching the canvas
+    // itself means the overlay isn't up yet/already closing -- ignore it
+    // rather than falling through to the generic interactPressed=true below.
   } else if (state === 'play') {
     // Tapping directly on a "TAP HERE TO PLAY AROUND" sign jumps straight
     // into that mini-game -- no need to walk up and face the exact tile.
@@ -11815,6 +11957,15 @@ function update(dt) {
     // still consumed here too so the on-screen [X] touch button works
     // while VT Dirt is open.
     if (buyPressed) closeVtDirtApp();
+  } else if (state === 'rico1200App') {
+    // Same reasoning as 'labApp'/'chessApp'/'beatBotApp'/'organApp'/
+    // 'minigolfApp'/'blackbookApp'/'crocSwampApp'/'vinylSnakeApp'/
+    // 'bayouBreakApp'/'gatorJamSlamApp'/'vtDirtApp' just above: the DOM
+    // overlay (see createRico1200Overlay()) owns input while Rico1200 is
+    // loaded -- its own close button and [Esc] handle closing it directly.
+    // buyPressed is still consumed here too so the on-screen [X] touch
+    // button works while Rico1200 is open.
+    if (buyPressed) closeRico1200App();
   } else if (state === 'hotkeys') {
     if (interactPressed || buyPressed) state = hotkeysReturnState;
   } else if (state === 'crate') {
@@ -12205,7 +12356,7 @@ function render(time) {
     drawSplash();
     return;
   }
-  if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'vtDirtApp' || state === 'characterIntro') {
+  if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'vtDirtApp' || state === 'rico1200App' || state === 'characterIntro') {
     // Same reasoning as the labApp overlay: a DOM element (the <video>,
     // see createCharacterIntroOverlay(), the chess <iframe>, see
     // createChessOverlay(), the beat bot <iframe>, see
@@ -12215,8 +12366,9 @@ function render(time) {
     // see createCrocSwampOverlay(), the Vinyl Snake <iframe>, see
     // createVinylSnakeOverlay(), the Bayou Break Station <iframe>, see
     // createBayouBreakOverlay(), the Gator Jam Slam <iframe>, see
-    // createGatorJamSlamOverlay(), or the VT Dirt <iframe>, see
-    // createVtDirtOverlay()) fully covers the canvas here, so there's
+    // createGatorJamSlamOverlay(), the VT Dirt <iframe>, see
+    // createVtDirtOverlay(), or the Rico1200 <iframe>, see
+    // createRico1200Overlay()) fully covers the canvas here, so there's
     // nothing to gain from redrawing the world underneath it.
     return;
   }
