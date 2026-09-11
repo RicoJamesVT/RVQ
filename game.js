@@ -751,6 +751,13 @@ const MINIGAME_ACTIONS = {
   // in the same kind of full-screen DOM/iframe overlay Rico's Lab uses for
   // its instruments. See openChessApp()/createChessOverlay() below.
   chess: () => openChessApp(),
+  // Sunny Side Diner -- a cooking-rush cabinet parked in Henry's Diner,
+  // right alongside the chess table (see the `henrys` shop's `minigames`
+  // list). Same "full standalone web app, not a canvas mini-game" shape as
+  // chess just above (own DOM/iframe overlay, bundled locally so it works
+  // with no connection). See openSunnySideDinerApp()/
+  // createSunnySideDinerOverlay() below.
+  sunnysidediner: () => openSunnySideDinerApp(),
   // Rico's Beat Bot -- Green Door Studio's step-sequencer drum machine,
   // parked at Zach's SKYLAB desk. Same "full standalone web app" shape as
   // chess just above (own DOM/iframe overlay, not a canvas mini-game). See
@@ -6713,6 +6720,7 @@ window.addEventListener('keydown', (e) => {
     // worth adding here since browsers treat it as the natural "close".
     if (k === 'escape' && state === 'labApp') { closeInstrument(); }
     if (k === 'escape' && state === 'chessApp') { closeChessApp(); }
+    if (k === 'escape' && state === 'sunnySideDinerApp') { closeSunnySideDinerApp(); }
     if (k === 'escape' && state === 'beatBotApp') { closeBeatBotApp(); }
     if (k === 'escape' && state === 'organApp') { closeOrganApp(); }
     if (k === 'escape' && state === 'minigolfApp') { closeMiniGolfApp(); }
@@ -8057,8 +8065,13 @@ const shops = {
     // (and clear of the shop's spawn tile) so it reads as "pull up a seat
     // at the Actor/Abbot/Chessmaster's table" without sitting on top of
     // any of them.
+    // Sunny Side Diner cabinet, set on the open floor at the room's
+    // bottom-right -- clear of the coffee-klatch table/regulars (cols
+    // 4-7), the chess table sign, the jukebox (~11-12,6-7), and the
+    // crate spots on the right wall (12,4)/(12,6).
     minigames: [
       { id: 'chess', tx: 6, ty: 8, label: 'PLAY CHESS' },
+      { id: 'sunnysidediner', tx: 10, ty: 8, label: 'SUNNY SIDE DINER' },
     ],
   }),
   diner: makeShop('diner', {
@@ -9189,7 +9202,7 @@ const music = {
 // enter/exit call sites, so it can't drift out of sync no matter which
 // of the several ways the player backs out of the lab popup (keyboard
 // [X], on-screen [X] button, closing the instrument iframe, etc.).
-const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'vinylSnakeApp', 'bayouBreakApp', 'gatorJamSlamApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'circusMasterApp', 'diggerApp', 'pondApp']);
+const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'vinylSnakeApp', 'bayouBreakApp', 'gatorJamSlamApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'circusMasterApp', 'diggerApp', 'pondApp']);
 function syncMusicDuck() {
   music.duck(DUCKED_STATES.has(state));
 }
@@ -10267,6 +10280,114 @@ function closeChessApp(fromPopState) {
     history.back();
   } else {
     chessHistoryPushed = false;
+  }
+}
+
+// ---------------------------------------------------------------- Henry's Diner Sunny Side Diner overlay
+// The cooking-station cabinet in Henry's Diner (see MINIGAME_ACTIONS.
+// sunnysidediner) is, like chess just above, a full standalone web app --
+// a self-contained pixel-art cooking rush game with no network calls or
+// external assets -- rather than a from-scratch canvas mini-game, so it
+// reuses the exact same "full-screen DOM overlay with an <iframe>" trick.
+// Bundled locally at instruments/sunny-side-diner/index.html (same
+// same-origin local-asset pattern as CHESS_APP_URL/etc. above), so it
+// loads and plays the same with or without a connection -- no online/
+// offline branching needed here. Kept as its own overlay (rather than
+// folding into chessOverlayEl) since it's reached from a different sign/
+// state and has nothing to do with chess.
+const SUNNY_SIDE_DINER_APP_URL = 'instruments/sunny-side-diner/index.html';
+let sunnySideDinerOverlayEl = null, sunnySideDinerOverlayFrame = null;
+let sunnySideDinerReturnState = 'play';
+let sunnySideDinerHistoryPushed = false; // mirrors chessHistoryPushed -- see openSunnySideDinerApp()/closeSunnySideDinerApp()
+
+function createSunnySideDinerOverlay() {
+  const style = document.createElement('style');
+  style.textContent = `
+    #ricoSunnySideDinerApp {
+      position: fixed; inset: 0; z-index: 1000;
+      background: #000;
+      display: none; flex-direction: column;
+    }
+    #ricoSunnySideDinerApp.open { display: flex; }
+    #ricoSunnySideDinerApp .rsd-bar {
+      flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 10px 14px;
+      background: linear-gradient(#241a0e, #120d06);
+      border-bottom: 2px solid #e0b040;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    }
+    #ricoSunnySideDinerApp .rsd-title {
+      color: #f4ecd8; font: bold 14px monospace; letter-spacing: 0.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #ricoSunnySideDinerApp .rsd-close {
+      flex: 0 0 auto; cursor: pointer;
+      background: rgba(224,176,64,0.15);
+      border: 1.5px solid rgba(224,176,64,0.85);
+      color: #f4ecd8; border-radius: 8px;
+      padding: 7px 16px; font: bold 13px monospace;
+      -webkit-user-select: none; user-select: none;
+    }
+    #ricoSunnySideDinerApp .rsd-close:active { background: rgba(224,176,64,0.4); }
+    #ricoSunnySideDinerApp iframe {
+      flex: 1 1 auto; width: 100%; border: 0; background: #000;
+    }
+  `;
+  document.head.appendChild(style);
+
+  sunnySideDinerOverlayEl = document.createElement('div');
+  sunnySideDinerOverlayEl.id = 'ricoSunnySideDinerApp';
+
+  const bar = document.createElement('div');
+  bar.className = 'rsd-bar';
+  const title = document.createElement('div');
+  title.className = 'rsd-title';
+  title.textContent = "HENRY'S DINER \u2014 SUNNY SIDE DINER";
+  const closeBtn = document.createElement('div');
+  closeBtn.className = 'rsd-close';
+  closeBtn.textContent = '\u2190 BACK TO THE DINER';
+  bindTap(closeBtn, closeSunnySideDinerApp);
+  bar.appendChild(title);
+  bar.appendChild(closeBtn);
+
+  sunnySideDinerOverlayFrame = document.createElement('iframe');
+  sunnySideDinerOverlayFrame.setAttribute('allow', 'autoplay');
+
+  sunnySideDinerOverlayEl.appendChild(bar);
+  sunnySideDinerOverlayEl.appendChild(sunnySideDinerOverlayFrame);
+  document.body.appendChild(sunnySideDinerOverlayEl);
+}
+createSunnySideDinerOverlay();
+
+// Opens the Sunny Side Diner overlay and switches state to
+// 'sunnySideDinerApp'. Called from MINIGAME_ACTIONS.sunnysidediner (E on
+// the cooking station, or tapping its floating sign), same entry points
+// every other mini-game uses.
+function openSunnySideDinerApp() {
+  sunnySideDinerReturnState = state;
+  sunnySideDinerOverlayFrame.src = SUNNY_SIDE_DINER_APP_URL;
+  sunnySideDinerOverlayEl.classList.add('open');
+  state = 'sunnySideDinerApp';
+  // Same throwaway-history-entry trick as openChessApp() above, so the
+  // browser/OS back gesture closes the overlay instead of leaving the
+  // game entirely.
+  history.pushState({ ricoSunnySideDinerApp: true }, '');
+  sunnySideDinerHistoryPushed = true;
+}
+
+// Tears the iframe back down and returns to ordinary gameplay. fromPopState
+// mirrors closeChessApp()'s parameter -- true when triggered by the
+// browser's back button (whose history entry is already consumed), so we
+// must not call history.back() again in that case.
+function closeSunnySideDinerApp(fromPopState) {
+  sunnySideDinerOverlayEl.classList.remove('open');
+  sunnySideDinerOverlayFrame.src = 'about:blank';
+  state = sunnySideDinerReturnState;
+  if (!fromPopState && sunnySideDinerHistoryPushed) {
+    sunnySideDinerHistoryPushed = false;
+    history.back();
+  } else {
+    sunnySideDinerHistoryPushed = false;
   }
 }
 
@@ -12701,6 +12822,8 @@ window.addEventListener('popstate', () => {
     closeInstrument(true);
   } else if (state === 'chessApp') {
     closeChessApp(true);
+  } else if (state === 'sunnySideDinerApp') {
+    closeSunnySideDinerApp(true);
   } else if (state === 'beatBotApp') {
     closeBeatBotApp(true);
   } else if (state === 'organApp') {
@@ -12752,7 +12875,7 @@ canvas.addEventListener('pointerdown', (e) => {
     const vx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const vy = (e.clientY - rect.top) * (canvas.height / rect.height);
     handleLabTap(vx, vy);
-  } else if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'circusMasterApp' || state === 'diggerApp' || state === 'pondApp') {
+  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'circusMasterApp' || state === 'diggerApp' || state === 'pondApp') {
     // The DOM overlay sits on top of (and outside) the canvas while an
     // instrument/the chess app/the beat bot/the organ/mini golf/the
     // blackbook/Gator Grooves/Vinyl Snake/Bayou Break Station/Gator Jam
@@ -12997,6 +13120,13 @@ function update(dt) {
     // is still consumed here too so the on-screen [X] touch button works
     // while the chess app is open.
     if (buyPressed) closeChessApp();
+  } else if (state === 'sunnySideDinerApp') {
+    // Same reasoning as 'labApp'/'chessApp' just above: the DOM overlay
+    // (see createSunnySideDinerOverlay()) owns input while Sunny Side
+    // Diner is loaded -- its own close button and [Esc] handle closing it
+    // directly. buyPressed is still consumed here too so the on-screen
+    // [X] touch button works while Sunny Side Diner is open.
+    if (buyPressed) closeSunnySideDinerApp();
   } else if (state === 'beatBotApp') {
     // Same reasoning as 'labApp'/'chessApp' just above: the DOM overlay
     // (see createBeatBotOverlay()) owns input while the beat bot is loaded
@@ -13677,7 +13807,7 @@ function render(time) {
     drawSplash();
     return;
   }
-  if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'circusMasterApp' || state === 'diggerApp' || state === 'pondApp') {
+  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'circusMasterApp' || state === 'diggerApp' || state === 'pondApp') {
     // Same reasoning as the labApp overlay: a DOM element (the <video>,
     // see createCharacterIntroOverlay(), the chess <iframe>, see
     // createChessOverlay(), the beat bot <iframe>, see
