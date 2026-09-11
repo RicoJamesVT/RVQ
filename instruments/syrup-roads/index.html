@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>SyrupRoads</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;background:#17100d;color:#fff;font-family:system-ui,sans-serif}
+body{min-height:100dvh;display:flex;align-items:center;justify-content:center;overflow:hidden}
+#wrap{width:min(100vw,960px);height:100dvh;padding:clamp(6px,1.5vh,12px);display:flex;flex-direction:column;justify-content:center;gap:clamp(4px,1.2vh,10px)}
+#game{position:relative;background:#8bd6f4;border-radius:20px;overflow:hidden;box-shadow:0 8px 40px #0008;width:100%;aspect-ratio:16/10;flex:0 1 auto;min-height:0}
+canvas{display:block;width:100%;height:100%;touch-action:none}
+.hud{position:absolute;top:12px;left:12px;right:12px;display:flex;justify-content:space-between;pointer-events:none}
+.pill{background:#27170ee8;border:2px solid #ffffff38;border-radius:13px;padding:6px 12px;font-size:12px;font-weight:800}.pill b{display:block;font-size:23px;color:#ffd15a}
+.overlay{position:absolute;inset:0;display:grid;place-items:center;background:#1a100dcc;padding:clamp(8px,3vw,20px);text-align:center}
+.panel{max-width:390px;width:100%;max-height:100%;overflow:auto;background:linear-gradient(160deg,#633014,#301b15);border:3px solid #e8a73c;border-radius:22px;padding:clamp(12px,4vw,25px);box-shadow:0 7px 0 #170d08}
+h1{font-size:clamp(28px,8vw,54px);line-height:1;margin:0;color:#ffd45a;text-shadow:3px 4px #3a1609;letter-spacing:-2px}.sub{font-size:12px;font-weight:900;letter-spacing:2px;color:#f7cda2;margin:10px 0 20px}
+button{border:0;border-radius:13px;background:linear-gradient(#ffda65,#e98d1c);box-shadow:0 4px 0 #9c4e0c;color:#35180b;font-size:17px;font-weight:1000;padding:13px 18px;cursor:pointer;width:100%;min-height:48px;touch-action:manipulation}button:active{transform:translateY(3px);box-shadow:0 1px 0 #9c4e0c}
+.hidden{display:none!important}
+.controls{display:flex;justify-content:center;gap:10px;margin:0;flex:0 0 auto}
+.controls button{width:58px;height:48px;padding:0;font-size:25px;background:#38251e;color:#ffe3a5;border:2px solid #c9a17c;box-shadow:none}.controls div{display:flex;flex-direction:column;gap:5px}
+.hint{text-align:center;font-size:11px;color:#bca99d;font-weight:700;line-height:1.2;flex:0 0 auto}
+@media (max-height:560px){
+  #wrap{gap:4px;padding:5px}
+  .hud{top:7px;left:7px;right:7px}
+  .pill{padding:4px 8px}.pill b{font-size:18px}
+  .controls{gap:6px}.controls button{width:52px;height:40px;font-size:21px}
+  .controls div{gap:3px}
+  .hint{font-size:9px}
+}
+@media (max-width:420px){
+  #game{border-radius:14px}
+  .panel{border-width:2px;border-radius:16px}
+  .sub{margin:7px 0 12px}
+  .overlay .panel>div:first-child{font-size:38px!important}
+  .overlay .panel>div:nth-of-type(2){font-size:30px!important;margin:5px!important}
+  .overlay p{margin:8px 0 0}
+}
+</style>
+</head>
+<body><div id="wrap">
+<div id="game"><canvas id="c" width="800" height="500"></canvas>
+<div class="hud"><div class="pill">CROSSED<b id="score">0</b></div><div class="pill">BEST<b id="best">0</b></div></div>
+<div id="start" class="overlay"><div class="panel"><div style="font-size:52px">🍁</div><h1>SYRUPROADS</h1><div class="sub">THE SWEETEST CROSSING</div><div style="font-size:42px;margin:8px">🍯🚗🥞</div><button id="play">▶ POUR INTO THE ROAD</button><p style="font-size:11px;color:#eac8a9;font-weight:700">ARROWS / WASD • SWIPE • TOUCH BUTTONS</p></div></div>
+<div id="over" class="overlay hidden"><div class="panel"><div style="font-size:42px">💥🍁</div><h1 style="font-size:38px">SPLASHED!</h1><div class="sub">THE ROAD WAS TOO HOT</div><div id="final" style="font-size:48px;color:#ffd15a;font-weight:1000">0</div><p id="record" style="color:#f8d4a7;font-weight:800"></p><button id="retry">↻ POUR AGAIN</button></div></div>
+</div>
+<div class="controls"><div><button data-d="left">←</button></div><div><button data-d="up">↑</button><button data-d="down">↓</button></div><div><button data-d="right">→</button></div></div>
+<div class="hint">DODGE TRAFFIC • CROSS THE STREET • CHASE THE HIGH SCORE</div>
+</div>
+<script>
+(()=>{const c=document.querySelector('#c'),x=c.getContext('2d'),W=800,H=500;
+let state='menu',score=0,best=+localStorage.getItem('srbest')||0,p={x:400,y:450,j:0},cars=[],parts=[],spawn=0,last=0,raf=0;
+document.querySelector('#best').textContent=best;
+const roads=[{y:112,h:65,d:1},{y:225,h:65,d:-1},{y:338,h:65,d:1}],colors=['#ef4444','#3b82f6','#facc15','#a855f7','#f97316','#22c55e'];
+function reset(){score=0;p={x:400,y:450,j:0};cars=[];parts=[];spawn=0;for(let i=0;i<6;i++)add(i%3);document.querySelector('#score').textContent=0}
+function add(row){let r=roads[row];cars.push({x:Math.random()*800+(r.d<0?200:-200),y:r.y+12+Math.random()*25,w:48+Math.random()*17,h:29,d:r.d,s:70+Math.random()*45+score*2,col:colors[Math.random()*colors.length|0]})}
+function start(){reset();state='play';document.querySelector('#start').classList.add('hidden');document.querySelector('#over').classList.add('hidden');if(!raf){last=performance.now();raf=requestAnimationFrame(loop)}}
+function end(){state='over';best=Math.max(best,score);localStorage.setItem('srbest',best);document.querySelector('#best').textContent=best;document.querySelector('#final').textContent=score;document.querySelector('#record').textContent=score>=best?'NEW BEST! 🏆':'BEST: '+best;document.querySelector('#over').classList.remove('hidden');}
+function move(d){if(state!=='play')return;if(d==='left')p.x-=40;if(d==='right')p.x+=40;if(d==='up'){p.y-=40;score++;p.j=1;burst(p.x,p.y,'#ffe08a',5)}if(d==='down')p.y+=40;p.x=Math.max(24,Math.min(776,p.x));p.y=Math.max(40,Math.min(460,p.y));if(p.y<60){p.y=450;score+=5;burst(p.x,p.y,'#fbbf24',14)}document.querySelector('#score').textContent=score}
+function burst(a,b,col,n){for(let i=0;i<n;i++)parts.push({x:a,y:b,vx:(Math.random()-.5)*100,vy:(Math.random()-.5)*100,l:.5+Math.random()*.5,col})}
+function update(dt){if(state!=='play')return;p.j=Math.max(0,p.j-dt*4);spawn-=dt;if(spawn<=0){add(Math.random()*3|0);spawn=Math.max(.5,1.25-score*.01)}cars.forEach(q=>{q.x+=q.d*q.s*dt;if(q.d>0&&q.x>860)q.x=-70;if(q.d<0&&q.x<-80)q.x=860});for(const q of cars)if(Math.abs(q.x-p.x)<32&&Math.abs(q.y-p.y)<26)return end();parts.forEach(q=>{q.x+=q.vx*dt;q.y+=q.vy*dt;q.vy+=100*dt;q.l-=dt});parts=parts.filter(q=>q.l>0)}
+function rr(a,b,w,h,r,col){x.fillStyle=col;x.beginPath();x.roundRect(a,b,w,h,r);x.fill()}
+function poly(a,col){x.fillStyle=col;x.beginPath();x.moveTo(...a[0]);a.slice(1).forEach(v=>x.lineTo(...v));x.closePath();x.fill()}
+function bg(){x.fillStyle='#8edbf5';x.fillRect(0,0,W,H);x.fillStyle='#a8e8fa';x.fillRect(0,0,W,92);x.fillStyle='#70b95a';x.fillRect(0,90,W,H-90);for(let i=0;i<W;i+=42){x.fillStyle='#378a4c';x.fillRect(i+12,73,9,39);poly([[i,83],[i+17,44],[i+34,83]],'#56a75e')}for(const r of roads){x.fillStyle='#d6d1bc';x.fillRect(0,r.y-11,W,r.h+22);x.fillStyle='#333c45';x.fillRect(0,r.y,W,r.h);x.strokeStyle='#f8d45c';x.lineWidth=4;x.setLineDash([30,24]);x.beginPath();x.moveTo(0,r.y+r.h/2);x.lineTo(W,r.y+r.h/2);x.stroke();x.setLineDash([])}x.fillStyle='#f6e6c1';x.fillRect(0,19,W,36);for(let i=0;i<W;i+=24)for(let j=19;j<55;j+=18)if((i/24+j/18)%2===0){x.fillStyle='#543526';x.fillRect(i,j,24,18)}x.fillStyle='#5e9e50';x.fillRect(0,420,W,80)}
+function car(q){x.save();x.translate(q.x,q.y);x.fillStyle='#0003';x.beginPath();x.ellipse(0,20,q.w*.65,7,0,0,Math.PI*2);x.fill();rr(-q.w/2,-q.h/2,q.w,q.h*.8,7,q.col);rr(-q.w*.25,-q.h*.37,q.w*.5,q.h*.42,4,'#b9e8ed');x.fillStyle='#15171d';x.fillRect(-q.w*.38,q.h*.23,q.w*.2,7);x.fillRect(q.w*.18,q.h*.23,q.w*.2,7);x.restore()}
+function bottle(){let a=p.x,b=p.y-p.j*9;x.save();x.translate(a,b);x.fillStyle='#0003';x.beginPath();x.ellipse(0,22,23,8,0,0,Math.PI*2);x.fill();rr(-13,-32,26,42,7,'#f6a832');rr(-12,-5,24,23,3,'#fff0bf');x.fillStyle='#6d3011';x.font='900 8px system-ui';x.textAlign='center';x.fillText('MAPLE',0,4);x.font='900 10px system-ui';x.fillText('🍁',0,16);rr(-10,-45,20,8,3,'#e33e24');rr(-6,-51,12,7,3,'#b92d1c');x.fillStyle='#351c10';x.beginPath();x.arc(-5,-24,2,0,7);x.arc(5,-24,2,0,7);x.fill();x.restore()}
+function draw(){x.clearRect(0,0,W,H);bg();cars.forEach(car);parts.forEach(q=>{x.globalAlpha=q.l;x.fillStyle=q.col;x.beginPath();x.arc(q.x,q.y,4,0,7);x.fill();x.globalAlpha=1});bottle()}
+function loop(t){raf=requestAnimationFrame(loop);let dt=Math.min(.04,(t-last)/1000||0);last=t;update(dt);draw();if(state!=='play'){cancelAnimationFrame(raf);raf=0}}
+const map={ArrowLeft:'left',ArrowRight:'right',ArrowUp:'up',ArrowDown:'down',a:'left',d:'right',w:'up',s:'down'};addEventListener('keydown',e=>{if(map[e.key]){e.preventDefault();move(map[e.key])}},{passive:false});
+document.querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>move(b.dataset.d));document.querySelector('#play').onclick=start;document.querySelector('#retry').onclick=start;
+let sw=null;c.addEventListener('pointerdown',e=>sw={x:e.clientX,y:e.clientY});c.addEventListener('pointerup',e=>{if(!sw)return;let dx=e.clientX-sw.x,dy=e.clientY-sw.y;if(Math.max(Math.abs(dx),Math.abs(dy))>18)move(Math.abs(dx)>Math.abs(dy)?dx>0?'right':'left':dy>0?'down':'up');else move('up');sw=null});
+reset();draw();
+})();
+</script></body></html>
