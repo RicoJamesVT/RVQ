@@ -901,6 +901,15 @@ const MINIGAME_ACTIONS = {
   // so it works with no connection). See openCircusMasterApp()/
   // createCircusMasterOverlay() below.
   circusmaster: () => openCircusMasterApp(),
+  // Digger -- a classic boulder-dash-style digging game, tucked inside
+  // JOHNNY'S FUN PARK alongside Circus Master (see the `johnnysfunpark`
+  // shop's `minigames` list). Same "full standalone web app, not a canvas
+  // mini-game" shape as chess/beatbot/organ/mini golf/blackbook/Gator
+  // Grooves/.../Circus Master above (own DOM/iframe overlay, bundled
+  // locally -- its own bundled game engine, sprites, fonts, and audio, no
+  // external assets and no network calls -- so it works with no
+  // connection). See openDiggerApp()/createDiggerOverlay() below.
+  digger: () => openDiggerApp(),
 };
 
 // ---- trophy case: personal bests for the 8 scored mini-games --------------
@@ -6972,6 +6981,7 @@ window.addEventListener('keydown', (e) => {
     if (k === 'escape' && state === 'ricoDawApp') { closeRicoDawApp(); }
     if (k === 'escape' && state === 'filterLabApp') { closeFilterLabApp(); }
     if (k === 'escape' && state === 'circusMasterApp') { closeCircusMasterApp(); }
+    if (k === 'escape' && state === 'diggerApp') { closeDiggerApp(); }
     if (k === 'arrowleft') selectMove = -1;
     if (k === 'arrowright') selectMove = 1;
     if (k === 'arrowup') menuMove = -1;
@@ -8682,8 +8692,18 @@ const shops = {
     // door (6,9). Full standalone web app, same "full-screen DOM overlay
     // with an <iframe>" pattern as Gator Grooves/Dig Dash/Filter Lab
     // above -- see MINIGAME_ACTIONS.circusmaster/openCircusMasterApp().
+    //
+    // Digger cabinet -- a classic boulder-dash-style digging game, on open
+    // floor at (9,7): clear of the counter table (row 3), the crates at
+    // (1,4)/(1,6)/(12,4), the carnivalProps at (2,7)/(11,7), the Circus
+    // Master cabinet at (6,7), and the door (6,9). Full standalone web app
+    // (its own bundled game engine, sprites, and audio, no external assets
+    // and no network calls, so it works with no connection), same
+    // "full-screen DOM overlay with an <iframe>" pattern as Circus Master
+    // above -- see MINIGAME_ACTIONS.digger/openDiggerApp().
     minigames: [
       { id: 'circusmaster', tx: 6, ty: 7, label: 'PLAY CIRCUS MASTER' },
+      { id: 'digger', tx: 9, ty: 7, label: 'PLAY DIGGER' },
     ],
   }),
   // JOHNNY'S POOL -- the fun park's attached outside area (a swimming pool
@@ -8796,7 +8816,7 @@ const player = {
   tempItem: null, tempItemTimer: 0,
 };
 const collected = new Set();
-let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | portal | fifa | minigame | hotkeys | crate | trophies | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | vinylSnakeApp | bayouBreakApp | gatorJamSlamApp | vtDirtApp | digDashApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp
+let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | portal | fifa | minigame | hotkeys | crate | trophies | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | vinylSnakeApp | bayouBreakApp | gatorJamSlamApp | vtDirtApp | digDashApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | circusMasterApp | diggerApp
 // State to snap back to when the [H] hotkeys popup is closed -- currently
 // always 'play' since that's the only state H can be opened from, but kept
 // as its own var in case another state wants to offer the popup later.
@@ -9391,7 +9411,7 @@ const music = {
 // enter/exit call sites, so it can't drift out of sync no matter which
 // of the several ways the player backs out of the lab popup (keyboard
 // [X], on-screen [X] button, closing the instrument iframe, etc.).
-const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'vinylSnakeApp', 'bayouBreakApp', 'gatorJamSlamApp', 'vtDirtApp', 'digDashApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'circusMasterApp']);
+const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'vinylSnakeApp', 'bayouBreakApp', 'gatorJamSlamApp', 'vtDirtApp', 'digDashApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'circusMasterApp', 'diggerApp']);
 function syncMusicDuck() {
   music.duck(DUCKED_STATES.has(state));
 }
@@ -12361,6 +12381,117 @@ function closeCircusMasterApp(fromPopState) {
   }
 }
 
+// Digger -- a classic boulder-dash-style digging game (dig through dirt,
+// dodge falling boulders, collect diamonds) tucked inside JOHNNY'S FUN PARK
+// alongside Circus Master (see the `johnnysfunpark` shop's `minigames`
+// list). Same "full-screen DOM overlay with an <iframe>" pattern as chess/
+// the beat bot/the organ/mini golf/the blackbook/Gator Grooves/.../Circus
+// Master above.
+//
+// Ships as a bundled, self-contained app (its own game engine, sprites,
+// fonts, and audio all inlined as data URIs in a single index.html, no
+// external assets and no network calls at all) at instruments/digger/
+// index.html -- the exact same local-file pattern CHESS_APP_URL/
+// BEAT_BOT_APP_URL/.../CIRCUS_MASTER_APP_URL use. Being a same-origin local
+// asset rather than a live remote site means it loads and works the same
+// with or without a connection, so -- same as the others -- there's no
+// online/offline branching needed here either.
+const DIGGER_APP_URL = 'instruments/digger/index.html';
+let diggerOverlayEl = null, diggerOverlayFrame = null;
+let diggerReturnState = 'play';
+let diggerHistoryPushed = false; // mirrors labHistoryPushed/chessHistoryPushed/.../circusMasterHistoryPushed -- see openDiggerApp()/closeDiggerApp()
+
+function createDiggerOverlay() {
+  const style = document.createElement('style');
+  style.textContent = `
+    #diggerApp {
+      position: fixed; inset: 0; z-index: 1000;
+      background: #000;
+      display: none; flex-direction: column;
+    }
+    #diggerApp.open { display: flex; }
+    #diggerApp .dg-bar {
+      flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 10px 14px;
+      background: linear-gradient(#1a2410, #0d1408);
+      border-bottom: 2px solid #6ac030;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    }
+    #diggerApp .dg-title {
+      color: #f4efe0; font: bold 14px monospace; letter-spacing: 0.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #diggerApp .dg-close {
+      flex: 0 0 auto; cursor: pointer;
+      background: rgba(106,192,48,0.15);
+      border: 1.5px solid rgba(106,192,48,0.85);
+      color: #f4efe0; border-radius: 8px;
+      padding: 7px 16px; font: bold 13px monospace;
+      -webkit-user-select: none; user-select: none;
+    }
+    #diggerApp .dg-close:active { background: rgba(106,192,48,0.4); }
+    #diggerApp iframe {
+      flex: 1 1 auto; width: 100%; border: 0; background: #000;
+    }
+  `;
+  document.head.appendChild(style);
+
+  diggerOverlayEl = document.createElement('div');
+  diggerOverlayEl.id = 'diggerApp';
+
+  const bar = document.createElement('div');
+  bar.className = 'dg-bar';
+  const title = document.createElement('div');
+  title.className = 'dg-title';
+  title.textContent = 'DIGGER';
+  const closeBtn = document.createElement('div');
+  closeBtn.className = 'dg-close';
+  closeBtn.textContent = '\u2190 BACK TO JOHNNY\'S FUN PARK';
+  bindTap(closeBtn, closeDiggerApp);
+  bar.appendChild(title);
+  bar.appendChild(closeBtn);
+
+  diggerOverlayFrame = document.createElement('iframe');
+  diggerOverlayFrame.setAttribute('allow', 'autoplay');
+
+  diggerOverlayEl.appendChild(bar);
+  diggerOverlayEl.appendChild(diggerOverlayFrame);
+  document.body.appendChild(diggerOverlayEl);
+}
+createDiggerOverlay();
+
+// Opens the Digger overlay and switches state to 'diggerApp'. Called from
+// MINIGAME_ACTIONS.digger (E on the cabinet, or tapping its floating sign),
+// same entry points every other mini-game uses.
+function openDiggerApp() {
+  diggerReturnState = state;
+  diggerOverlayFrame.src = DIGGER_APP_URL;
+  diggerOverlayEl.classList.add('open');
+  state = 'diggerApp';
+  // Same throwaway-history-entry trick as openInstrument()/openChessApp()/
+  // .../openCircusMasterApp() above, so the browser/OS back gesture closes
+  // the Digger overlay instead of leaving the game entirely.
+  history.pushState({ ricoDiggerApp: true }, '');
+  diggerHistoryPushed = true;
+}
+
+// Tears the iframe back down and returns to ordinary gameplay in JOHNNY'S
+// FUN PARK. fromPopState mirrors closeInstrument()/closeChessApp()/.../
+// closeCircusMasterApp()'s parameter -- true when triggered by the
+// browser's back button (whose history entry is already consumed), so we
+// must not call history.back() again in that case.
+function closeDiggerApp(fromPopState) {
+  diggerOverlayEl.classList.remove('open');
+  diggerOverlayFrame.src = 'about:blank';
+  state = diggerReturnState;
+  if (!fromPopState && diggerHistoryPushed) {
+    diggerHistoryPushed = false;
+    history.back();
+  } else {
+    diggerHistoryPushed = false;
+  }
+}
+
 // Character-intro splash video, played once between character select and
 // the first frame of gameplay. Same DOM-overlay approach as the lab-app
 // iframe above and for the same reason: video decode/composite is handled
@@ -12566,6 +12697,8 @@ window.addEventListener('popstate', () => {
     closeFilterLabApp(true);
   } else if (state === 'circusMasterApp') {
     closeCircusMasterApp(true);
+  } else if (state === 'diggerApp') {
+    closeDiggerApp(true);
   }
 });
 
@@ -12581,12 +12714,12 @@ canvas.addEventListener('pointerdown', (e) => {
     const vx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const vy = (e.clientY - rect.top) * (canvas.height / rect.height);
     handleLabTap(vx, vy);
-  } else if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'vtDirtApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'circusMasterApp') {
+  } else if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'vtDirtApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'circusMasterApp' || state === 'diggerApp') {
     // The DOM overlay sits on top of (and outside) the canvas while an
     // instrument/the chess app/the beat bot/the organ/mini golf/the
     // blackbook/Gator Grooves/Vinyl Snake/Bayou Break Station/Gator Jam
     // Slam/VT Dirt/Dig Dash/Rico1200/Rico's Mini DAW/Filter Lab/Vinyl Ninja/
-    // Circus Master is loaded, so a pointerdown
+    // Circus Master/Digger is loaded, so a pointerdown
     // reaching the canvas itself means the overlay isn't up yet/already
     // closing -- ignore it rather than falling through to the generic
     // interactPressed=true below.
@@ -12952,6 +13085,13 @@ function update(dt) {
     // too so the on-screen [X] touch button works while Circus Master is
     // open.
     if (buyPressed) closeCircusMasterApp();
+  } else if (state === 'diggerApp') {
+    // Same reasoning as 'labApp'/'chessApp'/.../'circusMasterApp' just
+    // above: the DOM overlay (see createDiggerOverlay()) owns input while
+    // Digger is loaded -- its own close button and [Esc] handle closing it
+    // directly. buyPressed is still consumed here too so the on-screen [X]
+    // touch button works while Digger is open.
+    if (buyPressed) closeDiggerApp();
   } else if (state === 'hotkeys') {
     if (interactPressed || buyPressed) state = hotkeysReturnState;
   } else if (state === 'crate') {
@@ -13483,7 +13623,7 @@ function render(time) {
     drawSplash();
     return;
   }
-  if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'vtDirtApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'circusMasterApp') {
+  if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'vtDirtApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'circusMasterApp' || state === 'diggerApp') {
     // Same reasoning as the labApp overlay: a DOM element (the <video>,
     // see createCharacterIntroOverlay(), the chess <iframe>, see
     // createChessOverlay(), the beat bot <iframe>, see
