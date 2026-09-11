@@ -866,6 +866,18 @@ const MINIGAME_ACTIONS = {
   // calls -- so it works with no connection). See openGatorJamSlamApp()/
   // createGatorJamSlamOverlay() below.
   gatorjamslam: () => openGatorJamSlamApp(),
+  // Swamp Cave Summer -- a 3D pinball table tucked inside TRUTH LAB (see
+  // the `truthlab` shop's `minigames` list), right alongside Bayou Break
+  // Station and Gator Jam Slam. Same "full standalone web app, not a
+  // canvas mini-game" shape as chess/beatbot/organ/mini golf/blackbook/
+  // Gator Grooves/Vinyl Snake/Bayou Break Station/Gator Jam Slam/Dig Dash
+  // above (own DOM/iframe overlay, bundled locally). Its WebGL table reuses
+  // the same vendored lib/three.min.js the rest of the game already ships
+  // (same as Dig Dash/Vinyl Ninja) instead of fetching three.js from a CDN,
+  // so it loads and plays the same with or without a connection -- no
+  // external assets, no network calls. See openSwampCaveApp()/
+  // createSwampCaveOverlay() below.
+  swampcave: () => openSwampCaveApp(),
   // Bayou Boogie -- a four-lane lily-pad stepper tucked inside BURLINGTON
   // RECORDS (see the `burlington` shop's `minigames` list), right alongside
   // Vinyl Snake. Same "CLASSIC vs 3D" shape as darts/beatmatch/whackpigeon/
@@ -6729,6 +6741,7 @@ window.addEventListener('keydown', (e) => {
     if (k === 'escape' && state === 'vinylSnakeApp') { closeVinylSnakeApp(); }
     if (k === 'escape' && state === 'bayouBreakApp') { closeBayouBreakApp(); }
     if (k === 'escape' && state === 'gatorJamSlamApp') { closeGatorJamSlamApp(); }
+    if (k === 'escape' && state === 'swampCaveApp') { closeSwampCaveApp(); }
     if (k === 'escape' && state === 'vtDirtApp') { closeVtDirtApp(); }
     if (k === 'escape' && state === 'penaltyKingsApp') { closePenaltyKingsApp(); }
     if (k === 'escape' && state === 'pondApp') { closePondApp(); }
@@ -8560,9 +8573,18 @@ const shops = {
     // (6,9), and the Bayou Break Station cabinet at (10,6). Same
     // "full-screen DOM overlay with an <iframe>" pattern -- see
     // MINIGAME_ACTIONS.gatorjamslam/openGatorJamSlamApp().
+    //
+    // Swamp Cave Summer -- a 3D pinball table, parked on the open floor at
+    // (6,4): centered between the counter table (row 3) and the couch
+    // (row 6), clear of the corner crates (1,4)/(1,6)/(12,4)/(12,6), the
+    // record player (2,2)/TV (10,2), the door (6,9), and the Bayou Break
+    // Station/Gator Jam Slam cabinets on row 6. Same "full-screen DOM
+    // overlay with an <iframe>" pattern -- see
+    // MINIGAME_ACTIONS.swampcave/openSwampCaveApp().
     minigames: [
       { id: 'bayoubreak', tx: 10, ty: 6, label: 'PLAY BAYOU BREAK STATION' },
       { id: 'gatorjamslam', tx: 3, ty: 6, label: 'PLAY GATOR JAM SLAM' },
+      { id: 'swampcave', tx: 6, ty: 4, label: 'PLAY SWAMP CAVE SUMMER' },
     ],
   }),
 };
@@ -8607,7 +8629,7 @@ const player = {
   tempItem: null, tempItemTimer: 0,
 };
 const collected = new Set();
-let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | portal | fifa | minigame | hotkeys | crate | trophies | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | vinylSnakeApp | bayouBreakApp | gatorJamSlamApp | vtDirtApp | penaltyKingsApp | digDashApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | circusMasterApp | diggerApp | pondApp
+let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | portal | fifa | minigame | hotkeys | crate | trophies | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | vinylSnakeApp | bayouBreakApp | gatorJamSlamApp | swampCaveApp | vtDirtApp | penaltyKingsApp | digDashApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | circusMasterApp | diggerApp | pondApp
 // State to snap back to when the [H] hotkeys popup is closed -- currently
 // always 'play' since that's the only state H can be opened from, but kept
 // as its own var in case another state wants to offer the popup later.
@@ -9202,7 +9224,7 @@ const music = {
 // enter/exit call sites, so it can't drift out of sync no matter which
 // of the several ways the player backs out of the lab popup (keyboard
 // [X], on-screen [X] button, closing the instrument iframe, etc.).
-const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'vinylSnakeApp', 'bayouBreakApp', 'gatorJamSlamApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'circusMasterApp', 'diggerApp', 'pondApp']);
+const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'vinylSnakeApp', 'bayouBreakApp', 'gatorJamSlamApp', 'swampCaveApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'circusMasterApp', 'diggerApp', 'pondApp']);
 function syncMusicDuck() {
   music.duck(DUCKED_STATES.has(state));
 }
@@ -12054,6 +12076,121 @@ function closeGatorJamSlamApp(fromPopState) {
   }
 }
 
+// Swamp Cave Summer -- a 3D pinball table (glowing cave table, flippers,
+// bumpers, multiball, the works) set up inside TRUTH LAB right alongside
+// Bayou Break Station and Gator Jam Slam (see the `truthlab` shop's
+// `minigames` list). Same "full-screen DOM overlay with an <iframe>" trick
+// as chess/the beat bot/the organ/mini golf/the blackbook/Gator Grooves/
+// Vinyl Snake/Bayou Break Station/Gator Jam Slam/Dig Dash above.
+//
+// Ships as a bundled, self-contained page at
+// instruments/swamp-cave-summer/index.html -- the exact same local-file
+// pattern CHESS_APP_URL/BEAT_BOT_APP_URL/.../GATOR_JAM_SLAM_APP_URL use.
+// Its table is genuinely 3D (a Three.js scene), so -- same as Dig Dash/
+// Vinyl Ninja above -- it points its <script> tag at the same
+// '../../lib/three.min.js' the main game already vendors locally for its
+// own 3D mini-games (see loadThreeJS() above) instead of fetching three.js
+// from a CDN. One shared local copy, no network call, so it loads and
+// plays the same with or without a connection, same as every other bundled
+// app here.
+const SWAMP_CAVE_APP_URL = 'instruments/swamp-cave-summer/index.html';
+let swampCaveOverlayEl = null, swampCaveOverlayFrame = null;
+let swampCaveReturnState = 'play';
+let swampCaveHistoryPushed = false; // mirrors labHistoryPushed/.../bayouBreakHistoryPushed/gatorJamSlamHistoryPushed -- see openSwampCaveApp()/closeSwampCaveApp()
+
+function createSwampCaveOverlay() {
+  const style = document.createElement('style');
+  style.textContent = `
+    #swampCaveApp {
+      position: fixed; inset: 0; z-index: 1000;
+      background: #000;
+      display: none; flex-direction: column;
+    }
+    #swampCaveApp.open { display: flex; }
+    #swampCaveApp .sc-bar {
+      flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 10px 14px;
+      background: linear-gradient(#0d2a24, #041412);
+      border-bottom: 2px solid #29ffbe;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    }
+    #swampCaveApp .sc-title {
+      color: #eafff7; font: bold 14px monospace; letter-spacing: 0.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #swampCaveApp .sc-close {
+      flex: 0 0 auto; cursor: pointer;
+      background: rgba(41,255,190,0.15);
+      border: 1.5px solid rgba(95,240,192,0.85);
+      color: #eafff7; border-radius: 8px;
+      padding: 7px 16px; font: bold 13px monospace;
+      -webkit-user-select: none; user-select: none;
+    }
+    #swampCaveApp .sc-close:active { background: rgba(41,255,190,0.35); }
+    #swampCaveApp iframe {
+      flex: 1 1 auto; width: 100%; border: 0; background: #000;
+    }
+  `;
+  document.head.appendChild(style);
+
+  swampCaveOverlayEl = document.createElement('div');
+  swampCaveOverlayEl.id = 'swampCaveApp';
+
+  const bar = document.createElement('div');
+  bar.className = 'sc-bar';
+  const title = document.createElement('div');
+  title.className = 'sc-title';
+  title.textContent = 'SWAMP CAVE SUMMER';
+  const closeBtn = document.createElement('div');
+  closeBtn.className = 'sc-close';
+  closeBtn.textContent = '\u2190 BACK TO TRUTH LAB';
+  bindTap(closeBtn, closeSwampCaveApp);
+  bar.appendChild(title);
+  bar.appendChild(closeBtn);
+
+  swampCaveOverlayFrame = document.createElement('iframe');
+  swampCaveOverlayFrame.setAttribute('allow', 'autoplay');
+
+  swampCaveOverlayEl.appendChild(bar);
+  swampCaveOverlayEl.appendChild(swampCaveOverlayFrame);
+  document.body.appendChild(swampCaveOverlayEl);
+}
+createSwampCaveOverlay();
+
+// Opens the Swamp Cave Summer overlay and switches state to
+// 'swampCaveApp'. Called from MINIGAME_ACTIONS.swampcave (E on the
+// cabinet, or tapping its floating sign), same entry points every other
+// mini-game uses.
+function openSwampCaveApp() {
+  swampCaveReturnState = state;
+  swampCaveOverlayFrame.src = SWAMP_CAVE_APP_URL;
+  swampCaveOverlayEl.classList.add('open');
+  state = 'swampCaveApp';
+  // Same throwaway-history-entry trick as openInstrument()/openChessApp()/
+  // .../openBayouBreakApp()/openGatorJamSlamApp() above, so the browser/OS
+  // back gesture closes the Swamp Cave Summer overlay instead of leaving
+  // the game entirely.
+  history.pushState({ ricoSwampCaveApp: true }, '');
+  swampCaveHistoryPushed = true;
+}
+
+// Tears the iframe back down and returns to ordinary gameplay in TRUTH
+// LAB. fromPopState mirrors closeInstrument()/closeChessApp()/.../
+// closeBayouBreakApp()/closeGatorJamSlamApp()'s parameter -- true when
+// triggered by the browser's back button (whose history entry is already
+// consumed), so we must not call history.back() again in that case.
+function closeSwampCaveApp(fromPopState) {
+  swampCaveOverlayEl.classList.remove('open');
+  swampCaveOverlayFrame.src = 'about:blank';
+  state = swampCaveReturnState;
+  if (!fromPopState && swampCaveHistoryPushed) {
+    swampCaveHistoryPushed = false;
+    history.back();
+  } else {
+    swampCaveHistoryPushed = false;
+  }
+}
+
 // ---------------------------------------------------------------- Pure Pop Records Rico1200 overlay
 // Rico1200 -- Rico's Beat Lab (a 32-pad sampler/step-sequencer beat-lab
 // instrument) parked inside Pure Pop Records, right alongside Crate Digging
@@ -12840,6 +12977,8 @@ window.addEventListener('popstate', () => {
     closeBayouBreakApp(true);
   } else if (state === 'gatorJamSlamApp') {
     closeGatorJamSlamApp(true);
+  } else if (state === 'swampCaveApp') {
+    closeSwampCaveApp(true);
   } else if (state === 'vtDirtApp') {
     closeVtDirtApp(true);
   } else if (state === 'penaltyKingsApp') {
@@ -12875,12 +13014,13 @@ canvas.addEventListener('pointerdown', (e) => {
     const vx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const vy = (e.clientY - rect.top) * (canvas.height / rect.height);
     handleLabTap(vx, vy);
-  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'circusMasterApp' || state === 'diggerApp' || state === 'pondApp') {
+  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'circusMasterApp' || state === 'diggerApp' || state === 'pondApp') {
     // The DOM overlay sits on top of (and outside) the canvas while an
     // instrument/the chess app/the beat bot/the organ/mini golf/the
     // blackbook/Gator Grooves/Vinyl Snake/Bayou Break Station/Gator Jam
-    // Slam/VT Dirt/Dig Dash/Rico1200/Rico's Mini DAW/Filter Lab/Vinyl Ninja/
-    // Circus Master/Digger/The Pool is loaded, so a pointerdown
+    // Slam/Swamp Cave Summer/VT Dirt/Dig Dash/Rico1200/Rico's Mini DAW/
+    // Filter Lab/Vinyl Ninja/Circus Master/Digger/The Pool is loaded, so a
+    // pointerdown
     // reaching the canvas itself means the overlay isn't up yet/already
     // closing -- ignore it rather than falling through to the generic
     // interactPressed=true below.
@@ -13190,6 +13330,15 @@ function update(dt) {
     // buyPressed is still consumed here too so the on-screen [X] touch
     // button works while Gator Jam Slam is open.
     if (buyPressed) closeGatorJamSlamApp();
+  } else if (state === 'swampCaveApp') {
+    // Same reasoning as 'labApp'/'chessApp'/'beatBotApp'/'organApp'/
+    // 'minigolfApp'/'blackbookApp'/'crocSwampApp'/'vinylSnakeApp'/
+    // 'bayouBreakApp'/'gatorJamSlamApp' just above: the DOM overlay (see
+    // createSwampCaveOverlay()) owns input while Swamp Cave Summer is
+    // loaded -- its own close button and [Esc] handle closing it directly.
+    // buyPressed is still consumed here too so the on-screen [X] touch
+    // button works while Swamp Cave Summer is open.
+    if (buyPressed) closeSwampCaveApp();
   } else if (state === 'vtDirtApp') {
     // Same reasoning as 'labApp'/'chessApp'/'beatBotApp'/'organApp'/
     // 'minigolfApp'/'blackbookApp'/'crocSwampApp'/'vinylSnakeApp'/
@@ -13807,7 +13956,7 @@ function render(time) {
     drawSplash();
     return;
   }
-  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'circusMasterApp' || state === 'diggerApp' || state === 'pondApp') {
+  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'circusMasterApp' || state === 'diggerApp' || state === 'pondApp') {
     // Same reasoning as the labApp overlay: a DOM element (the <video>,
     // see createCharacterIntroOverlay(), the chess <iframe>, see
     // createChessOverlay(), the beat bot <iframe>, see
@@ -13817,7 +13966,8 @@ function render(time) {
     // see createCrocSwampOverlay(), the Vinyl Snake <iframe>, see
     // createVinylSnakeOverlay(), the Bayou Break Station <iframe>, see
     // createBayouBreakOverlay(), the Gator Jam Slam <iframe>, see
-    // createGatorJamSlamOverlay(), the VT Dirt <iframe>, see
+    // createGatorJamSlamOverlay(), the Swamp Cave Summer <iframe>, see
+    // createSwampCaveOverlay(), the VT Dirt <iframe>, see
     // createVtDirtOverlay(), the Rico1200 <iframe>, see
     // createRico1200Overlay(), the Rico's Mini DAW <iframe>, see
     // createRicoDawOverlay(), the Filter Lab <iframe>, see
