@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Sunny Side Diner — Pixel Edition</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;height:100%;background:#101018;color:#fff;font-family:monospace;overflow:hidden}
+body{display:grid;place-items:center}canvas{width:100vw;height:100vh;display:block;image-rendering:pixelated}
+#hint{position:fixed;top:10px;left:50%;transform:translateX(-50%);padding:7px 12px;background:#000b;border:2px solid #fff4;font-size:12px;text-align:center;z-index:2}
+.pad{position:fixed;bottom:22px;width:64px;height:64px;border:3px solid #fff8;border-radius:14px;background:#111b;color:#fff;font:bold 28px monospace;touch-action:none}
+#up{left:86px}#down{left:86px;bottom:-2px}#left{left:16px;bottom:60px}#right{left:156px;bottom:60px}
+#action{right:22px;bottom:48px;width:112px;height:112px;border-radius:50%;background:#c73535d9;font-size:16px}
+@media(min-width:800px){.pad{display:none}}
+</style>
+</head>
+<body>
+<canvas id="game" width="960" height="540" aria-label="Sunny Side Diner pixel cooking game"></canvas>
+<div id="hint">ARROWS / WASD: MOVE • SPACE / E: COOK • ENTER: START</div>
+<button class="pad" id="up">▲</button><button class="pad" id="left">◀</button>
+<button class="pad" id="right">▶</button><button class="pad" id="down">▼</button>
+<button class="pad" id="action">COOK</button>
+<script>
+const c=document.getElementById('game'),ctx=c.getContext('2d');ctx.imageSmoothingEnabled=false;
+const W=960,H=540,keys={};let started=false,score=0,combo=0,time=75,order=null,particles=[],last=0,message='',msgT=0;
+const player={x:480,y:415,s:190,dir:1};
+const stations=[
+{x:160,y:260,type:'EGG'},{x:330,y:260,type:'BACON'},
+{x:500,y:260,type:'PANCAKE'},{x:670,y:260,type:'TOAST'}];
+const recipes=['EGG','BACON','PANCAKE','TOAST'];
+function rect(x,y,w,h,col){ctx.fillStyle=col;ctx.fillRect(x,y,w,h)}
+function text(t,x,y,size=18,col='#fff',align='left'){ctx.fillStyle=col;ctx.font=`bold ${size}px monospace`;ctx.textAlign=align;ctx.fillText(t,x,y)}
+function ellipse(x,y,rx,ry,col,stroke){ctx.beginPath();ctx.ellipse(x,y,rx,ry,0,0,Math.PI*2);ctx.fillStyle=col;ctx.fill();if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=3;ctx.stroke()}}
+function dish(x,y,type){ctx.save();ctx.translate(x,y);rect(-28,12,56,7,'#1b1b22');rect(-31,18,62,5,'#050509');
+if(type==='EGG'){rect(-18,-8,36,20,'#fff3d2');rect(-7,-2,14,11,'#f7bd35')}
+if(type==='BACON'){for(let i=-18;i<18;i+=9){rect(i,-10,7,30,i%18===0?'#c44a43':'#8f2f35');rect(i+2,-7,3,24,'#f1a06c')}}
+if(type==='PANCAKE'){for(let i=0;i<3;i++){rect(-23+i*4,-10+i*5,46-i*8,8,'#d48b48');rect(-18+i*4,-7+i*5,36-i*8,2,'#efb568')}}
+if(type==='TOAST'){rect(-20,-14,40,28,'#d99a52');rect(-16,-10,32,20,'#f1bd70');rect(-10,-4,20,8,'#d18a42')}ctx.restore()}
+function spawn(x,y,col,n=12){for(let i=0;i<n;i++)particles.push({x,y,vx:(Math.random()-.5)*120,vy:(Math.random()-.8)*140,life:.5+Math.random()*.5,col})}
+function newOrder(){order=recipes[Math.floor(Math.random()*recipes.length)];message='NEW ORDER: '+order;msgT=2}
+function start(){started=true;score=0;combo=0;time=75;newOrder()}
+function nearest(){let best=null,d=1e9;for(const s of stations){let q=Math.hypot(player.x-s.x,player.y-s.y);if(q<d){d=q;best=s}}return d<85?best:null}
+function cook(){if(!started){start();return}const s=nearest();if(!s){message='GET TO A COOKING STATION';msgT=1.3;return}
+if(s.type===order){score+=100+combo*25;combo++;time=Math.min(90,time+4);message='PERFECT! +'+(100+(combo-1)*25);msgT=1.3;spawn(s.x,s.y,'#ffd34e',20);newOrder()}
+else{combo=0;time=Math.max(0,time-5);message='WRONG STATION! -5 SEC';msgT=1.2;spawn(s.x,s.y,'#d94b4b',10)}}
+function update(dt){if(!started)return;let dx=(keys.ArrowRight||keys.d?1:0)-(keys.ArrowLeft||keys.a?1:0),dy=(keys.ArrowDown||keys.s?1:0)-(keys.ArrowUp||keys.w?1:0);
+if(dx||dy){let m=Math.hypot(dx,dy);player.x+=dx/m*player.s*dt;player.y+=dy/m*player.s*dt;if(dx)player.dir=dx}
+player.x=Math.max(70,Math.min(890,player.x));player.y=Math.max(330,Math.min(470,player.y));time-=dt;
+if(time<=0){time=0;started=false;message='SHIFT OVER — SCORE '+score;msgT=99}
+for(const p of particles){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=260*dt;p.life-=dt}particles=particles.filter(p=>p.life>0);if(msgT>0)msgT-=dt}
+function draw(){ctx.clearRect(0,0,W,H);rect(0,0,W,H,'#171722');rect(0,0,W,92,'#202433');rect(0,92,W,6,'#e0a33b');
+for(let y=110;y<300;y+=38)for(let x=0;x<W;x+=48)rect(x,y,46,36,(x/48+y/38)%2?'#242633':'#20222e');
+rect(0,300,W,240,'#25222a');for(let x=0;x<W;x+=64)rect(x,300,3,240,'#17171e');for(let y=300;y<H;y+=64)rect(0,y,W,3,'#17171e');
+rect(300,18,360,56,'#0b0c12');rect(306,24,348,44,'#3b2434');text('SUNNY SIDE',480,55,31,'#ffcf54','center');
+stations.forEach(s=>{rect(s.x-45,s.y-30,90,60,'#34333b');rect(s.x-38,s.y-22,76,44,'#0c0d12');dish(s.x,s.y-2,s.type);text(s.type,s.x,s.y+51,13,'#d8d8df','center')});
+rect(70,320,150,92,'#12131a');rect(82,334,126,60,'#963d3c');text('CUSTOMER',145,358,13,'#fff','center');text(order||'—',145,381,17,'#ffd34e','center');
+rect(145,162,190,48,'#514052');rect(154,170,172,28,'#292331');ellipse(240,174,29,6,'#1b1924','#a17c70');
+for(let i=0;i<3;i++){ctx.strokeStyle='rgba(240,210,180,.45)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(220+i*20,160);ctx.quadraticCurveTo(210+i*20,150,220+i*20,141);ctx.stroke()}
+ctx.save();ctx.translate(player.x,player.y);ctx.scale(player.dir,1);rect(-17,-50,34,28,'#d69a6d');rect(-13,-57,26,8,'#e2b17b');rect(-24,-31,48,45,'#d7d8de');rect(-19,13,14,32,'#252735');rect(5,13,14,32,'#252735');rect(-24,-27,48,7,'#b33f3c');rect(-16,-42,5,5,'#111');rect(11,-42,5,5,'#111');rect(-8,-20,16,4,'#2a1820');ctx.restore();
+particles.forEach(p=>rect(p.x,p.y,5,5,p.col));text('SCORE '+score,30,40,18,'#fff');text('TIME '+Math.ceil(time),30,63,16,time<15?'#ff6868':'#ffd34e');
+text('ORDER',760,30,13,'#aaa');text(order||'PRESS ENTER',870,56,20,'#ffd34e','center');
+if(msgT>0)text(message,480,125,22,message.includes('WRONG')?'#ff6b61':'#fff','center');
+if(!started&&msgT<90){rect(230,175,500,180,'#08090eea');text('SUNNY SIDE DINER',480,220,32,'#ffd34e','center');text('PIXEL BREAKFAST RUSH',480,252,16,'#fff','center');text('ENTER / TAP COOK TO START',480,300,18,'#fff','center');text('Cook the requested dish before time runs out.',480,328,13,'#aaa','center')}}
+function loop(t){let dt=Math.min(.033,(t-last)/1000||0);last=t;update(dt);draw();requestAnimationFrame(loop)}requestAnimationFrame(loop);
+addEventListener('keydown',e=>{keys[e.key]=true;if([' ','Enter','e','E'].includes(e.key)){e.preventDefault();cook()}});
+addEventListener('keyup',e=>keys[e.key]=false);
+function bind(id,k){let el=document.getElementById(id);el.addEventListener('pointerdown',e=>{e.preventDefault();keys[k]=true});['pointerup','pointercancel','pointerleave'].forEach(ev=>el.addEventListener(ev,e=>{e.preventDefault();keys[k]=false}))}
+bind('up','ArrowUp');bind('down','ArrowDown');bind('left','ArrowLeft');bind('right','ArrowRight');
+document.getElementById('action').addEventListener('pointerdown',e=>{e.preventDefault();cook()});
+</script>
+</body>
+</html>
