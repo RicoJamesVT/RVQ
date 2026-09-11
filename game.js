@@ -891,6 +891,16 @@ const MINIGAME_ACTIONS = {
   // network calls -- so it works with no connection). See
   // openFilterLabApp()/createFilterLabOverlay() below.
   filterlab: () => openFilterLabApp(),
+  // Circus Master -- a full arcade-style circus game (tightrope walking,
+  // lion taming, tiger jumping, trapeze) tucked inside JOHNNY'S FUN PARK
+  // (see the `johnnysfunpark` shop's `minigames` list). Same "full
+  // standalone web app, not a canvas mini-game" shape as chess/beatbot/
+  // organ/mini golf/blackbook/Gator Grooves/.../Filter Lab above (own
+  // DOM/iframe overlay, bundled locally -- its own bundled game engine,
+  // sprites, fonts, and audio, no external assets and no network calls --
+  // so it works with no connection). See openCircusMasterApp()/
+  // createCircusMasterOverlay() below.
+  circusmaster: () => openCircusMasterApp(),
 };
 
 // ---- trophy case: personal bests for the 8 scored mini-games --------------
@@ -6961,6 +6971,7 @@ window.addEventListener('keydown', (e) => {
     if (k === 'escape' && state === 'rico1200App') { closeRico1200App(); }
     if (k === 'escape' && state === 'ricoDawApp') { closeRicoDawApp(); }
     if (k === 'escape' && state === 'filterLabApp') { closeFilterLabApp(); }
+    if (k === 'escape' && state === 'circusMasterApp') { closeCircusMasterApp(); }
     if (k === 'arrowleft') selectMove = -1;
     if (k === 'arrowright') selectMove = 1;
     if (k === 'arrowup') menuMove = -1;
@@ -8664,6 +8675,16 @@ const shops = {
     // Three crates: the swamp's Frog Chorus Stab 45 (moved in here from the
     // boardwalk trunk, see makeSwamp()) plus two junk crates.
     crates: [ { record: 'frog' }, { junkSeed: 8 }, { junkSeed: 9 } ],
+    // Circus Master cabinet -- a full arcade-style circus game (tightrope
+    // walking, lion taming, tiger jumping, trapeze), centered on the open
+    // floor between the two carnivalProps at (2,7) and (11,7) -- clear of
+    // the counter table (row 3), the crates at (1,4)/(1,6)/(12,4), and the
+    // door (6,9). Full standalone web app, same "full-screen DOM overlay
+    // with an <iframe>" pattern as Gator Grooves/Dig Dash/Filter Lab
+    // above -- see MINIGAME_ACTIONS.circusmaster/openCircusMasterApp().
+    minigames: [
+      { id: 'circusmaster', tx: 6, ty: 7, label: 'PLAY CIRCUS MASTER' },
+    ],
   }),
   // JOHNNY'S POOL -- the fun park's attached outside area (a swimming pool
   // and deck). See makeJohnnysPool() above for how the room itself is
@@ -9370,7 +9391,7 @@ const music = {
 // enter/exit call sites, so it can't drift out of sync no matter which
 // of the several ways the player backs out of the lab popup (keyboard
 // [X], on-screen [X] button, closing the instrument iframe, etc.).
-const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'vinylSnakeApp', 'bayouBreakApp', 'gatorJamSlamApp', 'vtDirtApp', 'digDashApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp']);
+const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'vinylSnakeApp', 'bayouBreakApp', 'gatorJamSlamApp', 'vtDirtApp', 'digDashApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'circusMasterApp']);
 function syncMusicDuck() {
   music.duck(DUCKED_STATES.has(state));
 }
@@ -12229,6 +12250,117 @@ function closeFilterLabApp(fromPopState) {
   }
 }
 
+// Circus Master -- a full arcade-style circus game (tightrope walking, lion
+// taming, tiger jumping, trapeze) tucked inside JOHNNY'S FUN PARK, the
+// swamp's fourth building (see the `johnnysfunpark` shop's `minigames`
+// list). Same "full-screen DOM overlay with an <iframe>" pattern as chess/
+// the beat bot/the organ/mini golf/the blackbook/Gator Grooves/.../Filter
+// Lab above.
+//
+// Ships as a bundled, self-contained app (its own game engine, sprites,
+// fonts, and audio, no external assets and no network calls at all) at
+// instruments/circus-master/index.html -- the exact same local-file
+// pattern CHESS_APP_URL/BEAT_BOT_APP_URL/ORGAN_APP_URL/MINI_GOLF_APP_URL/
+// BLACKBOOK_APP_URL/.../FILTER_LAB_APP_URL use. Being a same-origin local
+// asset rather than a live remote site means it loads and works the same
+// with or without a connection, so -- same as the others -- there's no
+// online/offline branching needed here either.
+const CIRCUS_MASTER_APP_URL = 'instruments/circus-master/index.html';
+let circusMasterOverlayEl = null, circusMasterOverlayFrame = null;
+let circusMasterReturnState = 'play';
+let circusMasterHistoryPushed = false; // mirrors labHistoryPushed/chessHistoryPushed/.../filterLabHistoryPushed -- see openCircusMasterApp()/closeCircusMasterApp()
+
+function createCircusMasterOverlay() {
+  const style = document.createElement('style');
+  style.textContent = `
+    #circusMasterApp {
+      position: fixed; inset: 0; z-index: 1000;
+      background: #000;
+      display: none; flex-direction: column;
+    }
+    #circusMasterApp.open { display: flex; }
+    #circusMasterApp .cm-bar {
+      flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 10px 14px;
+      background: linear-gradient(#301a1a, #1a0d0d);
+      border-bottom: 2px solid #e04030;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    }
+    #circusMasterApp .cm-title {
+      color: #f4efe0; font: bold 14px monospace; letter-spacing: 0.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #circusMasterApp .cm-close {
+      flex: 0 0 auto; cursor: pointer;
+      background: rgba(224,64,48,0.15);
+      border: 1.5px solid rgba(224,64,48,0.85);
+      color: #f4efe0; border-radius: 8px;
+      padding: 7px 16px; font: bold 13px monospace;
+      -webkit-user-select: none; user-select: none;
+    }
+    #circusMasterApp .cm-close:active { background: rgba(224,64,48,0.4); }
+    #circusMasterApp iframe {
+      flex: 1 1 auto; width: 100%; border: 0; background: #000;
+    }
+  `;
+  document.head.appendChild(style);
+
+  circusMasterOverlayEl = document.createElement('div');
+  circusMasterOverlayEl.id = 'circusMasterApp';
+
+  const bar = document.createElement('div');
+  bar.className = 'cm-bar';
+  const title = document.createElement('div');
+  title.className = 'cm-title';
+  title.textContent = 'CIRCUS MASTER';
+  const closeBtn = document.createElement('div');
+  closeBtn.className = 'cm-close';
+  closeBtn.textContent = '\u2190 BACK TO JOHNNY\'S FUN PARK';
+  bindTap(closeBtn, closeCircusMasterApp);
+  bar.appendChild(title);
+  bar.appendChild(closeBtn);
+
+  circusMasterOverlayFrame = document.createElement('iframe');
+  circusMasterOverlayFrame.setAttribute('allow', 'autoplay');
+
+  circusMasterOverlayEl.appendChild(bar);
+  circusMasterOverlayEl.appendChild(circusMasterOverlayFrame);
+  document.body.appendChild(circusMasterOverlayEl);
+}
+createCircusMasterOverlay();
+
+// Opens the Circus Master overlay and switches state to 'circusMasterApp'.
+// Called from MINIGAME_ACTIONS.circusmaster (E on the cabinet, or tapping
+// its floating sign), same entry points every other mini-game uses.
+function openCircusMasterApp() {
+  circusMasterReturnState = state;
+  circusMasterOverlayFrame.src = CIRCUS_MASTER_APP_URL;
+  circusMasterOverlayEl.classList.add('open');
+  state = 'circusMasterApp';
+  // Same throwaway-history-entry trick as openInstrument()/openChessApp()/
+  // .../openFilterLabApp() above, so the browser/OS back gesture closes the
+  // Circus Master overlay instead of leaving the game entirely.
+  history.pushState({ ricoCircusMasterApp: true }, '');
+  circusMasterHistoryPushed = true;
+}
+
+// Tears the iframe back down and returns to ordinary gameplay in JOHNNY'S
+// FUN PARK. fromPopState mirrors closeInstrument()/closeChessApp()/.../
+// closeFilterLabApp()'s parameter -- true when triggered by the browser's
+// back button (whose history entry is already consumed), so we must not
+// call history.back() again in that case.
+function closeCircusMasterApp(fromPopState) {
+  circusMasterOverlayEl.classList.remove('open');
+  circusMasterOverlayFrame.src = 'about:blank';
+  state = circusMasterReturnState;
+  if (!fromPopState && circusMasterHistoryPushed) {
+    circusMasterHistoryPushed = false;
+    history.back();
+  } else {
+    circusMasterHistoryPushed = false;
+  }
+}
+
 // Character-intro splash video, played once between character select and
 // the first frame of gameplay. Same DOM-overlay approach as the lab-app
 // iframe above and for the same reason: video decode/composite is handled
@@ -12432,6 +12564,8 @@ window.addEventListener('popstate', () => {
     closeRicoDawApp(true);
   } else if (state === 'filterLabApp') {
     closeFilterLabApp(true);
+  } else if (state === 'circusMasterApp') {
+    closeCircusMasterApp(true);
   }
 });
 
@@ -12447,11 +12581,12 @@ canvas.addEventListener('pointerdown', (e) => {
     const vx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const vy = (e.clientY - rect.top) * (canvas.height / rect.height);
     handleLabTap(vx, vy);
-  } else if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'vtDirtApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp') {
+  } else if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'vtDirtApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'circusMasterApp') {
     // The DOM overlay sits on top of (and outside) the canvas while an
     // instrument/the chess app/the beat bot/the organ/mini golf/the
     // blackbook/Gator Grooves/Vinyl Snake/Bayou Break Station/Gator Jam
-    // Slam/VT Dirt/Dig Dash/Rico1200/Rico's Mini DAW/Filter Lab/Vinyl Ninja is loaded, so a pointerdown
+    // Slam/VT Dirt/Dig Dash/Rico1200/Rico's Mini DAW/Filter Lab/Vinyl Ninja/
+    // Circus Master is loaded, so a pointerdown
     // reaching the canvas itself means the overlay isn't up yet/already
     // closing -- ignore it rather than falling through to the generic
     // interactPressed=true below.
@@ -12809,6 +12944,14 @@ function update(dt) {
     // buyPressed is still consumed here too so the on-screen [X] touch
     // button works while Rico's Filter Lab is open.
     if (buyPressed) closeFilterLabApp();
+  } else if (state === 'circusMasterApp') {
+    // Same reasoning as 'labApp'/'chessApp'/.../'ricoDawApp'/'filterLabApp'
+    // just above: the DOM overlay (see createCircusMasterOverlay()) owns
+    // input while Circus Master is loaded -- its own close button and
+    // [Esc] handle closing it directly. buyPressed is still consumed here
+    // too so the on-screen [X] touch button works while Circus Master is
+    // open.
+    if (buyPressed) closeCircusMasterApp();
   } else if (state === 'hotkeys') {
     if (interactPressed || buyPressed) state = hotkeysReturnState;
   } else if (state === 'crate') {
@@ -13340,7 +13483,7 @@ function render(time) {
     drawSplash();
     return;
   }
-  if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'vtDirtApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp') {
+  if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'vtDirtApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'circusMasterApp') {
     // Same reasoning as the labApp overlay: a DOM element (the <video>,
     // see createCharacterIntroOverlay(), the chess <iframe>, see
     // createChessOverlay(), the beat bot <iframe>, see
