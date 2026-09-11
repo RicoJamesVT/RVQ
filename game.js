@@ -7007,6 +7007,14 @@ purePopPosterImg.src = 'assets/purepop_poster.png';
 const anthillBillboardImg = new Image();
 anthillBillboardImg.src = 'assets/anthill_billboard.png';
 
+// "GUTS" promo billboard -- planted in the swamp at the edge of GUT HUT's
+// clearing, right where the boardwalk trunk (row 12) opens onto it. Same
+// "local PNG, cover-fit and clipped to the frame" pattern as
+// drawAnthillBillboard() above, just mounted on weathered swamp planks
+// instead of a painted city billboard frame. See drawSwampBillboard().
+const swampBillboardImg = new Image();
+swampBillboardImg.src = 'assets/swamp_billboard.png';
+
 const nectarsNeonImg = new Image();
 nectarsNeonImg.src = 'assets/nectars_neon.png';
 
@@ -14259,6 +14267,8 @@ function drawSwampDecorations(time, map, camX, camY) {
   // canvas clips whatever's off-screen" approach drawCoffeeCart()/
   // drawIceCreamVan() use back in town.
   drawSwampJuiceCart();
+  // GUTS promo billboard -- see drawSwampBillboard() for placement notes.
+  drawSwampBillboard();
   // Vermont Lake Monsters ballpark -- see BB_* in makeSwamp().
   drawBaseballStadium();
 }
@@ -14324,6 +14334,52 @@ function drawSwampJuiceCart() {
   ctx.fillRect(x + 37, y + 18, 8, 8);
   ctx.fillStyle = '#39ff6a';
   ctx.fillRect(x + 38, y + 21, 6, 4);
+}
+
+// GUTS promo billboard -- staked into the open mud at the northwest corner
+// of GUT HUT's clearing (tiles 23-24, just above the juice cart), right
+// where the boardwalk trunk opens onto the clearing so it's the first thing
+// the player sees walking in. Built the same way drawAnthillBillboard()
+// works back in town (fixed frame, image cover-fit and clipped to it), just
+// re-skinned with weathered swamp-plank posts instead of a painted city
+// frame -- same wood tones drawSwampJuiceCart() uses just south of here.
+function drawSwampBillboard() {
+  const x = 23 * TILE;
+  const y = 13 * TILE;
+  const w = 108, h = 20;
+
+  // weathered plank support posts
+  ctx.fillStyle = '#3a2c14';
+  ctx.fillRect(x + 6, y + h, 4, 20);
+  ctx.fillRect(x + w - 10, y + h, 4, 20);
+
+  // dark frame border
+  ctx.fillStyle = '#241b0d';
+  ctx.fillRect(x - 2, y - 2, w + 4, h + 4);
+
+  // muddy-plank backing
+  ctx.fillStyle = '#6a4e20';
+  ctx.fillRect(x, y, w, h);
+
+  // GUTS artwork fills the board (cover-fit, cropped to the frame)
+  if (swampBillboardImg.complete && swampBillboardImg.naturalWidth) {
+    const ix = x + 2, iy = y + 2, iw = w - 4, ih = h - 4;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(ix, iy, iw, ih);
+    ctx.clip();
+    const scale = Math.max(iw / swampBillboardImg.naturalWidth, ih / swampBillboardImg.naturalHeight);
+    const dw = swampBillboardImg.naturalWidth * scale;
+    const dh = swampBillboardImg.naturalHeight * scale;
+    const dx = ix + (iw - dw) / 2;
+    const dy = iy + (ih - dh) / 2;
+    ctx.drawImage(swampBillboardImg, dx, dy, dw, dh);
+    ctx.restore();
+  }
+
+  ctx.strokeStyle = '#3a2c14';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
 }
 
 // Green Door Studio's keeper table, styled after the reference photo: a
