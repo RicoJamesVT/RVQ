@@ -776,6 +776,14 @@ const MINIGAME_ACTIONS = {
   // DOM overlay with an <iframe>" trick. See openMiniGolfApp()/
   // createMiniGolfOverlay() below.
   minigolf: () => openMiniGolfApp(),
+  // Connect 45s -- a little vinyl-themed Connect Four board left out on the
+  // open grass in town (see the town map's `minigames` list below). Like
+  // chess/beatbot/organ/mini golf, this is a full standalone web app (its
+  // own self-contained board game, no external assets or network calls)
+  // rather than a from-scratch canvas mini-game, so it reuses the same
+  // "full-screen DOM overlay with an <iframe>" trick. See
+  // openConnectFourApp()/createConnectFourOverlay() above.
+  connectfour: () => openConnectFourApp(),
   // Rico's Blackbook -- BOXGUTS' handstyle library/trace book, sitting open
   // inside GUT HUT (see the `guthut` shop's `minigames` list). Same "full
   // standalone web app, not a canvas mini-game" shape as chess/beatbot/
@@ -6752,6 +6760,7 @@ window.addEventListener('keydown', (e) => {
     if (k === 'escape' && state === 'filterLabApp') { closeFilterLabApp(); }
     if (k === 'escape' && state === 'circusMasterApp') { closeCircusMasterApp(); }
     if (k === 'escape' && state === 'diggerApp') { closeDiggerApp(); }
+    if (k === 'escape' && state === 'connectFourApp') { closeConnectFourApp(); }
     if (k === 'arrowleft') selectMove = -1;
     if (k === 'arrowright') selectMove = 1;
     if (k === 'arrowup') menuMove = -1;
@@ -7338,9 +7347,21 @@ function makeOverworld() {
     // soccer ball does on the stadium pitch. Opens the full standalone
     // mini-golf app in its own DOM overlay; see openMiniGolfApp()/
     // createMiniGolfOverlay().
+    // A little travel Connect Four board (vinyl-themed, "Connect 45s") set
+    // out on the open grass south of Junior's/the comedy club -- tx/ty (33,
+    // 21) sits in a clear patch well clear of those buildings' footprints
+    // (rows 14-17, cols 33-38), the flea market crates (~26-30, rows
+    // 20-21), the two trees at (36,20)/(34,23), and every newsstand/NPC on
+    // this map. `icon: 'connectfour'` swaps the usual floating
+    // arcade-cabinet sign for a little checkered board sprite (see
+    // drawMinigameConnectFour()), the same way the golf clubs/soccer ball
+    // do elsewhere, so it reads as "sit down and play this" rather than an
+    // arcade cabinet. Opens the full standalone Connect 45s app in its own
+    // DOM overlay; see openConnectFourApp()/createConnectFourOverlay().
     minigames: [
       { id: 'penaltyshootout', tx: 19, ty: 19, label: 'PENALTY KICKS', icon: 'soccerball' },
       { id: 'minigolf', tx: 6, ty: 21, label: 'PLAY MINI GOLF', icon: 'golfclubs' },
+      { id: 'connectfour', tx: 33, ty: 21, label: 'PLAY CONNECT 45s', icon: 'connectfour' },
     ],
   };
   // Talkable townsfolk: Gary (the old hippy guitarist by the deli garbage
@@ -8629,7 +8650,7 @@ const player = {
   tempItem: null, tempItemTimer: 0,
 };
 const collected = new Set();
-let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | portal | fifa | minigame | hotkeys | crate | trophies | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | vinylSnakeApp | bayouBreakApp | gatorJamSlamApp | swampCaveApp | vtDirtApp | penaltyKingsApp | digDashApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | circusMasterApp | diggerApp | pondApp
+let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | portal | fifa | minigame | hotkeys | crate | trophies | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | vinylSnakeApp | bayouBreakApp | gatorJamSlamApp | swampCaveApp | vtDirtApp | penaltyKingsApp | digDashApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | circusMasterApp | diggerApp | pondApp | connectFourApp
 // State to snap back to when the [H] hotkeys popup is closed -- currently
 // always 'play' since that's the only state H can be opened from, but kept
 // as its own var in case another state wants to offer the popup later.
@@ -9224,7 +9245,7 @@ const music = {
 // enter/exit call sites, so it can't drift out of sync no matter which
 // of the several ways the player backs out of the lab popup (keyboard
 // [X], on-screen [X] button, closing the instrument iframe, etc.).
-const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'vinylSnakeApp', 'bayouBreakApp', 'gatorJamSlamApp', 'swampCaveApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'circusMasterApp', 'diggerApp', 'pondApp']);
+const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'vinylSnakeApp', 'bayouBreakApp', 'gatorJamSlamApp', 'swampCaveApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'circusMasterApp', 'diggerApp', 'pondApp', 'connectFourApp']);
 function syncMusicDuck() {
   music.duck(DUCKED_STATES.has(state));
 }
@@ -10769,6 +10790,120 @@ function closeMiniGolfApp(fromPopState) {
     history.back();
   } else {
     miniGolfHistoryPushed = false;
+  }
+}
+
+// ---------------------------------------------------------------- Connect 45s overlay
+// A little travel game board left out on the open grass in town, south of
+// Junior's/the comedy club (see MINIGAME_ACTIONS.connectfour and the town
+// map's `minigames` list) launches a full standalone web app, not a
+// from-scratch canvas mini-game -- so it reuses the same "full-screen DOM
+// overlay with an <iframe>" trick as chess/the beat bot/the organ/mini golf
+// above. Kept as its own overlay (rather than folding into any of those)
+// since it's reached from a totally different tile/state and has nothing to
+// do with any of them.
+//
+// Connect 45s ships as a bundled, self-contained instrument page (its own
+// vanilla JS/HTML/CSS Connect Four implementation, vinyl-record themed, no
+// external assets and no network calls at all -- even its logo is an
+// embedded base64 data URI) at instruments/connect-four/index.html -- the
+// exact same local-file pattern CHESS_APP_URL/BEAT_BOT_APP_URL/
+// ORGAN_APP_URL/MINI_GOLF_APP_URL use. Being a same-origin local asset
+// rather than a live remote site means it loads and plays the same with or
+// without a connection, so there's no online/offline branching needed here
+// either.
+const CONNECT_FOUR_APP_URL = 'instruments/connect-four/index.html';
+let connectFourOverlayEl = null, connectFourOverlayFrame = null;
+let connectFourReturnState = 'play';
+let connectFourHistoryPushed = false; // mirrors labHistoryPushed/.../miniGolfHistoryPushed -- see openConnectFourApp()/closeConnectFourApp()
+
+function createConnectFourOverlay() {
+  const style = document.createElement('style');
+  style.textContent = `
+    #ricoConnectFourApp {
+      position: fixed; inset: 0; z-index: 1000;
+      background: #000;
+      display: none; flex-direction: column;
+    }
+    #ricoConnectFourApp.open { display: flex; }
+    #ricoConnectFourApp .c4o-bar {
+      flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 10px 14px;
+      background: linear-gradient(#241a0e, #120d06);
+      border-bottom: 2px solid #e0b040;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    }
+    #ricoConnectFourApp .c4o-title {
+      color: #f4ecd8; font: bold 14px monospace; letter-spacing: 0.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #ricoConnectFourApp .c4o-close {
+      flex: 0 0 auto; cursor: pointer;
+      background: rgba(224,176,64,0.15);
+      border: 1.5px solid rgba(224,176,64,0.85);
+      color: #f4ecd8; border-radius: 8px;
+      padding: 7px 16px; font: bold 13px monospace;
+      -webkit-user-select: none; user-select: none;
+    }
+    #ricoConnectFourApp .c4o-close:active { background: rgba(224,176,64,0.4); }
+    #ricoConnectFourApp iframe {
+      flex: 1 1 auto; width: 100%; border: 0; background: #000;
+    }
+  `;
+  document.head.appendChild(style);
+
+  connectFourOverlayEl = document.createElement('div');
+  connectFourOverlayEl.id = 'ricoConnectFourApp';
+
+  const bar = document.createElement('div');
+  bar.className = 'c4o-bar';
+  const title = document.createElement('div');
+  title.className = 'c4o-title';
+  title.textContent = 'CONNECT 45s';
+  const closeBtn = document.createElement('div');
+  closeBtn.className = 'c4o-close';
+  closeBtn.textContent = '\u2190 BACK TO TOWN';
+  bindTap(closeBtn, closeConnectFourApp);
+  bar.appendChild(title);
+  bar.appendChild(closeBtn);
+
+  connectFourOverlayFrame = document.createElement('iframe');
+  connectFourOverlayFrame.setAttribute('allow', 'autoplay');
+
+  connectFourOverlayEl.appendChild(bar);
+  connectFourOverlayEl.appendChild(connectFourOverlayFrame);
+  document.body.appendChild(connectFourOverlayEl);
+}
+createConnectFourOverlay();
+
+// Opens the Connect 45s overlay and switches state to 'connectFourApp'.
+// Called from MINIGAME_ACTIONS.connectfour (E on the board, or tapping the
+// floating sign), same entry points every other mini-game uses.
+function openConnectFourApp() {
+  connectFourReturnState = state;
+  connectFourOverlayFrame.src = CONNECT_FOUR_APP_URL;
+  connectFourOverlayEl.classList.add('open');
+  state = 'connectFourApp';
+  // Same throwaway-history-entry trick as openInstrument()/openChessApp()/
+  // openMiniGolfApp() above, so the browser/OS back gesture closes the
+  // Connect 45s overlay instead of leaving the game entirely.
+  history.pushState({ ricoConnectFourApp: true }, '');
+  connectFourHistoryPushed = true;
+}
+
+// Tears the iframe back down and returns to ordinary gameplay in town.
+// fromPopState mirrors closeMiniGolfApp()'s parameter -- true when
+// triggered by the browser's back button (whose history entry is already
+// consumed), so we must not call history.back() again in that case.
+function closeConnectFourApp(fromPopState) {
+  connectFourOverlayEl.classList.remove('open');
+  connectFourOverlayFrame.src = 'about:blank';
+  state = connectFourReturnState;
+  if (!fromPopState && connectFourHistoryPushed) {
+    connectFourHistoryPushed = false;
+    history.back();
+  } else {
+    connectFourHistoryPushed = false;
   }
 }
 
@@ -12999,6 +13134,8 @@ window.addEventListener('popstate', () => {
     closeCircusMasterApp(true);
   } else if (state === 'diggerApp') {
     closeDiggerApp(true);
+  } else if (state === 'connectFourApp') {
+    closeConnectFourApp(true);
   }
 });
 
@@ -13014,13 +13151,13 @@ canvas.addEventListener('pointerdown', (e) => {
     const vx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const vy = (e.clientY - rect.top) * (canvas.height / rect.height);
     handleLabTap(vx, vy);
-  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'circusMasterApp' || state === 'diggerApp' || state === 'pondApp') {
+  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'circusMasterApp' || state === 'diggerApp' || state === 'pondApp' || state === 'connectFourApp') {
     // The DOM overlay sits on top of (and outside) the canvas while an
     // instrument/the chess app/the beat bot/the organ/mini golf/the
     // blackbook/Gator Grooves/Vinyl Snake/Bayou Break Station/Gator Jam
     // Slam/Swamp Cave Summer/VT Dirt/Dig Dash/Rico1200/Rico's Mini DAW/
-    // Filter Lab/Vinyl Ninja/Circus Master/Digger/The Pool is loaded, so a
-    // pointerdown
+    // Filter Lab/Vinyl Ninja/Circus Master/Digger/The Pool/Connect 45s is
+    // loaded, so a pointerdown
     // reaching the canvas itself means the overlay isn't up yet/already
     // closing -- ignore it rather than falling through to the generic
     // interactPressed=true below.
@@ -13425,6 +13562,13 @@ function update(dt) {
     // buyPressed is still consumed here too so the on-screen [X] touch
     // button works while The Pool is open.
     if (buyPressed) closePondApp();
+  } else if (state === 'connectFourApp') {
+    // Same reasoning as 'labApp'/'chessApp'/.../'pondApp' just above: the
+    // DOM overlay (see createConnectFourOverlay()) owns input while
+    // Connect 45s is loaded -- its own close button and [Esc] handle
+    // closing it directly. buyPressed is still consumed here too so the
+    // on-screen [X] touch button works while Connect 45s is open.
+    if (buyPressed) closeConnectFourApp();
   } else if (state === 'hotkeys') {
     if (interactPressed || buyPressed) state = hotkeysReturnState;
   } else if (state === 'crate') {
@@ -13707,6 +13851,71 @@ function drawMinigameGolfClubs(wx, wy, time, seed, label) {
   return { cx, cy, hw: bagW / 2 + 18, hh: bagH / 2 + 32 };
 }
 
+// Alternate mini-game marker used when a map entry sets `icon: 'connectfour'`
+// (currently just Connect 45s, out on the open grass in town) -- same
+// bob/label/hitbox contract as drawMinigameArcadeSign()/
+// drawMinigameSoccerBall()/drawMinigameGolfClubs() above so it drops into
+// the exact same per-frame loop and tap-shortcut handling. Drawn as a small
+// wooden crate propping up a yellow Connect Four frame with a few
+// red/purple 45-style discs already dropped in, so it reads as "a board
+// game left out here" rather than an arcade cabinet.
+function drawMinigameConnectFour(wx, wy, time, seed, label) {
+  const s = MINIGAME_OBJECT_SCALE;
+  const bob = Math.sin(time * 0.003 + seed) * 3;
+  const cx = wx, cy = wy - 20 + bob;
+  const boardW = 22 * s, boardH = 19 * s;
+
+  // soft contact shadow on the grass, independent of the board's bob
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.beginPath();
+  ctx.ellipse(wx, wy + 2, boardW * 0.55, boardW * 0.2, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // small wooden crate the board is propped on
+  ctx.fillStyle = '#8a4a2c';
+  ctx.fillRect(cx - boardW / 2 + 2 * s, cy + boardH / 2 - 3 * s, boardW - 4 * s, 6 * s);
+  ctx.strokeStyle = '#5c2f1a';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(cx - boardW / 2 + 2 * s, cy + boardH / 2 - 3 * s, boardW - 4 * s, 6 * s);
+
+  // yellow board frame (Connect Four's signature color)
+  ctx.fillStyle = '#e0b040';
+  ctx.beginPath();
+  ctx.roundRect(cx - boardW / 2, cy - boardH / 2, boardW, boardH, 3 * s);
+  ctx.fill();
+  ctx.strokeStyle = '#8a6018';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // 4x3 grid of slots -- a mix of empty (dark), red, and purple discs so it
+  // reads as a game already in progress, not a blank board
+  const cols = 4, rows = 3;
+  const padX = 3 * s, padY = 3 * s;
+  const cellW = (boardW - padX * 2) / cols, cellH = (boardH - padY * 2) / rows;
+  const discColors = ['#241c28', '#241c28', '#d8432e', '#241c28', '#241c28', '#7a3fb0', '#d8432e', '#241c28', '#241c28', '#7a3fb0', '#d8432e', '#241c28'];
+  let i = 0;
+  for (let ry = 0; ry < rows; ry++) {
+    for (let rx = 0; rx < cols; rx++) {
+      const px = cx - boardW / 2 + padX + cellW * (rx + 0.5);
+      const py = cy - boardH / 2 + padY + cellH * (ry + 0.5);
+      ctx.beginPath();
+      ctx.arc(px, py, Math.min(cellW, cellH) * 0.36, 0, Math.PI * 2);
+      ctx.fillStyle = discColors[i++];
+      ctx.fill();
+    }
+  }
+
+  // floating label above the board -- same flash-between-label-and-tap-hint
+  // behavior as the arcade sign / soccer ball / golf clubs
+  const flashOnLabel = Math.floor(time / 1400) % 2 === 0;
+  ctx.fillStyle = '#ffd23c';
+  ctx.font = `bold ${Math.round(9 * s)}px monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillText(flashOnLabel ? (label || 'MINI-GAME') : 'TAP TO PLAY', cx, cy - boardH / 2 - 12 * s);
+
+  return { cx, cy, hw: boardW / 2 + 16, hh: boardH / 2 + 26 };
+}
+
 // Alternate mini-game marker used when a map entry sets `icon: 'dirtbike'`
 // (currently just VT Dirt, parked out on the open mud in the swamp) --
 // same bob/label/hitbox contract as drawMinigameArcadeSign()/
@@ -13956,7 +14165,7 @@ function render(time) {
     drawSplash();
     return;
   }
-  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'circusMasterApp' || state === 'diggerApp' || state === 'pondApp') {
+  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'circusMasterApp' || state === 'diggerApp' || state === 'pondApp' || state === 'connectFourApp') {
     // Same reasoning as the labApp overlay: a DOM element (the <video>,
     // see createCharacterIntroOverlay(), the chess <iframe>, see
     // createChessOverlay(), the beat bot <iframe>, see
@@ -14045,6 +14254,8 @@ function render(time) {
         ? drawMinigameSoccerBall(wx, wy, time, seed, mg.label)
         : mg.icon === 'golfclubs'
         ? drawMinigameGolfClubs(wx, wy, time, seed, mg.label)
+        : mg.icon === 'connectfour'
+        ? drawMinigameConnectFour(wx, wy, time, seed, mg.label)
         : mg.icon === 'dirtbike'
         ? drawMinigameDirtBike(wx, wy, time, seed, mg.label)
         : mg.icon === 'samuraisword'
