@@ -953,6 +953,15 @@ const MINIGAME_ACTIONS = {
   // external assets and no network calls -- so it works with no
   // connection). See openPondApp()/createPondOverlay() below.
   pond: () => openPondApp(),
+  // Syrup Roads -- a maple-syrup-themed Frogger-style road-crossing arcade
+  // cabinet tucked inside HEY BUD (see the `wax` shop's `minigames` list),
+  // right alongside the Claw Machine. Same "full standalone web app, not a
+  // canvas mini-game" shape as chess/beatbot/organ/mini golf/blackbook/
+  // Gator Grooves/.../Pond above (own DOM/iframe overlay, bundled locally --
+  // its own canvas renderer and WebAudio-free logic, no external assets and
+  // no network calls -- so it works with no connection). See
+  // openSyrupRoadsApp()/createSyrupRoadsOverlay() below.
+  syruproads: () => openSyrupRoadsApp(),
 };
 
 // ---- trophy case: personal bests for the 8 scored mini-games --------------
@@ -6761,6 +6770,7 @@ window.addEventListener('keydown', (e) => {
     if (k === 'escape' && state === 'circusMasterApp') { closeCircusMasterApp(); }
     if (k === 'escape' && state === 'diggerApp') { closeDiggerApp(); }
     if (k === 'escape' && state === 'connectFourApp') { closeConnectFourApp(); }
+    if (k === 'escape' && state === 'syrupRoadsApp') { closeSyrupRoadsApp(); }
     if (k === 'arrowleft') selectMove = -1;
     if (k === 'arrowright') selectMove = 1;
     if (k === 'arrowup') menuMove = -1;
@@ -8044,8 +8054,14 @@ const shops = {
     // potted plants flanking the doorway (tiles 4,8 and 9,8) -- clear of
     // the shelf/hoodie rack (cols 2-6), the tee table (~5,7), and the
     // glass display cases on the right wall (cols 10-13).
+    // Syrup Roads cabinet, tucked into the open floor to the right of the
+    // counter table (which ends at col 9) and above the crate at (12,4) --
+    // clear of the glass flower case (~cols 6-8, rows 5-6), the street-art
+    // prints on the right wall (~col 10, rows 5-6), and the glass plant
+    // case (~cols 10-13, rows 7-8).
     minigames: [
       { id: 'clawmachine', tx: 7, ty: 8, label: 'CLAW MACHINE' },
+      { id: 'syruproads', tx: 11, ty: 3, label: 'SYRUP ROADS' },
     ],
   }),
   henrys: makeShop('henrys', {
@@ -8650,7 +8666,7 @@ const player = {
   tempItem: null, tempItemTimer: 0,
 };
 const collected = new Set();
-let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | portal | fifa | minigame | hotkeys | crate | trophies | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | vinylSnakeApp | bayouBreakApp | gatorJamSlamApp | swampCaveApp | vtDirtApp | penaltyKingsApp | digDashApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | circusMasterApp | diggerApp | pondApp | connectFourApp
+let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | portal | fifa | minigame | hotkeys | crate | trophies | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | vinylSnakeApp | bayouBreakApp | gatorJamSlamApp | swampCaveApp | vtDirtApp | penaltyKingsApp | digDashApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | circusMasterApp | diggerApp | pondApp | connectFourApp | syrupRoadsApp
 // State to snap back to when the [H] hotkeys popup is closed -- currently
 // always 'play' since that's the only state H can be opened from, but kept
 // as its own var in case another state wants to offer the popup later.
@@ -9245,7 +9261,7 @@ const music = {
 // enter/exit call sites, so it can't drift out of sync no matter which
 // of the several ways the player backs out of the lab popup (keyboard
 // [X], on-screen [X] button, closing the instrument iframe, etc.).
-const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'vinylSnakeApp', 'bayouBreakApp', 'gatorJamSlamApp', 'swampCaveApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'circusMasterApp', 'diggerApp', 'pondApp', 'connectFourApp']);
+const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'vinylSnakeApp', 'bayouBreakApp', 'gatorJamSlamApp', 'swampCaveApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'circusMasterApp', 'diggerApp', 'pondApp', 'connectFourApp', 'syrupRoadsApp']);
 function syncMusicDuck() {
   music.duck(DUCKED_STATES.has(state));
 }
@@ -11369,6 +11385,120 @@ function closeHomeRunDerbyApp(fromPopState) {
   }
 }
 
+// ---------------------------------------------------------------- Syrup Roads overlay
+// A little arcade cabinet inside HEY BUD (see MINIGAME_ACTIONS.syruproads and
+// the `wax` shop's `minigames` list), right alongside the Claw Machine --
+// launches a full standalone web app, not a from-scratch canvas mini-game,
+// so it reuses the same "full-screen DOM overlay with an <iframe>" trick as
+// chess/the beat bot/the organ/mini golf/Pond/Home Run Derby above.
+//
+// Syrup Roads ships as a bundled, self-contained page (its own canvas
+// road-crossing renderer and physics, its own localStorage-based best-score
+// tracking, no external assets and no network calls at all) at
+// instruments/syrup-roads/index.html -- the exact same local-file pattern
+// CHESS_APP_URL/BEAT_BOT_APP_URL/ORGAN_APP_URL/MINI_GOLF_APP_URL/
+// POND_APP_URL/HOME_RUN_DERBY_APP_URL use. Being a same-origin local asset
+// rather than a live remote site means it loads and plays the same with or
+// without a connection, so there's no online/offline branching needed here
+// either.
+const SYRUP_ROADS_APP_URL = 'instruments/syrup-roads/index.html';
+let syrupRoadsOverlayEl = null, syrupRoadsOverlayFrame = null;
+let syrupRoadsReturnState = 'play';
+let syrupRoadsHistoryPushed = false; // mirrors labHistoryPushed/.../homeRunDerbyHistoryPushed -- see openSyrupRoadsApp()/closeSyrupRoadsApp()
+
+function createSyrupRoadsOverlay() {
+  const style = document.createElement('style');
+  style.textContent = `
+    #ricoSyrupRoadsApp {
+      position: fixed; inset: 0; z-index: 1000;
+      background: #000;
+      display: none; flex-direction: column;
+    }
+    #ricoSyrupRoadsApp.open { display: flex; }
+    #ricoSyrupRoadsApp .rsr-bar {
+      flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 10px 14px;
+      background: linear-gradient(#301b15, #17100d);
+      border-bottom: 2px solid #e8a73c;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    }
+    #ricoSyrupRoadsApp .rsr-title {
+      color: #f4ecd8; font: bold 14px monospace; letter-spacing: 0.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #ricoSyrupRoadsApp .rsr-close {
+      flex: 0 0 auto; cursor: pointer;
+      background: rgba(232,167,60,0.15);
+      border: 1.5px solid rgba(232,167,60,0.85);
+      color: #f4ecd8; border-radius: 8px;
+      padding: 7px 16px; font: bold 13px monospace;
+      -webkit-user-select: none; user-select: none;
+    }
+    #ricoSyrupRoadsApp .rsr-close:active { background: rgba(232,167,60,0.4); }
+    #ricoSyrupRoadsApp iframe {
+      flex: 1 1 auto; width: 100%; border: 0; background: #000;
+    }
+  `;
+  document.head.appendChild(style);
+
+  syrupRoadsOverlayEl = document.createElement('div');
+  syrupRoadsOverlayEl.id = 'ricoSyrupRoadsApp';
+
+  const bar = document.createElement('div');
+  bar.className = 'rsr-bar';
+  const title = document.createElement('div');
+  title.className = 'rsr-title';
+  title.textContent = 'SYRUP ROADS';
+  const closeBtn = document.createElement('div');
+  closeBtn.className = 'rsr-close';
+  closeBtn.textContent = '\u2190 BACK TO HEY BUD';
+  bindTap(closeBtn, closeSyrupRoadsApp);
+  bar.appendChild(title);
+  bar.appendChild(closeBtn);
+
+  syrupRoadsOverlayFrame = document.createElement('iframe');
+  syrupRoadsOverlayFrame.setAttribute('allow', 'autoplay');
+
+  syrupRoadsOverlayEl.appendChild(bar);
+  syrupRoadsOverlayEl.appendChild(syrupRoadsOverlayFrame);
+  document.body.appendChild(syrupRoadsOverlayEl);
+}
+createSyrupRoadsOverlay();
+
+// Opens the Syrup Roads overlay and switches state to 'syrupRoadsApp'.
+// Called from MINIGAME_ACTIONS.syruproads (E on the cabinet, or tapping its
+// floating arcade sign), same entry points every other mini-game uses.
+function openSyrupRoadsApp() {
+  syrupRoadsReturnState = state;
+  syrupRoadsOverlayFrame.src = SYRUP_ROADS_APP_URL;
+  syrupRoadsOverlayEl.classList.add('open');
+  state = 'syrupRoadsApp';
+  // Same throwaway-history-entry trick as openInstrument()/openChessApp()/
+  // openBeatBotApp()/openOrganApp()/openMiniGolfApp()/openPondApp()/
+  // openHomeRunDerbyApp() above, so the browser/OS back gesture closes the
+  // Syrup Roads overlay instead of leaving the game entirely.
+  history.pushState({ ricoSyrupRoadsApp: true }, '');
+  syrupRoadsHistoryPushed = true;
+}
+
+// Tears the iframe back down and returns to ordinary gameplay in HEY BUD.
+// fromPopState mirrors closeInstrument()/closeChessApp()/closeBeatBotApp()/
+// closeOrganApp()/closeMiniGolfApp()/closePondApp()/closeHomeRunDerbyApp()'s
+// parameter -- true when triggered by the browser's back button (whose
+// history entry is already consumed), so we must not call history.back()
+// again in that case.
+function closeSyrupRoadsApp(fromPopState) {
+  syrupRoadsOverlayEl.classList.remove('open');
+  syrupRoadsOverlayFrame.src = 'about:blank';
+  state = syrupRoadsReturnState;
+  if (!fromPopState && syrupRoadsHistoryPushed) {
+    syrupRoadsHistoryPushed = false;
+    history.back();
+  } else {
+    syrupRoadsHistoryPushed = false;
+  }
+}
+
 // ---------------------------------------------------------------- Vinyl Ninja splash + overlay
 // Vinyl Ninja -- a fruit-ninja-style slice-the-records arcade game, reached
 // by walking up to the samurai sword left stuck in the mud out in the swamp
@@ -13136,6 +13266,8 @@ window.addEventListener('popstate', () => {
     closeDiggerApp(true);
   } else if (state === 'connectFourApp') {
     closeConnectFourApp(true);
+  } else if (state === 'syrupRoadsApp') {
+    closeSyrupRoadsApp(true);
   }
 });
 
@@ -13151,13 +13283,13 @@ canvas.addEventListener('pointerdown', (e) => {
     const vx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const vy = (e.clientY - rect.top) * (canvas.height / rect.height);
     handleLabTap(vx, vy);
-  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'circusMasterApp' || state === 'diggerApp' || state === 'pondApp' || state === 'connectFourApp') {
+  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'circusMasterApp' || state === 'diggerApp' || state === 'pondApp' || state === 'connectFourApp' || state === 'syrupRoadsApp') {
     // The DOM overlay sits on top of (and outside) the canvas while an
     // instrument/the chess app/the beat bot/the organ/mini golf/the
     // blackbook/Gator Grooves/Vinyl Snake/Bayou Break Station/Gator Jam
     // Slam/Swamp Cave Summer/VT Dirt/Dig Dash/Rico1200/Rico's Mini DAW/
-    // Filter Lab/Vinyl Ninja/Circus Master/Digger/The Pool/Connect 45s is
-    // loaded, so a pointerdown
+    // Filter Lab/Vinyl Ninja/Circus Master/Digger/The Pool/Connect 45s/
+    // Syrup Roads is loaded, so a pointerdown
     // reaching the canvas itself means the overlay isn't up yet/already
     // closing -- ignore it rather than falling through to the generic
     // interactPressed=true below.
@@ -13569,6 +13701,13 @@ function update(dt) {
     // closing it directly. buyPressed is still consumed here too so the
     // on-screen [X] touch button works while Connect 45s is open.
     if (buyPressed) closeConnectFourApp();
+  } else if (state === 'syrupRoadsApp') {
+    // Same reasoning as 'labApp'/'chessApp'/.../'connectFourApp' just above:
+    // the DOM overlay (see createSyrupRoadsOverlay()) owns input while
+    // Syrup Roads is loaded -- its own close button and [Esc] handle
+    // closing it directly. buyPressed is still consumed here too so the
+    // on-screen [X] touch button works while Syrup Roads is open.
+    if (buyPressed) closeSyrupRoadsApp();
   } else if (state === 'hotkeys') {
     if (interactPressed || buyPressed) state = hotkeysReturnState;
   } else if (state === 'crate') {
@@ -14165,7 +14304,7 @@ function render(time) {
     drawSplash();
     return;
   }
-  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'circusMasterApp' || state === 'diggerApp' || state === 'pondApp' || state === 'connectFourApp') {
+  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'circusMasterApp' || state === 'diggerApp' || state === 'pondApp' || state === 'connectFourApp' || state === 'syrupRoadsApp') {
     // Same reasoning as the labApp overlay: a DOM element (the <video>,
     // see createCharacterIntroOverlay(), the chess <iframe>, see
     // createChessOverlay(), the beat bot <iframe>, see
