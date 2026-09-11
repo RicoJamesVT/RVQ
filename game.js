@@ -910,6 +910,15 @@ const MINIGAME_ACTIONS = {
   // external assets and no network calls -- so it works with no
   // connection). See openDiggerApp()/createDiggerOverlay() below.
   digger: () => openDiggerApp(),
+  // The Pool -- a swim-free-fish arcade game filling JOHNNY'S POOL, the
+  // fenced-in pool/deck room attached to JOHNNY'S FUN PARK (see
+  // makeJohnnysPool()'s `minigames` list). Same "full standalone web app,
+  // not a canvas mini-game" shape as chess/beatbot/organ/mini golf/
+  // blackbook/Gator Grooves/.../Digger above (own DOM/iframe overlay,
+  // bundled locally -- its own canvas renderer, sprites, and audio, no
+  // external assets and no network calls -- so it works with no
+  // connection). See openPondApp()/createPondOverlay() below.
+  pond: () => openPondApp(),
 };
 
 // ---- trophy case: personal bests for the 8 scored mini-games --------------
@@ -6975,6 +6984,7 @@ window.addEventListener('keydown', (e) => {
     if (k === 'escape' && state === 'bayouBreakApp') { closeBayouBreakApp(); }
     if (k === 'escape' && state === 'gatorJamSlamApp') { closeGatorJamSlamApp(); }
     if (k === 'escape' && state === 'vtDirtApp') { closeVtDirtApp(); }
+    if (k === 'escape' && state === 'pondApp') { closePondApp(); }
     if (k === 'escape' && state === 'vinylNinjaApp') { closeVinylNinjaApp(); }
     if (k === 'escape' && state === 'digDashApp') { closeDigDashApp(); }
     if (k === 'escape' && state === 'rico1200App') { closeRico1200App(); }
@@ -8086,9 +8096,9 @@ function makeShop(id, opts) {
 // (row 7) instead of makeShop's default row-2 spot, so PADDLES reads as
 // standing poolside rather than floating in the pool. The pool itself is
 // just the ordinary '~' water tile (solid, same as swamp/river water)
-// filled in here -- no gameplay lives in it yet; that's the "swimming
-// game" to be added later. `opts.crates` is left empty since there's
-// nothing to dig for out here.
+// filled in here. THE POOL -- the swim-free-fish arcade game -- now sits
+// out on the deck (see the `minigames` list below); `opts.crates` is left
+// empty since there's nothing to dig for out here.
 function makeJohnnysPool() {
   const map = makeShop('johnnyspool', {
     world: 'swamp',
@@ -8099,9 +8109,18 @@ function makeJohnnysPool() {
         'Deck\'s dry, pool\'s wet — that\'s the whole job description out here.',
         'Johnny had this thing trucked in plank by plank. Don\'t ask how it doesn\'t leak. It just doesn\'t.',
         'No diving, no cannonballs near the ladder, and no, the gators are not invited.',
-        'Give it a little while longer — got a real swim game coming for this pool.',
+        'That swim game finally showed up — set up right there on the deck. Go make some waves.',
       ] },
     crates: [],
+    // THE POOL -- a swim-free-fish arcade game set up on the deck (rows
+    // 7-8, the dry strip right in front of the door), so the player can
+    // walk straight up to it the moment they step inside. tx/ty (4, 8)
+    // sits on open deck, clear of PADDLES (9, 8) and the door/exit tile
+    // (6, 9) below. Full standalone web app, not a canvas mini-game --
+    // see MINIGAME_ACTIONS.pond/openPondApp()/createPondOverlay().
+    minigames: [
+      { id: 'pond', tx: 4, ty: 8, label: 'PLAY THE POOL' },
+    ],
   });
   // Carve the pool: every interior tile in rows 1-6 becomes water, leaving
   // the border walls (row 0), the deck (rows 7-8), and the door wall/exit
@@ -8816,7 +8835,7 @@ const player = {
   tempItem: null, tempItemTimer: 0,
 };
 const collected = new Set();
-let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | portal | fifa | minigame | hotkeys | crate | trophies | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | vinylSnakeApp | bayouBreakApp | gatorJamSlamApp | vtDirtApp | digDashApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | circusMasterApp | diggerApp
+let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | portal | fifa | minigame | hotkeys | crate | trophies | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | vinylSnakeApp | bayouBreakApp | gatorJamSlamApp | vtDirtApp | digDashApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | circusMasterApp | diggerApp | pondApp
 // State to snap back to when the [H] hotkeys popup is closed -- currently
 // always 'play' since that's the only state H can be opened from, but kept
 // as its own var in case another state wants to offer the popup later.
@@ -9411,7 +9430,7 @@ const music = {
 // enter/exit call sites, so it can't drift out of sync no matter which
 // of the several ways the player backs out of the lab popup (keyboard
 // [X], on-screen [X] button, closing the instrument iframe, etc.).
-const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'vinylSnakeApp', 'bayouBreakApp', 'gatorJamSlamApp', 'vtDirtApp', 'digDashApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'circusMasterApp', 'diggerApp']);
+const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'vinylSnakeApp', 'bayouBreakApp', 'gatorJamSlamApp', 'vtDirtApp', 'digDashApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'circusMasterApp', 'diggerApp', 'pondApp']);
 function syncMusicDuck() {
   music.duck(DUCKED_STATES.has(state));
 }
@@ -10961,6 +10980,121 @@ function closeVtDirtApp(fromPopState) {
     history.back();
   } else {
     vtDirtHistoryPushed = false;
+  }
+}
+
+// ---------------------------------------------------------------- The Pool overlay
+// JOHNNY'S POOL's swim-free-fish arcade game (see MINIGAME_ACTIONS.pond and
+// makeJohnnysPool()'s `minigames` list) launches a full standalone web app,
+// not a from-scratch canvas mini-game -- same "full-screen DOM overlay with
+// an <iframe>" trick as chess/the beat bot/VT Dirt/etc. above. Kept as its
+// own overlay (rather than folding into any of those) since it's reached
+// from a totally different room and has nothing to do with any of them.
+//
+// The Pool ships as a bundled, self-contained instrument page (its own
+// canvas fish-and-particle renderer, own WebAudio-free <audio> sound
+// effects, no external assets and no network calls at all -- the original
+// game's Google Analytics snippet and social-card links were stripped out
+// when it was bundled in) at instruments/pond/index.html -- the exact same
+// local-file pattern CHESS_APP_URL/.../VT_DIRT_APP_URL use. Being a
+// same-origin local asset rather than a live remote site means it loads and
+// plays the same with or without a connection, so there's no online/offline
+// branching needed here either. (The folder is still named `pond` after the
+// original open-source project it's bundled from -- only the in-game splash
+// logo and page title were re-themed to "The Pool" to match the room.)
+const POND_APP_URL = 'instruments/pond/index.html';
+let pondOverlayEl = null, pondOverlayFrame = null;
+let pondReturnState = 'play';
+let pondHistoryPushed = false; // mirrors labHistoryPushed/.../vtDirtHistoryPushed -- see openPondApp()/closePondApp()
+
+function createPondOverlay() {
+  const style = document.createElement('style');
+  style.textContent = `
+    #ricoPondApp {
+      position: fixed; inset: 0; z-index: 1000;
+      background: #000;
+      display: none; flex-direction: column;
+    }
+    #ricoPondApp.open { display: flex; }
+    #ricoPondApp .rpd-bar {
+      flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 10px 14px;
+      background: linear-gradient(#0e2024, #061215);
+      border-bottom: 2px solid #2a8a9a;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    }
+    #ricoPondApp .rpd-title {
+      color: #f4ecd8; font: bold 14px monospace; letter-spacing: 0.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #ricoPondApp .rpd-close {
+      flex: 0 0 auto; cursor: pointer;
+      background: rgba(42,138,154,0.2);
+      border: 1.5px solid rgba(64,190,210,0.85);
+      color: #f4ecd8; border-radius: 8px;
+      padding: 7px 16px; font: bold 13px monospace;
+      -webkit-user-select: none; user-select: none;
+    }
+    #ricoPondApp .rpd-close:active { background: rgba(42,138,154,0.45); }
+    #ricoPondApp iframe {
+      flex: 1 1 auto; width: 100%; border: 0; background: #000;
+    }
+  `;
+  document.head.appendChild(style);
+
+  pondOverlayEl = document.createElement('div');
+  pondOverlayEl.id = 'ricoPondApp';
+
+  const bar = document.createElement('div');
+  bar.className = 'rpd-bar';
+  const title = document.createElement('div');
+  title.className = 'rpd-title';
+  title.textContent = 'THE POOL';
+  const closeBtn = document.createElement('div');
+  closeBtn.className = 'rpd-close';
+  closeBtn.textContent = '\u2190 BACK TO THE POOL DECK';
+  bindTap(closeBtn, closePondApp);
+  bar.appendChild(title);
+  bar.appendChild(closeBtn);
+
+  pondOverlayFrame = document.createElement('iframe');
+  pondOverlayFrame.setAttribute('allow', 'autoplay');
+
+  pondOverlayEl.appendChild(bar);
+  pondOverlayEl.appendChild(pondOverlayFrame);
+  document.body.appendChild(pondOverlayEl);
+}
+createPondOverlay();
+
+// Opens the Pool overlay and switches state to 'pondApp'. Called from
+// MINIGAME_ACTIONS.pond (E on the sign on the deck, or tapping it), same
+// entry points every other mini-game uses.
+function openPondApp() {
+  pondReturnState = state;
+  pondOverlayFrame.src = POND_APP_URL;
+  pondOverlayEl.classList.add('open');
+  state = 'pondApp';
+  // Same throwaway-history-entry trick as openInstrument()/openChessApp()/
+  // .../openVtDirtApp() above, so the browser/OS back gesture closes the
+  // Pool overlay instead of leaving the game entirely.
+  history.pushState({ ricoPondApp: true }, '');
+  pondHistoryPushed = true;
+}
+
+// Tears the iframe back down and returns to ordinary gameplay on the pool
+// deck. fromPopState mirrors closeInstrument()/closeChessApp()/.../
+// closeVtDirtApp()'s parameter -- true when triggered by the browser's back
+// button (whose history entry is already consumed), so we must not call
+// history.back() again in that case.
+function closePondApp(fromPopState) {
+  pondOverlayEl.classList.remove('open');
+  pondOverlayFrame.src = 'about:blank';
+  state = pondReturnState;
+  if (!fromPopState && pondHistoryPushed) {
+    pondHistoryPushed = false;
+    history.back();
+  } else {
+    pondHistoryPushed = false;
   }
 }
 
@@ -12685,6 +12819,8 @@ window.addEventListener('popstate', () => {
     closeGatorJamSlamApp(true);
   } else if (state === 'vtDirtApp') {
     closeVtDirtApp(true);
+  } else if (state === 'pondApp') {
+    closePondApp(true);
   } else if (state === 'vinylNinjaApp') {
     closeVinylNinjaApp(true);
   } else if (state === 'digDashApp') {
@@ -12714,12 +12850,12 @@ canvas.addEventListener('pointerdown', (e) => {
     const vx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const vy = (e.clientY - rect.top) * (canvas.height / rect.height);
     handleLabTap(vx, vy);
-  } else if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'vtDirtApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'circusMasterApp' || state === 'diggerApp') {
+  } else if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'vtDirtApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'circusMasterApp' || state === 'diggerApp' || state === 'pondApp') {
     // The DOM overlay sits on top of (and outside) the canvas while an
     // instrument/the chess app/the beat bot/the organ/mini golf/the
     // blackbook/Gator Grooves/Vinyl Snake/Bayou Break Station/Gator Jam
     // Slam/VT Dirt/Dig Dash/Rico1200/Rico's Mini DAW/Filter Lab/Vinyl Ninja/
-    // Circus Master/Digger is loaded, so a pointerdown
+    // Circus Master/Digger/The Pool is loaded, so a pointerdown
     // reaching the canvas itself means the overlay isn't up yet/already
     // closing -- ignore it rather than falling through to the generic
     // interactPressed=true below.
@@ -13092,6 +13228,13 @@ function update(dt) {
     // directly. buyPressed is still consumed here too so the on-screen [X]
     // touch button works while Digger is open.
     if (buyPressed) closeDiggerApp();
+  } else if (state === 'pondApp') {
+    // Same reasoning as 'labApp'/'chessApp'/.../'diggerApp' just above: the
+    // DOM overlay (see createPondOverlay()) owns input while The Pool is
+    // loaded -- its own close button and [Esc] handle closing it directly.
+    // buyPressed is still consumed here too so the on-screen [X] touch
+    // button works while The Pool is open.
+    if (buyPressed) closePondApp();
   } else if (state === 'hotkeys') {
     if (interactPressed || buyPressed) state = hotkeysReturnState;
   } else if (state === 'crate') {
@@ -13623,7 +13766,7 @@ function render(time) {
     drawSplash();
     return;
   }
-  if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'vtDirtApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'circusMasterApp' || state === 'diggerApp') {
+  if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'vtDirtApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'circusMasterApp' || state === 'diggerApp' || state === 'pondApp') {
     // Same reasoning as the labApp overlay: a DOM element (the <video>,
     // see createCharacterIntroOverlay(), the chess <iframe>, see
     // createChessOverlay(), the beat bot <iframe>, see
