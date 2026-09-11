@@ -738,7 +738,14 @@ const MINIGAME_ACTIONS = {
   clawmachine: () => enterMinigame(createClawMachineModeSelect()),
   beatjam: () => enterMinigame(createBeatJamModeSelect()),
   scratchdj: () => enterMinigame(createScratchDJModeSelect()),
-  penaltyshootout: () => enterMinigame(createPenaltyShootoutGame()),
+  // Penalty Kicks -- "16-BIT PENALTY KINGS -- DELUXE", a soccer ball left
+  // out on the stadium pitch (see the `icon: 'soccerball'` map entry
+  // below). Used to be a from-scratch canvas mini-game
+  // (createPenaltyShootoutGame(), now removed); it's now a full standalone
+  // web app, same shape as chess/beat bot/organ/mini golf/etc. (own DOM/
+  // iframe overlay, bundled locally so it works with no connection). See
+  // openPenaltyKingsApp()/createPenaltyKingsOverlay() below.
+  penaltyshootout: () => openPenaltyKingsApp(),
   // Chess is a full standalone web app (not a canvas mini-game), so it
   // doesn't go through enterMinigame()/activeMinigame at all -- it opens
   // in the same kind of full-screen DOM/iframe overlay Rico's Lab uses for
@@ -948,8 +955,11 @@ const MINIGAME_TROPHIES = [
     flavor: 'Six tries to walk off with the good flowers.' },
   { id: 'scratchdj', label: 'Freestyle Scratch-DJ', unit: 'pts',
     flavor: 'Two needles, two hands, no time to think about either.' },
-  { id: 'penaltyshootout', label: 'Penalty Shootout', unit: 'pts',
-    flavor: 'Five kicks against the keeper -- pick a corner and strike.' },
+  // Penalty Kicks moved to a full standalone web app (see
+  // MINIGAME_ACTIONS.penaltyshootout/openPenaltyKingsApp() below), so like
+  // the other bundled iframe apps (chess, mini golf, VT Dirt, etc.) it
+  // keeps its own best/score internally rather than reporting into
+  // personalBests/the trophy case here.
   { id: 'bayouboogie', label: 'Bayou Boogie', unit: 'pts',
     flavor: 'Four lanes, one boardwalk, Crawdad Drums keeping time.' },
 ];
@@ -1139,286 +1149,14 @@ function createDartsGame() {
   };
 }
 
-// Penalty Shootout: same two-tap power/aim trick as Darts above, just aimed
-// at a goalmouth instead of a dartboard. Ported from a standalone prototype
-// that ran the shot as full 3D physics in Three.js -- since the prototype's
-// own velocity solve always lands the ball at the locked aim/power's exact
-// target (x, y) at the goal line by construction (no drag, no lateral
-// forces), the outcome only ever depends on that target point, not on
-// simulating the flight -- so here the flight is just a canvas-primitives
-// animation for spectacle, and judging reuses the original target-point
-// math wholesale. Every constant below (distances in "meters") is carried
-// over unchanged from that prototype so shot feel/difficulty matches.
-const PK_CFG = {
-  goalHalfWidth: 3.66, goalHeight: 2.4,
-  aimPeriod: 1.7, aimRange: 4.3,
-  powerPeriod: 1.3, heightBase: 0.11, heightPerPower: 3.1,
-  wideX: 3.77, overY: 2.51,
-  hardShotPower: 0.72, hardShotReachCut: 0.35,
-  saveCentreX: 1.1, saveCentreY: 2.2,
-  saveSideCentre: 2.1, saveSideReach: 1.35, saveSideHighY: 0.9, saveSideLowY: 1.35,
-  shotHighY: 1.2, postTolerance: 0.11, barTolerance: 0.11,
-  keeperReadChance: 0.4, keeperDiveDuration: 0.45,
-  maxKicks: 5,
-};
-
-function pkCurrentAim(t) { return Math.sin((t / PK_CFG.aimPeriod) * Math.PI * 2); }
-function pkCurrentPower(t) {
-  const phase = (t % PK_CFG.powerPeriod) / PK_CFG.powerPeriod;
-  return phase < 0.5 ? phase * 2 : (1 - phase) * 2;
-}
-function pkShotZone(targetX) {
-  if (targetX < -1.1) return 'left';
-  if (targetX > 1.1) return 'right';
-  return 'centre';
-}
-function pkDecideKeeperDive(targetX, targetY) {
-  const trueZone = pkShotZone(targetX);
-  const reads = Math.random() < PK_CFG.keeperReadChance;
-  const zones = ['left', 'centre', 'right'];
-  const side = reads ? trueZone : zones[Math.floor(Math.random() * 3)];
-  const shotHigh = targetY > PK_CFG.shotHighY;
-  const matches = Math.random() < 0.5;
-  const high = matches ? shotHigh : Math.random() < 0.5;
-  return { side, high };
-}
-// Mirrors the prototype's judgeShot() exactly, minus the DOM/mesh side
-// effects -- same post/bar tolerance check first, then wide/over, then a
-// keeper save zone keyed off which way (and how well) the keeper guessed.
-function pkJudgeShot(x, y, power, dive) {
-  const onPost = Math.abs(Math.abs(x) - PK_CFG.goalHalfWidth) <= PK_CFG.postTolerance && y <= PK_CFG.goalHeight + 0.2;
-  const onBar = Math.abs(y - PK_CFG.goalHeight) <= PK_CFG.barTolerance && Math.abs(x) <= PK_CFG.goalHalfWidth + 0.15;
-  if (onPost || onBar) return { result: 'post', headline: 'OFF THE POST!', sub: 'So close.' };
-  if (Math.abs(x) > PK_CFG.wideX || y > PK_CFG.overY) {
-    return { result: 'wide', headline: y > PK_CFG.overY ? 'OVER THE BAR!' : 'WIDE!', sub: 'Not this time.' };
-  }
-  const reachCut = power > PK_CFG.hardShotPower ? PK_CFG.hardShotReachCut : 0;
-  let saved;
-  if (dive.side === 'centre') {
-    saved = Math.abs(x) <= (PK_CFG.saveCentreX - reachCut) && y <= PK_CFG.saveCentreY;
-  } else {
-    const centre = dive.side === 'left' ? -PK_CFG.saveSideCentre : PK_CFG.saveSideCentre;
-    const reach = PK_CFG.saveSideReach - reachCut;
-    const heightOk = dive.high ? y >= PK_CFG.saveSideHighY : y <= PK_CFG.saveSideLowY;
-    saved = Math.abs(x - centre) <= reach && heightOk;
-  }
-  if (saved) return { result: 'save', headline: 'SAVED!', sub: 'Great stop by the keeper.' };
-  return { result: 'goal', headline: 'GOAL!', sub: '' };
-}
-
-function createPenaltyShootoutGame() {
-  const cx = VIEW_W / 2;
-  const groundY = 380, goalTopY = 190, goalHalfWidthPx = 170;
-  const pxPerMX = goalHalfWidthPx / PK_CFG.goalHalfWidth;       // px per "meter" horizontally
-  const pxPerMY = (groundY - goalTopY) / PK_CFG.goalHeight;      // px per "meter" vertically
-  const ballStartY = groundY + 58;
-  const FLIGHT_TIME = 0.55;
-
-  let phase = 'aim';        // 'aim' | 'power' | 'flying' | 'result' | 'done'
-  let aimLocked = 0, powerLocked = 0;
-  let phaseClock = 0;       // seconds since the current aim/power sweep (re)started
-  let flightT = 0;
-  let dive = null;
-  let targetXm = 0, targetYm = 0;
-  let outcome = null;       // { result, headline, sub }
-  let kicksTaken = 0, goals = 0;
-  const results = [];       // 'goal' | 'save' | 'post' | 'wide' per kick
-  let resultTimer = 0;
-  let bestRecorded = false, isNewBest = false;
-
-  function startKick() {
-    phase = 'aim';
-    phaseClock = 0;
-    aimLocked = 0; powerLocked = 0;
-    dive = null;
-    outcome = null;
-  }
-  startKick();
-
-  return {
-    update(dt) {
-      if (phase === 'aim') {
-        phaseClock += dt;
-        if (interactPressed) { aimLocked = pkCurrentAim(phaseClock); phase = 'power'; phaseClock = 0; }
-      } else if (phase === 'power') {
-        phaseClock += dt;
-        if (interactPressed) {
-          powerLocked = pkCurrentPower(phaseClock);
-          targetXm = aimLocked * PK_CFG.aimRange;
-          targetYm = PK_CFG.heightBase + powerLocked * PK_CFG.heightPerPower;
-          dive = pkDecideKeeperDive(targetXm, targetYm);
-          flightT = 0;
-          phase = 'flying';
-        }
-      } else if (phase === 'flying') {
-        flightT += dt / FLIGHT_TIME;
-        if (flightT >= 1) {
-          flightT = 1;
-          outcome = pkJudgeShot(targetXm, targetYm, powerLocked, dive);
-          results.push(outcome.result);
-          kicksTaken++;
-          if (outcome.result === 'goal') goals++;
-          phase = 'result';
-          resultTimer = 1.3;
-        }
-      } else if (phase === 'result') {
-        resultTimer -= dt;
-        if (resultTimer <= 0) {
-          if (kicksTaken >= PK_CFG.maxKicks) phase = 'done';
-          else startKick();
-        }
-      } else if (phase === 'done') {
-        if (!bestRecorded) { isNewBest = recordMinigameScore('penaltyshootout', goals); bestRecorded = true; }
-        if (interactPressed) exitMinigame();
-      }
-      // X always bails out early, no matter the phase
-      if (buyPressed) exitMinigame();
-    },
-    draw() {
-      ctx.fillStyle = 'rgba(8,6,12,0.9)';
-      ctx.fillRect(0, 0, VIEW_W, VIEW_H);
-
-      ctx.textAlign = 'center';
-      ctx.fillStyle = '#e0b040';
-      ctx.font = 'bold 28px monospace';
-      ctx.fillText('PENALTY SHOOTOUT', cx, 40);
-      ctx.fillStyle = '#f4ecd8';
-      ctx.font = '17px monospace';
-      ctx.fillText(`KICK ${Math.min(kicksTaken + 1, PK_CFG.maxKicks)} / ${PK_CFG.maxKicks}   SCORE ${goals}`, cx, 62);
-
-      // kick dots
-      const dotY = 78, dotGap = 16, dotStart = cx - (PK_CFG.maxKicks - 1) * dotGap / 2;
-      for (let i = 0; i < PK_CFG.maxKicks; i++) {
-        ctx.beginPath();
-        ctx.arc(dotStart + i * dotGap, dotY, 4, 0, Math.PI * 2);
-        ctx.fillStyle = results[i] === 'goal' ? '#8cff5f' : results[i] ? '#ff5b52' : 'rgba(244,236,216,0.25)';
-        ctx.fill();
-      }
-
-      // pitch
-      ctx.fillStyle = '#123d24';
-      ctx.fillRect(0, goalTopY - 20, VIEW_W, VIEW_H - (goalTopY - 20));
-
-      // goal frame
-      const gx0 = cx - goalHalfWidthPx, gx1 = cx + goalHalfWidthPx;
-      ctx.strokeStyle = 'rgba(244,236,216,0.25)';
-      ctx.lineWidth = 1;
-      for (let i = 1; i < 8; i++) {
-        const nx = gx0 + (gx1 - gx0) * (i / 8);
-        ctx.beginPath(); ctx.moveTo(nx, goalTopY); ctx.lineTo(nx, groundY); ctx.stroke();
-      }
-      for (let i = 1; i < 5; i++) {
-        const ny = goalTopY + (groundY - goalTopY) * (i / 5);
-        ctx.beginPath(); ctx.moveTo(gx0, ny); ctx.lineTo(gx1, ny); ctx.stroke();
-      }
-      ctx.strokeStyle = '#f4f6f4';
-      ctx.lineWidth = 6;
-      ctx.beginPath();
-      ctx.moveTo(gx0, groundY); ctx.lineTo(gx0, goalTopY);
-      ctx.lineTo(gx1, goalTopY); ctx.lineTo(gx1, groundY);
-      ctx.stroke();
-
-      // keeper
-      const diveT = phase === 'flying' || phase === 'result' ? Math.min(1, flightT / 0.85) : 0;
-      const e = 1 - (1 - diveT) * (1 - diveT); // easeOutQuad
-      const sideSign = !dive ? 0 : dive.side === 'left' ? -1 : dive.side === 'right' ? 1 : 0;
-      const isHop = dive && dive.side === 'centre' && dive.high;
-      const kSlideX = (isHop ? 0 : sideSign * 90 * e);
-      const kRiseY = dive ? -(dive.high ? 46 : 16) * e * (isHop ? 0.4 : 1) : 0;
-      const kTilt = sideSign * (dive && dive.high ? 55 : 77) * e * Math.PI / 180;
-      const kx = cx + kSlideX, ky = groundY - 34 + kRiseY;
-      ctx.save();
-      ctx.translate(kx, ky);
-      ctx.rotate(kTilt);
-      ctx.fillStyle = '#ffb020';
-      ctx.fillRect(-11, -26, 22, 26);
-      ctx.fillStyle = '#1a1a1a';
-      ctx.fillRect(-9, 0, 18, 12);
-      ctx.fillStyle = '#d8a878';
-      ctx.beginPath(); ctx.arc(0, -34, 8, 0, Math.PI * 2); ctx.fill();
-      ctx.restore();
-
-      // ball
-      let bx = cx, by = ballStartY, br = 9;
-      if (phase === 'aim' || phase === 'power') {
-        // resting on the spot
-      } else if (phase === 'flying' || phase === 'result') {
-        const showX = phase === 'result' ? targetXm : targetXm;
-        const showY = phase === 'result' ? targetYm : targetYm;
-        const tx = cx + showX * pxPerMX, ty = groundY - showY * pxPerMY;
-        const ease = flightT * (2 - flightT); // easeOutQuad-ish arc feel
-        bx = ballStartY /* unused */, bx = cx + (tx - cx) * ease;
-        by = ballStartY + (ty - ballStartY) * ease;
-        br = 9 - 4 * flightT;
-        if (phase === 'result' && (outcome.result === 'goal')) br = Math.max(2, br); // shrinks into the net
-      }
-      ctx.beginPath();
-      ctx.arc(bx, by, Math.max(2, br), 0, Math.PI * 2);
-      ctx.fillStyle = '#f4ecd8';
-      ctx.fill();
-      ctx.strokeStyle = '#0c0810';
-      ctx.lineWidth = 1;
-      ctx.stroke();
-
-      // aim/power crosshair -- shows where the shot is currently lined up
-      // to land inside (or outside) the frame
-      if (phase === 'aim' || phase === 'power') {
-        const aim = phase === 'aim' ? pkCurrentAim(phaseClock) : aimLocked;
-        const powerNow = phase === 'power' ? pkCurrentPower(phaseClock) : 0;
-        const heightM = phase === 'power' ? PK_CFG.heightBase + powerNow * PK_CFG.heightPerPower : PK_CFG.heightBase;
-        const chx = cx + aim * PK_CFG.aimRange * pxPerMX;
-        const chy = groundY - heightM * pxPerMY;
-        ctx.strokeStyle = phase === 'power' ? '#4ad0ff' : '#e0b040';
-        ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(chx - 9, chy); ctx.lineTo(chx + 9, chy); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(chx, chy - 9); ctx.lineTo(chx, chy + 9); ctx.stroke();
-      }
-
-      // power meter, vertical, right side (only while setting power)
-      if (phase === 'power') {
-        const barX = VIEW_W - 60, barY = 190, barW = 16, barH = 160;
-        ctx.strokeStyle = '#f4ecd8';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(barX, barY, barW, barH);
-        const p = pkCurrentPower(phaseClock);
-        ctx.fillStyle = '#e0a030';
-        ctx.fillRect(barX + 2, barY + barH - (barH - 4) * p - 2, barW - 4, (barH - 4) * p);
-        ctx.fillStyle = '#9a90a8';
-        ctx.font = '14px monospace';
-        ctx.fillText('POWER', barX + barW / 2, barY - 8);
-      }
-
-      ctx.textAlign = 'center';
-      ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#e0b040' : '#f4ecd8';
-      ctx.font = 'bold 19px monospace';
-      if (phase === 'aim') ctx.fillText('- TAP E TO SET YOUR AIM -', cx, 470);
-      else if (phase === 'power') ctx.fillText('- TAP E AGAIN TO STRIKE -', cx, 470);
-      else if (phase === 'result') {
-        ctx.fillStyle = outcome.result === 'goal' ? '#8cff5f' : '#ff5b52';
-        ctx.font = 'bold 26px monospace';
-        ctx.fillText(outcome.headline, cx, 466);
-        if (outcome.sub) {
-          ctx.fillStyle = '#9a90a8';
-          ctx.font = '15px monospace';
-          ctx.fillText(outcome.sub, cx, 486);
-        }
-      } else if (phase === 'done') {
-        ctx.fillText(`FINAL SCORE: ${goals} / ${PK_CFG.maxKicks} - PRESS E TO LEAVE`, cx, 466);
-      }
-
-      if (phase === 'done') {
-        ctx.font = '16px monospace';
-        ctx.fillStyle = isNewBest ? '#8cff5f' : '#9a90a8';
-        ctx.fillText(isNewBest ? 'NEW BEST!' : `BEST: ${bestFor('penaltyshootout') ?? 0}`, cx, 486);
-      }
-
-      ctx.fillStyle = '#6a6070';
-      ctx.font = '15px monospace';
-      ctx.fillText('X to walk away anytime', cx, phase === 'done' ? 504 : 494);
-    },
-  };
-}
-
+// [removed] Penalty Shootout used to be a from-scratch canvas mini-game
+// here (PK_CFG + pkCurrentAim/pkCurrentPower/pkShotZone/
+// pkDecideKeeperDive/pkJudgeShot/createPenaltyShootoutGame). It's now
+// "16-BIT PENALTY KINGS -- DELUXE", a full standalone web app bundled at
+// instruments/penalty-kings/index.html, same "own DOM/iframe overlay,
+// bundled locally so it works with no connection" shape as chess/mini golf/
+// VT Dirt/etc. See MINIGAME_ACTIONS.penaltyshootout and
+// openPenaltyKingsApp()/createPenaltyKingsOverlay() below.
 // ---- lazy Three.js loader -------------------------------------------------
 // lib/three.min.js (vendored, ~600KB) is only fetched the first time a
 // player actually picks 3D mode, so the base game's load time and the
@@ -6984,6 +6722,7 @@ window.addEventListener('keydown', (e) => {
     if (k === 'escape' && state === 'bayouBreakApp') { closeBayouBreakApp(); }
     if (k === 'escape' && state === 'gatorJamSlamApp') { closeGatorJamSlamApp(); }
     if (k === 'escape' && state === 'vtDirtApp') { closeVtDirtApp(); }
+    if (k === 'escape' && state === 'penaltyKingsApp') { closePenaltyKingsApp(); }
     if (k === 'escape' && state === 'pondApp') { closePondApp(); }
     if (k === 'escape' && state === 'vinylNinjaApp') { closeVinylNinjaApp(); }
     if (k === 'escape' && state === 'digDashApp') { closeDigDashApp(); }
@@ -8835,7 +8574,7 @@ const player = {
   tempItem: null, tempItemTimer: 0,
 };
 const collected = new Set();
-let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | portal | fifa | minigame | hotkeys | crate | trophies | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | vinylSnakeApp | bayouBreakApp | gatorJamSlamApp | vtDirtApp | digDashApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | circusMasterApp | diggerApp | pondApp
+let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | portal | fifa | minigame | hotkeys | crate | trophies | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | vinylSnakeApp | bayouBreakApp | gatorJamSlamApp | vtDirtApp | penaltyKingsApp | digDashApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | circusMasterApp | diggerApp | pondApp
 // State to snap back to when the [H] hotkeys popup is closed -- currently
 // always 'play' since that's the only state H can be opened from, but kept
 // as its own var in case another state wants to offer the popup later.
@@ -9430,7 +9169,7 @@ const music = {
 // enter/exit call sites, so it can't drift out of sync no matter which
 // of the several ways the player backs out of the lab popup (keyboard
 // [X], on-screen [X] button, closing the instrument iframe, etc.).
-const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'vinylSnakeApp', 'bayouBreakApp', 'gatorJamSlamApp', 'vtDirtApp', 'digDashApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'circusMasterApp', 'diggerApp', 'pondApp']);
+const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'vinylSnakeApp', 'bayouBreakApp', 'gatorJamSlamApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'circusMasterApp', 'diggerApp', 'pondApp']);
 function syncMusicDuck() {
   music.duck(DUCKED_STATES.has(state));
 }
@@ -10980,6 +10719,124 @@ function closeVtDirtApp(fromPopState) {
     history.back();
   } else {
     vtDirtHistoryPushed = false;
+  }
+}
+
+// ---------------------------------------------------------------- Penalty Kings overlay
+// A soccer ball left out on the stadium pitch (see MINIGAME_ACTIONS.
+// penaltyshootout and the `icon: 'soccerball'` map entry) launches a full
+// standalone web app, not a from-scratch canvas mini-game -- so it reuses
+// the same "full-screen DOM overlay with an <iframe>" trick as chess/the
+// beat bot/the organ/mini golf/VT Dirt above. Used to be a from-scratch
+// canvas mini-game (createPenaltyShootoutGame(), now removed); kept as its
+// own overlay (rather than folding into any of those) since it's reached
+// from a totally different tile/state and has nothing to do with any of
+// them.
+//
+// Penalty Kings ships as a bundled, self-contained page ("16-BIT PENALTY
+// KINGS -- DELUXE": its own canvas renderer, physics, and touch controls,
+// no external assets and no network calls at all) at
+// instruments/penalty-kings/index.html -- the exact same local-file
+// pattern CHESS_APP_URL/BEAT_BOT_APP_URL/ORGAN_APP_URL/MINI_GOLF_APP_URL/
+// VT_DIRT_APP_URL use. Being a same-origin local asset rather than a live
+// remote site means it loads and plays the same with or without a
+// connection, so there's no online/offline branching needed here either.
+const PENALTY_KINGS_APP_URL = 'instruments/penalty-kings/index.html';
+let penaltyKingsOverlayEl = null, penaltyKingsOverlayFrame = null;
+let penaltyKingsReturnState = 'play';
+let penaltyKingsHistoryPushed = false; // mirrors labHistoryPushed/.../vtDirtHistoryPushed -- see openPenaltyKingsApp()/closePenaltyKingsApp()
+
+function createPenaltyKingsOverlay() {
+  const style = document.createElement('style');
+  style.textContent = `
+    #ricoPenaltyKingsApp {
+      position: fixed; inset: 0; z-index: 1000;
+      background: #000;
+      display: none; flex-direction: column;
+    }
+    #ricoPenaltyKingsApp.open { display: flex; }
+    #ricoPenaltyKingsApp .rpk-bar {
+      flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 10px 14px;
+      background: linear-gradient(#241a0e, #120d06);
+      border-bottom: 2px solid #e0b040;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    }
+    #ricoPenaltyKingsApp .rpk-title {
+      color: #f4ecd8; font: bold 14px monospace; letter-spacing: 0.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #ricoPenaltyKingsApp .rpk-close {
+      flex: 0 0 auto; cursor: pointer;
+      background: rgba(224,176,64,0.15);
+      border: 1.5px solid rgba(224,176,64,0.85);
+      color: #f4ecd8; border-radius: 8px;
+      padding: 7px 16px; font: bold 13px monospace;
+      -webkit-user-select: none; user-select: none;
+    }
+    #ricoPenaltyKingsApp .rpk-close:active { background: rgba(224,176,64,0.4); }
+    #ricoPenaltyKingsApp iframe {
+      flex: 1 1 auto; width: 100%; border: 0; background: #000;
+    }
+  `;
+  document.head.appendChild(style);
+
+  penaltyKingsOverlayEl = document.createElement('div');
+  penaltyKingsOverlayEl.id = 'ricoPenaltyKingsApp';
+
+  const bar = document.createElement('div');
+  bar.className = 'rpk-bar';
+  const title = document.createElement('div');
+  title.className = 'rpk-title';
+  title.textContent = '16-BIT PENALTY KINGS';
+  const closeBtn = document.createElement('div');
+  closeBtn.className = 'rpk-close';
+  closeBtn.textContent = '\u2190 BACK TO THE STADIUM';
+  bindTap(closeBtn, closePenaltyKingsApp);
+  bar.appendChild(title);
+  bar.appendChild(closeBtn);
+
+  penaltyKingsOverlayFrame = document.createElement('iframe');
+  penaltyKingsOverlayFrame.setAttribute('allow', 'autoplay');
+
+  penaltyKingsOverlayEl.appendChild(bar);
+  penaltyKingsOverlayEl.appendChild(penaltyKingsOverlayFrame);
+  document.body.appendChild(penaltyKingsOverlayEl);
+}
+createPenaltyKingsOverlay();
+
+// Opens the Penalty Kings overlay and switches state to 'penaltyKingsApp'.
+// Called from MINIGAME_ACTIONS.penaltyshootout (E on the soccer ball, or
+// tapping the floating soccer-ball sign), same entry points every other
+// mini-game uses.
+function openPenaltyKingsApp() {
+  penaltyKingsReturnState = state;
+  penaltyKingsOverlayFrame.src = PENALTY_KINGS_APP_URL;
+  penaltyKingsOverlayEl.classList.add('open');
+  state = 'penaltyKingsApp';
+  // Same throwaway-history-entry trick as openInstrument()/openChessApp()/
+  // openBeatBotApp()/openOrganApp()/openMiniGolfApp()/openVtDirtApp()
+  // above, so the browser/OS back gesture closes the Penalty Kings overlay
+  // instead of leaving the game entirely.
+  history.pushState({ ricoPenaltyKingsApp: true }, '');
+  penaltyKingsHistoryPushed = true;
+}
+
+// Tears the iframe back down and returns to ordinary gameplay on the
+// stadium pitch. fromPopState mirrors closeInstrument()/closeChessApp()/
+// closeBeatBotApp()/closeOrganApp()/closeMiniGolfApp()/closeVtDirtApp()'s
+// parameter -- true when triggered by the browser's back button (whose
+// history entry is already consumed), so we must not call history.back()
+// again in that case.
+function closePenaltyKingsApp(fromPopState) {
+  penaltyKingsOverlayEl.classList.remove('open');
+  penaltyKingsOverlayFrame.src = 'about:blank';
+  state = penaltyKingsReturnState;
+  if (!fromPopState && penaltyKingsHistoryPushed) {
+    penaltyKingsHistoryPushed = false;
+    history.back();
+  } else {
+    penaltyKingsHistoryPushed = false;
   }
 }
 
@@ -12819,6 +12676,8 @@ window.addEventListener('popstate', () => {
     closeGatorJamSlamApp(true);
   } else if (state === 'vtDirtApp') {
     closeVtDirtApp(true);
+  } else if (state === 'penaltyKingsApp') {
+    closePenaltyKingsApp(true);
   } else if (state === 'pondApp') {
     closePondApp(true);
   } else if (state === 'vinylNinjaApp') {
@@ -12850,7 +12709,7 @@ canvas.addEventListener('pointerdown', (e) => {
     const vx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const vy = (e.clientY - rect.top) * (canvas.height / rect.height);
     handleLabTap(vx, vy);
-  } else if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'vtDirtApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'circusMasterApp' || state === 'diggerApp' || state === 'pondApp') {
+  } else if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'circusMasterApp' || state === 'diggerApp' || state === 'pondApp') {
     // The DOM overlay sits on top of (and outside) the canvas while an
     // instrument/the chess app/the beat bot/the organ/mini golf/the
     // blackbook/Gator Grooves/Vinyl Snake/Bayou Break Station/Gator Jam
@@ -13167,6 +13026,15 @@ function update(dt) {
     // still consumed here too so the on-screen [X] touch button works
     // while VT Dirt is open.
     if (buyPressed) closeVtDirtApp();
+  } else if (state === 'penaltyKingsApp') {
+    // Same reasoning as 'labApp'/'chessApp'/'beatBotApp'/'organApp'/
+    // 'minigolfApp'/'blackbookApp'/'crocSwampApp'/'vinylSnakeApp'/
+    // 'bayouBreakApp'/'gatorJamSlamApp'/'vtDirtApp' just above: the DOM
+    // overlay (see createPenaltyKingsOverlay()) owns input while Penalty
+    // Kings is loaded -- its own close button and [Esc] handle closing it
+    // directly. buyPressed is still consumed here too so the on-screen [X]
+    // touch button works while Penalty Kings is open.
+    if (buyPressed) closePenaltyKingsApp();
   } else if (state === 'vinylNinjaApp') {
     // Same reasoning as 'labApp'/'chessApp'/'beatBotApp'/'organApp'/
     // 'minigolfApp'/'blackbookApp'/'crocSwampApp'/'vinylSnakeApp'/
@@ -13766,7 +13634,7 @@ function render(time) {
     drawSplash();
     return;
   }
-  if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'vtDirtApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'circusMasterApp' || state === 'diggerApp' || state === 'pondApp') {
+  if (state === 'labApp' || state === 'chessApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'circusMasterApp' || state === 'diggerApp' || state === 'pondApp') {
     // Same reasoning as the labApp overlay: a DOM element (the <video>,
     // see createCharacterIntroOverlay(), the chess <iframe>, see
     // createChessOverlay(), the beat bot <iframe>, see
