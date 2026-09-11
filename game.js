@@ -12228,12 +12228,12 @@ function createFilterLabOverlay() {
   bar.appendChild(title);
   bar.appendChild(closeBtn);
 
-  filterLabOverlayFrame = document.createElement('iframe');
-  filterLabOverlayFrame.setAttribute('allow', 'autoplay');
-
   filterLabOverlayEl.appendChild(bar);
-  filterLabOverlayEl.appendChild(filterLabOverlayFrame);
   document.body.appendChild(filterLabOverlayEl);
+  // Note: the <iframe> itself is intentionally NOT created here. It's built
+  // fresh in openFilterLabApp() and fully destroyed (removed from the DOM,
+  // not just navigated to about:blank) in closeFilterLabApp() -- see the
+  // comment on closeFilterLabApp() for why.
 }
 createFilterLabOverlay();
 
@@ -12242,7 +12242,21 @@ createFilterLabOverlay();
 // floating sign), same entry points every other mini-game uses.
 function openFilterLabApp() {
   filterLabReturnState = state;
+  // Build a brand-new <iframe> for every visit rather than reusing one
+  // long-lived element. Filter Lab runs its own WebAudio filter chain
+  // (oscillator/filter nodes driven by an AudioContext), and unlike the
+  // game's other bundled instrument apps, simply re-pointing a reused
+  // iframe's `src` back to about:blank isn't reliable for stopping that --
+  // some browsers keep a running AudioContext alive in the background even
+  // after the frame that created it has been navigated away, which is what
+  // caused the filter buzz to keep playing after leaving GUT HUT. Removing
+  // the iframe element outright (in closeFilterLabApp()) and creating a
+  // fresh one here guarantees the old browsing context, and any audio
+  // nodes tied to it, actually gets torn down.
+  filterLabOverlayFrame = document.createElement('iframe');
+  filterLabOverlayFrame.setAttribute('allow', 'autoplay');
   filterLabOverlayFrame.src = FILTER_LAB_APP_URL;
+  filterLabOverlayEl.appendChild(filterLabOverlayFrame);
   filterLabOverlayEl.classList.add('open');
   state = 'filterLabApp';
   // Same throwaway-history-entry trick as openInstrument()/openChessApp()/
@@ -12259,7 +12273,16 @@ function openFilterLabApp() {
 // call history.back() again in that case.
 function closeFilterLabApp(fromPopState) {
   filterLabOverlayEl.classList.remove('open');
-  filterLabOverlayFrame.src = 'about:blank';
+  // Fully remove the iframe (rather than just setting src = 'about:blank',
+  // as the other instrument apps do) so its AudioContext is definitely
+  // destroyed and can't keep buzzing in the background after we leave --
+  // see the comment in openFilterLabApp() for why Filter Lab needs this
+  // stronger teardown. A fresh iframe is created next time it's opened.
+  if (filterLabOverlayFrame) {
+    filterLabOverlayFrame.src = 'about:blank';
+    filterLabOverlayFrame.remove();
+    filterLabOverlayFrame = null;
+  }
   state = filterLabReturnState;
   if (!fromPopState && filterLabHistoryPushed) {
     filterLabHistoryPushed = false;
