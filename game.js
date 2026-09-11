@@ -7580,6 +7580,18 @@ function makeSwamp() {
   // could otherwise have landed directly in a gateway
   if (g[BB_OPEN_Y][BB_X - 1] === '#') g[BB_OPEN_Y][BB_X - 1] = '.';
   if (g[BB_OPEN_Y][BB_X + BB_W] === '#') g[BB_OPEN_Y][BB_X + BB_W] = '.';
+  // ...but that single guaranteed tile can still be stranded out over open
+  // water -- the gates open onto whatever the random mud-island carve left
+  // nearby, which isn't guaranteed to reach any other walkable ground. Lay a
+  // short 3-tile-wide boardwalk from each gate to the nearest sure thing:
+  // west ties into the SWAMP FOOD clearing, east ties into the x=33-35
+  // boardwalk spur (both already include this same BB_OPEN_Y row), so the
+  // ballpark is always reachable from either side regardless of how the
+  // islands happened to land.
+  for (let yy = BB_OPEN_Y - 1; yy <= BB_OPEN_Y + 1; yy++) {
+    for (let xx = FOOD_CLEAR_X + FOOD_CLEAR_W; xx < BB_X; xx++) g[yy][xx] = 'b';
+    for (let xx = BB_X + BB_W; xx < 33; xx++) g[yy][xx] = 'b';
+  }
 
   // Guarantee every door has a clear step-out tile. The tree sprinkle above
   // runs before any of these buildings exist, so it has no idea a door is
