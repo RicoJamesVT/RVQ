@@ -741,6 +741,28 @@ const SWAMP_NEWS = [
 
 // ---------------------------------------------------------------- input
 const keys = {};
+
+// Every mini-game/instrument overlay (chess, the beat bot, the organ, mini
+// golf, all the arcade games, Rico's Lab instruments, etc.) hands keyboard
+// focus into its own <iframe> while it's open. Browsers don't reliably hand
+// focus back to the top-level page just because that iframe gets hidden or
+// its src is cleared -- Safari/mobile in particular can leave focus stuck
+// inside the (now blank) iframe, which silently swallows every keydown/
+// keyup from then on and makes the player's character look "frozen" until
+// they click back into the game window. Call this at the end of every
+// close*App()/closeInstrument() function, right after the overlay's iframe
+// src is reset to 'about:blank', so keyboard control is always restored
+// automatically -- no click required.
+function reclaimGameFocus(frame) {
+  if (frame) frame.blur();
+  window.focus();
+  // Belt-and-suspenders: if a key was held down when focus moved into the
+  // iframe, its keyup could have fired there instead of on the window,
+  // leaving that key stuck "on" in the `keys` map. Clear the slate so
+  // movePlayer() starts from a clean state either way.
+  for (const k in keys) keys[k] = false;
+}
+
 let interactPressed = false;
 let buyPressed = false; // also doubles as "back" (X) on the dig-choice/slot-choose menus
 // Second action key, only meaningful inside a mini-game that needs two
@@ -10467,6 +10489,7 @@ function openChessApp() {
 function closeChessApp(fromPopState) {
   chessOverlayEl.classList.remove('open');
   chessOverlayFrame.src = 'about:blank';
+  reclaimGameFocus(chessOverlayFrame);
   state = chessReturnState;
   if (!fromPopState && chessHistoryPushed) {
     chessHistoryPushed = false;
@@ -10575,6 +10598,7 @@ function openSunnySideDinerApp() {
 function closeSunnySideDinerApp(fromPopState) {
   sunnySideDinerOverlayEl.classList.remove('open');
   sunnySideDinerOverlayFrame.src = 'about:blank';
+  reclaimGameFocus(sunnySideDinerOverlayFrame);
   state = sunnySideDinerReturnState;
   if (!fromPopState && sunnySideDinerHistoryPushed) {
     sunnySideDinerHistoryPushed = false;
@@ -10678,23 +10702,14 @@ function openBeatBotApp() {
 // consumed), so we must not call history.back() again in that case.
 function closeBeatBotApp(fromPopState) {
   beatBotOverlayEl.classList.remove('open');
+  beatBotOverlayFrame.src = 'about:blank';
   // The beat bot's step-sequencer listens for its own keyboard input while
   // open, so focus sits inside the <iframe>'s document the whole time it's
-  // in use. Some browsers (Safari/mobile in particular) don't automatically
-  // hand keyboard focus back to the top-level page just because the iframe
-  // gets hidden -- leaving it stuck there silently swallows every arrow-key
-  // event from here on, which is why the character can look "frozen" after
-  // returning from the beat bot. Explicitly blur the iframe and refocus the
-  // window so the game's own keydown/keyup listeners (and therefore
-  // movePlayer()) start receiving input again.
-  beatBotOverlayFrame.blur();
-  beatBotOverlayFrame.src = 'about:blank';
-  window.focus();
-  // Belt-and-suspenders: if a key was held down when focus moved into the
-  // iframe, its keyup could have fired there instead of on the window,
-  // leaving that key stuck "on" in the `keys` map. Clear the slate so
-  // movePlayer() starts from a clean state either way.
-  for (const k in keys) keys[k] = false;
+  // in use. reclaimGameFocus() blurs the iframe, refocuses the window, and
+  // clears the `keys` map so the game's own keydown/keyup listeners (and
+  // therefore movePlayer()) reliably start receiving input again without
+  // the player having to click back into the window.
+  reclaimGameFocus(beatBotOverlayFrame);
   state = beatBotReturnState;
   if (!fromPopState && beatBotHistoryPushed) {
     beatBotHistoryPushed = false;
@@ -10812,16 +10827,14 @@ function openOrganApp() {
 // already consumed), so we must not call history.back() again in that case.
 function closeOrganApp(fromPopState) {
   organOverlayEl.classList.remove('open');
-  // Mirrors closeBeatBotApp()'s explicit blur/refocus: keyboard focus was
+  organOverlayFrame.src = 'about:blank';
+  // Mirrors closeBeatBotApp()'s reclaimGameFocus(): keyboard focus was
   // handed into the iframe in openOrganApp(), and some browsers won't hand
   // it back to the top-level page just because the iframe gets hidden --
-  // which would silently swallow movement keys afterward. Also clear
-  // `keys` in case a key was held down when focus moved, so its keyup
-  // ends up firing in the iframe instead of here.
-  organOverlayFrame.blur();
-  organOverlayFrame.src = 'about:blank';
-  window.focus();
-  for (const k in keys) keys[k] = false;
+  // which would silently swallow movement keys afterward. reclaimGameFocus()
+  // also clears `keys` in case a key was held down when focus moved, so its
+  // keyup ends up firing in the iframe instead of here.
+  reclaimGameFocus(organOverlayFrame);
   state = organReturnState;
   if (!fromPopState && organHistoryPushed) {
     organHistoryPushed = false;
@@ -10934,6 +10947,7 @@ function openMiniGolfApp() {
 function closeMiniGolfApp(fromPopState) {
   miniGolfOverlayEl.classList.remove('open');
   miniGolfOverlayFrame.src = 'about:blank';
+  reclaimGameFocus(miniGolfOverlayFrame);
   state = miniGolfReturnState;
   if (!fromPopState && miniGolfHistoryPushed) {
     miniGolfHistoryPushed = false;
@@ -11048,6 +11062,7 @@ function openConnectFourApp() {
 function closeConnectFourApp(fromPopState) {
   connectFourOverlayEl.classList.remove('open');
   connectFourOverlayFrame.src = 'about:blank';
+  reclaimGameFocus(connectFourOverlayFrame);
   state = connectFourReturnState;
   if (!fromPopState && connectFourHistoryPushed) {
     connectFourHistoryPushed = false;
@@ -11161,6 +11176,7 @@ function openVtDirtApp() {
 function closeVtDirtApp(fromPopState) {
   vtDirtOverlayEl.classList.remove('open');
   vtDirtOverlayFrame.src = 'about:blank';
+  reclaimGameFocus(vtDirtOverlayFrame);
   state = vtDirtReturnState;
   if (!fromPopState && vtDirtHistoryPushed) {
     vtDirtHistoryPushed = false;
@@ -11279,6 +11295,7 @@ function openPenaltyKingsApp() {
 function closePenaltyKingsApp(fromPopState) {
   penaltyKingsOverlayEl.classList.remove('open');
   penaltyKingsOverlayFrame.src = 'about:blank';
+  reclaimGameFocus(penaltyKingsOverlayFrame);
   state = penaltyKingsReturnState;
   if (!fromPopState && penaltyKingsHistoryPushed) {
     penaltyKingsHistoryPushed = false;
@@ -11394,6 +11411,7 @@ function openPondApp() {
 function closePondApp(fromPopState) {
   pondOverlayEl.classList.remove('open');
   pondOverlayFrame.src = 'about:blank';
+  reclaimGameFocus(pondOverlayFrame);
   state = pondReturnState;
   if (!fromPopState && pondHistoryPushed) {
     pondHistoryPushed = false;
@@ -11506,6 +11524,7 @@ function openHyperSwimApp() {
 function closeHyperSwimApp(fromPopState) {
   hyperSwimOverlayEl.classList.remove('open');
   hyperSwimOverlayFrame.src = 'about:blank';
+  reclaimGameFocus(hyperSwimOverlayFrame);
   state = hyperSwimReturnState;
   if (!fromPopState && hyperSwimHistoryPushed) {
     hyperSwimHistoryPushed = false;
@@ -11622,6 +11641,7 @@ function openHomeRunDerbyApp() {
 function closeHomeRunDerbyApp(fromPopState) {
   homeRunDerbyOverlayEl.classList.remove('open');
   homeRunDerbyOverlayFrame.src = 'about:blank';
+  reclaimGameFocus(homeRunDerbyOverlayFrame);
   state = homeRunDerbyReturnState;
   if (!fromPopState && homeRunDerbyHistoryPushed) {
     homeRunDerbyHistoryPushed = false;
@@ -11736,6 +11756,7 @@ function openSyrupRoadsApp() {
 function closeSyrupRoadsApp(fromPopState) {
   syrupRoadsOverlayEl.classList.remove('open');
   syrupRoadsOverlayFrame.src = 'about:blank';
+  reclaimGameFocus(syrupRoadsOverlayFrame);
   state = syrupRoadsReturnState;
   if (!fromPopState && syrupRoadsHistoryPushed) {
     syrupRoadsHistoryPushed = false;
@@ -11951,6 +11972,7 @@ function openVinylNinjaApp() {
 function closeVinylNinjaApp(fromPopState) {
   vinylNinjaOverlayEl.classList.remove('open');
   vinylNinjaOverlayFrame.src = 'about:blank';
+  reclaimGameFocus(vinylNinjaOverlayFrame);
   state = vinylNinjaReturnState;
   if (!fromPopState && vinylNinjaHistoryPushed) {
     vinylNinjaHistoryPushed = false;
@@ -12068,6 +12090,7 @@ function openKangaidenApp() {
 function closeKangaidenApp(fromPopState) {
   kangaidenOverlayEl.classList.remove('open');
   kangaidenOverlayFrame.src = 'about:blank';
+  reclaimGameFocus(kangaidenOverlayFrame);
   state = kangaidenReturnState;
   if (!fromPopState && kangaidenHistoryPushed) {
     kangaidenHistoryPushed = false;
@@ -12177,6 +12200,7 @@ function openBlackbookApp() {
 function closeBlackbookApp(fromPopState) {
   blackbookOverlayEl.classList.remove('open');
   blackbookOverlayFrame.src = 'about:blank';
+  reclaimGameFocus(blackbookOverlayFrame);
   state = blackbookReturnState;
   if (!fromPopState && blackbookHistoryPushed) {
     blackbookHistoryPushed = false;
@@ -12289,6 +12313,7 @@ function openCrocSwampApp() {
 function closeCrocSwampApp(fromPopState) {
   crocSwampOverlayEl.classList.remove('open');
   crocSwampOverlayFrame.src = 'about:blank';
+  reclaimGameFocus(crocSwampOverlayFrame);
   state = crocSwampReturnState;
   if (!fromPopState && crocSwampHistoryPushed) {
     crocSwampHistoryPushed = false;
@@ -12401,6 +12426,7 @@ function openDigDashApp() {
 function closeDigDashApp(fromPopState) {
   digDashOverlayEl.classList.remove('open');
   digDashOverlayFrame.src = 'about:blank';
+  reclaimGameFocus(digDashOverlayFrame);
   state = digDashReturnState;
   if (!fromPopState && digDashHistoryPushed) {
     digDashHistoryPushed = false;
@@ -12513,6 +12539,7 @@ function openVinylSnakeApp() {
 function closeVinylSnakeApp(fromPopState) {
   vinylSnakeOverlayEl.classList.remove('open');
   vinylSnakeOverlayFrame.src = 'about:blank';
+  reclaimGameFocus(vinylSnakeOverlayFrame);
   state = vinylSnakeReturnState;
   if (!fromPopState && vinylSnakeHistoryPushed) {
     vinylSnakeHistoryPushed = false;
@@ -12630,6 +12657,7 @@ function openBayouBreakApp() {
 function closeBayouBreakApp(fromPopState) {
   bayouBreakOverlayEl.classList.remove('open');
   bayouBreakOverlayFrame.src = 'about:blank';
+  reclaimGameFocus(bayouBreakOverlayFrame);
   state = bayouBreakReturnState;
   if (!fromPopState && bayouBreakHistoryPushed) {
     bayouBreakHistoryPushed = false;
@@ -12748,6 +12776,7 @@ function openGatorJamSlamApp() {
 function closeGatorJamSlamApp(fromPopState) {
   gatorJamSlamOverlayEl.classList.remove('open');
   gatorJamSlamOverlayFrame.src = 'about:blank';
+  reclaimGameFocus(gatorJamSlamOverlayFrame);
   state = gatorJamSlamReturnState;
   if (!fromPopState && gatorJamSlamHistoryPushed) {
     gatorJamSlamHistoryPushed = false;
@@ -12863,6 +12892,7 @@ function openSwampCaveApp() {
 function closeSwampCaveApp(fromPopState) {
   swampCaveOverlayEl.classList.remove('open');
   swampCaveOverlayFrame.src = 'about:blank';
+  reclaimGameFocus(swampCaveOverlayFrame);
   state = swampCaveReturnState;
   if (!fromPopState && swampCaveHistoryPushed) {
     swampCaveHistoryPushed = false;
@@ -12982,6 +13012,7 @@ function openRico1200App() {
 function closeRico1200App(fromPopState) {
   rico1200OverlayEl.classList.remove('open');
   rico1200OverlayFrame.src = 'about:blank';
+  reclaimGameFocus(rico1200OverlayFrame);
   state = rico1200ReturnState;
   if (!fromPopState && rico1200HistoryPushed) {
     rico1200HistoryPushed = false;
@@ -13099,6 +13130,7 @@ function openRicoDawApp() {
 function closeRicoDawApp(fromPopState) {
   ricoDawOverlayEl.classList.remove('open');
   ricoDawOverlayFrame.src = 'about:blank';
+  reclaimGameFocus(ricoDawOverlayFrame);
   state = ricoDawReturnState;
   if (!fromPopState && ricoDawHistoryPushed) {
     ricoDawHistoryPushed = false;
@@ -13231,6 +13263,7 @@ function closeFilterLabApp(fromPopState) {
   // stronger teardown. A fresh iframe is created next time it's opened.
   if (filterLabOverlayFrame) {
     filterLabOverlayFrame.src = 'about:blank';
+    reclaimGameFocus(filterLabOverlayFrame);
     filterLabOverlayFrame.remove();
     filterLabOverlayFrame = null;
   }
@@ -13345,6 +13378,7 @@ function openCircusMasterApp() {
 function closeCircusMasterApp(fromPopState) {
   circusMasterOverlayEl.classList.remove('open');
   circusMasterOverlayFrame.src = 'about:blank';
+  reclaimGameFocus(circusMasterOverlayFrame);
   state = circusMasterReturnState;
   if (!fromPopState && circusMasterHistoryPushed) {
     circusMasterHistoryPushed = false;
@@ -13456,6 +13490,7 @@ function openDiggerApp() {
 function closeDiggerApp(fromPopState) {
   diggerOverlayEl.classList.remove('open');
   diggerOverlayFrame.src = 'about:blank';
+  reclaimGameFocus(diggerOverlayFrame);
   state = diggerReturnState;
   if (!fromPopState && diggerHistoryPushed) {
     diggerHistoryPushed = false;
@@ -13622,6 +13657,7 @@ function openInstrument(opt) {
 function closeInstrument(fromPopState) {
   labOverlayEl.classList.remove('open');
   labOverlayFrame.src = 'about:blank';
+  reclaimGameFocus(labOverlayFrame);
   activeLabApp = null;
   state = 'lab';
   if (!fromPopState && labHistoryPushed) {
