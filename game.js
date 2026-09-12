@@ -1,6 +1,66 @@
 (() => {
 'use strict';
 
+// ---------------------------------------------------------------- brand intro video (M85 Games)
+// This is the very first thing the script does -- before the constants
+// below, before canvas/ctx setup, before the startup splash art even
+// starts loading. A <video> element is created and playback is kicked off
+// synchronously so there's no extra tick of delay before something is on
+// screen; it's layered above everything else (including the canvas and
+// the existing startup splash underneath it) and removed the instant it
+// ends or the player skips it, handing control straight to the game's
+// normal startup flow (the 'splash' state / drawSplash()), unchanged.
+//
+// Fully offline: the video ships as a local file alongside the game's
+// other local assets (assets/splash.png, etc.) and is loaded the same
+// way -- a plain relative path, no network request -- so it plays
+// identically with or without a connection.
+(function playIntroVideo() {
+  const v = document.createElement('video');
+  v.src = 'assets/M85_Games_SplashVid-002.mp4';
+  v.preload = 'auto';
+  v.playsInline = true; // iOS: play inline instead of forcing fullscreen
+  v.setAttribute('webkit-playsinline', 'true');
+  v.disablePictureInPicture = true;
+  v.controls = false;
+  // Full-viewport, above absolutely everything else on the page, solid
+  // black backdrop so there's no flash of the page behind it while the
+  // video's first frame is decoding.
+  v.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;'
+    + 'object-fit:contain;background:#000;z-index:2147483647;';
+  document.body.appendChild(v);
+
+  let done = false;
+  function finish() {
+    if (done) return;
+    done = true;
+    clearTimeout(safety);
+    v.pause();
+    v.remove();
+  }
+  // Skippable with a tap/click or any key, same as every other
+  // "press to continue" screen elsewhere in this game.
+  v.addEventListener('click', finish);
+  v.addEventListener('ended', finish);
+  v.addEventListener('error', finish); // missing/corrupt file -> never block startup on it
+  window.addEventListener('keydown', finish, { once: true });
+  // Hard safety net: if the browser blocks autoplay entirely or the file
+  // is unexpectedly slow, don't strand the player on a black screen.
+  const safety = setTimeout(finish, 9000);
+
+  // Autoplay-with-sound requires a prior user gesture in every major
+  // browser; muted autoplay is always allowed. Try WITH sound first, and
+  // only fall back to muted if that's rejected, so the video still starts
+  // instantly instead of sitting on a black frame waiting on a click.
+  const tryPlay = v.play();
+  if (tryPlay && typeof tryPlay.catch === 'function') {
+    tryPlay.catch(() => {
+      v.muted = true;
+      v.play().catch(finish); // if even muted autoplay fails, just skip straight in
+    });
+  }
+})();
+
 // ---------------------------------------------------------------- constants
 const TILE = 32;
 const VIEW_W = 960, VIEW_H = 600;
