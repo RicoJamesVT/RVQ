@@ -267,6 +267,78 @@ function drawSkateTrail(time) {
   ctx.globalAlpha = 1;
 }
 
+// ---------------------------------------------------------------- graffiti tag spray [R]
+// Lets the player drop Rico's graffiti tag (assets/ricotag.png, loaded as
+// graffitiTagImg further down the file) at their current position with a
+// single keypress. Each tag is a small world-space decal stored in a
+// per-map list -- same "push a fresh object, let it expire" idea as the
+// skate trail above, except tags persist for minutes instead of a fraction
+// of a second, and are kept separately per map so a tag sprayed in one
+// place never shows up on another.
+//
+// Two safety nets keep the map from ever getting flooded, even if a player
+// mashes [R] nonstop:
+//   1. GRAFFITI_TAG_LIFETIME -- every tag counts down in real time and is
+//      removed once its life hits 0, GRAFFITI_TAG_LIFETIME seconds (5
+//      minutes) after it was sprayed. It also fades out (dissolves) over
+//      the final GRAFFITI_TAG_FADE_FRACTION of that lifetime rather than
+//      just blinking out, so its disappearance reads as intentional.
+//   2. GRAFFITI_TAG_MAX_PER_MAP -- a hard cap on how many tags can exist on
+//      a single map at once; spraying past the cap evicts the oldest tag
+//      immediately (the same bounded "push, cap, shift the oldest off"
+//      shape used by skateTrail/trickSparkles elsewhere in this file), so
+//      even a key-mashing player can't outrun the 5-minute timer.
+const GRAFFITI_TAG_LIFETIME = 300; // seconds a tag stays on the map (5 minutes)
+const GRAFFITI_TAG_FADE_FRACTION = 0.4; // final 40% of its life is spent dissolving out
+const GRAFFITI_TAG_MAX_PER_MAP = 40;
+const GRAFFITI_TAG_SIZE = 40; // on-screen footprint, in world pixels (tile is 32px)
+const graffitiTags = {}; // mapId -> array of { x, y, life }
+
+function placeGraffitiTag() {
+  if (state !== 'play') return;
+  const list = graffitiTags[player.map] || (graffitiTags[player.map] = []);
+  // Sprayed a few pixels in front of the player, in whatever direction
+  // they're currently facing, rather than dead-center under their feet --
+  // same facing-offset idea as facingTile() elsewhere in this file -- so it
+  // reads as tagging the wall/ground beside them instead of themselves.
+  const d = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[player.dir] || [0, 1];
+  list.push({ x: player.x + d[0] * 14, y: player.y + d[1] * 12, life: GRAFFITI_TAG_LIFETIME });
+  if (list.length > GRAFFITI_TAG_MAX_PER_MAP) list.shift();
+  toast = { text: 'Tagged it!', t: 1.0 };
+}
+
+// Ages every tag on every map by dt (called unconditionally from update(),
+// like the toast timer above it, so tags keep dissolving in real time
+// whether or not the player is currently standing on that particular map).
+function updateGraffitiTags(dt) {
+  for (const mapId in graffitiTags) {
+    const list = graffitiTags[mapId];
+    for (let i = list.length - 1; i >= 0; i--) {
+      list[i].life -= dt;
+      if (list[i].life <= 0) list.splice(i, 1);
+    }
+  }
+}
+
+// Drawn from render(), on the current map only, right before drawPlayer()
+// so walking back over a tag never covers the player sprite. Fully opaque
+// for most of a tag's life, then linearly dissolves to nothing over the
+// final GRAFFITI_TAG_FADE_FRACTION of GRAFFITI_TAG_LIFETIME.
+function drawGraffitiTags() {
+  const list = graffitiTags[player.map];
+  if (!list || !list.length) return;
+  if (!graffitiTagImg.complete || !graffitiTagImg.naturalWidth) return;
+  const fadeWindow = GRAFFITI_TAG_LIFETIME * GRAFFITI_TAG_FADE_FRACTION;
+  for (let i = 0; i < list.length; i++) {
+    const tag = list[i];
+    const alpha = Math.max(0, Math.min(1, tag.life / fadeWindow));
+    if (alpha <= 0) continue;
+    ctx.globalAlpha = alpha;
+    ctx.drawImage(graffitiTagImg, tag.x - GRAFFITI_TAG_SIZE / 2, tag.y - GRAFFITI_TAG_SIZE / 2, GRAFFITI_TAG_SIZE, GRAFFITI_TAG_SIZE);
+  }
+  ctx.globalAlpha = 1;
+}
+
 // ---------------------------------------------------------------- responsive fullscreen canvas
 (() => {
   let vp = document.querySelector('meta[name="viewport"]');
@@ -6872,6 +6944,10 @@ window.addEventListener('keydown', (e) => {
     // [T] Turbo Taunt / Trick Button -- flavor only, see triggerTrick();
     // it's a no-op unless the player is actively skating.
     if (k === 't') triggerTrick();
+    // [R] Graffiti tag -- sprays Rico's tag at the player's position; see
+    // placeGraffitiTag() (no-op outside 'play', same guard style as the
+    // other action keys above).
+    if (k === 'r') placeGraffitiTag();
     if (k === 'g') {
       // [G] Photo Mode opens any time during gameplay, and closes again on
       // a second press -- same open/close pattern as [H]/[V] above.
@@ -7263,6 +7339,12 @@ RECORD_FOUND_IMGS.white.src = 'assets/record_found_white.png';
 // placeholder portal doors at the west/east edges of the map.
 const portalClosedImg = new Image();
 portalClosedImg.src = 'assets/closed_for_now.png';
+
+// [R] Graffiti tag spray -- the decal stamped down by placeGraffitiTag()
+// (see the "graffiti tag spray" section near the top of this file, right
+// after the skate trail, for the lifetime/fade/draw logic that uses it).
+const graffitiTagImg = new Image();
+graffitiTagImg.src = 'assets/ricotag.png';
 
 // Rico's Lab -- unlocked once every one of Burlington's 5 records has been
 // found (see checkLabDoor()). Walking into the lab door shows this splash
@@ -10405,6 +10487,7 @@ function createTouchControls() {
   const extras = [
     ['BREW',  () => toggleCoffee(),     () => player.holdingCoffee],
     ['YERBA', () => toggleTea(),        () => player.holdingTea],
+    ['TAG',   () => placeGraffitiTag(), () => false],
     ['CRATE', () => openCrate(),        () => false],
     ['SAVE',  () => saveGame(true),     () => false],
     ['NEW',   () => { openDigChoice(); },       () => false],
@@ -13991,6 +14074,7 @@ function update(dt) {
   updateAmbient(dt);
   syncMusicDuck(); // ducks the ambient loop only while in Rico's Beat Lab ('lab'/'labApp')
   if (toast) { toast.t -= dt; if (toast.t <= 0) toast = null; }
+  updateGraffitiTags(dt); // unconditional (like the toast timer above) so sprayed tags keep dissolving in real time regardless of state
 
   if (state === 'splash') {
     if (interactPressed) { state = 'title'; titlePage = 0; music.setMenuBreak(true); }
@@ -15031,6 +15115,7 @@ function render(time) {
   if (map.recordShop) drawPurePopInterior(time);
   if (map.keeper) drawKeeper(map.keeper);
   drawShopImageNpcs(map);
+  drawGraffitiTags(); // [R] sprayed tags -- world-space, so it rides the camera/zoom above
   drawPlayer(time);
   drawTrickSparkles(); // [T] Turbo Taunt sparkle burst -- world-space, so it rides the camera/zoom above
 
@@ -21261,7 +21346,7 @@ function drawHotkeysPopup() {
   ctx.fillStyle = 'rgba(8,6,12,0.72)';
   ctx.fillRect(0, 0, VIEW_W, VIEW_H);
 
-  const boxW = 460, boxH = 416, boxX = (VIEW_W - boxW) / 2, boxY = (VIEW_H - boxH) / 2;
+  const boxW = 460, boxH = 436, boxX = (VIEW_W - boxW) / 2, boxY = (VIEW_H - boxH) / 2;
   ctx.fillStyle = 'rgba(10,8,14,0.95)';
   ctx.fillRect(boxX, boxY, boxW, boxH);
   ctx.strokeStyle = '#f4ecd8';
@@ -21286,6 +21371,7 @@ function drawHotkeysPopup() {
     ['N', 'back to start / new game'],
     ['V', 'open The Crate (record collection)'],
     ['G', 'photo mode'],
+    ['R', 'spray your graffiti tag'],
     ['H', 'toggle this hot-keys popup'],
   ];
   const listX = boxX + 30, keyColW = 150, startY = boxY + 66, lh = 24;
