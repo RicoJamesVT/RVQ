@@ -30,6 +30,18 @@
     + 'object-fit:contain;background:#000;z-index:2147483647;';
   document.body.appendChild(v);
 
+  // Same visible SKIP button as the character-intro splash later on, so
+  // the player is never just staring at a black/loading screen wondering
+  // whether anything is happening -- there's always an obvious way out.
+  const skipBtn = document.createElement('div');
+  skipBtn.textContent = 'SKIP \u25b8';
+  skipBtn.style.cssText = 'position:fixed;right:14px;bottom:14px;'
+    + 'padding:8px 16px;padding-bottom:calc(8px + env(safe-area-inset-bottom, 0px));'
+    + 'background:rgba(20,16,26,0.55);border:1.5px solid rgba(244,236,216,0.55);'
+    + 'border-radius:8px;color:#f4ecd8;font:bold 12px monospace;letter-spacing:0.5px;'
+    + '-webkit-user-select:none;user-select:none;z-index:2147483647;cursor:pointer;';
+  document.body.appendChild(skipBtn);
+
   let done = false;
   function finish() {
     if (done) return;
@@ -37,12 +49,15 @@
     clearTimeout(safety);
     v.pause();
     v.remove();
+    skipBtn.remove();
   }
   // Skippable with a tap/click or any key, same as every other
   // "press to continue" screen elsewhere in this game.
   v.addEventListener('click', finish);
   v.addEventListener('ended', finish);
   v.addEventListener('error', finish); // missing/corrupt file -> never block startup on it
+  skipBtn.addEventListener('click', finish);
+  skipBtn.addEventListener('touchend', (e) => { e.preventDefault(); finish(); });
   window.addEventListener('keydown', finish, { once: true });
   // Hard safety net: if the browser blocks autoplay entirely or the file
   // is unexpectedly slow, don't strand the player on a black screen.
