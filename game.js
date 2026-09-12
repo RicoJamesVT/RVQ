@@ -7548,6 +7548,10 @@ function makeOverworld() {
   map.crates[key(26, 20)] = { junkSeed: 3 };
   map.crates[key(28, 21)] = { record: 'white' };
   map.crates[key(30, 20)] = { junkSeed: 6 };
+  // Tracked so shuffleRecordCrates() (see below `maps`) can rotate which of
+  // these three flea-market crates holds the White Label 45 each new game,
+  // without needing to know anything else about this map's layout.
+  map._crateKeys = [key(26, 20), key(28, 21), key(30, 20)];
   // Newspaper stands: three spots picked in open grass, well clear of
   // buildings, the river/roads, trees, and every other interactable (NPCs,
   // crates, vendor carts) so their prompt box never overlaps another one.
@@ -7820,12 +7824,22 @@ function makeSwamp() {
     [30, 12, { junkSeed: 7 }],
     [38, 12, { junkSeed: 1 }],
     [6, 12,  { junkSeed: 2 }],
+    // three extra dig spots, same "sit right on the boardwalk trunk"
+    // placement as the crates above -- row 12 is guaranteed clear across
+    // the full map width regardless of how the mud islands happened to
+    // carve, so these are reachable no matter what.
+    [17, 12, { junkSeed: 4 }],
+    [24, 12, { junkSeed: 5 }],
+    [41, 12, { junkSeed: 8 }],
     [8, 9,   { record: 'choir' }],
     [10, 21, { junkSeed: 0 }],
     [34, 17, { junkSeed: 6 }],
     [14, 12, { junkSeed: 3 }],
   ];
   for (const [x, y, d] of crateDefs) { g[y][x] = 'c'; crates[key(x, y)] = d; }
+  // Tracked so shuffleRecordCrates() can rotate which of these boardwalk
+  // crates holds Strum Low / Moss Hallelujah each new game (see `maps`).
+  const crateKeys = crateDefs.map(([x, y]) => key(x, y));
 
   const waterTiles = [];
   for (let y = 0; y < H; y++)
@@ -7835,6 +7849,7 @@ function makeSwamp() {
   return {
     id: 'swamp', world: 'swamp', w: W, h: H, grid: g, outside: true,
     buildings, doors: {}, crates, npcs: [], riverTiles: waterTiles,
+    _crateKeys: crateKeys,
     swamp: true, gutHutDoor: { x: HUT_DOOR_X, y: HUT_DOOR_Y },
     swampFoodDoor: { x: FOOD_DOOR_X, y: FOOD_DOOR_Y },
     burlingtonRecordsDoor: { x: BURL_DOOR_X, y: BURL_DOOR_Y },
@@ -8038,6 +8053,10 @@ function makeShop(id, opts) {
     g[y][x] = 'C';
     map.crates[key(x, y)] = c;
   });
+  // Tracked so shuffleRecordCrates() (see below `maps`) can rotate which of
+  // this room's own crates holds its record vs junk each new game, without
+  // needing to duplicate anything about this shop's specific layout.
+  map._crateKeys = opts.crates.map((c, i) => key(...spots[i % spots.length]));
   if (opts.jukebox) { g[2][11] = 'J'; map.jukebox = true; }
   return map;
 }
@@ -8141,7 +8160,7 @@ const shops = {
               'I\'m with The Anthill Collective — the crew keeps the color on the walls and the sessions open.',
               'Support the independent hustle, family. We\'re all building our own creative thing in this world.',
               'We cut a few tracks back here between mural sessions. A Static Groove reel ended up in a crate somewhere.',
-              'Try digging through the crates against the LEFT wall — should still be under some old spray cans.'],
+              'Try digging through the crates — should still be under some old spray cans.'],
       foundLine: 'Elm Street Funk?! I thought that tape got lost under the primer. Go make some noise with it.' },
     crates: [ { record: 'elm' }, { junkSeed: 0 }, { junkSeed: 1 }, { junkSeed: 2 } ],
     // Kanga on the turntables, posted up next to SK1's table; Truth holding
@@ -8203,7 +8222,7 @@ const shops = {
     keeper: { name: 'DEE', shirt: '#d05a8a', skin: '#c89a72',
       lines: ['Welcome to Hey Bud — exotic plants, street art, books, tees. Water your soul, or just browse.',
               'Funny enough, a Velvet Horns pressing came in tangled up with a shipment of hanging planters.',
-              'Should still be in a crate on the RIGHT side, behind the ferns.'],
+              'Should still be in one of the crates, tangled up behind the ferns somewhere.'],
       foundLine: 'Midnight Stab, right here at Hey Bud? Those horns are gonna grow on you.' },
     crates: [ { junkSeed: 3 }, { junkSeed: 4 }, { record: 'stab' }, { junkSeed: 5 } ],
     // Claw machine, set back on open floor between the two big tropical
@@ -8814,6 +8833,32 @@ transitions['swamp:' + key(swamp.truthLabDoor.x, swamp.truthLabDoor.y)] = { map:
 transitions['truthlab:' + key(6, 9)] = { map: 'swamp', x: swamp.truthLabDoor.x + 0.5, y: swamp.truthLabDoor.y + 1.6 };
 const maps = { town, ...shops, swamp };
 
+// Reshuffles, within EACH location that has one, which of that location's
+// own crates holds its collectible record and which hold junk. A record's
+// home building/outdoor area never changes (Elm Street Funk is always in
+// Green Door Studio, the White Label is always somewhere in the flea
+// market corner) -- only the specific crate you have to dig through moves,
+// so returning players can't just walk straight to a remembered spot.
+// Locations built with no `record` among their crates (Henry's/Nectar's/
+// Truth Lab, which are pure themed-junk digs) are skipped automatically,
+// since shuffling them would have no player-visible effect anyway.
+// Called once below (so even a brand-new save starts from a shuffled
+// layout) and again at the top of every newGame().
+function shuffleRecordCrates() {
+  Object.values(maps).forEach((map) => {
+    const crateKeys = map._crateKeys;
+    if (!crateKeys || crateKeys.length < 2) return;
+    if (!crateKeys.some((k) => map.crates[k] && map.crates[k].record)) return;
+    const values = crateKeys.map((k) => map.crates[k]);
+    for (let i = values.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [values[i], values[j]] = [values[j], values[i]];
+    }
+    crateKeys.forEach((k, i) => { map.crates[k] = values[i]; });
+  });
+}
+shuffleRecordCrates();
+
 // ---------------------------------------------------------------- state
 const player = {
   map: 'town', x: 19.5 * TILE, y: 12.5 * TILE,
@@ -9044,6 +9089,8 @@ function newGame(slot) {
   collected.clear();
   completedWorlds.clear();
   personalBests = {};
+  shuffleRecordCrates(); // fresh crate layout for the new hunt, see above
+
   player.map = 'town';
   player.x = 19.5 * TILE;
   player.y = 12.5 * TILE;
