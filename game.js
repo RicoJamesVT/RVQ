@@ -1028,6 +1028,15 @@ const MINIGAME_ACTIONS = {
   // external assets and no network calls -- so it works with no
   // connection). See openPondApp()/createPondOverlay() below.
   pond: () => openPondApp(),
+  // Hyper Swim '96 Deluxe -- a retro swim-racing arcade cabinet set up on
+  // the deck of JOHNNY'S POOL, right alongside The Pool (see
+  // makeJohnnysPool()'s `minigames` list). Same "full standalone web app,
+  // not a canvas mini-game" shape as chess/beatbot/organ/mini golf/
+  // blackbook/Gator Grooves/.../Pond above (own DOM/iframe overlay,
+  // bundled locally -- its own canvas renderer and audio, no external
+  // assets and no network calls -- so it works with no connection). See
+  // openHyperSwimApp()/createHyperSwimOverlay() below.
+  hyperswim: () => openHyperSwimApp(),
   // Syrup Roads -- a maple-syrup-themed Frogger-style road-crossing arcade
   // cabinet tucked inside HEY BUD (see the `wax` shop's `minigames` list),
   // right alongside the Claw Machine. Same "full standalone web app, not a
@@ -6850,6 +6859,7 @@ window.addEventListener('keydown', (e) => {
     if (k === 'escape' && state === 'vtDirtApp') { closeVtDirtApp(); }
     if (k === 'escape' && state === 'penaltyKingsApp') { closePenaltyKingsApp(); }
     if (k === 'escape' && state === 'pondApp') { closePondApp(); }
+    if (k === 'escape' && state === 'hyperSwimApp') { closeHyperSwimApp(); }
     if (k === 'escape' && state === 'vinylNinjaApp') { closeVinylNinjaApp(); }
     if (k === 'escape' && state === 'digDashApp') { closeDigDashApp(); }
     if (k === 'escape' && state === 'rico1200App') { closeRico1200App(); }
@@ -8035,6 +8045,7 @@ function makeJohnnysPool() {
         'Johnny had this thing trucked in plank by plank. Don\'t ask how it doesn\'t leak. It just doesn\'t.',
         'No diving, no cannonballs near the ladder, and no, the gators are not invited.',
         'That swim game finally showed up — set up right there on the deck. Go make some waves.',
+        'And now there\'s two of \'em out here. Hyper Swim\'s right on the edge — mind the splash zone.',
       ] },
     crates: [],
     // THE POOL -- a swim-free-fish arcade game set up on the deck (rows
@@ -8043,8 +8054,17 @@ function makeJohnnysPool() {
     // sits on open deck, clear of PADDLES (9, 8) and the door/exit tile
     // (6, 9) below. Full standalone web app, not a canvas mini-game --
     // see MINIGAME_ACTIONS.pond/openPondApp()/createPondOverlay().
+    //
+    // HYPER SWIM '96 DELUXE -- a second cabinet set up right on the edge
+    // of the deck, tx/ty (10, 7): the front-most dry row (7), right where
+    // the wood meets the water, so it reads as sitting poolside rather
+    // than out on the open deck. Clear of THE POOL (4, 8), PADDLES
+    // (9, 8), and the door/exit tile (6, 9) below. Full standalone web
+    // app, not a canvas mini-game -- see MINIGAME_ACTIONS.hyperswim/
+    // openHyperSwimApp()/createHyperSwimOverlay().
     minigames: [
       { id: 'pond', tx: 4, ty: 8, label: 'PLAY THE POOL' },
+      { id: 'hyperswim', tx: 10, ty: 7, label: 'PLAY HYPER SWIM' },
     ],
   });
   // Carve the pool: every interior tile in rows 1-6 becomes water, leaving
@@ -8780,7 +8800,7 @@ const player = {
   tempItem: null, tempItemTimer: 0,
 };
 const collected = new Set();
-let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | portal | fifa | minigame | hotkeys | crate | trophies | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | vinylSnakeApp | bayouBreakApp | gatorJamSlamApp | swampCaveApp | vtDirtApp | penaltyKingsApp | digDashApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | circusMasterApp | diggerApp | pondApp | connectFourApp | syrupRoadsApp | kangaidenSplash | kangaidenApp
+let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | portal | fifa | minigame | hotkeys | crate | trophies | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | vinylSnakeApp | bayouBreakApp | gatorJamSlamApp | swampCaveApp | vtDirtApp | penaltyKingsApp | digDashApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | circusMasterApp | diggerApp | pondApp | hyperSwimApp | connectFourApp | syrupRoadsApp | kangaidenSplash | kangaidenApp
 // State to snap back to when the [H] hotkeys popup is closed -- currently
 // always 'play' since that's the only state H can be opened from, but kept
 // as its own var in case another state wants to offer the popup later.
@@ -9375,7 +9395,7 @@ const music = {
 // enter/exit call sites, so it can't drift out of sync no matter which
 // of the several ways the player backs out of the lab popup (keyboard
 // [X], on-screen [X] button, closing the instrument iframe, etc.).
-const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'vinylSnakeApp', 'bayouBreakApp', 'gatorJamSlamApp', 'swampCaveApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'circusMasterApp', 'diggerApp', 'pondApp', 'connectFourApp', 'syrupRoadsApp', 'kangaidenApp']);
+const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'vinylSnakeApp', 'bayouBreakApp', 'gatorJamSlamApp', 'swampCaveApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'circusMasterApp', 'diggerApp', 'pondApp', 'hyperSwimApp', 'connectFourApp', 'syrupRoadsApp', 'kangaidenApp']);
 function syncMusicDuck() {
   music.duck(DUCKED_STATES.has(state));
 }
@@ -11380,6 +11400,118 @@ function closePondApp(fromPopState) {
     history.back();
   } else {
     pondHistoryPushed = false;
+  }
+}
+
+// ---------------------------------------------------------------- Hyper Swim overlay
+// HYPER SWIM '96 DELUXE -- a retro swim-racing arcade cabinet set up on the
+// deck of JOHNNY'S POOL, right by the water alongside The Pool (see
+// MINIGAME_ACTIONS.hyperswim and makeJohnnysPool()'s `minigames` list) --
+// launches a full standalone web app, not a from-scratch canvas mini-game,
+// same "full-screen DOM overlay with an <iframe>" trick as chess/the beat
+// bot/The Pool/etc. above. Kept as its own overlay (rather than folding into
+// the pond overlay) since it's a totally separate cabinet with its own sign
+// and hitbox and nothing to do with The Pool's fish-catching game.
+//
+// Hyper Swim ships as a bundled, self-contained page (its own canvas
+// renderer, own DOM UI, no external assets and no network calls at all) at
+// instruments/hyperswim/index.html -- the exact same local-file pattern
+// CHESS_APP_URL/.../POND_APP_URL use. Being a same-origin local asset
+// rather than a live remote site means it loads and plays the same with or
+// without a connection, so there's no online/offline branching needed here
+// either.
+const HYPERSWIM_APP_URL = 'instruments/hyperswim/index.html';
+let hyperSwimOverlayEl = null, hyperSwimOverlayFrame = null;
+let hyperSwimReturnState = 'play';
+let hyperSwimHistoryPushed = false; // mirrors pondHistoryPushed -- see openHyperSwimApp()/closeHyperSwimApp()
+
+function createHyperSwimOverlay() {
+  const style = document.createElement('style');
+  style.textContent = `
+    #ricoHyperSwimApp {
+      position: fixed; inset: 0; z-index: 1000;
+      background: #000;
+      display: none; flex-direction: column;
+    }
+    #ricoHyperSwimApp.open { display: flex; }
+    #ricoHyperSwimApp .rhs-bar {
+      flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 10px 14px;
+      background: linear-gradient(#23104a, #050014);
+      border-bottom: 2px solid #a3004a;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    }
+    #ricoHyperSwimApp .rhs-title {
+      color: #f4ecd8; font: bold 14px monospace; letter-spacing: 0.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #ricoHyperSwimApp .rhs-close {
+      flex: 0 0 auto; cursor: pointer;
+      background: rgba(163,0,74,0.25);
+      border: 1.5px solid rgba(255,61,127,0.85);
+      color: #f4ecd8; border-radius: 8px;
+      padding: 7px 16px; font: bold 13px monospace;
+      -webkit-user-select: none; user-select: none;
+    }
+    #ricoHyperSwimApp .rhs-close:active { background: rgba(163,0,74,0.5); }
+    #ricoHyperSwimApp iframe {
+      flex: 1 1 auto; width: 100%; border: 0; background: #000;
+    }
+  `;
+  document.head.appendChild(style);
+
+  hyperSwimOverlayEl = document.createElement('div');
+  hyperSwimOverlayEl.id = 'ricoHyperSwimApp';
+
+  const bar = document.createElement('div');
+  bar.className = 'rhs-bar';
+  const title = document.createElement('div');
+  title.className = 'rhs-title';
+  title.textContent = "HYPER SWIM '96 DELUXE";
+  const closeBtn = document.createElement('div');
+  closeBtn.className = 'rhs-close';
+  closeBtn.textContent = '\u2190 BACK TO THE POOL DECK';
+  bindTap(closeBtn, closeHyperSwimApp);
+  bar.appendChild(title);
+  bar.appendChild(closeBtn);
+
+  hyperSwimOverlayFrame = document.createElement('iframe');
+  hyperSwimOverlayFrame.setAttribute('allow', 'autoplay');
+
+  hyperSwimOverlayEl.appendChild(bar);
+  hyperSwimOverlayEl.appendChild(hyperSwimOverlayFrame);
+  document.body.appendChild(hyperSwimOverlayEl);
+}
+createHyperSwimOverlay();
+
+// Opens the Hyper Swim overlay and switches state to 'hyperSwimApp'. Called
+// from MINIGAME_ACTIONS.hyperswim (E on the sign on the deck, or tapping
+// it), same entry points every other mini-game uses.
+function openHyperSwimApp() {
+  hyperSwimReturnState = state;
+  hyperSwimOverlayFrame.src = HYPERSWIM_APP_URL;
+  hyperSwimOverlayEl.classList.add('open');
+  state = 'hyperSwimApp';
+  // Same throwaway-history-entry trick as openInstrument()/openPondApp()/
+  // etc. above, so the browser/OS back gesture closes the Hyper Swim
+  // overlay instead of leaving the game entirely.
+  history.pushState({ ricoHyperSwimApp: true }, '');
+  hyperSwimHistoryPushed = true;
+}
+
+// Tears the iframe back down and returns to ordinary gameplay on the pool
+// deck. fromPopState mirrors closePondApp()'s parameter -- true when
+// triggered by the browser's back button (whose history entry is already
+// consumed), so we must not call history.back() again in that case.
+function closeHyperSwimApp(fromPopState) {
+  hyperSwimOverlayEl.classList.remove('open');
+  hyperSwimOverlayFrame.src = 'about:blank';
+  state = hyperSwimReturnState;
+  if (!fromPopState && hyperSwimHistoryPushed) {
+    hyperSwimHistoryPushed = false;
+    history.back();
+  } else {
+    hyperSwimHistoryPushed = false;
   }
 }
 
@@ -13534,6 +13666,8 @@ window.addEventListener('popstate', () => {
     closePenaltyKingsApp(true);
   } else if (state === 'pondApp') {
     closePondApp(true);
+  } else if (state === 'hyperSwimApp') {
+    closeHyperSwimApp(true);
   } else if (state === 'vinylNinjaApp') {
     closeVinylNinjaApp(true);
   } else if (state === 'digDashApp') {
@@ -13569,7 +13703,7 @@ canvas.addEventListener('pointerdown', (e) => {
     const vx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const vy = (e.clientY - rect.top) * (canvas.height / rect.height);
     handleLabTap(vx, vy);
-  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'circusMasterApp' || state === 'diggerApp' || state === 'pondApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'kangaidenApp') {
+  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'circusMasterApp' || state === 'diggerApp' || state === 'pondApp' || state === 'hyperSwimApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'kangaidenApp') {
     // The DOM overlay sits on top of (and outside) the canvas while an
     // instrument/the chess app/the beat bot/the organ/mini golf/the
     // blackbook/Gator Grooves/Vinyl Snake/Bayou Break Station/Gator Jam
@@ -13994,6 +14128,13 @@ function update(dt) {
     // buyPressed is still consumed here too so the on-screen [X] touch
     // button works while The Pool is open.
     if (buyPressed) closePondApp();
+  } else if (state === 'hyperSwimApp') {
+    // Same reasoning as 'labApp'/'chessApp'/.../'pondApp' just above: the
+    // DOM overlay (see createHyperSwimOverlay()) owns input while Hyper
+    // Swim '96 Deluxe is loaded -- its own close button and [Esc] handle
+    // closing it directly. buyPressed is still consumed here too so the
+    // on-screen [X] touch button works while Hyper Swim is open.
+    if (buyPressed) closeHyperSwimApp();
   } else if (state === 'connectFourApp') {
     // Same reasoning as 'labApp'/'chessApp'/.../'pondApp' just above: the
     // DOM overlay (see createConnectFourOverlay()) owns input while
@@ -14604,7 +14745,7 @@ function render(time) {
     drawSplash();
     return;
   }
-  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'circusMasterApp' || state === 'diggerApp' || state === 'pondApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'kangaidenApp') {
+  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'circusMasterApp' || state === 'diggerApp' || state === 'pondApp' || state === 'hyperSwimApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'kangaidenApp') {
     // Same reasoning as the labApp overlay: a DOM element (the <video>,
     // see createCharacterIntroOverlay(), the chess <iframe>, see
     // createChessOverlay(), the beat bot <iframe>, see
