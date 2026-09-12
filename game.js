@@ -473,28 +473,32 @@ function drawGraffitiTags() {
        syncTrickBtn(), called every frame from frame() same as
        syncHotkeysHintBtn()), so it stays hidden the rest of the time
        instead of permanently occupying a slot in the resting cluster.
-       Deliberately styled to stand apart from every other control here
-       (diamond shape via rotate(45deg) instead of the cluster's circles,
-       hot-pink instead of the cluster's neutral cream) so it visually
-       reads as a special/bonus action rather than another toggle. */
+       Sized to match #btnX (40x40 circle) and given a rainbow ring +
+       "STEEZ" label so it visually reads as a special/bonus action
+       rather than another toggle. */
     #btnTrick {
-      right: 14px; bottom: 154px; width: 46px; height: 46px;
-      border-radius: 10px;
-      transform: rotate(45deg);
-      background: rgba(255, 45, 170, 0.22);
-      border-color: rgba(255, 110, 205, 0.9);
+      right: 14px; bottom: 154px; width: 40px; height: 40px;
+      border-radius: 50%;
+      border: 3px solid transparent;
+      background:
+        linear-gradient(rgba(20,16,24,0.55), rgba(20,16,24,0.55)) padding-box,
+        conic-gradient(red, orange, yellow, limegreen, dodgerblue, violet, red) border-box;
       display: none;
     }
     #btnTrick.visible { display: flex; }
     #btnTrick:active {
-      background: rgba(255, 110, 205, 0.55);
-      border-color: rgba(255, 160, 220, 1);
+      background:
+        linear-gradient(rgba(20,16,24,0.2), rgba(20,16,24,0.2)) padding-box,
+        conic-gradient(red, orange, yellow, limegreen, dodgerblue, violet, red) border-box;
     }
     #btnTrick .tc-trick-icon {
       display: inline-block;
-      transform: rotate(-45deg);
-      font-size: 17px;
+      font-size: 7.5px;
+      font-weight: bold;
+      letter-spacing: 0.2px;
       line-height: 1;
+      color: #fff;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.7);
     }
     #extrasPanel {
       position: absolute;
@@ -10483,14 +10487,13 @@ function createTouchControls() {
   // TRICK — same action as the desktop [T] hot key (triggerTrick()), but
   // only ever useful while riding the board, so it's hidden/shown by
   // syncTrickBtn() (called every frame from frame()) rather than sitting
-  // in the resting cluster all the time like SK8/X/MUTE do. Icon text is
-  // wrapped in its own span and counter-rotated so it reads upright inside
-  // the diamond-rotated button (see #btnTrick / .tc-trick-icon CSS above).
+  // in the resting cluster all the time like SK8/X/MUTE do. Label text is
+  // wrapped in its own span (see #btnTrick .tc-trick-icon CSS above).
   const trickBtn = document.createElement('div');
   trickBtn.id = 'btnTrick'; trickBtn.className = 'tc-btn';
   const trickIcon = document.createElement('span');
   trickIcon.className = 'tc-trick-icon';
-  trickIcon.textContent = '\u2726'; // ✦ four-pointed star, distinct from every other button's plain letter/glyph
+  trickIcon.textContent = 'STEEZ';
   trickBtn.appendChild(trickIcon);
   bindTap(trickBtn, () => { triggerTrick(); music.start(); });
   wrap.appendChild(trickBtn);
