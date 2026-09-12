@@ -475,8 +475,15 @@ function drawGraffitiTags() {
        instead of permanently occupying a slot in the resting cluster.
        Sized to match #btnX (40x40 circle) and given a rainbow ring +
        "STEEZ" label so it visually reads as a special/bonus action
-       rather than another toggle. */
-    #btnTrick {
+       rather than another toggle.
+       NOTE: selectors here are written as "#touchControls #btnTrick"
+       (two IDs) rather than plain "#btnTrick" (one ID). The base rule
+       at #touchControls .tc-btn carries 1 ID + 1 class of specificity,
+       which beats a bare "#btnTrick" (1 ID, 0 classes) -- that mismatch
+       was silently overriding both the display:none/.visible toggle
+       and the rainbow background with the base tc-btn styles. Using
+       two IDs here guarantees this block always wins. */
+    #touchControls #btnTrick {
       right: 14px; bottom: 154px; width: 40px; height: 40px;
       border-radius: 50%;
       border: 3px solid transparent;
@@ -485,13 +492,13 @@ function drawGraffitiTags() {
         conic-gradient(red, orange, yellow, limegreen, dodgerblue, violet, red) border-box;
       display: none;
     }
-    #btnTrick.visible { display: flex; }
-    #btnTrick:active {
+    #touchControls #btnTrick.visible { display: flex; }
+    #touchControls #btnTrick:active {
       background:
         linear-gradient(rgba(20,16,24,0.2), rgba(20,16,24,0.2)) padding-box,
         conic-gradient(red, orange, yellow, limegreen, dodgerblue, violet, red) border-box;
     }
-    #btnTrick .tc-trick-icon {
+    #touchControls #btnTrick .tc-trick-icon {
       display: inline-block;
       font-size: 7.5px;
       font-weight: bold;
