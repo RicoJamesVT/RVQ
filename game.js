@@ -292,7 +292,7 @@ const GRAFFITI_TAG_LIFETIME = 300; // seconds a tag stays on the map (5 minutes)
 const GRAFFITI_TAG_FADE_FRACTION = 0.4; // final 40% of its life is spent dissolving out
 const GRAFFITI_TAG_MAX_PER_MAP = 40;
 const GRAFFITI_TAG_SIZE = 40; // on-screen footprint, in world pixels (tile is 32px)
-const graffitiTags = {}; // mapId -> array of { x, y, life }
+const graffitiTags = {}; // mapId -> array of { x, y, life, hue }
 
 function placeGraffitiTag() {
   if (state !== 'play') return;
@@ -302,7 +302,11 @@ function placeGraffitiTag() {
   // same facing-offset idea as facingTile() elsewhere in this file -- so it
   // reads as tagging the wall/ground beside them instead of themselves.
   const d = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[player.dir] || [0, 1];
-  list.push({ x: player.x + d[0] * 14, y: player.y + d[1] * 12, life: GRAFFITI_TAG_LIFETIME });
+  // hue is a random 0-359 hue-rotation applied at draw time (see
+  // drawGraffitiTags) so each spray of the same ricotag.png comes out a
+  // different wild color without needing separate art assets.
+  const hue = Math.floor(Math.random() * 360);
+  list.push({ x: player.x + d[0] * 14, y: player.y + d[1] * 12, life: GRAFFITI_TAG_LIFETIME, hue });
   if (list.length > GRAFFITI_TAG_MAX_PER_MAP) list.shift();
   toast = { text: 'Tagged it!', t: 1.0 };
 }
@@ -334,8 +338,14 @@ function drawGraffitiTags() {
     const alpha = Math.max(0, Math.min(1, tag.life / fadeWindow));
     if (alpha <= 0) continue;
     ctx.globalAlpha = alpha;
+    // Recolor the single ricotag.png per-spray using each tag's stored hue
+    // (picked once in placeGraffitiTag) instead of needing a separate PNG
+    // per color. saturate() punches up flat/grayscale art so the hue shift
+    // actually reads; drop it if the source art is already saturated.
+    ctx.filter = `hue-rotate(${tag.hue}deg) saturate(1.6)`;
     ctx.drawImage(graffitiTagImg, tag.x - GRAFFITI_TAG_SIZE / 2, tag.y - GRAFFITI_TAG_SIZE / 2, GRAFFITI_TAG_SIZE, GRAFFITI_TAG_SIZE);
   }
+  ctx.filter = 'none';
   ctx.globalAlpha = 1;
 }
 
