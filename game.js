@@ -310,6 +310,45 @@ function drawSkateTrail(time) {
     @media (pointer: coarse) {
       #touchControls { display: block; }
     }
+    /* Hot-keys reminder tab -- keyboard/mouse/gamepad players (touch
+       players already see their controls onscreen, see #touchControls
+       above) don't have anything on screen reminding them the [H] hot-keys
+       popup exists. This is a small, low-opacity tab glued to the right
+       edge of the viewport; JS only adds the 'visible' class while
+       state === 'play' (see syncHotkeysHintBtn()), so it never sits over
+       a mini-game or an instrument app, and the (pointer: coarse) rule
+       below keeps it off touch devices entirely, same as #touchControls
+       does the opposite. */
+    #hotkeysHintBtn {
+      position: fixed; right: 0; top: 50%;
+      transform: translateY(-50%);
+      z-index: 15;
+      display: none;
+      padding: 14px 5px;
+      background: rgba(244,236,216,0.07);
+      border: 1.5px solid rgba(244,236,216,0.3);
+      border-right: none;
+      border-radius: 8px 0 0 8px;
+      color: rgba(244,236,216,0.55);
+      font: bold 11px monospace;
+      letter-spacing: 1.5px;
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      cursor: pointer;
+      -webkit-user-select: none; user-select: none;
+      opacity: 0.5;
+      transition: opacity 0.15s, background 0.15s, border-color 0.15s, color 0.15s;
+    }
+    #hotkeysHintBtn.visible { display: block; }
+    #hotkeysHintBtn:hover {
+      opacity: 1;
+      background: rgba(244,236,216,0.16);
+      border-color: rgba(244,236,216,0.55);
+      color: #f4ecd8;
+    }
+    @media (pointer: coarse) {
+      #hotkeysHintBtn { display: none !important; }
+    }
     /* Minimal touch layout: every control is pulled into the true screen
        corners and kept small + low-opacity at rest so it stays out of the
        way of the map. Buttons brighten on touch for clear feedback. */
@@ -378,22 +417,6 @@ function drawSkateTrail(time) {
     #extrasPanel .tc-btn.tc-important:active {
       background: rgba(224,120,90,0.55);
       border-color: rgba(224,120,90,1);
-    }
-    /* TROPHY gets its own distinct color so it stands out from both the
-       BREW/YERBA toggles and the SAVE/NEW/CRATE tc-important group. */
-    #extrasPanel .tc-btn.tc-trophy {
-      background: rgba(90,150,220,0.35);
-      border-color: rgba(120,180,240,0.9);
-      color: #f4ecd8;
-    }
-    #extrasPanel .tc-btn.tc-trophy:active {
-      background: rgba(120,180,240,0.55);
-      border-color: rgba(120,180,240,1);
-    }
-    #extrasPanel .tc-btn.tc-trophy svg {
-      width: 20px; height: 20px;
-      fill: currentColor;
-      pointer-events: none;
     }
   `;
   document.head.appendChild(style);
@@ -1085,8 +1108,8 @@ const MINIGAME_ACTIONS = {
 
 // ---- trophy case: personal bests for the 8 scored mini-games --------------
 // One entry per scored mini-game (beatjam is a freeform jam session with no
-// score, so it sits this one out). `unit` controls how drawTrophyCase() and
-// each mini-game's own 'done' screen format the stored number -- 'pts' for
+// score, so it sits this one out). `unit` controls how each mini-game's own
+// 'done' screen formats the stored number -- 'pts' for
 // the seven point-scored games, 's' for the staring contest, which tracks
 // longest time held still instead of a points total. `flavor` is a one-line
 // blurb shown in the case's detail panel, same spirit as a record's flavor
@@ -1142,15 +1165,6 @@ function recordMinigameScore(id, value) {
     return true;
   }
   return false;
-}
-
-// Opens the Trophy Case (see drawTrophyCase()) from 'play', same open/close
-// shape as openCrate() -- [T] toggles it, [Esc]/E/X close it.
-function openTrophyCase() {
-  if (state !== 'play') return;
-  trophyReturnState = state;
-  trophyIndex = 0;
-  state = 'trophies';
 }
 
 // Darts: a two-tap power/accuracy throw, same trick classic golf games use.
@@ -6855,14 +6869,6 @@ window.addEventListener('keydown', (e) => {
       else if (state === 'crate') state = crateReturnState;
     }
     if (k === 'escape' && state === 'crate') { state = crateReturnState; }
-    if (k === 't') {
-      // [T] opens the Trophy Case any time during gameplay, and closes it
-      // again on a second press -- same open/close pattern as [V] for The
-      // Crate and [H] for hotkeys.
-      if (state === 'play') openTrophyCase();
-      else if (state === 'trophies') state = trophyReturnState;
-    }
-    if (k === 'escape' && state === 'trophies') { state = trophyReturnState; }
     // [X] already sets buyPressed above, which update()'s 'labApp' branch
     // consumes to close the instrument overlay; [Esc] is the one extra key
     // worth adding here since browsers treat it as the natural "close".
@@ -6941,7 +6947,6 @@ const GAMEPAD_BUTTON_KEY = {
   4: 'c',         // LB -- toggle cold brew
   5: 'y',         // RB -- toggle iced tea
   6: 'v',         // LT -- The Crate
-  7: 't',         // RT -- Trophy Case
   8: 'escape',    // Back/Select -- close whatever overlay is open
   9: 'h',         // Start -- hot keys / menu (also pages the title & history screens)
   10: 'k',        // Left stick click -- quicksave
@@ -8867,7 +8872,7 @@ const player = {
   tempItem: null, tempItemTimer: 0,
 };
 const collected = new Set();
-let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | portal | fifa | minigame | hotkeys | crate | trophies | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | vinylSnakeApp | bayouBreakApp | gatorJamSlamApp | swampCaveApp | vtDirtApp | penaltyKingsApp | digDashApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | circusMasterApp | diggerApp | pondApp | hyperSwimApp | connectFourApp | syrupRoadsApp | kangaidenSplash | kangaidenApp
+let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | portal | fifa | minigame | hotkeys | crate | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | vinylSnakeApp | bayouBreakApp | gatorJamSlamApp | swampCaveApp | vtDirtApp | penaltyKingsApp | digDashApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | circusMasterApp | diggerApp | pondApp | hyperSwimApp | connectFourApp | syrupRoadsApp | kangaidenSplash | kangaidenApp
 // State to snap back to when the [H] hotkeys popup is closed -- currently
 // always 'play' since that's the only state H can be opened from, but kept
 // as its own var in case another state wants to offer the popup later.
@@ -8880,16 +8885,13 @@ let hotkeysReturnState = 'play';
 let crateReturnState = 'play';
 let crateWorldIndex = 0;
 let crateSlotIndex = 0;
-// Trophy Case -- personal-best tracker for the 8 mini-games (see
-// MINIGAME_TROPHIES + recordMinigameScore() below and drawTrophyCase()).
-// personalBests maps a mini-game id to the best value reached so far; it
-// rides along in the save file exactly like `collected`, so bests are
-// per-slot, same as everything else about a playthrough. trophyIndex
-// tracks which of the 8 rows the player is currently browsing, resetting
-// to 0 whenever the case is opened fresh.
+// Personal-best tracker for the 8 scored mini-games (see MINIGAME_TROPHIES +
+// recordMinigameScore() below). personalBests maps a mini-game id to the
+// best value reached so far; it rides along in the save file exactly like
+// `collected`, so bests are per-slot, same as everything else about a
+// playthrough. Each mini-game's own 'done' screen reads this to flash
+// "NEW BEST!".
 let personalBests = {};
-let trophyReturnState = 'play';
-let trophyIndex = 0;
 // Which of the title screen's two pages is showing: 0 = the main title
 // (story + start prompt), 1 = the Hot Keys page. Toggled with left/right
 // (or [H]) while state === 'title'; reset to 0 any time the player lands
@@ -10322,12 +10324,6 @@ function createTouchControls() {
   // for every toggle.
   const extrasPanel = document.createElement('div');
   extrasPanel.id = 'extrasPanel';
-  // A simple monochrome trophy silhouette (cup + handles + base), drawn as
-  // inline SVG so it scales crisply at any size and inherits the button's
-  // text color via currentColor/fill.
-  const TROPHY_ICON_SVG = '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
-    '<path d="M6 2h12v2h2a1 1 0 0 1 1 1v2c0 2.76-1.9 5.07-4.46 5.72A6.02 6.02 0 0 1 13 17.42V20h3v2H8v-2h3v-2.58a6.02 6.02 0 0 1-3.54-4.7C4.9 12.07 3 9.76 3 7V5a1 1 0 0 1 1-1h2V2zm0 4H5v1c0 1.5.91 2.78 2.2 3.34A8.5 8.5 0 0 1 6 7V6zm12 0v1c0 .82-.13 1.6-.37 2.34C18.91 8.78 19.82 7.5 19.82 6H18z"/>' +
-    '</svg>';
 
   const extras = [
     ['BREW',  () => toggleCoffee(),     () => player.holdingCoffee],
@@ -10335,18 +10331,11 @@ function createTouchControls() {
     ['CRATE', () => openCrate(),        () => false],
     ['SAVE',  () => saveGame(true),     () => false],
     ['NEW',   () => { openDigChoice(); },       () => false],
-    ['TROPHY', () => openTrophyCase(),  () => false],
   ];
   extras.forEach(([label, action, isOn]) => {
     const btn = document.createElement('div');
-    btn.className = 'tc-btn' + ((label === 'SAVE' || label === 'NEW' || label === 'CRATE') ? ' tc-important' : '')
-      + (label === 'TROPHY' ? ' tc-trophy' : '');
-    if (label === 'TROPHY') {
-      btn.innerHTML = TROPHY_ICON_SVG;
-      btn.setAttribute('aria-label', 'Trophy Case');
-    } else {
-      btn.textContent = label;
-    }
+    btn.className = 'tc-btn' + ((label === 'SAVE' || label === 'NEW' || label === 'CRATE') ? ' tc-important' : '');
+    btn.textContent = label;
     bindTap(btn, () => {
       action();
       music.start();
@@ -10364,6 +10353,50 @@ function createTouchControls() {
   document.body.appendChild(wrap);
 }
 createTouchControls();
+
+// ---------------------------------------------------------------- hot-keys reminder tab (non-touch only)
+// A subtle "HOT KEYS [H]" tab glued to the right edge of the screen, for
+// desktop/laptop/gamepad players who have no onscreen equivalent of the
+// touch controls' visible button labels -- it's easy to forget the [H]
+// popup exists once you're deep into the map. Hidden on touch devices via
+// the (pointer: coarse) rule above (they already see everything they need),
+// and only ever shown while state === 'play' (see syncHotkeysHintBtn(),
+// called every frame from frame() below) so it never overlaps a mini-game
+// or one of the instrument/app overlays.
+let hotkeysHintBtnEl = null;
+function createHotkeysHintBtn() {
+  const btn = document.createElement('div');
+  btn.id = 'hotkeysHintBtn';
+  btn.textContent = 'HOT KEYS [H]';
+  btn.title = 'Show hot keys (H)';
+  btn.addEventListener('click', () => {
+    // Same open action as pressing [H] in the keydown handler above --
+    // only fires from 'play' since that's the only state this tab is ever
+    // visible in.
+    if (state === 'play') {
+      hotkeysReturnState = state;
+      state = 'hotkeys';
+      music.start();
+    }
+  });
+  document.body.appendChild(btn);
+  hotkeysHintBtnEl = btn;
+}
+createHotkeysHintBtn();
+
+// Toggles the .visible class only when it actually changes, so this can be
+// called unconditionally from frame() every tick without spamming DOM
+// writes. Gated on state === 'play' alone -- every other state (dialog,
+// portal, minigame, hotkeys popup itself, every *App instrument/mini-game
+// overlay, etc.) hides it, per "only over the main map areas".
+let hotkeysHintVisible = null;
+function syncHotkeysHintBtn() {
+  const shouldShow = state === 'play';
+  if (shouldShow !== hotkeysHintVisible) {
+    hotkeysHintVisible = shouldShow;
+    if (hotkeysHintBtnEl) hotkeysHintBtnEl.classList.toggle('visible', shouldShow);
+  }
+}
 
 // ---------------------------------------------------------------- Rico's Lab instrument overlay
 // Each of the 4 instrument apps (Pocket Sampler, Keys, Cuts, EQ) is a full
@@ -13873,6 +13906,7 @@ function frame(now) {
   last = now;
   update(dt);
   render(now / 1000);
+  syncHotkeysHintBtn();
   requestAnimationFrame(frame);
 }
 
@@ -14250,14 +14284,6 @@ function update(dt) {
       menuMove = 0;
     }
     if (interactPressed || buyPressed) state = crateReturnState;
-  } else if (state === 'trophies') {
-    // Up/down browses the 8 rows; E, X, [T] and [Esc] all just close the
-    // case, same read-only-popup pattern as 'crate' and 'hotkeys'.
-    if (menuMove) {
-      trophyIndex = Math.max(0, Math.min(MINIGAME_TROPHIES.length - 1, trophyIndex + menuMove));
-      menuMove = 0;
-    }
-    if (interactPressed || buyPressed) state = trophyReturnState;
   } else if (state === 'fifa') {
     if (performance.now() - fifaStartTime >= 5000) {
       state = fifaReturnState;
@@ -14956,7 +14982,6 @@ function render(time) {
   if (state === 'lab') drawLabPopup(time);
   if (state === 'hotkeys') drawHotkeysPopup();
   if (state === 'crate') drawCrate();
-  if (state === 'trophies') drawTrophyCase();
   if (state === 'fifa') drawFifaPopup();
   if (state === 'minigame' && activeMinigame) activeMinigame.draw();
   if (toast) drawToast();
@@ -21126,7 +21151,6 @@ function drawHotkeysPopup() {
     ['K', 'quicksave'],
     ['N', 'back to start / new game'],
     ['V', 'open The Crate (record collection)'],
-    ['T', 'open the Trophy Case (mini-game bests)'],
     ['H', 'toggle this hot-keys popup'],
   ];
   const listX = boxX + 30, keyColW = 150, startY = boxY + 66, lh = 24;
@@ -21676,94 +21700,6 @@ function drawCrate() {
   ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#e0b040' : '#f4ecd8';
   ctx.font = 'bold 17px monospace';
   ctx.fillText('[\u25C0\u25B6] world   [\u25B2\u25BC] browse   [E] close', VIEW_W / 2, boxY + boxH - 18);
-}
-
-// The Trophy Case -- a personal-bests list for the 8 scored mini-games (see
-// MINIGAME_TROPHIES + personalBests near the top of the file). Same bordered-
-// popup language as drawCrate() and drawHotkeysPopup(): a row list on the
-// left half the player browses with up/down, a detail panel on the right for
-// whichever row is selected. Rows with no personalBests entry yet just show
-// "--" instead of a score, same "not yet found" idea as an empty Crate slot.
-function drawTrophyCase() {
-  ctx.fillStyle = 'rgba(6,4,10,0.88)';
-  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
-
-  const boxW = 720, boxH = 440, boxX = (VIEW_W - boxW) / 2, boxY = (VIEW_H - boxH) / 2;
-  ctx.fillStyle = '#1c1626';
-  ctx.fillRect(boxX, boxY, boxW, boxH);
-  ctx.strokeStyle = '#e0b040';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(boxX + 2, boxY + 2, boxW - 4, boxH - 4);
-
-  ctx.textAlign = 'center';
-  ctx.fillStyle = '#e0b040';
-  ctx.font = 'bold 27px monospace';
-  ctx.fillText('TROPHY CASE', VIEW_W / 2, boxY + 38);
-
-  const playedCount = MINIGAME_TROPHIES.filter((t) => bestFor(t.id) !== undefined).length;
-  ctx.font = '15px monospace';
-  ctx.fillStyle = '#9a90a8';
-  ctx.fillText(`${playedCount} / ${MINIGAME_TROPHIES.length} personal bests set`, VIEW_W / 2, boxY + 60);
-
-  // row list -- left column, one row per mini-game
-  const listX = boxX + 34, listY = boxY + 84, rowH = 38;
-  const listW = 300;
-  MINIGAME_TROPHIES.forEach((t, i) => {
-    const y = listY + i * rowH;
-    const best = bestFor(t.id);
-    const active = i === trophyIndex;
-
-    if (active) {
-      ctx.fillStyle = 'rgba(224,176,64,0.14)';
-      ctx.fillRect(listX - 10, y - 22, listW, rowH - 6);
-      ctx.strokeStyle = Math.floor(performance.now() / 300) % 2 ? '#e0b040' : '#f4ecd8';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(listX - 10, y - 22, listW, rowH - 6);
-    }
-
-    ctx.textAlign = 'left';
-    ctx.font = 'bold 17px monospace';
-    ctx.fillStyle = active ? '#e0b040' : (best !== undefined ? '#f4ecd8' : '#5a5462');
-    ctx.fillText((active ? '\u25B8 ' : '') + t.label, listX, y);
-
-    ctx.textAlign = 'right';
-    ctx.font = '16px monospace';
-    ctx.fillStyle = best !== undefined ? '#8cff5f' : '#4a4258';
-    ctx.fillText(formatTrophyValue(t.id, best), listX + listW - 14, y);
-  });
-
-  // detail panel -- right half, describes whichever row is selected
-  const sel = MINIGAME_TROPHIES[trophyIndex];
-  const selBest = bestFor(sel.id);
-  const panelX = listX + listW + 26, panelW = boxX + boxW - 40 - panelX;
-  const panelY = listY + 6;
-
-  ctx.textAlign = 'left';
-  ctx.font = 'bold 20px monospace';
-  ctx.fillStyle = '#e0b040';
-  ctx.fillText(sel.label, panelX, panelY);
-
-  ctx.font = '15px monospace';
-  ctx.fillStyle = '#c8c0d8';
-  wrapText(sel.flavor, panelX, panelY + 26, panelW, 16);
-
-  ctx.font = 'bold 16px monospace';
-  ctx.fillStyle = '#9a90a8';
-  ctx.fillText('PERSONAL BEST', panelX, panelY + 78);
-  ctx.font = 'bold 34px monospace';
-  ctx.fillStyle = selBest !== undefined ? '#8cff5f' : '#4a4258';
-  ctx.fillText(selBest !== undefined ? formatTrophyValue(sel.id, selBest) : 'NOT SET', panelX, panelY + 114);
-
-  if (selBest === undefined) {
-    ctx.font = '15px monospace';
-    ctx.fillStyle = '#6a6278';
-    ctx.fillText('Play this one to set your first best.', panelX, panelY + 140);
-  }
-
-  ctx.textAlign = 'center';
-  ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#e0b040' : '#f4ecd8';
-  ctx.font = 'bold 17px monospace';
-  ctx.fillText('[\u25B2\u25BC] browse   [E] close', VIEW_W / 2, boxY + boxH - 18);
 }
 
 function drawSplash() {
