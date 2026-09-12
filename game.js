@@ -1037,6 +1037,19 @@ const MINIGAME_ACTIONS = {
   // no network calls -- so it works with no connection). See
   // openSyrupRoadsApp()/createSyrupRoadsOverlay() below.
   syruproads: () => openSyrupRoadsApp(),
+  // KANGAIDEN -- "Shadow of the Shogun", a Shinobi-style side-scrolling
+  // brawler (slash/shuriken combat vs. zombie and elite enemies) parked out
+  // on the open grass in town (see the town map's `minigames` list below),
+  // right alongside Connect 45s. Same "own DOM/iframe overlay, bundled
+  // locally -- its own bundled canvas game engine and sprites, no external
+  // assets and no network calls at all -- so it works with no connection"
+  // shape as Circus Master/Digger above. Like Vinyl Ninja, stepping up to
+  // the cabinet first shows a full-screen splash (the KANGAIDEN key art,
+  // starring DJ Kanga) rather than jumping straight into the iframe -- see
+  // openKangaidenSplash()/drawKangaidenSplash() below -- and only opens the
+  // actual DOM/iframe overlay (openKangaidenApp()/createKangaidenOverlay())
+  // once the player presses E or taps again from that splash.
+  kangaiden: () => openKangaidenSplash(),
 };
 
 // ---- trophy case: personal bests for the 8 scored mini-games --------------
@@ -6843,6 +6856,7 @@ window.addEventListener('keydown', (e) => {
     if (k === 'escape' && state === 'ricoDawApp') { closeRicoDawApp(); }
     if (k === 'escape' && state === 'filterLabApp') { closeFilterLabApp(); }
     if (k === 'escape' && state === 'circusMasterApp') { closeCircusMasterApp(); }
+    if (k === 'escape' && state === 'kangaidenApp') { closeKangaidenApp(); }
     if (k === 'escape' && state === 'diggerApp') { closeDiggerApp(); }
     if (k === 'escape' && state === 'connectFourApp') { closeConnectFourApp(); }
     if (k === 'escape' && state === 'syrupRoadsApp') { closeSyrupRoadsApp(); }
@@ -7115,6 +7129,17 @@ level1IntroImg.src = 'assets/level1_intro_splash.png';
 // below.
 const vinylNinjaSplashImg = new Image();
 vinylNinjaSplashImg.src = 'assets/vinyl_ninja_splash.png';
+
+// KANGAIDEN key-art splash shown by drawKangaidenSplash() the same way
+// vinylNinjaSplashImg is above -- preloaded here (rather than only once the
+// player steps up to the cabinet) so it's already decoded and ready by the
+// time openKangaidenSplash() flips state, with no first-frame pop-in. Plain
+// <img>, no fetch()/blob: URL involved, so it's cached and served like any
+// other same-origin image asset for offline handling. See
+// MINIGAME_ACTIONS.kangaiden/openKangaidenSplash()/drawKangaidenSplash()
+// below.
+const kangaidenSplashImg = new Image();
+kangaidenSplashImg.src = 'assets/kangaiden_splash.png';
 
 const purePopPosterImg = new Image();
 purePopPosterImg.src = 'assets/purepop_poster.png';
@@ -7443,10 +7468,24 @@ function makeOverworld() {
     // do elsewhere, so it reads as "sit down and play this" rather than an
     // arcade cabinet. Opens the full standalone Connect 45s app in its own
     // DOM overlay; see openConnectFourApp()/createConnectFourOverlay().
+    // A KANGAIDEN arcade cabinet, out on the open grass east of Hey Bud --
+    // tx/ty (37, 11) sits in a clear patch well clear of Hey Bud's
+    // footprint (rows 3-6, cols 28-34), Henry's Diner (rows 3-6, cols
+    // 23-26), the tree at (37,7), the newsstand at (33,12), the river
+    // (columns 15-17 at this row), and every road row (bikeRows 9,
+    // walkerRow 12, dogRow 6). No `icon` override, so it renders as the
+    // usual floating arcade-cabinet sign (drawMinigameArcadeSign()) rather
+    // than a custom object sprite. Facing it and pressing E (or tapping it)
+    // doesn't open the game directly -- it shows the KANGAIDEN splash
+    // first, same as the samurai sword's Vinyl Ninja out in the swamp; see
+    // MINIGAME_ACTIONS.kangaiden/openKangaidenSplash()/
+    // drawKangaidenSplash() and openKangaidenApp()/createKangaidenOverlay()
+    // below.
     minigames: [
       { id: 'penaltyshootout', tx: 19, ty: 19, label: 'PENALTY KICKS', icon: 'soccerball' },
       { id: 'minigolf', tx: 6, ty: 21, label: 'PLAY MINI GOLF', icon: 'golfclubs' },
       { id: 'connectfour', tx: 33, ty: 21, label: 'PLAY CONNECT 45s', icon: 'connectfour' },
+      { id: 'kangaiden', tx: 37, ty: 11, label: 'PLAY KANGAIDEN' },
     ],
   };
   // Talkable townsfolk: Gary (the old hippy guitarist by the deli garbage
@@ -8741,7 +8780,7 @@ const player = {
   tempItem: null, tempItemTimer: 0,
 };
 const collected = new Set();
-let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | portal | fifa | minigame | hotkeys | crate | trophies | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | vinylSnakeApp | bayouBreakApp | gatorJamSlamApp | swampCaveApp | vtDirtApp | penaltyKingsApp | digDashApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | circusMasterApp | diggerApp | pondApp | connectFourApp | syrupRoadsApp
+let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | portal | fifa | minigame | hotkeys | crate | trophies | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | vinylSnakeApp | bayouBreakApp | gatorJamSlamApp | swampCaveApp | vtDirtApp | penaltyKingsApp | digDashApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | circusMasterApp | diggerApp | pondApp | connectFourApp | syrupRoadsApp | kangaidenSplash | kangaidenApp
 // State to snap back to when the [H] hotkeys popup is closed -- currently
 // always 'play' since that's the only state H can be opened from, but kept
 // as its own var in case another state wants to offer the popup later.
@@ -9336,7 +9375,7 @@ const music = {
 // enter/exit call sites, so it can't drift out of sync no matter which
 // of the several ways the player backs out of the lab popup (keyboard
 // [X], on-screen [X] button, closing the instrument iframe, etc.).
-const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'vinylSnakeApp', 'bayouBreakApp', 'gatorJamSlamApp', 'swampCaveApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'circusMasterApp', 'diggerApp', 'pondApp', 'connectFourApp', 'syrupRoadsApp']);
+const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'vinylSnakeApp', 'bayouBreakApp', 'gatorJamSlamApp', 'swampCaveApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'circusMasterApp', 'diggerApp', 'pondApp', 'connectFourApp', 'syrupRoadsApp', 'kangaidenApp']);
 function syncMusicDuck() {
   music.duck(DUCKED_STATES.has(state));
 }
@@ -11630,6 +11669,59 @@ function drawVinylNinjaSplash() {
   ctx.fillText('- PRESS E TO DROP IN -', VIEW_W / 2, VIEW_H - 24);
 }
 
+// KANGAIDEN -- a Shinobi-style side-scrolling brawler starring DJ Kanga,
+// parked on the open grass in town (see the town map's `minigames` list
+// above and MINIGAME_ACTIONS.kangaiden). Same "full-screen splash card
+// before the iframe" shape as Vinyl Ninja just above -- see
+// drawVinylNinjaSplash() -- drawn over the still-running town scene the
+// same way drawLabUnlock()/drawVinylNinjaSplash() draw over their own
+// worlds. Pressing E or tapping again from the splash is what actually
+// calls openKangaidenApp() below.
+let kangaidenSplashReturnState = 'play';
+
+// Opens the splash and switches state to 'kangaidenSplash'. Called from
+// MINIGAME_ACTIONS.kangaiden (E on the cabinet, or tapping its floating
+// sign).
+function openKangaidenSplash() {
+  kangaidenSplashReturnState = state;
+  state = 'kangaidenSplash';
+}
+
+// Full-screen splash card -- see drawVinylNinjaSplash() just above for the
+// same "scale art to fully cover the view, blink a continue prompt at the
+// bottom" shape this reuses. Drawn on top of the ordinary town render()
+// pass (not one of the WORLD_HIDDEN_STATES/DOM-overlay states), so the
+// town stays visible/dimmed underneath exactly like drawVinylNinjaSplash()
+// does over the swamp.
+function drawKangaidenSplash() {
+  ctx.fillStyle = 'rgba(8,6,12,0.6)';
+  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
+  if (kangaidenSplashImg.complete && kangaidenSplashImg.naturalWidth) {
+    const iw = kangaidenSplashImg.naturalWidth, ih = kangaidenSplashImg.naturalHeight;
+    const scale = Math.max(VIEW_W / iw, VIEW_H / ih);
+    const dw = iw * scale, dh = ih * scale;
+    const dx = (VIEW_W - dw) / 2, dy = (VIEW_H - dh) / 2;
+    ctx.drawImage(kangaidenSplashImg, dx, dy, dw, dh);
+    ctx.fillStyle = 'rgba(8,6,12,0.35)';
+    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+  } else {
+    // fallback text-only version, in case the art hasn't loaded in yet
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#e0b040';
+    ctx.font = 'bold 26px monospace';
+    ctx.fillText('KANGAIDEN', VIEW_W / 2, VIEW_H / 2 - 10);
+    ctx.fillStyle = '#f4ecd8';
+    ctx.font = '14px monospace';
+    ctx.fillText('Slash zombies. Drop the beat.', VIEW_W / 2, VIEW_H / 2 + 16);
+  }
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#e0b040' : '#f4ecd8';
+  ctx.font = 'bold 16px monospace';
+  ctx.fillText('- PRESS E TO DROP IN -', VIEW_W / 2, VIEW_H - 24);
+}
+
 // Vinyl Ninja ships as a bundled, self-contained page (its own WebGL scene
 // via the same vendored lib/three.min.js the rest of the game already
 // ships, plus its title/HUD type embedded as base64 font data instead of a
@@ -11733,6 +11825,123 @@ function closeVinylNinjaApp(fromPopState) {
     history.back();
   } else {
     vinylNinjaHistoryPushed = false;
+  }
+}
+
+// KANGAIDEN -- "Shadow of the Shogun", a Shinobi-style side-scrolling
+// brawler (slash/shuriken combat vs. zombie and elite enemies) parked out
+// on the open grass in town, right alongside Connect 45s (see the town
+// map's `minigames` list above and MINIGAME_ACTIONS.kangaiden). Same
+// "full-screen DOM overlay with an <iframe>" pattern as chess/the beat
+// bot/the organ/mini golf/the blackbook/Gator Grooves/.../Digger above.
+//
+// Ships as a bundled, self-contained page (its own canvas game engine and
+// sprite atlases, the latter inlined as base64 data URIs directly in the
+// page rather than as separate image files, so there isn't even a
+// same-origin image request to make -- no external assets and no network
+// calls at all) at instruments/kangaiden/index.html -- the exact same
+// local-file pattern CHESS_APP_URL/BEAT_BOT_APP_URL/.../DIGGER_APP_URL use.
+// Being a same-origin local asset rather than a live remote site means it
+// loads and plays the same with or without a connection, so -- same as the
+// others -- there's no online/offline branching needed here either. Same
+// as Vinyl Ninja, this one shows a splash first (see
+// openKangaidenSplash()/drawKangaidenSplash() above) rather than opening
+// straight into the iframe -- openKangaidenApp() below is only called once
+// the player presses E or taps again from that splash.
+const KANGAIDEN_APP_URL = 'instruments/kangaiden/index.html';
+let kangaidenOverlayEl = null, kangaidenOverlayFrame = null;
+let kangaidenReturnState = 'play';
+let kangaidenHistoryPushed = false; // mirrors labHistoryPushed/.../vinylNinjaHistoryPushed -- see openKangaidenApp()/closeKangaidenApp()
+
+function createKangaidenOverlay() {
+  const style = document.createElement('style');
+  style.textContent = `
+    #kangaidenApp {
+      position: fixed; inset: 0; z-index: 1000;
+      background: #000;
+      display: none; flex-direction: column;
+    }
+    #kangaidenApp.open { display: flex; }
+    #kangaidenApp .kg-bar {
+      flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 10px 14px;
+      background: linear-gradient(#241a0e, #120d06);
+      border-bottom: 2px solid #e0b040;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    }
+    #kangaidenApp .kg-title {
+      color: #f4ecd8; font: bold 14px monospace; letter-spacing: 0.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #kangaidenApp .kg-close {
+      flex: 0 0 auto; cursor: pointer;
+      background: rgba(224,176,64,0.15);
+      border: 1.5px solid rgba(224,176,64,0.85);
+      color: #f4ecd8; border-radius: 8px;
+      padding: 7px 16px; font: bold 13px monospace;
+      -webkit-user-select: none; user-select: none;
+    }
+    #kangaidenApp .kg-close:active { background: rgba(224,176,64,0.4); }
+    #kangaidenApp iframe {
+      flex: 1 1 auto; width: 100%; border: 0; background: #000;
+    }
+  `;
+  document.head.appendChild(style);
+
+  kangaidenOverlayEl = document.createElement('div');
+  kangaidenOverlayEl.id = 'kangaidenApp';
+
+  const bar = document.createElement('div');
+  bar.className = 'kg-bar';
+  const title = document.createElement('div');
+  title.className = 'kg-title';
+  title.textContent = 'KANGAIDEN';
+  const closeBtn = document.createElement('div');
+  closeBtn.className = 'kg-close';
+  closeBtn.textContent = '\u2190 BACK TO BURLINGTON';
+  bindTap(closeBtn, closeKangaidenApp);
+  bar.appendChild(title);
+  bar.appendChild(closeBtn);
+
+  kangaidenOverlayFrame = document.createElement('iframe');
+  kangaidenOverlayFrame.setAttribute('allow', 'autoplay');
+
+  kangaidenOverlayEl.appendChild(bar);
+  kangaidenOverlayEl.appendChild(kangaidenOverlayFrame);
+  document.body.appendChild(kangaidenOverlayEl);
+}
+createKangaidenOverlay();
+
+// Opens the KANGAIDEN overlay and switches state to 'kangaidenApp'. Called
+// once the player presses E (or taps) from the splash (see
+// drawKangaidenSplash()/the 'kangaidenSplash' state handling in the input
+// loop) -- not directly from MINIGAME_ACTIONS.kangaiden, which opens the
+// splash first.
+function openKangaidenApp() {
+  kangaidenReturnState = kangaidenSplashReturnState;
+  kangaidenOverlayFrame.src = KANGAIDEN_APP_URL;
+  kangaidenOverlayEl.classList.add('open');
+  state = 'kangaidenApp';
+  // Same throwaway-history-entry trick as openInstrument()/openChessApp()/
+  // .../openVinylNinjaApp() above, so the browser/OS back gesture closes
+  // the KANGAIDEN overlay instead of leaving the game entirely.
+  history.pushState({ ricoKangaidenApp: true }, '');
+  kangaidenHistoryPushed = true;
+}
+
+// Tears the iframe back down and returns to ordinary gameplay in town.
+// fromPopState mirrors closeVinylNinjaApp()'s parameter -- true when
+// triggered by the browser's back button (whose history entry is already
+// consumed), so we must not call history.back() again in that case.
+function closeKangaidenApp(fromPopState) {
+  kangaidenOverlayEl.classList.remove('open');
+  kangaidenOverlayFrame.src = 'about:blank';
+  state = kangaidenReturnState;
+  if (!fromPopState && kangaidenHistoryPushed) {
+    kangaidenHistoryPushed = false;
+    history.back();
+  } else {
+    kangaidenHistoryPushed = false;
   }
 }
 
@@ -13343,6 +13552,8 @@ window.addEventListener('popstate', () => {
     closeConnectFourApp(true);
   } else if (state === 'syrupRoadsApp') {
     closeSyrupRoadsApp(true);
+  } else if (state === 'kangaidenApp') {
+    closeKangaidenApp(true);
   }
 });
 
@@ -13358,13 +13569,13 @@ canvas.addEventListener('pointerdown', (e) => {
     const vx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const vy = (e.clientY - rect.top) * (canvas.height / rect.height);
     handleLabTap(vx, vy);
-  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'circusMasterApp' || state === 'diggerApp' || state === 'pondApp' || state === 'connectFourApp' || state === 'syrupRoadsApp') {
+  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'circusMasterApp' || state === 'diggerApp' || state === 'pondApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'kangaidenApp') {
     // The DOM overlay sits on top of (and outside) the canvas while an
     // instrument/the chess app/the beat bot/the organ/mini golf/the
     // blackbook/Gator Grooves/Vinyl Snake/Bayou Break Station/Gator Jam
     // Slam/Swamp Cave Summer/VT Dirt/Dig Dash/Rico1200/Rico's Mini DAW/
     // Filter Lab/Vinyl Ninja/Circus Master/Digger/The Pool/Connect 45s/
-    // Syrup Roads is loaded, so a pointerdown
+    // Syrup Roads/KANGAIDEN is loaded, so a pointerdown
     // reaching the canvas itself means the overlay isn't up yet/already
     // closing -- ignore it rather than falling through to the generic
     // interactPressed=true below.
@@ -13554,6 +13765,13 @@ function update(dt) {
     // interactPressed via the generic pointerdown fallback) advances
     // straight into the DOM/iframe overlay.
     if (interactPressed) openVinylNinjaApp();
+  } else if (state === 'kangaidenSplash') {
+    // Splash before the actual KANGAIDEN iframe -- see
+    // drawKangaidenSplash()/openKangaidenSplash() and
+    // MINIGAME_ACTIONS.kangaiden. E (or a tap, which also sets
+    // interactPressed via the generic pointerdown fallback) advances
+    // straight into the DOM/iframe overlay.
+    if (interactPressed) openKangaidenApp();
   } else if (state === 'win') {
     if (interactPressed) state = 'play';
   } else if (state === 'portal') {
@@ -13710,6 +13928,13 @@ function update(dt) {
     // directly. buyPressed is still consumed here too so the on-screen [X]
     // touch button works while Vinyl Ninja is open.
     if (buyPressed) closeVinylNinjaApp();
+  } else if (state === 'kangaidenApp') {
+    // Same reasoning as 'labApp'/'chessApp'/.../'vinylNinjaApp' just above:
+    // the DOM overlay (see createKangaidenOverlay()) owns input while
+    // KANGAIDEN is loaded -- its own close button and [Esc] handle closing
+    // it directly. buyPressed is still consumed here too so the on-screen
+    // [X] touch button works while KANGAIDEN is open.
+    if (buyPressed) closeKangaidenApp();
   } else if (state === 'digDashApp') {
     // Same reasoning as 'labApp'/'chessApp'/'beatBotApp'/'organApp'/
     // 'minigolfApp'/'blackbookApp'/'crocSwampApp'/'vinylSnakeApp'/
@@ -14379,7 +14604,7 @@ function render(time) {
     drawSplash();
     return;
   }
-  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'circusMasterApp' || state === 'diggerApp' || state === 'pondApp' || state === 'connectFourApp' || state === 'syrupRoadsApp') {
+  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'circusMasterApp' || state === 'diggerApp' || state === 'pondApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'kangaidenApp') {
     // Same reasoning as the labApp overlay: a DOM element (the <video>,
     // see createCharacterIntroOverlay(), the chess <iframe>, see
     // createChessOverlay(), the beat bot <iframe>, see
@@ -14500,6 +14725,7 @@ function render(time) {
   if (state === 'record') drawRecordCard();
   if (state === 'labUnlock') drawLabUnlock();
   if (state === 'vinylNinjaSplash') drawVinylNinjaSplash();
+  if (state === 'kangaidenSplash') drawKangaidenSplash();
   if (state === 'win') drawWin();
   if (state === 'portal') drawPortalPopup();
   if (state === 'labLocked') drawLabLockedPopup();
