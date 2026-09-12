@@ -469,6 +469,33 @@ function drawGraffitiTags() {
     #btnSK8 { right: 86px; bottom: 114px; width: 40px; height: 40px; border-radius: 50%; font-size: 11px; }
     #btnExtras { right: 86px; bottom: 64px; width: 40px; height: 40px; border-radius: 50%; font-size: 16px; }
     #btnM { right: 86px; bottom: 14px; width: 40px; height: 40px; border-radius: 50%; font-size: 9px; }
+    /* TRICK button -- only ever shown while player.skating is true (see
+       syncTrickBtn(), called every frame from frame() same as
+       syncHotkeysHintBtn()), so it stays hidden the rest of the time
+       instead of permanently occupying a slot in the resting cluster.
+       Deliberately styled to stand apart from every other control here
+       (diamond shape via rotate(45deg) instead of the cluster's circles,
+       hot-pink instead of the cluster's neutral cream) so it visually
+       reads as a special/bonus action rather than another toggle. */
+    #btnTrick {
+      right: 14px; bottom: 154px; width: 46px; height: 46px;
+      border-radius: 10px;
+      transform: rotate(45deg);
+      background: rgba(255, 45, 170, 0.22);
+      border-color: rgba(255, 110, 205, 0.9);
+      display: none;
+    }
+    #btnTrick.visible { display: flex; }
+    #btnTrick:active {
+      background: rgba(255, 110, 205, 0.55);
+      border-color: rgba(255, 160, 220, 1);
+    }
+    #btnTrick .tc-trick-icon {
+      display: inline-block;
+      transform: rotate(-45deg);
+      font-size: 17px;
+      line-height: 1;
+    }
     #extrasPanel {
       position: absolute;
       right: 86px; bottom: 162px;
@@ -10357,6 +10384,11 @@ function bindTap(el, onTap) {
 // createTouchControls) \u2014 four separate elements proved more reliable for
 // touch input than a single drag-tracked zone.
 
+// Set by createTouchControls() below; read by syncTrickBtn() so the TRICK
+// button's visibility can be toggled every frame from frame(), same
+// pattern as hotkeysHintBtnEl/syncHotkeysHintBtn().
+let trickBtnEl = null;
+
 function createTouchControls() {
   const wrap = document.createElement('div');
   wrap.id = 'touchControls';
@@ -10448,6 +10480,22 @@ function createTouchControls() {
   });
   wrap.appendChild(skBtn);
 
+  // TRICK — same action as the desktop [T] hot key (triggerTrick()), but
+  // only ever useful while riding the board, so it's hidden/shown by
+  // syncTrickBtn() (called every frame from frame()) rather than sitting
+  // in the resting cluster all the time like SK8/X/MUTE do. Icon text is
+  // wrapped in its own span and counter-rotated so it reads upright inside
+  // the diamond-rotated button (see #btnTrick / .tc-trick-icon CSS above).
+  const trickBtn = document.createElement('div');
+  trickBtn.id = 'btnTrick'; trickBtn.className = 'tc-btn';
+  const trickIcon = document.createElement('span');
+  trickIcon.className = 'tc-trick-icon';
+  trickIcon.textContent = '\u2726'; // ✦ four-pointed star, distinct from every other button's plain letter/glyph
+  trickBtn.appendChild(trickIcon);
+  bindTap(trickBtn, () => { triggerTrick(); music.start(); });
+  wrap.appendChild(trickBtn);
+  trickBtnEl = trickBtn;
+
   // "Extras" — a small popup menu (cold brew, iced tea) so the resting
   // button cluster stays minimal instead of growing a permanent button
   // for every toggle.
@@ -10525,6 +10573,21 @@ function syncHotkeysHintBtn() {
   if (shouldShow !== hotkeysHintVisible) {
     hotkeysHintVisible = shouldShow;
     if (hotkeysHintBtnEl) hotkeysHintBtnEl.classList.toggle('visible', shouldShow);
+  }
+}
+
+// Same toggle-only-on-change pattern as syncHotkeysHintBtn() above, so this
+// can also be called unconditionally from frame() every tick. Shown only
+// while actually riding the board during play -- the same condition
+// triggerTrick() itself checks -- so it appears the instant player.skating
+// flips true (from [B], the on-screen SK8 button, or falling off outside
+// terrain) and disappears the instant it flips back.
+let trickBtnVisible = null;
+function syncTrickBtn() {
+  const shouldShow = state === 'play' && player.skating;
+  if (shouldShow !== trickBtnVisible) {
+    trickBtnVisible = shouldShow;
+    if (trickBtnEl) trickBtnEl.classList.toggle('visible', shouldShow);
   }
 }
 
@@ -13803,6 +13866,7 @@ function frame(now) {
   update(dt);
   render(now / 1000);
   syncHotkeysHintBtn();
+  syncTrickBtn();
   requestAnimationFrame(frame);
 }
 
