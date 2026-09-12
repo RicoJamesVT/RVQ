@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Connect 45s</title>
+<style>
+  html {
+    margin: 0;
+    height: 100%;
+    background: #120d06;
+  }
+  body {
+    margin: 0;
+    min-height: 100%;
+    min-height: 100dvh; /* dynamic viewport height: accounts for mobile browser chrome */
+    background: #120d06;
+    overflow-x: hidden;
+    overflow-y: auto; /* if the game is ever taller than the viewport, scroll to it instead of clipping it */
+    -webkit-overflow-scrolling: touch;
+  }
+  /* min-height (not height) lets this grow taller than the viewport when needed, which is what
+     makes the body's scroll above actually kick in rather than silently clipping content. */
+  #game-slot { min-height: 100%; min-height: 100dvh; }
+</style>
+</head>
+<body>
+  <div id="game-slot"></div>
+
+  <!-- Self-contained, no external requests -- see connect-four.js. Loaded
+       as a same-origin local asset by the main game's overlay <iframe>
+       (see CONNECT_FOUR_APP_URL/createConnectFourOverlay() in game.js), so
+       it works identically online or fully offline. -->
+  <script src="connect-four.js"></script>
+  <script>
+    const slot = document.getElementById('game-slot');
+    let game = null;
+
+    // The main game's overlay chrome already has its own "BACK TO TOWN"
+    // button (see createConnectFourOverlay() in game.js), so onBack here
+    // doesn't need to leave this page -- it just tears down the current
+    // game and mounts a fresh instance, which drops the player back on
+    // Connect 45s' own mode-select screen (gameMode resets to null on a
+    // fresh mount) instead of leaving the in-game "\u2190 Back" button inert.
+    function mount() {
+      game = initConnectFourGame(slot, {
+        themeColor: '#8b5cf6',
+        onBack: () => {
+          game.destroy();
+          mount();
+        },
+      });
+    }
+
+    mount();
+  </script>
+</body>
+</html>
