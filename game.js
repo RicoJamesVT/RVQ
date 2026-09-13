@@ -3894,9 +3894,9 @@ function createGreenDoorCypherGame() {
       'This room gets better when everybody adds to it.',
     ] },
     { id: 'kanga', name: 'KANGA', img: kangaImg, accent: '#4ad0ff', lines: [
-      'I got the break ready. You bring the voice.',
-      'That\'s the pocket. Stay there and let it breathe.',
-      'Pass the mic. Somebody else got something to say.',
+      'I don\'t rhyme, I cut. Sit in this pocket, I got the breaks.',
+      'That\'s the illest cut in New England right there. Feel the blend.',
+      'Keep the room moving -- I\'ll ride the wax under whoever\'s next.',
     ] },
     { id: 'zach', name: 'SKYSPLITTERINK', img: zachImg, accent: '#8cff5f', lines: [
       'EQ the noise, keep the signal. That applies to life too.',
@@ -4120,7 +4120,11 @@ function createGreenDoorCypherGame() {
     ctx.textAlign='center'; ctx.fillStyle=n.accent; ctx.font='bold 18px monospace'; ctx.fillText(n.name,cx,245);
     const line=n.lines[Math.min(n.lines.length-1,Math.floor(npcStep/4))];
     ctx.fillStyle='#f4ecd8'; ctx.font='14px monospace'; ctx.fillText(line,cx,275);
-    ctx.fillStyle='#8b8290'; ctx.font='12px monospace'; ctx.fillText('THE CROWD IS LISTENING...',cx,520);
+    // Kanga's a turntablist, not an MC -- he's cutting up the break here,
+    // not spitting a verse, so his turn gets its own caption instead of
+    // the generic "crowd is listening" one used for the rap turns.
+    ctx.fillStyle='#8b8290'; ctx.font='12px monospace';
+    ctx.fillText(n.id==='kanga' ? 'THE ROOM IS LOCKED ON THE CUT...' : 'THE CROWD IS LISTENING...',cx,520);
     const p=Math.min(1,npcStep/NPC_STEPS); ctx.fillStyle='rgba(244,236,216,0.12)';ctx.fillRect(300,540,360,7);ctx.fillStyle=n.accent;ctx.fillRect(300,540,360*p,7);
   }
 
@@ -4134,6 +4138,10 @@ function createGreenDoorCypherGame() {
       ctx.strokeStyle=active?n.accent:'#4a414f';ctx.lineWidth=active?3:1;ctx.strokeRect(x-105,330,210,110);
       sprite(n.img,x,420,90,80,false);
       ctx.fillStyle=active?n.accent:'#f4ecd8';ctx.font='bold 13px monospace';ctx.fillText(n.name,x,462);
+      // Kanga's the room's turntablist, not another MC -- label his role
+      // so the lineup reads as "cuts vs. bars" rather than three rappers.
+      ctx.fillStyle=active?n.accent:'#8b8290';ctx.font='10px monospace';
+      ctx.fillText(n.id==='kanga' ? 'ON THE CUT' : 'ON THE MIC', x, 477);
     });
     ctx.fillStyle='#8b8290';ctx.font='12px monospace';ctx.fillText('◀ ▶ CHOOSE     E / TAP TO PASS THE MIC',cx,505);
   }
@@ -9933,7 +9941,7 @@ const shops = {
     npcs: [
       { id: 'kanga', tx: 6, ty: 4, name: 'KANGA', sprite: 'kanga',
         lines: [
-          'Yo — Kanga on the ones and twos. Got a crate of dubs right here, all killer, no filler.',
+          'Yo — Kanga on the ones and twos. Illest cuts in New England, no contest. Got a crate of dubs right here, all killer, no filler.',
           'That frog record on top? Don\'t ask, don\'t sleep on it either. Certified heat.',
           () => collected.has(recKey('town', 'elm'))
             ? 'Hold up — you actually pulled Elm Street Funk out of our own crates? Right under my nose. Respect.'
