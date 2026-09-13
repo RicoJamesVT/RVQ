@@ -3887,21 +3887,56 @@ function createGreenDoorCypherGame() {
     'WHAT YOU BELIEVE?',
     'WHO YOU DO IT FOR?',
   ];
+  // The full Green Door house roster -- every emcee, DJ, and studio hand
+  // who pulls up to the cypher. `role: 'dj'` marks the two turntablists
+  // (Kanga, Big Dog), whose turn is spent cutting the break rather than
+  // spitting a verse -- see the role check in drawNPC()/drawPass() below.
+  // Everybody else raps when the mic reaches them.
   const NPCS = [
-    { id: 'truth', name: 'TRUTH', img: truthImg, accent: '#e0a030', lines: [
-      'I came here to hear people become themselves.',
+    { id: 'truth', name: 'THA TRUTH', img: truthImg, accent: '#e0a030', lines: [
+      'This is my house, and this room runs on love, energy, and community.',
       'You don\'t have to be perfect. Just bring something.',
-      'This room gets better when everybody adds to it.',
+      'This room gets better when everybody adds to it. That\'s the whole point.',
     ] },
-    { id: 'kanga', name: 'KANGA', img: kangaImg, accent: '#4ad0ff', lines: [
+    { id: 'kanga', name: 'DJ KANGA', img: kangaImg, accent: '#4ad0ff', role: 'dj', lines: [
       'I don\'t rhyme, I cut. Sit in this pocket, I got the breaks.',
       'That\'s the illest cut in New England right there. Feel the blend.',
-      'Keep the room moving -- I\'ll ride the wax under whoever\'s next.',
+      'Turntablist of the town -- I\'ll ride the wax under whoever\'s next.',
     ] },
-    { id: 'zach', name: 'SKYSPLITTERINK', img: zachImg, accent: '#8cff5f', lines: [
+    { id: 'sk1', name: 'SK1', img: keeperImgs['SK1'], accent: '#ff6b4a', lines: [
+      'Third Thursdays is my night -- I host it, and I keep this cypher grounded.',
+      'I get on the mic too when it\'s my turn, and I represent the culture right.',
+      'Freestyle\'s a responsibility, not just a flex. I take it seriously.',
+    ] },
+    { id: 'bigdog', name: 'BIGDOG', img: keeperImgs['BIGDOG'], accent: '#e04a4a', role: 'dj', lines: [
+      'Prime cuts, rare gems -- that\'s the Big Dog selection, no filler in the crate.',
+      'Reggae anthems into classic 90s hip hop -- I ride the whole history in one set.',
+      'Keep the room moving, I got the blend for whatever this circle needs next.',
+    ] },
+    { id: 'mavstar', name: 'MAVSTAR', img: mavstarImg, accent: '#b98cff', lines: [
+      'Mavstar. I\'m a staple in any cypher -- always hungry to rap.',
+      'Doesn\'t matter what room it is, put a mic near me and I\'m rapping.',
+      'Perfect ain\'t a destination, it\'s the whole walk. Let\'s go.',
+    ] },
+    { id: 'trav', name: 'TRAV', img: travImg, accent: '#5fd6c8', lines: [
+      'Trav. Probably the most experienced cypher rat in this town.',
+      'I\'m always in and out of cyphers -- rappin\' and wildin\', that\'s just how I move.',
+      'This circle\'s basically my living room at this point.',
+    ] },
+    { id: 'boxguts', name: 'BOXGUTS', img: boxgutsImg, accent: '#ff5fa0', lines: [
+      'Boxguts. Bars on bars on bars -- I don\'t write filler.',
+      'Ferocious on the mic, always have been.',
+      'Come correct or don\'t come at all. That\'s the only rule I follow.',
+    ] },
+    { id: 'humble', name: 'HUMBLE', img: humbleImg, accent: '#ffe14a', lines: [
+      'Humble. Around here they call me the freestyle master -- the freestyle wizard.',
+      'I don\'t write it down. It just comes when the beat hits right.',
+      'This is what hip hop expression and freestyle rhyming is supposed to look like.',
+    ] },
+    { id: 'zach', name: 'SKYSPLITTER', img: zachImg, accent: '#8cff5f', lines: [
+      'Engineer and producer -- I do all the mixing and engineering work here at Green Door.',
       'EQ the noise, keep the signal. That applies to life too.',
-      'The best sessions happen when people listen to each other.',
-      'I\'m saving this one. Green Door was built for nights like this.',
+      'I\'m known to spit the occasional rap myself. Don\'t sleep on the engineer.',
     ] },
   ];
 
@@ -4120,11 +4155,12 @@ function createGreenDoorCypherGame() {
     ctx.textAlign='center'; ctx.fillStyle=n.accent; ctx.font='bold 18px monospace'; ctx.fillText(n.name,cx,245);
     const line=n.lines[Math.min(n.lines.length-1,Math.floor(npcStep/4))];
     ctx.fillStyle='#f4ecd8'; ctx.font='14px monospace'; ctx.fillText(line,cx,275);
-    // Kanga's a turntablist, not an MC -- he's cutting up the break here,
-    // not spitting a verse, so his turn gets its own caption instead of
-    // the generic "crowd is listening" one used for the rap turns.
+    // DJs (Kanga, Big Dog) are turntablists, not MCs -- they're cutting up
+    // the break here, not spitting a verse, so their turn gets its own
+    // caption instead of the generic "crowd is listening" one used for the
+    // rap turns.
     ctx.fillStyle='#8b8290'; ctx.font='12px monospace';
-    ctx.fillText(n.id==='kanga' ? 'THE ROOM IS LOCKED ON THE CUT...' : 'THE CROWD IS LISTENING...',cx,520);
+    ctx.fillText(n.role==='dj' ? 'THE ROOM IS LOCKED ON THE CUT...' : 'THE CROWD IS LISTENING...',cx,520);
     const p=Math.min(1,npcStep/NPC_STEPS); ctx.fillStyle='rgba(244,236,216,0.12)';ctx.fillRect(300,540,360,7);ctx.fillStyle=n.accent;ctx.fillRect(300,540,360*p,7);
   }
 
@@ -4132,17 +4168,24 @@ function createGreenDoorCypherGame() {
     drawTopHud();
     ctx.textAlign='center'; ctx.fillStyle='#e0a030'; ctx.font='bold 22px monospace'; ctx.fillText('PASS THE MIC',cx,255);
     ctx.fillStyle='#8b8290';ctx.font='13px monospace';ctx.fillText('WHO DO YOU WANT TO HEAR NEXT?',cx,280);
-    NPCS.forEach((n,i)=>{
-      const x=220+i*260; const active=i===passIndex;
+    // Nine-deep roster now, so the pass screen is a three-wide carousel
+    // centered on passIndex rather than a fixed row of three: the middle
+    // card is always the highlighted/active choice, and ◀ ▶ scrolls the
+    // whole lineup around it (wrapping at the ends).
+    for (let i=-1; i<=1; i++) {
+      const npcIdx = (passIndex + i + NPCS.length) % NPCS.length;
+      const n = NPCS[npcIdx];
+      const x = cx + i*260; const active = i===0;
       ctx.fillStyle=active?'#30273a':'#19151e';ctx.fillRect(x-105,330,210,110);
       ctx.strokeStyle=active?n.accent:'#4a414f';ctx.lineWidth=active?3:1;ctx.strokeRect(x-105,330,210,110);
       sprite(n.img,x,420,90,80,false);
       ctx.fillStyle=active?n.accent:'#f4ecd8';ctx.font='bold 13px monospace';ctx.fillText(n.name,x,462);
-      // Kanga's the room's turntablist, not another MC -- label his role
-      // so the lineup reads as "cuts vs. bars" rather than three rappers.
+      // DJs (Kanga, Big Dog) are the room's turntablists, not MCs -- label
+      // their role so the lineup reads as "cuts vs. bars", not nine rappers.
       ctx.fillStyle=active?n.accent:'#8b8290';ctx.font='10px monospace';
-      ctx.fillText(n.id==='kanga' ? 'ON THE CUT' : 'ON THE MIC', x, 477);
-    });
+      ctx.fillText(n.role==='dj' ? 'ON THE CUT' : 'ON THE MIC', x, 477);
+    }
+    ctx.fillStyle='#8b8290';ctx.font='11px monospace';ctx.fillText(`${passIndex+1} / ${NPCS.length}`,cx,300);
     ctx.fillStyle='#8b8290';ctx.font='12px monospace';ctx.fillText('◀ ▶ CHOOSE     E / TAP TO PASS THE MIC',cx,505);
   }
 
@@ -4191,9 +4234,13 @@ function createGreenDoorCypherGame() {
         judgeChoice(idx); return;
       }
       if (phase === 'pass') {
+        // Tapping the carousel: left/right cards shift the selection over
+        // one (matching ◀ ▶), tapping the centered/active card passes the
+        // mic to whoever is currently highlighted.
         if (vy>=320 && vy<=470) {
-          const idx = Math.max(0,Math.min(2,Math.floor(vx/320)));
-          passIndex=idx; passMic();
+          if (vx < cx-130) { choosePass(-1); }
+          else if (vx > cx+130) { choosePass(1); }
+          else { passMic(); }
         }
       }
     },
