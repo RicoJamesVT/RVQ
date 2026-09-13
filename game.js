@@ -1012,6 +1012,11 @@ const MINIGAME_ACTIONS = {
   // chess just above (own DOM/iframe overlay, not a canvas mini-game). See
   // openBeatBotApp()/createBeatBotOverlay() below.
   beatbot: () => openBeatBotApp(),
+  // Green Door Cypher -- the studio's community-centered flagship experience.
+  // Unlike the competitive Mic Drop cabinet at the comedy club, this is a
+  // collaborative in-world cypher: create, pass the mic, build the room's
+  // vibe, then leave a memory in the Blackbook.
+  cypher: () => enterMinigame(createGreenDoorCypherGame()),
   // The church street organ -- a gospel drawbar organ tucked into the
   // church's (very much not a church) interior. Same "full standalone web
   // app, not a canvas mini-game" shape as chess/beatbot just above (own
@@ -3846,6 +3851,409 @@ function micDropTierIndex(hype) {
   let idx = 0;
   for (let i = 0; i < MIC_DROP_TIERS.length; i++) if (hype >= MIC_DROP_TIERS[i].min) idx = i;
   return idx;
+}
+
+// ---- Green Door Cypher ------------------------------------------------------
+// The flagship Green Door experience: a collaborative, non-elimination
+// freestyle cypher. The player walks into the circle, chooses HOW they want
+// to express themselves (MC is the first fully playable discipline), builds a
+// verse by selecting words on the beat, passes the mic to a community member,
+// and finishes with a shared-room celebration. The game deliberately has no
+// "YOU LOSE" state: a missed beat is simply a stumble, and the crowd encourages
+// another try. A small Blackbook memory is persisted in localStorage when the
+// night ends so the studio remembers that the player showed up.
+function createGreenDoorCypherGame() {
+  const cx = VIEW_W / 2;
+  const cy = VIEW_H / 2;
+  const BPM = 94;
+  const STEP = 60 / BPM / 2; // eighth-note pulse; forgiving and musical
+  const BEAT_WINDOW = 0.23;
+  const TURN_STEPS = 24; // ~7.7 seconds of player flow
+  const NPC_STEPS = 12;
+
+  const WORD_SETS = [
+    ['FAMILY', 'FIRE', 'FUTURE'],
+    ['CREATE', 'RISE', 'GRIND'],
+    ['VOICE', 'VISION', 'PEACE'],
+    ['STREET', 'DREAM', 'TOGETHER'],
+    ['LEARN', 'BUILD', 'SHARE'],
+    ['HEART', 'HOME', 'HOPE'],
+    ['PASS', 'MIC', 'LOVE'],
+    ['NEVER', 'STOP', 'GROW'],
+  ];
+  const PROMPTS = [
+    'WHERE YOU FROM?',
+    'WHAT YOU BUILDING?',
+    'WHAT YOU BELIEVE?',
+    'WHO YOU DO IT FOR?',
+  ];
+  const NPCS = [
+    { id: 'truth', name: 'TRUTH', img: truthImg, accent: '#e0a030', lines: [
+      'I came here to hear people become themselves.',
+      'You don\'t have to be perfect. Just bring something.',
+      'This room gets better when everybody adds to it.',
+    ] },
+    { id: 'kanga', name: 'KANGA', img: kangaImg, accent: '#4ad0ff', lines: [
+      'I got the break ready. You bring the voice.',
+      'That\'s the pocket. Stay there and let it breathe.',
+      'Pass the mic. Somebody else got something to say.',
+    ] },
+    { id: 'zach', name: 'SKYSPLITTERINK', img: zachImg, accent: '#8cff5f', lines: [
+      'EQ the noise, keep the signal. That applies to life too.',
+      'The best sessions happen when people listen to each other.',
+      'I\'m saving this one. Green Door was built for nights like this.',
+    ] },
+  ];
+
+  let phase = 'intro'; // intro | choose | player | npc | pass | finale | done
+  let phaseTimer = 0;
+  let playerStep = 0;
+  let npcStep = 0;
+  let turnIndex = 0;
+  let passIndex = 0;
+  let vibe = 42;
+  let combo = 0;
+  let peakVibe = vibe;
+  let playerHits = 0;
+  let playerMisses = 0;
+  let lastJudge = '';
+  let judgeTimer = 0;
+  let chosenWords = [];
+  let currentPrompt = PROMPTS[0];
+  let wordSetIndex = 0;
+  let lastBeat = -1;
+  let audioNext = 0;
+  let audioStep = 0;
+  let saved = false;
+  let blackbookCount = 0;
+  try { blackbookCount = Number(localStorage.getItem('greenDoorCypherCount') || 0); } catch (e) { blackbookCount = 0; }
+  let finalMessage = '';
+  let celebration = 0;
+  const prev = { left:false, up:false, right:false };
+
+  function setPhase(next) {
+    phase = next;
+    phaseTimer = 0;
+    if (next === 'player') {
+      playerStep = 0; chosenWords = []; wordSetIndex = 0; currentPrompt = PROMPTS[Math.floor(Math.random()*PROMPTS.length)];
+      startAudio();
+    }
+    if (next === 'npc') npcStep = 0;
+    if (next === 'pass') { passIndex = 0; }
+    if (next === 'finale') { celebration = 0; finalMessage = vibe >= 78 ? 'THAT\'S GREEN DOOR.' : 'THAT\'S WHAT THE CIRCLE IS FOR.'; }
+  }
+
+  function startAudio() {
+    music.start();
+    audioNext = music.ctx ? music.ctx.currentTime + 0.06 : 0;
+    audioStep = 0;
+  }
+
+  function beatNow() {
+    return music.ctx ? music.ctx.currentTime : performance.now()/1000;
+  }
+
+  function scheduleBeat() {
+    if (!music.ctx) return;
+    const now = music.ctx.currentTime;
+    if (!audioNext) audioNext = now + 0.05;
+    while (audioNext < now + 0.8) {
+      const t = audioNext;
+      const s = audioStep % 16;
+      if ([0, 3, 8, 10].includes(s)) music.kick(t);
+      if ([4, 12].includes(s)) music.snare(t);
+      music.hat(t, s === 14, s % 2 ? 0.045 : 0.075);
+      if (s === 0 || s === 8) music.note(t, 'triangle', 43, STEP*1.8, 0.045, 0.04);
+      if (s === 6 || s === 14) music.note(t, 'square', 67, STEP*0.6, 0.025, 0.02);
+      audioNext += STEP;
+      audioStep++;
+    }
+  }
+
+  function timingOffset() {
+    const t = beatNow();
+    const local = (t - (audioNext - STEP));
+    const wrapped = ((local + STEP/2) % STEP + STEP) % STEP - STEP/2;
+    return Math.abs(wrapped);
+  }
+
+  function judgeChoice(index) {
+    if (phase !== 'player') return;
+    const off = timingOffset();
+    let label = 'KEEP GOING', gain = 1;
+    if (off <= 0.075) { label = 'PERFECT'; gain = 5; }
+    else if (off <= 0.14) { label = 'NICE'; gain = 3; }
+    else if (off <= BEAT_WINDOW) { label = 'GOOD'; gain = 2; }
+    else { label = 'SHAKE IT OFF'; gain = -2; }
+
+    if (gain > 0) {
+      combo++;
+      playerHits++;
+      vibe = Math.min(100, vibe + gain + Math.min(3, Math.floor(combo/4)));
+      chosenWords.push(WORD_SETS[wordSetIndex % WORD_SETS.length][index]);
+      wordSetIndex++;
+    } else {
+      combo = 0;
+      playerMisses++;
+      vibe = Math.max(10, vibe - 1);
+    }
+    peakVibe = Math.max(peakVibe, vibe);
+    lastJudge = label;
+    judgeTimer = 0.7;
+    playerStep++;
+    if (playerStep >= TURN_STEPS) setPhase('npc');
+  }
+
+  function choosePass(delta) {
+    passIndex = (passIndex + delta + NPCS.length) % NPCS.length;
+  }
+
+  function passMic() {
+    turnIndex = passIndex;
+    setPhase('npc');
+  }
+
+  function persistBlackbook() {
+    if (saved) return;
+    saved = true;
+    blackbookCount++;
+    const entry = {
+      count: blackbookCount,
+      date: new Date().toISOString().slice(0,10),
+      vibe: Math.round(vibe),
+      peak: Math.round(peakVibe),
+      words: chosenWords.slice(-8),
+      with: NPCS[turnIndex].name,
+      prompt: currentPrompt,
+    };
+    try {
+      localStorage.setItem('greenDoorCypherCount', String(blackbookCount));
+      localStorage.setItem('greenDoorCypherLast', JSON.stringify(entry));
+    } catch (e) { /* private/incognito storage may be unavailable; the run still completes */ }
+  }
+
+  function sprite(img, x, y, w, h, sheet=false) {
+    if (!img || !img.complete || !img.naturalWidth) return false;
+    if (sheet) {
+      const dirRow = 1, frame = Math.floor(performance.now()/160)%3;
+      ctx.drawImage(img, frame*SHEET_CW, dirRow*SHEET_CH, SHEET_CW, SHEET_CH, x-w/2, y-h, w, h);
+    } else {
+      const scale = Math.min(w/img.naturalWidth, h/img.naturalHeight);
+      const dw = img.naturalWidth*scale, dh = img.naturalHeight*scale;
+      ctx.drawImage(img, x-dw/2, y-dh, dw, dh);
+    }
+    return true;
+  }
+
+  function drawCrowd(count, energy) {
+    for (let i=0; i<count; i++) {
+      const px = 48 + i * ((VIEW_W-96)/Math.max(1,count-1));
+      const bob = Math.sin(performance.now()/180 + i*1.7) * energy;
+      ctx.fillStyle = i%3===0 ? '#241c28' : '#18131f';
+      ctx.beginPath(); ctx.arc(px, 132+bob, 11, 0, Math.PI*2); ctx.fill();
+      ctx.fillRect(px-9, 142+bob, 18, 34);
+      if (energy > 3 && i%4===0) {
+        ctx.fillRect(px-16, 135+bob, 3, 28);
+        ctx.fillRect(px+13, 135+bob, 3, 28);
+      }
+    }
+  }
+
+  function drawRoom(time) {
+    ctx.fillStyle = '#0b0811'; ctx.fillRect(0,0,VIEW_W,VIEW_H);
+    ctx.fillStyle = '#16121a'; ctx.fillRect(0,80,VIEW_W,520);
+    // Back wall mural / Green Door identity.
+    ctx.fillStyle = '#241b2c'; ctx.fillRect(28,28,VIEW_W-56,120);
+    ctx.strokeStyle = '#e0a030'; ctx.lineWidth = 2; ctx.strokeRect(28,28,VIEW_W-56,120);
+    ctx.textAlign='center'; ctx.fillStyle='#f4ecd8'; ctx.font='bold 25px monospace'; ctx.fillText('GREEN DOOR STUDIO', cx, 62);
+    ctx.fillStyle='#e0a030'; ctx.font='bold 13px monospace'; ctx.fillText('CREATE  •  LEARN  •  SHARE  •  PASS THE MIC', cx, 88);
+    drawCrowd(10, phase==='finale' ? 8 : (vibe>70 ? 5 : 2));
+    // floor circle
+    ctx.fillStyle='rgba(224,160,48,0.08)'; ctx.beginPath(); ctx.ellipse(cx,410,270,120,0,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle='rgba(224,160,48,0.35)'; ctx.lineWidth=3; ctx.beginPath(); ctx.ellipse(cx,410,270,120,0,0,Math.PI*2); ctx.stroke();
+    // mic stand
+    ctx.strokeStyle='#d7d0bd'; ctx.lineWidth=4; ctx.beginPath(); ctx.moveTo(cx,430); ctx.lineTo(cx,275); ctx.stroke();
+    ctx.fillStyle='#d7d0bd'; ctx.beginPath(); ctx.arc(cx,267,9,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#111'; ctx.fillRect(cx-48,430,cx*0+96,7);
+    // side signs
+    ctx.fillStyle='#e0a030'; ctx.font='bold 12px monospace'; ctx.textAlign='left'; ctx.fillText('THE CIRCLE',50,560);
+    ctx.fillStyle='#8b8290'; ctx.font='11px monospace'; ctx.fillText('NO WRONG WAY TO SHOW UP',50,578);
+    ctx.textAlign='right'; ctx.fillStyle='#e0a030'; ctx.font='bold 12px monospace'; ctx.fillText('BLACKBOOK',910,560);
+    ctx.fillStyle='#8b8290'; ctx.font='11px monospace'; ctx.fillText(`${blackbookCount} NIGHTS SAVED`,910,578);
+  }
+
+  function drawTopHud() {
+    ctx.textAlign='left'; ctx.fillStyle='#f4ecd8'; ctx.font='bold 15px monospace'; ctx.fillText('GREEN DOOR CYPHER',34,190);
+    ctx.fillStyle='#8b8290'; ctx.font='12px monospace'; ctx.fillText(currentPrompt,34,211);
+    ctx.textAlign='right'; ctx.fillStyle='#e0a030'; ctx.font='bold 14px monospace'; ctx.fillText(`VIBE ${Math.round(vibe)}`,926,190);
+    ctx.fillStyle='rgba(244,236,216,0.12)'; ctx.fillRect(650,200,276,8);
+    ctx.fillStyle=vibe>=70?'#8cff5f':'#e0a030'; ctx.fillRect(650,200,276*(vibe/100),8);
+  }
+
+  function drawPlayerTurn() {
+    drawTopHud();
+    sprite(CHARACTERS[selectedCharacter].img, cx, 415, 70, 112, true);
+    ctx.textAlign='center';
+    ctx.fillStyle='#f4ecd8'; ctx.font='bold 16px monospace'; ctx.fillText('YOUR TURN',cx,250);
+    ctx.fillStyle='#8b8290'; ctx.font='12px monospace'; ctx.fillText('HIT A WORD ON THE BEAT — THERE IS NO WRONG ANSWER',cx,270);
+    const words=WORD_SETS[wordSetIndex%WORD_SETS.length];
+    const xs=[cx-190,cx,cx+190];
+    for(let i=0;i<3;i++){
+      const pulse=1+0.035*Math.sin(performance.now()/110 + i);
+      ctx.save(); ctx.translate(xs[i],350); ctx.scale(pulse,pulse);
+      ctx.fillStyle=i===0?'#2c2434':i===1?'#332b38':'#29263a'; ctx.fillRect(-120,-34,240,68);
+      ctx.strokeStyle='#e0a030'; ctx.lineWidth=2; ctx.strokeRect(-120,-34,240,68);
+      ctx.fillStyle='#f4ecd8'; ctx.font='bold 18px monospace'; ctx.fillText(words[i],0,7);
+      ctx.restore();
+    }
+    ctx.fillStyle='#8b8290'; ctx.font='11px monospace'; ctx.fillText('◀ 1 / A     ▲ 2 / W     3 / D ▶',cx,465);
+    if(lastJudge && judgeTimer>0){
+      ctx.fillStyle=lastJudge==='SHAKE IT OFF'?'#c06a7d':'#8cff5f'; ctx.font='bold 24px monospace'; ctx.fillText(lastJudge,cx,515);
+    }
+    if(combo>1){ctx.fillStyle='#e0a030';ctx.font='bold 14px monospace';ctx.fillText(`FLOW x${combo}`,cx,540);}
+  }
+
+  function drawNPC() {
+    drawTopHud();
+    const n=NPCS[turnIndex];
+    sprite(n.img,cx,415,150,150,false);
+    ctx.textAlign='center'; ctx.fillStyle=n.accent; ctx.font='bold 18px monospace'; ctx.fillText(n.name,cx,245);
+    const line=n.lines[Math.min(n.lines.length-1,Math.floor(npcStep/4))];
+    ctx.fillStyle='#f4ecd8'; ctx.font='14px monospace'; ctx.fillText(line,cx,275);
+    ctx.fillStyle='#8b8290'; ctx.font='12px monospace'; ctx.fillText('THE CROWD IS LISTENING...',cx,520);
+    const p=Math.min(1,npcStep/NPC_STEPS); ctx.fillStyle='rgba(244,236,216,0.12)';ctx.fillRect(300,540,360,7);ctx.fillStyle=n.accent;ctx.fillRect(300,540,360*p,7);
+  }
+
+  function drawPass() {
+    drawTopHud();
+    ctx.textAlign='center'; ctx.fillStyle='#e0a030'; ctx.font='bold 22px monospace'; ctx.fillText('PASS THE MIC',cx,255);
+    ctx.fillStyle='#8b8290';ctx.font='13px monospace';ctx.fillText('WHO DO YOU WANT TO HEAR NEXT?',cx,280);
+    NPCS.forEach((n,i)=>{
+      const x=220+i*260; const active=i===passIndex;
+      ctx.fillStyle=active?'#30273a':'#19151e';ctx.fillRect(x-105,330,210,110);
+      ctx.strokeStyle=active?n.accent:'#4a414f';ctx.lineWidth=active?3:1;ctx.strokeRect(x-105,330,210,110);
+      sprite(n.img,x,420,90,80,false);
+      ctx.fillStyle=active?n.accent:'#f4ecd8';ctx.font='bold 13px monospace';ctx.fillText(n.name,x,462);
+    });
+    ctx.fillStyle='#8b8290';ctx.font='12px monospace';ctx.fillText('◀ ▶ CHOOSE     E / TAP TO PASS THE MIC',cx,505);
+  }
+
+  function drawFinale() {
+    drawTopHud();
+    const pulse=1+0.03*Math.sin(performance.now()/90);
+    ctx.save();ctx.translate(cx,335);ctx.scale(pulse,pulse);
+    ctx.fillStyle='#e0a030';ctx.font='bold 34px monospace';ctx.fillText(finalMessage,0,0);ctx.restore();
+    ctx.fillStyle='#f4ecd8';ctx.font='15px monospace';ctx.fillText('Everybody brought something. Nobody had to be perfect.',cx,385);
+    ctx.fillStyle='#8cff5f';ctx.font='bold 15px monospace';ctx.fillText('PASS THE MIC.',cx,420);
+    // little celebratory rays
+    ctx.strokeStyle='rgba(224,160,48,0.55)';ctx.lineWidth=2;
+    for(let i=0;i<12;i++){const a=i*Math.PI/6+performance.now()/2000;ctx.beginPath();ctx.moveTo(cx+Math.cos(a)*120,335+Math.sin(a)*65);ctx.lineTo(cx+Math.cos(a)*190,335+Math.sin(a)*105);ctx.stroke();}
+  }
+
+  function drawDone() {
+    ctx.fillStyle='#0b0811';ctx.fillRect(0,0,VIEW_W,VIEW_H);
+    ctx.fillStyle='#f4ecd8';ctx.textAlign='center';ctx.font='bold 25px monospace';ctx.fillText('BLACKBOOK ENTRY',cx,115);
+    ctx.fillStyle='#e0a030';ctx.font='bold 17px monospace';ctx.fillText('GREEN DOOR CYPHER',cx,150);
+    ctx.fillStyle='#8b8290';ctx.font='12px monospace';ctx.fillText(`NIGHT #${blackbookCount}`,cx,172);
+    ctx.strokeStyle='#e0a030';ctx.lineWidth=2;ctx.strokeRect(240,205,480,255);
+    ctx.fillStyle='#f4ecd8';ctx.font='bold 15px monospace';ctx.fillText(`VIBE: ${Math.round(vibe)}    PEAK: ${Math.round(peakVibe)}`,cx,245);
+    ctx.fillStyle='#8cff5f';ctx.font='bold 14px monospace';ctx.fillText(`WITH: ${NPCS[turnIndex].name}`,cx,275);
+    ctx.fillStyle='#f4ecd8';ctx.font='13px monospace';ctx.fillText(currentPrompt,cx,305);
+    const words=chosenWords.slice(-6).join('  •  ') || 'YOU SHOWED UP';
+    ctx.fillStyle='#e0a030';ctx.font='bold 13px monospace';ctx.fillText(words,cx,350);
+    ctx.fillStyle='#8b8290';ctx.font='12px monospace';ctx.fillText('YOU DON\'T HAVE TO BE THE BEST.',cx,395);
+    ctx.fillText('YOU JUST HAVE TO BRING SOMETHING.',cx,415);
+    ctx.fillStyle=Math.floor(performance.now()/400)%2?'#e0a030':'#f4ecd8';ctx.font='bold 15px monospace';ctx.fillText('- PRESS E TO STEP BACK INTO THE STUDIO -',cx,505);
+  }
+
+  return {
+    musicDucked: true,
+    onPointerDown(vx, vy) {
+      if (phase === 'intro') { setPhase('choose'); return; }
+      if (phase === 'choose') {
+        // Four expression stations; MC is playable now. Tapping the other
+        // three explains that they are future expansions without blocking the
+        // player from entering the circle.
+        if (vy>310 && vy<480 && vx<350) { setPhase('player'); return; }
+        if (vy>310 && vy<480) { lastJudge='COMING SOON — KEEP CREATING'; judgeTimer=1.1; }
+        return;
+      }
+      if (phase === 'player') {
+        const idx = vx < cx-80 ? 0 : (vx > cx+80 ? 2 : 1);
+        judgeChoice(idx); return;
+      }
+      if (phase === 'pass') {
+        if (vy>=320 && vy<=470) {
+          const idx = Math.max(0,Math.min(2,Math.floor(vx/320)));
+          passIndex=idx; passMic();
+        }
+      }
+    },
+    update(dt) {
+      if (buyPressed) { exitMinigame(); return; }
+      phaseTimer += dt;
+      judgeTimer=Math.max(0,judgeTimer-dt);
+      if (phase==='intro') { if(interactPressed && phaseTimer>0.15) setPhase('choose'); return; }
+      if (phase==='choose') { if(interactPressed){setPhase('player');} return; }
+      if (phase==='player') {
+        scheduleBeat();
+        // Keyboard controls are deliberately simple and forgiving.
+        const keysMap=[['arrowleft',0],['a',0],['arrowup',1],['w',1],['arrowright',2],['d',2]];
+        for(const [k,idx] of keysMap){const down=!!keys[k]; if(down&&!prev[k]){judgeChoice(idx);break;}}
+        prev.left=!!keys.arrowleft||!!keys.a; prev.up=!!keys.arrowup||!!keys.w; prev.right=!!keys.arrowright||!!keys.d;
+        // Let the beat advance naturally even if the player does nothing.
+        // The turn has a hard musical length so a player can never get stuck
+        // here by simply choosing not to press anything.
+        if(music.ctx){const stepNow=Math.floor((music.ctx.currentTime-(audioNext-STEP))/STEP); if(stepNow!==lastBeat){lastBeat=stepNow;}}
+        if (phaseTimer >= TURN_STEPS * STEP + 0.35) setPhase('npc');
+        return;
+      }
+      if (phase==='npc') {
+        scheduleBeat(); npcStep += dt/STEP; vibe=Math.min(100,vibe+0.04*dt*60); peakVibe=Math.max(peakVibe,vibe);
+        if(npcStep>=NPC_STEPS){setPhase('pass');}
+        return;
+      }
+      if (phase==='pass') {
+        if(menuMove){choosePass(menuMove);menuMove=0;}
+        if(selectMove){choosePass(selectMove);selectMove=0;}
+        if(interactPressed){passMic();}
+        return;
+      }
+      if (phase==='finale') {
+        celebration += dt;
+        scheduleBeat();
+        if(interactPressed || celebration>4.8){persistBlackbook();setPhase('done');}
+        return;
+      }
+      if (phase==='done') {
+        if(interactPressed){exitMinigame();}
+      }
+    },
+    draw() {
+      const t=performance.now()/1000;
+      if(phase==='done'){drawDone();return;}
+      drawRoom(t);
+      if(phase==='intro'){
+        ctx.fillStyle='rgba(8,6,12,0.74)';ctx.fillRect(0,0,VIEW_W,VIEW_H);
+        ctx.textAlign='center';ctx.fillStyle='#e0a030';ctx.font='bold 30px monospace';ctx.fillText('THE GREEN DOOR CYPHER',cx,245);
+        ctx.fillStyle='#f4ecd8';ctx.font='16px monospace';ctx.fillText('THIS ROOM IS FOR EVERYBODY.',cx,285);
+        ctx.fillStyle='#8b8290';ctx.font='13px monospace';ctx.fillText('CREATE WITH YOUR FRIENDS.  LEARN.  SHARE.  PASS THE MIC.',cx,315);
+        ctx.fillStyle=Math.floor(performance.now()/400)%2?'#e0a030':'#f4ecd8';ctx.font='bold 17px monospace';ctx.fillText('- PRESS E OR TAP TO STEP IN -',cx,375);
+      } else if(phase==='choose'){
+        ctx.fillStyle='rgba(8,6,12,0.70)';ctx.fillRect(0,0,VIEW_W,VIEW_H);
+        ctx.textAlign='center';ctx.fillStyle='#e0a030';ctx.font='bold 24px monospace';ctx.fillText('HOW DO YOU WANT TO EXPRESS YOURSELF?',cx,190);
+        const opts=[['🎤','SPIT','PLAYABLE NOW'],['🎧','CUT','COMING SOON'],['🕺','MOVE','COMING SOON'],['🥁','FLIP','COMING SOON']];
+        opts.forEach((o,i)=>{const x=150+i*220;ctx.fillStyle=i===0?'#30273a':'#19151e';ctx.fillRect(x-90,250,180,150);ctx.strokeStyle=i===0?'#e0a030':'#4a414f';ctx.lineWidth=2;ctx.strokeRect(x-90,250,180,150);ctx.font='34px sans-serif';ctx.fillText(o[0],x,305);ctx.fillStyle='#f4ecd8';ctx.font='bold 15px monospace';ctx.fillText(o[1],x,340);ctx.fillStyle=i===0?'#8cff5f':'#8b8290';ctx.font='11px monospace';ctx.fillText(o[2],x,365);});
+        ctx.fillStyle='#8b8290';ctx.font='12px monospace';ctx.fillText('START WITH YOUR VOICE. THE REST OF THE ROOM WILL FOLLOW.',cx,455);
+      } else if(phase==='player') drawPlayerTurn();
+      else if(phase==='npc') drawNPC();
+      else if(phase==='pass') drawPass();
+      else if(phase==='finale') drawFinale();
+    },
+    onExit(){
+      if (saved) return;
+    },
+  };
 }
 
 // ---- Mic Drop: freestyle cypher rhythm game --------------------------------
@@ -9567,6 +9975,10 @@ const shops = {
       // full standalone drum-machine app in its own DOM overlay; see
       // openBeatBotApp()/createBeatBotOverlay().
       { id: 'beatbot', tx: 7, ty: 4, label: "RICO'S BEAT BOT" },
+      // The Green Door Cypher is the studio's main community gathering.
+      // It lives on the open floor beside the mic stand so the player can
+      // literally walk into the circle to start it.
+      { id: 'cypher', tx: 7, ty: 6, label: 'JOIN THE CYPHER' },
     ],
   }),
   wax: makeShop('wax', {
@@ -10898,7 +11310,8 @@ const music = {
 // [X], on-screen [X] button, closing the instrument iframe, etc.).
 const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'vinylSnakeApp', 'bayouBreakApp', 'gatorJamSlamApp', 'swampCaveApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'hyperSwimApp', 'connectFourApp', 'syrupRoadsApp', 'kangaidenApp', 'danceParty']);
 function syncMusicDuck() {
-  music.duck(DUCKED_STATES.has(state));
+  const minigameDucked = state === 'minigame' && activeMinigame && activeMinigame.musicDucked;
+  music.duck(DUCKED_STATES.has(state) || !!minigameDucked);
 }
 
 // ---------------------------------------------------------------- movement
