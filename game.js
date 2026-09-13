@@ -978,6 +978,10 @@ const MINIGAME_ACTIONS = {
   clawmachine: () => enterMinigame(createClawMachineModeSelect()),
   beatjam: () => enterMinigame(createBeatJamModeSelect()),
   scratchdj: () => enterMinigame(createScratchDJModeSelect()),
+  // Human Cannonball -- the big-top's marquee stunt, tucked into THE CHURCH
+  // interior (see the `church` shop's `minigames` list). Same
+  // createModeSelectMenu() shape as darts/beat match/etc.
+  cannonball: () => enterMinigame(createCannonballModeSelect()),
   // Penalty Kicks -- "16-BIT PENALTY KINGS -- DELUXE", a soccer ball left
   // out on the stadium pitch (see the `icon: 'soccerball'` map entry
   // below). Used to be a from-scratch canvas mini-game
@@ -1240,6 +1244,8 @@ const MINIGAME_TROPHIES = [
   // personalBests/the trophy case here.
   { id: 'bayouboogie', label: 'Bayou Boogie', unit: 'pts',
     flavor: 'Four lanes, one boardwalk, Crawdad Drums keeping time.' },
+  { id: 'cannonball', label: 'Human Cannonball', unit: 'pts',
+    flavor: 'Blast off, thread the flaming hoops, stick the net.' },
 ];
 
 function trophyMetaFor(id) { return MINIGAME_TROPHIES.find((t) => t.id === id); }
@@ -2246,6 +2252,616 @@ function createDarts3DGame() {
         ctx.font = '16px monospace';
         ctx.fillStyle = isNewBest ? '#8cff5f' : '#9a90a8';
         ctx.fillText(isNewBest ? 'NEW BEST!' : `BEST: ${bestFor('darts')}`, cx, 542);
+      }
+
+      ctx.fillStyle = '#6a6070';
+      ctx.font = '15px monospace';
+      ctx.fillText('X to walk away anytime', cx, phase === 'done' ? 562 : 544);
+    },
+  };
+}
+
+// ---- Human Cannonball ------------------------------------------------------
+// The church's big-top secret gets its marquee act: Rico climbs into a
+// cannon and gets fired clean across the ring, through a pair of blazing
+// hoops, aiming to stick the bullseye rings painted on the safety net. Same
+// two-tap power/aim contract as darts, and the same ring-lookup shape for
+// scoring, so it's instantly familiar -- just re-themed as the wildest stunt
+// in the tent. `r` is a fraction of the net's radius, outermost first, same
+// convention as DARTS_RINGS.
+const CANNON_RINGS = [
+  { r: 1.00, pts: 0,   color: '#241a2a' },
+  { r: 0.75, pts: 10,  color: '#3a2840' },
+  { r: 0.50, pts: 25,  color: '#c04070' },
+  { r: 0.28, pts: 50,  color: '#e0a030' },
+  { r: 0.10, pts: 100, color: '#f4ecd8' },
+];
+function cannonResolveShot(aim, power) {
+  const powerAccuracy = 1 - Math.abs(power - 0.5) * 2 * 0.4; // 0.6..1
+  const dist = Math.abs(aim) * powerAccuracy;
+  for (let i = CANNON_RINGS.length - 1; i >= 0; i--) {
+    if (dist <= CANNON_RINGS[i].r) return { dist, pts: CANNON_RINGS[i].pts };
+  }
+  return { dist, pts: 0 };
+}
+
+// ---- cannonball mode chooser ------------------------------------------------
+function createCannonballModeSelect() {
+  return createModeSelectMenu({
+    title: 'HUMAN CANNONBALL',
+    pickLabel: 'STEP RIGHT UP',
+    classicSub: 'The original flat-board blast',
+    threeDSub: 'Full 3D -- blast through the flaming hoops',
+    createClassic: () => createCannonballGame(),
+    createThreeD: () => createCannonball3DGame(),
+  });
+}
+
+// ---- Human Cannonball: classic 2D fallback ---------------------------------
+// Same shape as createDartsGame -- a target circle stands in for the net,
+// power/aim two-tap, three launches, total score. Kept simple and canvas-only
+// since this only ever runs if Three.js/WebGL failed to start.
+function createCannonballGame() {
+  const ROUNDS = 3;
+  let phase = 'power';       // 'power' | 'aim' | 'result' | 'done'
+  let power = 0, powerDir = 1;
+  let aim = 0, aimDir = 1;
+  let lockedPower = 0;
+  let launchesLeft = ROUNDS;
+  let score = 0;
+  let lastScoreLabel = '';
+  let resultTimer = 0;
+  let bestRecorded = false, isNewBest = false;
+
+  const cx = VIEW_W / 2, cy = 230, netR = 120;
+  const RINGS = CANNON_RINGS;
+
+  return {
+    update(dt) {
+      if (phase === 'power') {
+        power += powerDir * dt * 0.9;
+        if (power >= 1) { power = 1; powerDir = -1; }
+        if (power <= 0) { power = 0; powerDir = 1; }
+        if (interactPressed) { lockedPower = power; phase = 'aim'; aim = -1; aimDir = 1; }
+      } else if (phase === 'aim') {
+        aim += aimDir * dt * 1.3;
+        if (aim >= 1) { aim = 1; aimDir = -1; }
+        if (aim <= -1) { aim = -1; aimDir = 1; }
+        if (interactPressed) {
+          power = lockedPower;
+          const pts = cannonResolveShot(aim, power).pts;
+          score += pts;
+          lastScoreLabel = pts > 0 ? `+${pts}` : 'MISS THE NET';
+          launchesLeft--;
+          phase = 'result';
+          resultTimer = 0.9;
+        }
+      } else if (phase === 'result') {
+        resultTimer -= dt;
+        if (resultTimer <= 0) {
+          if (launchesLeft <= 0) phase = 'done';
+          else { phase = 'power'; power = 0; powerDir = 1; }
+        }
+      } else if (phase === 'done') {
+        if (!bestRecorded) { isNewBest = recordMinigameScore('cannonball', score); bestRecorded = true; }
+        if (interactPressed) exitMinigame();
+      }
+      if (buyPressed) exitMinigame();
+    },
+    draw() {
+      ctx.fillStyle = 'rgba(8,6,12,0.9)';
+      ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#ff5fa2';
+      ctx.font = 'bold 28px monospace';
+      ctx.fillText('HUMAN CANNONBALL', cx, 60);
+      ctx.fillStyle = '#f4ecd8';
+      ctx.font = '17px monospace';
+      ctx.fillText(`SCORE ${score}   LAUNCHES LEFT ${Math.max(0, launchesLeft)}`, cx, 84);
+
+      for (const ring of RINGS) {
+        ctx.beginPath();
+        ctx.arc(cx, cy, netR * ring.r, 0, Math.PI * 2);
+        ctx.fillStyle = ring.color;
+        ctx.fill();
+      }
+      ctx.strokeStyle = '#0c0810';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(cx, cy, netR, 0, Math.PI * 2);
+      ctx.stroke();
+      // netting cross-hatch, purely decorative
+      ctx.strokeStyle = 'rgba(244,236,216,0.18)';
+      ctx.lineWidth = 1;
+      for (let i = -3; i <= 3; i++) {
+        ctx.beginPath(); ctx.moveTo(cx - netR, cy + i * (netR / 3.5)); ctx.lineTo(cx + netR, cy + i * (netR / 3.5)); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(cx + i * (netR / 3.5), cy - netR); ctx.lineTo(cx + i * (netR / 3.5), cy + netR); ctx.stroke();
+      }
+
+      if (phase === 'aim' || phase === 'result' || phase === 'done') {
+        const nx = cx + aim * netR;
+        ctx.strokeStyle = '#f4ecd8';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(nx, cy - netR - 14);
+        ctx.lineTo(nx, cy + netR + 14);
+        ctx.stroke();
+      }
+
+      const barX = cx - 100, barY = 400, barW = 200, barH = 18;
+      ctx.strokeStyle = '#f4ecd8';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(barX, barY, barW, barH);
+      const shownPower = phase === 'power' ? power : lockedPower;
+      ctx.fillStyle = '#e0a030';
+      ctx.fillRect(barX + 2, barY + 2, (barW - 4) * shownPower, barH - 4);
+      ctx.fillStyle = '#9a90a8';
+      ctx.font = '16px monospace';
+      ctx.fillText('POWER', cx, barY - 8);
+
+      ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#ff5fa2' : '#f4ecd8';
+      ctx.font = 'bold 19px monospace';
+      if (phase === 'power') ctx.fillText('- TAP E TO LIGHT THE FUSE -', cx, 452);
+      else if (phase === 'aim') ctx.fillText('- TAP E TO FIRE -', cx, 452);
+      else if (phase === 'result') ctx.fillText(lastScoreLabel, cx, 452);
+      else if (phase === 'done') ctx.fillText(`FINAL SCORE: ${score} - PRESS E TO LEAVE`, cx, 452);
+
+      if (phase === 'done') {
+        ctx.font = '16px monospace';
+        ctx.fillStyle = isNewBest ? '#8cff5f' : '#9a90a8';
+        ctx.fillText(isNewBest ? 'NEW BEST!' : `BEST: ${bestFor('cannonball')}`, cx, 470);
+      }
+
+      ctx.fillStyle = '#6a6070';
+      ctx.font = '15px monospace';
+      ctx.fillText('X to walk away anytime', cx, phase === 'done' ? 488 : 476);
+    },
+  };
+}
+
+// ---- Human Cannonball 3D ----------------------------------------------------
+// The Three.js remake: a cannon at the oche, two flaming hoops staged along
+// the flight path, and a big bullseye net across the ring. Identical
+// gameplay contract and scoring table to the classic version (same
+// cannonResolveShot(), same 'cannonball' trophy) -- only the rendering
+// changed. Renders to an offscreen WebGL canvas blitted into the main 2D
+// canvas each frame, same shape as createDarts3DGame(). Uses the shared
+// miniFX toolkit for the launch/impact juice (flash, shake, camera punch,
+// confetti-colored particle bursts, floating score popup) so the payoff
+// reads as a genuine big-top spectacle.
+function createCannonball3DGame() {
+  const T = window.THREE;
+  const { renderer, canvas: cannon3DCanvas } = getMinigame3DRenderer('cannonball');
+  const fx = createMiniFX();
+
+  const ROUNDS = 3;
+  let phase = 'power';       // 'power' | 'aim' | 'firing' | 'result' | 'done'
+  let power = 0, powerDir = 1;
+  let aim = 0, aimDir = 1;
+  let lockedPower = 0;
+  let launchesLeft = ROUNDS;
+  let score = 0;
+  let lastScoreLabel = '';
+  let resultTimer = 0;
+  let bestRecorded = false, isNewBest = false;
+  let t = 0;
+
+  // ---- scene ----
+  const NET_POS = new T.Vector3(0, 1.7, -4.6);
+  const R = 0.65; // net radius in world units
+  const scene = new T.Scene();
+  scene.background = new T.Color(0x2a1238);
+  scene.fog = new T.Fog(0x2a1238, 7, 18);
+
+  const camera = new T.PerspectiveCamera(56, VIEW_W / VIEW_H, 0.1, 30);
+  const CAM_POS = new T.Vector3(0, 1.25, 1.5);
+  const CAM_Z_IN = 0.7;
+  let camZ = CAM_POS.z;
+  camera.position.copy(CAM_POS);
+  camera.lookAt(NET_POS.x, NET_POS.y, NET_POS.z);
+
+  function worldToScreen(vec3) {
+    const p = vec3.clone().project(camera);
+    return { x: (p.x + 1) / 2 * VIEW_W, y: (1 - p.y) / 2 * VIEW_H };
+  }
+
+  // big-top backdrop: candy-striped wall + ring floor, matching the church
+  // interior's carnival palette
+  const wall = new T.Mesh(
+    new T.PlaneGeometry(14, 8),
+    new T.MeshStandardMaterial({ color: 0x4a1268, roughness: 1 })
+  );
+  wall.position.set(0, 2.8, -5.3);
+  wall.receiveShadow = true;
+  scene.add(wall);
+  const stripeMat = new T.MeshStandardMaterial({ color: 0xff5fa2, roughness: 0.95 });
+  for (let i = -5; i <= 5; i += 2) {
+    const stripe = new T.Mesh(new T.PlaneGeometry(1, 8), stripeMat);
+    stripe.position.set(i, 2.8, -5.28);
+    scene.add(stripe);
+  }
+  const floor = new T.Mesh(
+    new T.CircleGeometry(8, 40),
+    new T.MeshStandardMaterial({ color: 0xffc4e0, roughness: 0.95 })
+  );
+  floor.rotation.x = -Math.PI / 2;
+  floor.position.set(0, 0, -2);
+  floor.receiveShadow = true;
+  scene.add(floor);
+  // ring border
+  const ringEdge = new T.Mesh(
+    new T.TorusGeometry(8, 0.08, 8, 48),
+    new T.MeshStandardMaterial({ color: 0xe0a030, roughness: 0.6 })
+  );
+  ringEdge.rotation.x = Math.PI / 2;
+  ringEdge.position.set(0, 0.02, -2);
+  scene.add(ringEdge);
+
+  // cannon: a tilted brass-look barrel low in frame, nose pointed at the net
+  const cannonGroup = new T.Group();
+  cannonGroup.position.set(0, 0.3, 0.9);
+  scene.add(cannonGroup);
+  const carriage = new T.Mesh(
+    new T.BoxGeometry(0.55, 0.3, 0.9),
+    new T.MeshStandardMaterial({ color: 0x3a2c18, roughness: 0.8 })
+  );
+  carriage.position.set(0, -0.1, 0);
+  cannonGroup.add(carriage);
+  const barrelGroup = new T.Group();
+  barrelGroup.rotation.x = -0.55; // tilted up toward the net
+  cannonGroup.add(barrelGroup);
+  const barrel = new T.Mesh(
+    new T.CylinderGeometry(0.22, 0.26, 1.3, 20),
+    new T.MeshStandardMaterial({ color: 0xe0a030, metalness: 0.7, roughness: 0.3 })
+  );
+  barrel.rotation.x = Math.PI / 2;
+  barrel.position.z = -0.55;
+  barrel.castShadow = true;
+  barrelGroup.add(barrel);
+  const muzzleRing = new T.Mesh(
+    new T.TorusGeometry(0.23, 0.03, 10, 20),
+    new T.MeshStandardMaterial({ color: 0x3a2c18, roughness: 0.6 })
+  );
+  muzzleRing.position.z = -1.2;
+  barrelGroup.add(muzzleRing);
+  // fuse spark at the muzzle -- pulses while charging/aiming
+  const spark = new T.Mesh(
+    new T.SphereGeometry(0.045, 8, 8),
+    new T.MeshBasicMaterial({ color: 0xffe14d })
+  );
+  spark.position.z = -1.22;
+  barrelGroup.add(spark);
+  const muzzleTip = new T.Vector3();
+
+  // two flaming hoops staged between the cannon and the net
+  const hoopMat = new T.MeshStandardMaterial({ color: 0xff5a1e, emissive: 0xe0402a, emissiveIntensity: 0.9, roughness: 0.5 });
+  const hoops = [-1.7, -3.3].map((hz) => {
+    const hoop = new T.Mesh(new T.TorusGeometry(0.42, 0.055, 10, 28), hoopMat.clone());
+    hoop.position.set(0, 1.55, hz);
+    scene.add(hoop);
+    const glow = new T.PointLight(0xff6a2a, 0.9, 4);
+    glow.position.copy(hoop.position);
+    scene.add(glow);
+    return { mesh: hoop, glow, baseZ: hz };
+  });
+
+  // net/target: backboard disc + stacked bullseye rings, same painter's-order
+  // trick as the darts board, framed by a big metal hoop and support poles
+  const net = new T.Group();
+  net.position.copy(NET_POS);
+  const netBack = new T.Mesh(
+    new T.CircleGeometry(R * 1.3, 40),
+    new T.MeshStandardMaterial({ color: 0xfff6f0, roughness: 0.85 })
+  );
+  netBack.position.z = -0.03;
+  netBack.receiveShadow = true;
+  net.add(netBack);
+  CANNON_RINGS.forEach((ring, i) => {
+    const disc = new T.Mesh(
+      new T.CircleGeometry(R * ring.r, 40),
+      new T.MeshStandardMaterial({ color: new T.Color(ring.color), roughness: 0.85 })
+    );
+    disc.position.z = 0.002 * (i + 1);
+    disc.receiveShadow = true;
+    net.add(disc);
+  });
+  const netRim = new T.Mesh(
+    new T.TorusGeometry(R * 1.3, 0.045, 12, 48),
+    new T.MeshStandardMaterial({ color: 0xd8d8e0, metalness: 0.6, roughness: 0.35 })
+  );
+  net.add(netRim);
+  // cross-hatch net lines, purely decorative
+  const netLineMat = new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.25 });
+  for (let i = -2; i <= 2; i++) {
+    const vLine = new T.Mesh(new T.BoxGeometry(0.012, R * 2.5, 0.01), netLineMat);
+    vLine.position.set(i * (R / 2.4), 0, -0.02);
+    net.add(vLine);
+    const hLine = new T.Mesh(new T.BoxGeometry(R * 2.5, 0.012, 0.01), netLineMat);
+    hLine.position.set(0, i * (R / 2.4), -0.02);
+    net.add(hLine);
+  }
+  scene.add(net);
+  const NET_FACE_Z = NET_POS.z + 0.002 * CANNON_RINGS.length + 0.002;
+
+  // support poles either side of the net
+  [-R * 1.5, R * 1.5].forEach((px) => {
+    const pole = new T.Mesh(
+      new T.CylinderGeometry(0.06, 0.06, 2.6, 10),
+      new T.MeshStandardMaterial({ color: 0x2e1f30, roughness: 0.8 })
+    );
+    pole.position.set(px, NET_POS.y - 0.2, NET_POS.z + 0.1);
+    scene.add(pole);
+  });
+
+  // lights: dim ambient plus a warm spot on the net and the confetti-color
+  // sconce pair the rest of the church interior uses
+  scene.add(new T.AmbientLight(0x4a3050, 0.85));
+  const spot = new T.SpotLight(0xffe2c0, 1.1, 16, 0.42, 0.4);
+  spot.position.set(0, 4, 0);
+  spot.target = net;
+  spot.castShadow = true;
+  spot.shadow.mapSize.set(1024, 1024);
+  scene.add(spot);
+  const sconceGeo = new T.SphereGeometry(0.06, 12, 12);
+  [[-3.5, 0x5fd0ff], [3.5, 0xffe14d]].forEach(([x, color]) => {
+    const p = new T.PointLight(color, 0.6, 8);
+    p.position.set(x, 2.6, -3.5);
+    scene.add(p);
+    const bulb = new T.Mesh(sconceGeo, new T.MeshBasicMaterial({ color }));
+    bulb.position.copy(p.position);
+    scene.add(bulb);
+  });
+
+  // aim needle: sweeps across the net face, 1:1 with the classic needle
+  const needle = new T.Mesh(
+    new T.BoxGeometry(0.02, R * 2 + 0.25, 0.02),
+    new T.MeshBasicMaterial({ color: 0xf4ecd8 })
+  );
+  needle.visible = false;
+  scene.add(needle);
+
+  // cannonball, sitting in the muzzle until fired
+  const ball = new T.Mesh(
+    new T.SphereGeometry(0.14, 16, 16),
+    new T.MeshStandardMaterial({ color: 0x1c1a1e, metalness: 0.4, roughness: 0.5 })
+  );
+  ball.castShadow = true;
+  scene.add(ball);
+
+  const CONFETTI_COLORS = [0xff5fa2, 0x5fd0ff, 0xffe14d, 0x8cff5f, 0xc85fff];
+
+  function updateMuzzleTip() {
+    muzzleTip.set(0, -1.22, 0);
+    barrelGroup.localToWorld(muzzleTip);
+  }
+
+  function positionBallInCannon() {
+    updateMuzzleTip();
+    ball.position.copy(muzzleTip);
+  }
+
+  // Landing point on the net face: radial distance from center matches the
+  // shared scoring distance exactly, so the ball always lands in the ring it
+  // scored. The angle around center is cosmetic, a random wedge on the side
+  // the aim needle was on, so three shots don't stack on one line.
+  function landingPoint(aimVal, dist) {
+    const side = aimVal >= 0 ? 1 : -1;
+    const ang = (Math.random() - 0.5) * 1.1;
+    return new T.Vector3(
+      NET_POS.x + side * Math.cos(ang) * dist * R,
+      NET_POS.y + Math.sin(ang) * dist * R,
+      NET_FACE_Z + 0.14
+    );
+  }
+
+  let launchFrom = new T.Vector3(), launchTo = new T.Vector3();
+  let arcH = 1.4;
+  let firingU = 0;
+  const FIRE_TIME = 0.62;
+  let pendingPts = 0;
+  let impactRing = null, impactT = 0;
+
+  function fireCannon() {
+    const res = cannonResolveShot(aim, lockedPower);
+    pendingPts = res.pts;
+    updateMuzzleTip();
+    launchFrom.copy(muzzleTip);
+    launchTo = landingPoint(aim, res.dist);
+    arcH = 1.1 + lockedPower * 0.9;
+    firingU = 0;
+    needle.visible = false;
+
+    // muzzle flash + recoil kick
+    fx.flash('#ffe14d', 0.12, 0.3);
+    fx.shake(0.02, 0.12);
+    fx.spawnParticles3D(T, scene, muzzleTip, { color: 0xffb020, count: 14, speed: 2.2, life: 0.4 });
+    cannonGroup.position.z += 0.12;
+
+    phase = 'firing';
+  }
+
+  function onImpact() {
+    score += pendingPts;
+    lastScoreLabel = pendingPts > 0 ? `+${pendingPts}` : 'MISSED THE NET';
+    launchesLeft--;
+
+    const screenPos = worldToScreen(launchTo);
+    const big = pendingPts >= 50;
+    if (pendingPts > 0) {
+      fx.cameraPunch(big ? 0.09 : 0.05, 0.2);
+      fx.shake(big ? 0.03 : 0.018, 0.16);
+      fx.flash(big ? '#e0b040' : '#c04070', big ? 0.16 : 0.1, big ? 0.28 : 0.16);
+      fx.spawnParticles3D(T, scene, launchTo, {
+        color: CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)],
+        count: big ? 20 : 10, speed: big ? 2.4 : 1.6,
+      });
+      fx.ring(screenPos.x, screenPos.y, big ? '#e0b040' : '#c04070', { endRadius: big ? 90 : 60 });
+      fx.popup(`+${pendingPts}`, screenPos.x, screenPos.y, { color: big ? '#e0b040' : '#c04070', size: big ? 28 : 20 });
+    } else {
+      fx.shake(0.014, 0.12);
+      fx.popup('MISS', screenPos.x, screenPos.y, { color: '#8a8090', size: 16 });
+    }
+
+    impactRing = new T.Mesh(
+      new T.TorusGeometry(0.06, 0.01, 8, 32),
+      new T.MeshBasicMaterial({ color: pendingPts > 0 ? 0xe0b040 : 0x6a6070, transparent: true, opacity: 0.9 })
+    );
+    impactRing.position.set(launchTo.x, launchTo.y, NET_FACE_Z + 0.01);
+    scene.add(impactRing);
+    impactT = 0;
+
+    phase = 'result';
+    resultTimer = 1.1;
+  }
+
+  function disposeImpactRing() {
+    if (!impactRing) return;
+    scene.remove(impactRing);
+    impactRing.geometry.dispose();
+    impactRing.material.dispose();
+    impactRing = null;
+  }
+
+  function resetCannon() {
+    cannonGroup.position.z = 0.9;
+    ball.visible = true;
+    positionBallInCannon();
+  }
+
+  function cleanup() {
+    fx.disposeParticles3D();
+    disposeImpactRing();
+    scene.traverse((obj) => {
+      if (obj.geometry) obj.geometry.dispose();
+      if (obj.material) {
+        if (Array.isArray(obj.material)) obj.material.forEach((m) => m.dispose());
+        else obj.material.dispose();
+      }
+    });
+    scene.clear();
+  }
+  function leave() { cleanup(); exitMinigame(); }
+
+  resetCannon();
+
+  return {
+    update(dt) {
+      t += dt;
+      fx.update(dt);
+      fx.updateParticles3D(dt);
+
+      // ease the cannon carriage back to rest after a recoil kick
+      cannonGroup.position.z += (0.9 - cannonGroup.position.z) * Math.min(1, dt * 6);
+
+      // fuse spark pulses faster the higher the charged power
+      const chargeLevel = phase === 'power' ? power : phase === 'aim' ? lockedPower : 0;
+      spark.material.color.setHSL(0.12, 1, 0.5 + Math.sin(t * (8 + chargeLevel * 14)) * 0.3);
+      spark.visible = phase === 'power' || phase === 'aim';
+
+      // flaming hoops flicker
+      hoops.forEach((h, i) => {
+        const flick = 0.75 + Math.sin(t * 6 + i * 2) * 0.25;
+        h.mesh.material.emissiveIntensity = flick;
+        h.glow.intensity = 0.7 + flick * 0.4;
+        h.mesh.rotation.z = Math.sin(t * 0.8 + i) * 0.05;
+      });
+
+      if (phase === 'power') {
+        power += powerDir * dt * 0.9;
+        if (power >= 1) { power = 1; powerDir = -1; }
+        if (power <= 0) { power = 0; powerDir = 1; }
+        if (interactPressed) { lockedPower = power; phase = 'aim'; aim = -1; aimDir = 1; needle.visible = true; }
+      } else if (phase === 'aim') {
+        aim += aimDir * dt * 1.3;
+        if (aim >= 1) { aim = 1; aimDir = -1; }
+        if (aim <= -1) { aim = -1; aimDir = 1; }
+        needle.position.set(NET_POS.x + aim * R, NET_POS.y, NET_FACE_Z + 0.02);
+        barrelGroup.rotation.y = aim * 0.18;
+        if (interactPressed) fireCannon();
+      } else if (phase === 'firing') {
+        firingU = Math.min(1, firingU + dt / FIRE_TIME);
+        const u = firingU;
+        ball.position.lerpVectors(launchFrom, launchTo, u);
+        ball.position.y += arcH * 4 * u * (1 - u);
+        ball.rotation.x += dt * 18;
+        if (u >= 1) onImpact();
+      } else if (phase === 'result') {
+        resultTimer -= dt;
+        if (resultTimer <= 0) {
+          disposeImpactRing();
+          if (launchesLeft <= 0) phase = 'done';
+          else {
+            resetCannon();
+            barrelGroup.rotation.y = 0;
+            phase = 'power';
+            power = 0; powerDir = 1;
+          }
+        }
+      } else if (phase === 'done') {
+        if (!bestRecorded) { isNewBest = recordMinigameScore('cannonball', score); bestRecorded = true; }
+        if (interactPressed) { leave(); return; }
+      }
+
+      if (impactRing) {
+        impactT += dt;
+        const k = Math.min(1, impactT / 0.4);
+        impactRing.scale.setScalar(1 + k * 3.5);
+        impactRing.material.opacity = 0.9 * (1 - k);
+      }
+
+      // camera: pull in tight on the net during the shot/result, gentle idle
+      // sway otherwise, plus miniFX's decaying shake and push punch layered on
+      const wantZ = (phase === 'firing' || phase === 'result' || phase === 'done') ? CAM_Z_IN : CAM_POS.z;
+      camZ += (wantZ - camZ) * Math.min(1, dt * 4);
+      const sway = Math.sin(t * 0.7) * 0.02;
+      camera.position.set(
+        CAM_POS.x + sway + fx.shakeOffset.x,
+        CAM_POS.y + Math.sin(t * 0.9) * 0.01 + fx.shakeOffset.y,
+        camZ + fx.cameraPunchOffset
+      );
+      camera.lookAt(NET_POS.x, NET_POS.y, NET_POS.z);
+
+      if (buyPressed) { leave(); return; }
+    },
+    draw() {
+      renderer.render(scene, camera);
+      ctx.drawImage(cannon3DCanvas, 0, 0);
+      fx.draw();
+
+      const cx = VIEW_W / 2;
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#ff5fa2';
+      ctx.font = 'bold 28px monospace';
+      ctx.fillText('HUMAN CANNONBALL 3D', cx, 60);
+      ctx.fillStyle = '#f4ecd8';
+      ctx.font = '17px monospace';
+      ctx.fillText(`SCORE ${score}   LAUNCHES LEFT ${Math.max(0, launchesLeft)}`, cx, 84);
+
+      const barX = cx - 100, barY = 470, barW = 200, barH = 18;
+      ctx.fillStyle = 'rgba(8,6,12,0.55)';
+      ctx.fillRect(barX - 8, barY - 26, barW + 16, barH + 34);
+      ctx.strokeStyle = '#f4ecd8';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(barX, barY, barW, barH);
+      const shownPower = phase === 'power' ? power : lockedPower;
+      ctx.fillStyle = '#e0a030';
+      ctx.fillRect(barX + 2, barY + 2, (barW - 4) * shownPower, barH - 4);
+      ctx.fillStyle = '#9a90a8';
+      ctx.font = '16px monospace';
+      ctx.fillText('POWER', cx, barY - 10);
+
+      ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#ff5fa2' : '#f4ecd8';
+      ctx.font = 'bold 19px monospace';
+      if (phase === 'power') ctx.fillText('- TAP E TO LIGHT THE FUSE -', cx, 520);
+      else if (phase === 'aim') ctx.fillText('- TAP E TO FIRE -', cx, 520);
+      else if (phase === 'result') ctx.fillText(lastScoreLabel, cx, 520);
+      else if (phase === 'done') ctx.fillText(`FINAL SCORE: ${score} - PRESS E TO LEAVE`, cx, 520);
+
+      if (phase === 'done') {
+        ctx.font = '16px monospace';
+        ctx.fillStyle = isNewBest ? '#8cff5f' : '#9a90a8';
+        ctx.fillText(isNewBest ? 'NEW BEST!' : `BEST: ${bestFor('cannonball')}`, cx, 542);
       }
 
       ctx.fillStyle = '#6a6070';
@@ -8643,9 +9259,13 @@ const shops = {
     // carnival-prop/whack-a-pigeon row (row 6) -- clear of the crate at
     // (1,4) and directly under the trapeze artist's rigging overhead, same
     // "hiding in plain sight" gag as the rest of this room's big-top dressing.
+    // Human Cannonball, the big-top's marquee stunt -- open floor at (4,6),
+    // clear of the crate at (1,6), the carnival prop at (2,6), and
+    // whack-a-pigeon over at (9,6).
     minigames: [
       { id: 'whackpigeon', tx: 9, ty: 6, label: 'WHACK-A-PIGEON' },
       { id: 'organ', tx: 6, ty: 4, label: 'PLAY THE ORGAN' },
+      { id: 'cannonball', tx: 4, ty: 6, label: 'HUMAN CANNONBALL' },
     ],
   }),
   // GUT HUT -- BOXGUTS' place out in the swamp: part graffiti studio, part
