@@ -983,10 +983,10 @@ const MINIGAME_ACTIONS = {
   clawmachine: () => enterMinigame(createClawMachineModeSelect()),
   beatjam: () => enterMinigame(createBeatJamModeSelect()),
   scratchdj: () => enterMinigame(createScratchDJModeSelect()),
-  // Human Cannonball -- the big-top's marquee stunt, tucked into THE CHURCH
-  // interior (see the `church` shop's `minigames` list). Same
+  // Tightrope Walk -- the big-top's other marquee stunt, tucked into THE
+  // CHURCH interior (see the `church` shop's `minigames` list). Same
   // createModeSelectMenu() shape as darts/beat match/etc.
-  cannonball: () => enterMinigame(createCannonballModeSelect()),
+  tightrope: () => enterMinigame(createTightropeModeSelect()),
   // Penalty Kicks -- "16-BIT PENALTY KINGS -- DELUXE", a soccer ball left
   // out on the stadium pitch (see the `icon: 'soccerball'` map entry
   // below). Used to be a from-scratch canvas mini-game
@@ -1258,8 +1258,8 @@ const MINIGAME_TROPHIES = [
   // personalBests/the trophy case here.
   { id: 'bayouboogie', label: 'Bayou Boogie', unit: 'pts',
     flavor: 'Four lanes, one boardwalk, Crawdad Drums keeping time.' },
-  { id: 'cannonball', label: 'Human Cannonball', unit: 'pts',
-    flavor: 'Blast off, thread the flaming hoops, stick the net.' },
+  { id: 'tightrope', label: 'Tightrope Walk', unit: 'pts',
+    flavor: 'Lean into the gusts and don\'t look down.' },
 ];
 
 function trophyMetaFor(id) { return MINIGAME_TROPHIES.find((t) => t.id === id); }
@@ -2275,156 +2275,188 @@ function createDarts3DGame() {
   };
 }
 
-// ---- Human Cannonball ------------------------------------------------------
-// The church's big-top secret gets its marquee act: Rico climbs into a
-// cannon and gets fired clean across the ring, through a pair of blazing
-// hoops, aiming to stick the bullseye rings painted on the safety net. Same
-// two-tap power/aim contract as darts, and the same ring-lookup shape for
-// scoring, so it's instantly familiar -- just re-themed as the wildest stunt
-// in the tent. `r` is a fraction of the net's radius, outermost first, same
-// convention as DARTS_RINGS.
-const CANNON_RINGS = [
-  { r: 1.00, pts: 0,   color: '#241a2a' },
-  { r: 0.75, pts: 10,  color: '#3a2840' },
-  { r: 0.50, pts: 25,  color: '#c04070' },
-  { r: 0.28, pts: 50,  color: '#e0a030' },
-  { r: 0.10, pts: 100, color: '#f4ecd8' },
-];
-function cannonResolveShot(aim, power) {
-  const powerAccuracy = 1 - Math.abs(power - 0.5) * 2 * 0.4; // 0.6..1
-  const dist = Math.abs(aim) * powerAccuracy;
-  for (let i = CANNON_RINGS.length - 1; i >= 0; i--) {
-    if (dist <= CANNON_RINGS[i].r) return { dist, pts: CANNON_RINGS[i].pts };
-  }
-  return { dist, pts: 0 };
-}
+// ---- Tightrope Walk ---------------------------------------------------------
+// The church's big-top secret gets its OTHER marquee act: Rico edges out
+// along the high wire strung across the ring while gusts rock him side to
+// side. Deliberately a different skill than Darts/Human Cannonball's
+// two-tap power+aim throw -- this is continuous balance control. Lean left
+// or right (arrow keys or A/D) to counter each gust; let the balance meter
+// tip too far past center and it's a long drop into the safety net below.
+// Distance covered along the wire is the score, so a slow, steady walk
+// beats a lucky guess every time.
+const TIGHTROPE_TOTAL_DIST = 100;   // "feet" of wire to cross
+const TIGHTROPE_LIVES = 3;
+const TIGHTROPE_FALL_LIMIT = 1;     // |balance| past this = a fall
+const TIGHTROPE_FINISH_BONUS = 100; // awarded once, for reaching the far platform
 
-// ---- cannonball mode chooser ------------------------------------------------
-function createCannonballModeSelect() {
+// ---- tightrope mode chooser --------------------------------------------------
+function createTightropeModeSelect() {
   return createModeSelectMenu({
-    title: 'HUMAN CANNONBALL',
-    pickLabel: 'STEP RIGHT UP',
-    classicSub: 'The original flat-board blast',
-    threeDSub: 'Full 3D -- blast through the flaming hoops',
-    createClassic: () => createCannonballGame(),
-    createThreeD: () => createCannonball3DGame(),
+    title: 'TIGHTROPE WALK',
+    pickLabel: 'STEP OUT ON THE WIRE',
+    classicSub: 'The original flat-board balancing act',
+    threeDSub: 'Full 3D -- inch across the high wire',
+    createClassic: () => createTightropeGame(),
+    createThreeD: () => createTightrope3DGame(),
   });
 }
 
-// ---- Human Cannonball: classic 2D fallback ---------------------------------
-// Same shape as createDartsGame -- a target circle stands in for the net,
-// power/aim two-tap, three launches, total score. Kept simple and canvas-only
-// since this only ever runs if Three.js/WebGL failed to start.
-function createCannonballGame() {
-  const ROUNDS = 3;
-  let phase = 'power';       // 'power' | 'aim' | 'result' | 'done'
-  let power = 0, powerDir = 1;
-  let aim = 0, aimDir = 1;
-  let lockedPower = 0;
-  let launchesLeft = ROUNDS;
+// ---- Tightrope Walk: classic 2D fallback ---------------------------------
+// A single continuous walk (not discrete throws/rounds like Darts) -- wind
+// gusts nudge a balance value, arrow keys/A-D counter it, and forward
+// progress along the wire only accrues while balance stays within the fall
+// limit. Kept simple and canvas-only since this only ever runs if Three.js/
+// WebGL failed to start.
+function createTightropeGame() {
+  let phase = 'walk';          // 'walk' | 'fall' | 'done'
+  let balance = 0;             // -1.4..1.4, |1| or past = falling
+  let windVel = 0;             // current push on balance, per second
+  let distance = 0;            // 0..TIGHTROPE_TOTAL_DIST
+  let livesLeft = TIGHTROPE_LIVES;
   let score = 0;
-  let lastScoreLabel = '';
-  let resultTimer = 0;
+  let gustTimer = 1.2;
+  let fallTimer = 0;
+  let finished = false;
+  let lastMsg = '';
   let bestRecorded = false, isNewBest = false;
 
-  const cx = VIEW_W / 2, cy = 230, netR = 120;
-  const RINGS = CANNON_RINGS;
+  // Gusts get a bit stronger and more frequent the further out on the wire
+  // Rico gets, so the back half of the walk is meaningfully harder than the
+  // first steps off the platform.
+  function queueGust() {
+    const strength = 0.5 + Math.min(1, distance / TIGHTROPE_TOTAL_DIST) * 0.9;
+    windVel = (Math.random() < 0.5 ? -1 : 1) * strength * (0.6 + Math.random() * 0.6);
+    gustTimer = 1.1 + Math.random() * 1.1;
+  }
 
   return {
     update(dt) {
-      if (phase === 'power') {
-        power += powerDir * dt * 0.9;
-        if (power >= 1) { power = 1; powerDir = -1; }
-        if (power <= 0) { power = 0; powerDir = 1; }
-        if (interactPressed) { lockedPower = power; phase = 'aim'; aim = -1; aimDir = 1; }
-      } else if (phase === 'aim') {
-        aim += aimDir * dt * 1.3;
-        if (aim >= 1) { aim = 1; aimDir = -1; }
-        if (aim <= -1) { aim = -1; aimDir = 1; }
-        if (interactPressed) {
-          power = lockedPower;
-          const pts = cannonResolveShot(aim, power).pts;
-          score += pts;
-          lastScoreLabel = pts > 0 ? `+${pts}` : 'MISS THE NET';
-          launchesLeft--;
-          phase = 'result';
-          resultTimer = 0.9;
+      if (buyPressed) { exitMinigame(); return; }
+      if (phase === 'walk') {
+        gustTimer -= dt;
+        if (gustTimer <= 0) queueGust();
+        // wind eases back toward calm between gusts
+        windVel *= (1 - Math.min(1, dt * 0.6));
+        balance += windVel * dt;
+        // player countersteer
+        let lean = 0;
+        if (keys['arrowleft'] || keys['a']) lean -= 1;
+        if (keys['arrowright'] || keys['d']) lean += 1;
+        balance += lean * dt * 1.6;
+        // a little natural self-correction toward center
+        balance += (0 - balance) * dt * 0.35;
+        balance = Math.max(-1.4, Math.min(1.4, balance));
+
+        if (Math.abs(balance) >= TIGHTROPE_FALL_LIMIT) {
+          phase = 'fall';
+          fallTimer = 0.9;
+          livesLeft--;
+          lastMsg = livesLeft > 0 ? 'WHOOPS! BACK ON THE WIRE' : 'DOWN YOU GO!';
+        } else {
+          distance += dt * 11;
+          score = Math.floor(Math.min(distance, TIGHTROPE_TOTAL_DIST));
+          if (distance >= TIGHTROPE_TOTAL_DIST && !finished) {
+            finished = true;
+            score += TIGHTROPE_FINISH_BONUS;
+            phase = 'done';
+          }
         }
-      } else if (phase === 'result') {
-        resultTimer -= dt;
-        if (resultTimer <= 0) {
-          if (launchesLeft <= 0) phase = 'done';
-          else { phase = 'power'; power = 0; powerDir = 1; }
+      } else if (phase === 'fall') {
+        fallTimer -= dt;
+        if (fallTimer <= 0) {
+          if (livesLeft <= 0) { phase = 'done'; }
+          else {
+            distance = Math.max(0, distance - 18);
+            balance = 0; windVel = 0; gustTimer = 1.4;
+            phase = 'walk';
+          }
         }
       } else if (phase === 'done') {
-        if (!bestRecorded) { isNewBest = recordMinigameScore('cannonball', score); bestRecorded = true; }
+        if (!bestRecorded) { isNewBest = recordMinigameScore('tightrope', score); bestRecorded = true; }
         if (interactPressed) exitMinigame();
       }
-      if (buyPressed) exitMinigame();
     },
     draw() {
       ctx.fillStyle = 'rgba(8,6,12,0.9)';
       ctx.fillRect(0, 0, VIEW_W, VIEW_H);
 
+      const cx = VIEW_W / 2;
       ctx.textAlign = 'center';
       ctx.fillStyle = '#ff5fa2';
       ctx.font = 'bold 28px monospace';
-      ctx.fillText('HUMAN CANNONBALL', cx, 60);
+      ctx.fillText('TIGHTROPE WALK', cx, 60);
       ctx.fillStyle = '#f4ecd8';
       ctx.font = '17px monospace';
-      ctx.fillText(`SCORE ${score}   LAUNCHES LEFT ${Math.max(0, launchesLeft)}`, cx, 84);
+      ctx.fillText(`SCORE ${score}   LIVES ${Math.max(0, livesLeft)}`, cx, 84);
 
-      for (const ring of RINGS) {
-        ctx.beginPath();
-        ctx.arc(cx, cy, netR * ring.r, 0, Math.PI * 2);
-        ctx.fillStyle = ring.color;
-        ctx.fill();
-      }
-      ctx.strokeStyle = '#0c0810';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(cx, cy, netR, 0, Math.PI * 2);
-      ctx.stroke();
-      // netting cross-hatch, purely decorative
-      ctx.strokeStyle = 'rgba(244,236,216,0.18)';
-      ctx.lineWidth = 1;
-      for (let i = -3; i <= 3; i++) {
-        ctx.beginPath(); ctx.moveTo(cx - netR, cy + i * (netR / 3.5)); ctx.lineTo(cx + netR, cy + i * (netR / 3.5)); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(cx + i * (netR / 3.5), cy - netR); ctx.lineTo(cx + i * (netR / 3.5), cy + netR); ctx.stroke();
+      // the wire, drawn side-on, with a faint net band underneath
+      const ropeY = 220, ropeL = 130, ropeR = VIEW_W - 130;
+      ctx.strokeStyle = 'rgba(244,236,216,0.12)';
+      ctx.lineWidth = 46;
+      ctx.beginPath(); ctx.moveTo(ropeL - 10, ropeY + 90); ctx.lineTo(ropeR + 10, ropeY + 90); ctx.stroke();
+      ctx.strokeStyle = '#1c1a1e';
+      ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.moveTo(ropeL, ropeY); ctx.lineTo(ropeR, ropeY); ctx.stroke();
+
+      const px = ropeL + (ropeR - ropeL) * Math.min(1, distance / TIGHTROPE_TOTAL_DIST);
+      if (phase !== 'fall') {
+        ctx.save();
+        ctx.translate(px, ropeY);
+        ctx.rotate(balance * 0.5);
+        ctx.strokeStyle = '#e0a030';
+        ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(-26, -4); ctx.lineTo(26, -4); ctx.stroke(); // balance pole
+        ctx.fillStyle = '#e8b48a';
+        ctx.beginPath(); ctx.arc(0, -34, 10, 0, Math.PI * 2); ctx.fill(); // head
+        ctx.fillStyle = '#e0a030';
+        ctx.fillRect(-7, -24, 14, 26); // torso
+        ctx.restore();
+      } else {
+        // falling: drop toward the net band below, little tumble
+        const fallProgress = 1 - Math.max(0, fallTimer) / 0.9;
+        const fallY = ropeY + fallProgress * 90;
+        ctx.save();
+        ctx.translate(px, fallY);
+        ctx.rotate(fallProgress * 2.4);
+        ctx.fillStyle = '#e8b48a';
+        ctx.beginPath(); ctx.arc(0, -10, 10, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#e0a030';
+        ctx.fillRect(-7, 0, 14, 26);
+        ctx.restore();
       }
 
-      if (phase === 'aim' || phase === 'result' || phase === 'done') {
-        const nx = cx + aim * netR;
-        ctx.strokeStyle = '#f4ecd8';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(nx, cy - netR - 14);
-        ctx.lineTo(nx, cy + netR + 14);
-        ctx.stroke();
-      }
-
-      const barX = cx - 100, barY = 400, barW = 200, barH = 18;
-      ctx.strokeStyle = '#f4ecd8';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(barX, barY, barW, barH);
-      const shownPower = phase === 'power' ? power : lockedPower;
+      // progress bar
+      const barX = cx - 140, barY = 268, barW = 280, barH = 10;
+      ctx.strokeStyle = '#f4ecd8'; ctx.lineWidth = 2; ctx.strokeRect(barX, barY, barW, barH);
       ctx.fillStyle = '#e0a030';
-      ctx.fillRect(barX + 2, barY + 2, (barW - 4) * shownPower, barH - 4);
+      ctx.fillRect(barX + 2, barY + 2, (barW - 4) * Math.min(1, distance / TIGHTROPE_TOTAL_DIST), barH - 4);
+      ctx.fillStyle = '#9a90a8';
+      ctx.font = '14px monospace';
+      ctx.fillText(`${Math.min(Math.floor(distance), TIGHTROPE_TOTAL_DIST)} / ${TIGHTROPE_TOTAL_DIST} FT`, cx, barY - 8);
+
+      // balance meter, with a shaded safe zone at center
+      const bmX = cx - 100, bmY = 400, bmW = 200, bmH = 16;
+      ctx.strokeStyle = '#f4ecd8'; ctx.lineWidth = 2; ctx.strokeRect(bmX, bmY, bmW, bmH);
+      ctx.fillStyle = 'rgba(140,255,95,0.25)';
+      ctx.fillRect(bmX + bmW * 0.35, bmY, bmW * 0.3, bmH);
+      const needleX = bmX + bmW / 2 + (balance / 1.4) * (bmW / 2);
+      ctx.strokeStyle = Math.abs(balance) >= 1 ? '#c04070' : '#f4ecd8';
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(needleX, bmY - 6); ctx.lineTo(needleX, bmY + bmH + 6); ctx.stroke();
       ctx.fillStyle = '#9a90a8';
       ctx.font = '16px monospace';
-      ctx.fillText('POWER', cx, barY - 8);
+      ctx.fillText('BALANCE', cx, bmY - 10);
 
       ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#ff5fa2' : '#f4ecd8';
       ctx.font = 'bold 19px monospace';
-      if (phase === 'power') ctx.fillText('- TAP E TO LIGHT THE FUSE -', cx, 452);
-      else if (phase === 'aim') ctx.fillText('- TAP E TO FIRE -', cx, 452);
-      else if (phase === 'result') ctx.fillText(lastScoreLabel, cx, 452);
+      if (phase === 'walk') ctx.fillText('\u25c0 \u25b6 OR A/D TO LEAN', cx, 452);
+      else if (phase === 'fall') ctx.fillText(lastMsg, cx, 452);
       else if (phase === 'done') ctx.fillText(`FINAL SCORE: ${score} - PRESS E TO LEAVE`, cx, 452);
 
       if (phase === 'done') {
         ctx.font = '16px monospace';
         ctx.fillStyle = isNewBest ? '#8cff5f' : '#9a90a8';
-        ctx.fillText(isNewBest ? 'NEW BEST!' : `BEST: ${bestFor('cannonball')}`, cx, 470);
+        ctx.fillText(isNewBest ? 'NEW BEST!' : `BEST: ${bestFor('tightrope')}`, cx, 470);
       }
 
       ctx.fillStyle = '#6a6070';
@@ -2434,318 +2466,170 @@ function createCannonballGame() {
   };
 }
 
-// ---- Human Cannonball 3D ----------------------------------------------------
-// The Three.js remake: a cannon at the oche, two flaming hoops staged along
-// the flight path, and a big bullseye net across the ring. Identical
-// gameplay contract and scoring table to the classic version (same
-// cannonResolveShot(), same 'cannonball' trophy) -- only the rendering
-// changed. Renders to an offscreen WebGL canvas blitted into the main 2D
-// canvas each frame, same shape as createDarts3DGame(). Uses the shared
-// miniFX toolkit for the launch/impact juice (flash, shake, camera punch,
-// confetti-colored particle bursts, floating score popup) so the payoff
-// reads as a genuine big-top spectacle.
-function createCannonball3DGame() {
+// ---- Tightrope Walk 3D ------------------------------------------------------
+// The Three.js remake: Rico balances on a wire strung across the big top,
+// leaning left/right with a balance pole while a chase camera dollies
+// forward as he covers ground. Identical gameplay contract to the classic
+// version (same balance/wind math, same 'tightrope' trophy) -- only the
+// rendering changed. Renders to an offscreen WebGL canvas blitted into the
+// main 2D canvas each frame, same shape as createCannonball3DGame() before
+// it. Uses the shared miniFX toolkit for gust/fall/finish juice (shake,
+// flash, particle bursts) so the payoff still reads as a big-top spectacle.
+function createTightrope3DGame() {
   const T = window.THREE;
-  const { renderer, canvas: cannon3DCanvas } = getMinigame3DRenderer('cannonball');
+  const { renderer, canvas: rope3DCanvas } = getMinigame3DRenderer('tightrope');
   const fx = createMiniFX();
 
-  const ROUNDS = 3;
-  let phase = 'power';       // 'power' | 'aim' | 'firing' | 'result' | 'done'
-  let power = 0, powerDir = 1;
-  let aim = 0, aimDir = 1;
-  let lockedPower = 0;
-  let launchesLeft = ROUNDS;
+  let phase = 'walk';          // 'walk' | 'fall' | 'done'
+  let balance = 0;
+  let windVel = 0;
+  let distance = 0;
+  let livesLeft = TIGHTROPE_LIVES;
   let score = 0;
-  let lastScoreLabel = '';
-  let resultTimer = 0;
+  let gustTimer = 1.2;
+  let fallTimer = 0;
+  let finished = false;
+  let lastMsg = '';
   let bestRecorded = false, isNewBest = false;
   let t = 0;
 
-  // ---- scene ----
-  const NET_POS = new T.Vector3(0, 1.7, -4.6);
-  const R = 0.65; // net radius in world units
+  const WIRE_LEN = TIGHTROPE_TOTAL_DIST * 0.14 + 4;
+  const START_Z = 1.2;
+  const END_Z = START_Z - (WIRE_LEN - 1.6);
+
   const scene = new T.Scene();
   scene.background = new T.Color(0x2a1238);
-  scene.fog = new T.Fog(0x2a1238, 7, 18);
+  scene.fog = new T.Fog(0x2a1238, 8, 22);
 
-  const camera = new T.PerspectiveCamera(56, VIEW_W / VIEW_H, 0.1, 30);
-  const CAM_POS = new T.Vector3(0, 1.25, 1.5);
-  const CAM_Z_IN = 0.7;
-  let camZ = CAM_POS.z;
-  camera.position.copy(CAM_POS);
-  camera.lookAt(NET_POS.x, NET_POS.y, NET_POS.z);
-
-  function worldToScreen(vec3) {
-    const p = vec3.clone().project(camera);
-    return { x: (p.x + 1) / 2 * VIEW_W, y: (1 - p.y) / 2 * VIEW_H };
-  }
+  const camera = new T.PerspectiveCamera(56, VIEW_W / VIEW_H, 0.1, 40);
+  camera.position.set(0, 1.15, START_Z + 2.1);
+  camera.lookAt(0, 0.4, START_Z - 2.4);
 
   // big-top backdrop: candy-striped wall + ring floor, matching the church
-  // interior's carnival palette
+  // interior's carnival palette (same treatment as the old cannonball scene)
   const wall = new T.Mesh(
-    new T.PlaneGeometry(14, 8),
+    new T.PlaneGeometry(16, 9),
     new T.MeshStandardMaterial({ color: 0x4a1268, roughness: 1 })
   );
-  wall.position.set(0, 2.8, -5.3);
-  wall.receiveShadow = true;
+  wall.position.set(0, 3.2, END_Z - 3);
   scene.add(wall);
   const stripeMat = new T.MeshStandardMaterial({ color: 0xff5fa2, roughness: 0.95 });
-  for (let i = -5; i <= 5; i += 2) {
-    const stripe = new T.Mesh(new T.PlaneGeometry(1, 8), stripeMat);
-    stripe.position.set(i, 2.8, -5.28);
+  for (let i = -6; i <= 6; i += 2) {
+    const stripe = new T.Mesh(new T.PlaneGeometry(1, 9), stripeMat);
+    stripe.position.set(i, 3.2, END_Z - 2.98);
     scene.add(stripe);
   }
   const floor = new T.Mesh(
-    new T.CircleGeometry(8, 40),
+    new T.PlaneGeometry(10, WIRE_LEN + 16),
     new T.MeshStandardMaterial({ color: 0xffc4e0, roughness: 0.95 })
   );
   floor.rotation.x = -Math.PI / 2;
-  floor.position.set(0, 0, -2);
+  floor.position.set(0, -3.4, (START_Z + END_Z) / 2);
   floor.receiveShadow = true;
   scene.add(floor);
-  // ring border
-  const ringEdge = new T.Mesh(
-    new T.TorusGeometry(8, 0.08, 8, 48),
+
+  // the wire itself, strung between a near and a far platform
+  const wire = new T.Mesh(
+    new T.CylinderGeometry(0.025, 0.025, WIRE_LEN, 8),
+    new T.MeshStandardMaterial({ color: 0x1c1a1e, metalness: 0.6, roughness: 0.4 })
+  );
+  wire.rotation.x = Math.PI / 2;
+  wire.position.set(0, 0, (START_Z + END_Z) / 2);
+  scene.add(wire);
+  [START_Z + 0.7, END_Z - 0.7].forEach((pz) => {
+    const platform = new T.Mesh(
+      new T.BoxGeometry(1.5, 0.3, 1.3),
+      new T.MeshStandardMaterial({ color: 0xe0a030, roughness: 0.7 })
+    );
+    platform.position.set(0, -0.15, pz);
+    platform.receiveShadow = true;
+    scene.add(platform);
+  });
+
+  // faint safety net, well below the wire
+  const net = new T.Mesh(
+    new T.PlaneGeometry(9, WIRE_LEN + 6),
+    new T.MeshStandardMaterial({ color: 0xf4ecd8, transparent: true, opacity: 0.16, side: T.DoubleSide })
+  );
+  net.rotation.x = -Math.PI / 2;
+  net.position.set(0, -2.6, (START_Z + END_Z) / 2);
+  scene.add(net);
+
+  // Rico, simplified: torso + head + balance pole, all in one group so the
+  // whole performer leans together when balance shifts.
+  const performer = new T.Group();
+  performer.position.set(0, 0.35, START_Z);
+  scene.add(performer);
+  const torso = new T.Mesh(
+    new T.CylinderGeometry(0.14, 0.16, 0.55, 12),
     new T.MeshStandardMaterial({ color: 0xe0a030, roughness: 0.6 })
   );
-  ringEdge.rotation.x = Math.PI / 2;
-  ringEdge.position.set(0, 0.02, -2);
-  scene.add(ringEdge);
-
-  // cannon: a tilted brass-look barrel low in frame, nose pointed at the net
-  const cannonGroup = new T.Group();
-  cannonGroup.position.set(0, 0.3, 0.9);
-  scene.add(cannonGroup);
-  const carriage = new T.Mesh(
-    new T.BoxGeometry(0.55, 0.3, 0.9),
-    new T.MeshStandardMaterial({ color: 0x3a2c18, roughness: 0.8 })
+  torso.position.y = 0.3;
+  torso.castShadow = true;
+  performer.add(torso);
+  const head = new T.Mesh(
+    new T.SphereGeometry(0.14, 12, 12),
+    new T.MeshStandardMaterial({ color: 0xe8b48a, roughness: 0.7 })
   );
-  carriage.position.set(0, -0.1, 0);
-  cannonGroup.add(carriage);
-  const barrelGroup = new T.Group();
-  barrelGroup.rotation.x = -0.55; // tilted up toward the net
-  cannonGroup.add(barrelGroup);
-  const barrel = new T.Mesh(
-    new T.CylinderGeometry(0.22, 0.26, 1.3, 20),
-    new T.MeshStandardMaterial({ color: 0xe0a030, metalness: 0.7, roughness: 0.3 })
+  head.position.y = 0.68;
+  head.castShadow = true;
+  performer.add(head);
+  const pole = new T.Mesh(
+    new T.CylinderGeometry(0.02, 0.02, 1.7, 8),
+    new T.MeshStandardMaterial({ color: 0x9a90a8, metalness: 0.4, roughness: 0.5 })
   );
-  barrel.rotation.x = Math.PI / 2;
-  barrel.position.z = -0.55;
-  barrel.castShadow = true;
-  barrelGroup.add(barrel);
-  const muzzleRing = new T.Mesh(
-    new T.TorusGeometry(0.23, 0.03, 10, 20),
-    new T.MeshStandardMaterial({ color: 0x3a2c18, roughness: 0.6 })
-  );
-  muzzleRing.position.z = -1.2;
-  barrelGroup.add(muzzleRing);
-  // fuse spark at the muzzle -- pulses while charging/aiming
-  const spark = new T.Mesh(
-    new T.SphereGeometry(0.045, 8, 8),
-    new T.MeshBasicMaterial({ color: 0xffe14d })
-  );
-  spark.position.z = -1.22;
-  barrelGroup.add(spark);
-  const muzzleTip = new T.Vector3();
-
-  // two flaming hoops staged between the cannon and the net
-  const hoopMat = new T.MeshStandardMaterial({ color: 0xff5a1e, emissive: 0xe0402a, emissiveIntensity: 0.9, roughness: 0.5 });
-  const hoops = [-1.7, -3.3].map((hz) => {
-    const hoop = new T.Mesh(new T.TorusGeometry(0.42, 0.055, 10, 28), hoopMat.clone());
-    hoop.position.set(0, 1.55, hz);
-    scene.add(hoop);
-    const glow = new T.PointLight(0xff6a2a, 0.9, 4);
-    glow.position.copy(hoop.position);
-    scene.add(glow);
-    return { mesh: hoop, glow, baseZ: hz };
-  });
-
-  // net/target: backboard disc + stacked bullseye rings, same painter's-order
-  // trick as the darts board, framed by a big metal hoop and support poles
-  const net = new T.Group();
-  net.position.copy(NET_POS);
-  const netBack = new T.Mesh(
-    new T.CircleGeometry(R * 1.3, 40),
-    new T.MeshStandardMaterial({ color: 0xfff6f0, roughness: 0.85 })
-  );
-  netBack.position.z = -0.03;
-  netBack.receiveShadow = true;
-  net.add(netBack);
-  CANNON_RINGS.forEach((ring, i) => {
-    const disc = new T.Mesh(
-      new T.CircleGeometry(R * ring.r, 40),
-      new T.MeshStandardMaterial({ color: new T.Color(ring.color), roughness: 0.85 })
+  pole.rotation.z = Math.PI / 2;
+  pole.position.y = 0.42;
+  performer.add(pole);
+  [-0.85, 0.85].forEach((px) => {
+    const tip = new T.Mesh(
+      new T.SphereGeometry(0.05, 8, 8),
+      new T.MeshStandardMaterial({ color: 0xff5fa2, emissive: 0xff5fa2, emissiveIntensity: 0.6 })
     );
-    disc.position.z = 0.002 * (i + 1);
-    disc.receiveShadow = true;
-    net.add(disc);
-  });
-  const netRim = new T.Mesh(
-    new T.TorusGeometry(R * 1.3, 0.045, 12, 48),
-    new T.MeshStandardMaterial({ color: 0xd8d8e0, metalness: 0.6, roughness: 0.35 })
-  );
-  net.add(netRim);
-  // cross-hatch net lines, purely decorative
-  const netLineMat = new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.25 });
-  for (let i = -2; i <= 2; i++) {
-    const vLine = new T.Mesh(new T.BoxGeometry(0.012, R * 2.5, 0.01), netLineMat);
-    vLine.position.set(i * (R / 2.4), 0, -0.02);
-    net.add(vLine);
-    const hLine = new T.Mesh(new T.BoxGeometry(R * 2.5, 0.012, 0.01), netLineMat);
-    hLine.position.set(0, i * (R / 2.4), -0.02);
-    net.add(hLine);
-  }
-  scene.add(net);
-  const NET_FACE_Z = NET_POS.z + 0.002 * CANNON_RINGS.length + 0.002;
-
-  // support poles either side of the net
-  [-R * 1.5, R * 1.5].forEach((px) => {
-    const pole = new T.Mesh(
-      new T.CylinderGeometry(0.06, 0.06, 2.6, 10),
-      new T.MeshStandardMaterial({ color: 0x2e1f30, roughness: 0.8 })
-    );
-    pole.position.set(px, NET_POS.y - 0.2, NET_POS.z + 0.1);
-    scene.add(pole);
+    tip.position.set(px, 0.42, 0);
+    performer.add(tip);
   });
 
-  // lights: dim ambient plus a warm spot on the net and the confetti-color
-  // sconce pair the rest of the church interior uses
-  scene.add(new T.AmbientLight(0x4a3050, 0.85));
-  const spot = new T.SpotLight(0xffe2c0, 1.1, 16, 0.42, 0.4);
-  spot.position.set(0, 4, 0);
-  spot.target = net;
-  spot.castShadow = true;
-  spot.shadow.mapSize.set(1024, 1024);
+  // pennant flags either side of the wire -- their sway is the visual "wind"
+  // cue, driven by windVel each frame
+  const flagMat = new T.MeshStandardMaterial({ color: 0xff5fa2, side: T.DoubleSide, roughness: 0.9 });
+  const flags = [-2.4, 2.4].map((fx) => {
+    const flag = new T.Mesh(new T.PlaneGeometry(0.5, 0.35), flagMat.clone());
+    flag.position.set(fx, 1.7, START_Z - 1.2);
+    scene.add(flag);
+    return flag;
+  });
+
+  // lights: dim ambient plus a warm spot following the performer, matching
+  // the church interior's confetti-color sconce pair
+  scene.add(new T.AmbientLight(0x4a3050, 0.9));
+  const spot = new T.SpotLight(0xffe2c0, 1.1, 20, 0.5, 0.4);
+  spot.position.set(0, 5, START_Z + 2);
   scene.add(spot);
+  scene.add(spot.target);
   const sconceGeo = new T.SphereGeometry(0.06, 12, 12);
   [[-3.5, 0x5fd0ff], [3.5, 0xffe14d]].forEach(([x, color]) => {
-    const p = new T.PointLight(color, 0.6, 8);
-    p.position.set(x, 2.6, -3.5);
+    const p = new T.PointLight(color, 0.55, 8);
+    p.position.set(x, 2.8, END_Z + 1);
     scene.add(p);
     const bulb = new T.Mesh(sconceGeo, new T.MeshBasicMaterial({ color }));
     bulb.position.copy(p.position);
     scene.add(bulb);
   });
 
-  // aim needle: sweeps across the net face, 1:1 with the classic needle
-  const needle = new T.Mesh(
-    new T.BoxGeometry(0.02, R * 2 + 0.25, 0.02),
-    new T.MeshBasicMaterial({ color: 0xf4ecd8 })
-  );
-  needle.visible = false;
-  scene.add(needle);
-
-  // cannonball, sitting in the muzzle until fired
-  const ball = new T.Mesh(
-    new T.SphereGeometry(0.14, 16, 16),
-    new T.MeshStandardMaterial({ color: 0x1c1a1e, metalness: 0.4, roughness: 0.5 })
-  );
-  ball.castShadow = true;
-  scene.add(ball);
-
-  const CONFETTI_COLORS = [0xff5fa2, 0x5fd0ff, 0xffe14d, 0x8cff5f, 0xc85fff];
-
-  function updateMuzzleTip() {
-    muzzleTip.set(0, -1.22, 0);
-    barrelGroup.localToWorld(muzzleTip);
+  function performerZFor(dist) {
+    return START_Z - Math.min(1, dist / TIGHTROPE_TOTAL_DIST) * (WIRE_LEN - 1.6);
   }
 
-  function positionBallInCannon() {
-    updateMuzzleTip();
-    ball.position.copy(muzzleTip);
-  }
-
-  // Landing point on the net face: radial distance from center matches the
-  // shared scoring distance exactly, so the ball always lands in the ring it
-  // scored. The angle around center is cosmetic, a random wedge on the side
-  // the aim needle was on, so three shots don't stack on one line.
-  function landingPoint(aimVal, dist) {
-    const side = aimVal >= 0 ? 1 : -1;
-    const ang = (Math.random() - 0.5) * 1.1;
-    return new T.Vector3(
-      NET_POS.x + side * Math.cos(ang) * dist * R,
-      NET_POS.y + Math.sin(ang) * dist * R,
-      NET_FACE_Z + 0.14
-    );
-  }
-
-  let launchFrom = new T.Vector3(), launchTo = new T.Vector3();
-  let arcH = 1.4;
-  let firingU = 0;
-  const FIRE_TIME = 0.62;
-  let pendingPts = 0;
-  let impactRing = null, impactT = 0;
-
-  function fireCannon() {
-    const res = cannonResolveShot(aim, lockedPower);
-    pendingPts = res.pts;
-    updateMuzzleTip();
-    launchFrom.copy(muzzleTip);
-    launchTo = landingPoint(aim, res.dist);
-    arcH = 1.1 + lockedPower * 0.9;
-    firingU = 0;
-    needle.visible = false;
-
-    // muzzle flash + recoil kick
-    fx.flash('#ffe14d', 0.12, 0.3);
-    fx.shake(0.02, 0.12);
-    fx.spawnParticles3D(T, scene, muzzleTip, { color: 0xffb020, count: 14, speed: 2.2, life: 0.4 });
-    cannonGroup.position.z += 0.12;
-
-    phase = 'firing';
-  }
-
-  function onImpact() {
-    score += pendingPts;
-    lastScoreLabel = pendingPts > 0 ? `+${pendingPts}` : 'MISSED THE NET';
-    launchesLeft--;
-
-    const screenPos = worldToScreen(launchTo);
-    const big = pendingPts >= 50;
-    if (pendingPts > 0) {
-      fx.cameraPunch(big ? 0.09 : 0.05, 0.2);
-      fx.shake(big ? 0.03 : 0.018, 0.16);
-      fx.flash(big ? '#e0b040' : '#c04070', big ? 0.16 : 0.1, big ? 0.28 : 0.16);
-      fx.spawnParticles3D(T, scene, launchTo, {
-        color: CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)],
-        count: big ? 20 : 10, speed: big ? 2.4 : 1.6,
-      });
-      fx.ring(screenPos.x, screenPos.y, big ? '#e0b040' : '#c04070', { endRadius: big ? 90 : 60 });
-      fx.popup(`+${pendingPts}`, screenPos.x, screenPos.y, { color: big ? '#e0b040' : '#c04070', size: big ? 28 : 20 });
-    } else {
-      fx.shake(0.014, 0.12);
-      fx.popup('MISS', screenPos.x, screenPos.y, { color: '#8a8090', size: 16 });
-    }
-
-    impactRing = new T.Mesh(
-      new T.TorusGeometry(0.06, 0.01, 8, 32),
-      new T.MeshBasicMaterial({ color: pendingPts > 0 ? 0xe0b040 : 0x6a6070, transparent: true, opacity: 0.9 })
-    );
-    impactRing.position.set(launchTo.x, launchTo.y, NET_FACE_Z + 0.01);
-    scene.add(impactRing);
-    impactT = 0;
-
-    phase = 'result';
-    resultTimer = 1.1;
-  }
-
-  function disposeImpactRing() {
-    if (!impactRing) return;
-    scene.remove(impactRing);
-    impactRing.geometry.dispose();
-    impactRing.material.dispose();
-    impactRing = null;
-  }
-
-  function resetCannon() {
-    cannonGroup.position.z = 0.9;
-    ball.visible = true;
-    positionBallInCannon();
+  function queueGust() {
+    const strength = 0.5 + Math.min(1, distance / TIGHTROPE_TOTAL_DIST) * 0.9;
+    windVel = (Math.random() < 0.5 ? -1 : 1) * strength * (0.6 + Math.random() * 0.6);
+    gustTimer = 1.1 + Math.random() * 1.1;
+    fx.shake(0.01 + Math.abs(windVel) * 0.012, 0.25);
   }
 
   function cleanup() {
     fx.disposeParticles3D();
-    disposeImpactRing();
     scene.traverse((obj) => {
       if (obj.geometry) obj.geometry.dispose();
       if (obj.material) {
@@ -2757,125 +2641,135 @@ function createCannonball3DGame() {
   }
   function leave() { cleanup(); exitMinigame(); }
 
-  resetCannon();
-
   return {
     update(dt) {
       t += dt;
       fx.update(dt);
       fx.updateParticles3D(dt);
 
-      // ease the cannon carriage back to rest after a recoil kick
-      cannonGroup.position.z += (0.9 - cannonGroup.position.z) * Math.min(1, dt * 6);
-
-      // fuse spark pulses faster the higher the charged power
-      const chargeLevel = phase === 'power' ? power : phase === 'aim' ? lockedPower : 0;
-      spark.material.color.setHSL(0.12, 1, 0.5 + Math.sin(t * (8 + chargeLevel * 14)) * 0.3);
-      spark.visible = phase === 'power' || phase === 'aim';
-
-      // flaming hoops flicker
-      hoops.forEach((h, i) => {
-        const flick = 0.75 + Math.sin(t * 6 + i * 2) * 0.25;
-        h.mesh.material.emissiveIntensity = flick;
-        h.glow.intensity = 0.7 + flick * 0.4;
-        h.mesh.rotation.z = Math.sin(t * 0.8 + i) * 0.05;
+      flags.forEach((f, i) => {
+        f.rotation.y = Math.sin(t * 3 + i) * 0.3 + windVel * 0.5;
       });
+      spot.target.position.copy(performer.position);
 
-      if (phase === 'power') {
-        power += powerDir * dt * 0.9;
-        if (power >= 1) { power = 1; powerDir = -1; }
-        if (power <= 0) { power = 0; powerDir = 1; }
-        if (interactPressed) { lockedPower = power; phase = 'aim'; aim = -1; aimDir = 1; needle.visible = true; }
-      } else if (phase === 'aim') {
-        aim += aimDir * dt * 1.3;
-        if (aim >= 1) { aim = 1; aimDir = -1; }
-        if (aim <= -1) { aim = -1; aimDir = 1; }
-        needle.position.set(NET_POS.x + aim * R, NET_POS.y, NET_FACE_Z + 0.02);
-        barrelGroup.rotation.y = aim * 0.18;
-        if (interactPressed) fireCannon();
-      } else if (phase === 'firing') {
-        firingU = Math.min(1, firingU + dt / FIRE_TIME);
-        const u = firingU;
-        ball.position.lerpVectors(launchFrom, launchTo, u);
-        ball.position.y += arcH * 4 * u * (1 - u);
-        ball.rotation.x += dt * 18;
-        if (u >= 1) onImpact();
-      } else if (phase === 'result') {
-        resultTimer -= dt;
-        if (resultTimer <= 0) {
-          disposeImpactRing();
-          if (launchesLeft <= 0) phase = 'done';
+      if (phase === 'walk') {
+        gustTimer -= dt;
+        if (gustTimer <= 0) queueGust();
+        windVel *= (1 - Math.min(1, dt * 0.6));
+        balance += windVel * dt;
+        let lean = 0;
+        if (keys['arrowleft'] || keys['a']) lean -= 1;
+        if (keys['arrowright'] || keys['d']) lean += 1;
+        balance += lean * dt * 1.6;
+        balance += (0 - balance) * dt * 0.35;
+        balance = Math.max(-1.4, Math.min(1.4, balance));
+
+        performer.rotation.z = -balance * 0.6;
+        performer.position.x = balance * 0.5;
+        performer.position.y = 0.35 + Math.sin(t * 9) * 0.015;
+
+        if (Math.abs(balance) >= TIGHTROPE_FALL_LIMIT) {
+          phase = 'fall';
+          fallTimer = 0.9;
+          livesLeft--;
+          lastMsg = livesLeft > 0 ? 'WHOOPS! BACK ON THE WIRE' : 'DOWN YOU GO!';
+          fx.flash('#c04070', 0.14, 0.3);
+          fx.shake(0.03, 0.3);
+          fx.spawnParticles3D(T, scene, performer.position, { color: 0xffe14d, count: 12, speed: 1.8, life: 0.5 });
+        } else {
+          distance += dt * 11;
+          score = Math.floor(Math.min(distance, TIGHTROPE_TOTAL_DIST));
+          performer.position.z = performerZFor(distance);
+          if (distance >= TIGHTROPE_TOTAL_DIST && !finished) {
+            finished = true;
+            score += TIGHTROPE_FINISH_BONUS;
+            phase = 'done';
+            fx.flash('#8cff5f', 0.18, 0.35);
+            fx.cameraPunch(0.06, 0.2);
+            fx.spawnParticles3D(T, scene, performer.position, { color: 0xffe14d, count: 24, speed: 2.4, life: 0.7 });
+          }
+        }
+      } else if (phase === 'fall') {
+        fallTimer -= dt;
+        performer.position.y -= dt * 2.2;
+        performer.rotation.x += dt * 3;
+        if (fallTimer <= 0) {
+          if (livesLeft <= 0) { phase = 'done'; }
           else {
-            resetCannon();
-            barrelGroup.rotation.y = 0;
-            phase = 'power';
-            power = 0; powerDir = 1;
+            distance = Math.max(0, distance - 18);
+            balance = 0; windVel = 0; gustTimer = 1.4;
+            performer.rotation.set(0, 0, 0);
+            performer.position.set(0, 0.35, performerZFor(distance));
+            phase = 'walk';
           }
         }
       } else if (phase === 'done') {
-        if (!bestRecorded) { isNewBest = recordMinigameScore('cannonball', score); bestRecorded = true; }
+        if (!bestRecorded) { isNewBest = recordMinigameScore('tightrope', score); bestRecorded = true; }
         if (interactPressed) { leave(); return; }
       }
 
-      if (impactRing) {
-        impactT += dt;
-        const k = Math.min(1, impactT / 0.4);
-        impactRing.scale.setScalar(1 + k * 3.5);
-        impactRing.material.opacity = 0.9 * (1 - k);
-      }
-
-      // camera: pull in tight on the net during the shot/result, gentle idle
-      // sway otherwise, plus miniFX's decaying shake and push punch layered on
-      const wantZ = (phase === 'firing' || phase === 'result' || phase === 'done') ? CAM_Z_IN : CAM_POS.z;
-      camZ += (wantZ - camZ) * Math.min(1, dt * 4);
-      const sway = Math.sin(t * 0.7) * 0.02;
+      // camera: chase the performer along the wire, gentle idle sway,
+      // plus miniFX's decaying shake/punch layered on
+      const camZ = performer.position.z + 2.1;
       camera.position.set(
-        CAM_POS.x + sway + fx.shakeOffset.x,
-        CAM_POS.y + Math.sin(t * 0.9) * 0.01 + fx.shakeOffset.y,
+        performer.position.x * 0.4 + Math.sin(t * 0.7) * 0.02 + fx.shakeOffset.x,
+        1.15 + Math.sin(t * 0.9) * 0.01 + fx.shakeOffset.y,
         camZ + fx.cameraPunchOffset
       );
-      camera.lookAt(NET_POS.x, NET_POS.y, NET_POS.z);
+      camera.lookAt(performer.position.x * 0.4, 0.4, performer.position.z - 2.4);
 
       if (buyPressed) { leave(); return; }
     },
     draw() {
       renderer.render(scene, camera);
-      ctx.drawImage(cannon3DCanvas, 0, 0);
+      ctx.drawImage(rope3DCanvas, 0, 0);
       fx.draw();
 
       const cx = VIEW_W / 2;
       ctx.textAlign = 'center';
       ctx.fillStyle = '#ff5fa2';
       ctx.font = 'bold 28px monospace';
-      ctx.fillText('HUMAN CANNONBALL 3D', cx, 60);
+      ctx.fillText('TIGHTROPE WALK 3D', cx, 60);
       ctx.fillStyle = '#f4ecd8';
       ctx.font = '17px monospace';
-      ctx.fillText(`SCORE ${score}   LAUNCHES LEFT ${Math.max(0, launchesLeft)}`, cx, 84);
+      ctx.fillText(`SCORE ${score}   LIVES ${Math.max(0, livesLeft)}`, cx, 84);
 
-      const barX = cx - 100, barY = 470, barW = 200, barH = 18;
+      // progress bar
+      const barX = cx - 140, barY = 104, barW = 280, barH = 10;
       ctx.fillStyle = 'rgba(8,6,12,0.55)';
-      ctx.fillRect(barX - 8, barY - 26, barW + 16, barH + 34);
-      ctx.strokeStyle = '#f4ecd8';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(barX, barY, barW, barH);
-      const shownPower = phase === 'power' ? power : lockedPower;
+      ctx.fillRect(barX - 8, barY - 18, barW + 16, barH + 24);
+      ctx.strokeStyle = '#f4ecd8'; ctx.lineWidth = 2; ctx.strokeRect(barX, barY, barW, barH);
       ctx.fillStyle = '#e0a030';
-      ctx.fillRect(barX + 2, barY + 2, (barW - 4) * shownPower, barH - 4);
+      ctx.fillRect(barX + 2, barY + 2, (barW - 4) * Math.min(1, distance / TIGHTROPE_TOTAL_DIST), barH - 4);
+      ctx.fillStyle = '#9a90a8';
+      ctx.font = '14px monospace';
+      ctx.fillText(`${Math.min(Math.floor(distance), TIGHTROPE_TOTAL_DIST)} / ${TIGHTROPE_TOTAL_DIST} FT`, cx, barY + barH + 16);
+
+      // balance meter
+      const bmX = cx - 100, bmY = 478, bmW = 200, bmH = 16;
+      ctx.fillStyle = 'rgba(8,6,12,0.55)';
+      ctx.fillRect(bmX - 8, bmY - 24, bmW + 16, bmH + 34);
+      ctx.strokeStyle = '#f4ecd8'; ctx.lineWidth = 2; ctx.strokeRect(bmX, bmY, bmW, bmH);
+      ctx.fillStyle = 'rgba(140,255,95,0.25)';
+      ctx.fillRect(bmX + bmW * 0.35, bmY, bmW * 0.3, bmH);
+      const needleX = bmX + bmW / 2 + (balance / 1.4) * (bmW / 2);
+      ctx.strokeStyle = Math.abs(balance) >= 1 ? '#c04070' : '#f4ecd8';
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(needleX, bmY - 6); ctx.lineTo(needleX, bmY + bmH + 6); ctx.stroke();
       ctx.fillStyle = '#9a90a8';
       ctx.font = '16px monospace';
-      ctx.fillText('POWER', cx, barY - 10);
+      ctx.fillText('BALANCE', cx, bmY - 10);
 
       ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#ff5fa2' : '#f4ecd8';
       ctx.font = 'bold 19px monospace';
-      if (phase === 'power') ctx.fillText('- TAP E TO LIGHT THE FUSE -', cx, 520);
-      else if (phase === 'aim') ctx.fillText('- TAP E TO FIRE -', cx, 520);
-      else if (phase === 'result') ctx.fillText(lastScoreLabel, cx, 520);
+      if (phase === 'walk') ctx.fillText('\u25c0 \u25b6 OR A/D TO LEAN', cx, 520);
+      else if (phase === 'fall') ctx.fillText(lastMsg, cx, 520);
       else if (phase === 'done') ctx.fillText(`FINAL SCORE: ${score} - PRESS E TO LEAVE`, cx, 520);
 
       if (phase === 'done') {
         ctx.font = '16px monospace';
         ctx.fillStyle = isNewBest ? '#8cff5f' : '#9a90a8';
-        ctx.fillText(isNewBest ? 'NEW BEST!' : `BEST: ${bestFor('cannonball')}`, cx, 542);
+        ctx.fillText(isNewBest ? 'NEW BEST!' : `BEST: ${bestFor('tightrope')}`, cx, 542);
       }
 
       ctx.fillStyle = '#6a6070';
@@ -9995,13 +9889,13 @@ const shops = {
     // carnival-prop/whack-a-pigeon row (row 6) -- clear of the crate at
     // (1,4) and directly under the trapeze artist's rigging overhead, same
     // "hiding in plain sight" gag as the rest of this room's big-top dressing.
-    // Human Cannonball, the big-top's marquee stunt -- open floor at (4,6),
-    // clear of the crate at (1,6), the carnival prop at (2,6), and
+    // Tightrope Walk, the big-top's other marquee stunt -- open floor at
+    // (4,6), clear of the crate at (1,6), the carnival prop at (2,6), and
     // whack-a-pigeon over at (9,6).
     minigames: [
       { id: 'whackpigeon', tx: 9, ty: 6, label: 'WHACK-A-PIGEON' },
       { id: 'organ', tx: 6, ty: 4, label: 'PLAY THE ORGAN' },
-      { id: 'cannonball', tx: 4, ty: 6, label: 'HUMAN CANNONBALL' },
+      { id: 'tightrope', tx: 4, ty: 6, label: 'WALK THE WIRE' },
     ],
   }),
   // GUT HUT -- BOXGUTS' place out in the swamp: part graffiti studio, part
