@@ -974,6 +974,11 @@ const MINIGAME_ACTIONS = {
   cratedig: () => enterMinigame(createCrateDiggingModeSelect()),
   speedsweep: () => enterMinigame(createSpeedSweepModeSelect()),
   staringcontest: () => enterMinigame(createStaringContestGame()),
+  // Mic Drop -- an endless three-lane freestyle-cypher rhythm game tucked
+  // into VT COMEDY CLUB next to the staring contest (see the `comedy`
+  // shop's `minigames` list). Same createModeSelectMenu() shape as darts/
+  // beat match/etc. See createMicDropModeSelect()/createMicDrop3DGame().
+  micdrop: () => enterMinigame(createMicDropModeSelect()),
   buildpizza: () => enterMinigame(createPizzaBuildGame()),
   clawmachine: () => enterMinigame(createClawMachineModeSelect()),
   beatjam: () => enterMinigame(createBeatJamModeSelect()),
@@ -1231,6 +1236,8 @@ const MINIGAME_TROPHIES = [
     flavor: 'Clear as much dust as you can before time\'s up.' },
   { id: 'staringcontest', label: 'Staring Contest', unit: 's',
     flavor: 'How long can you hold still before it blinks -- or you do.' },
+  { id: 'micdrop', label: 'Mic Drop', unit: 'pts',
+    flavor: 'Catch bars on the beat and keep the crowd hyped.' },
   { id: 'buildpizza', label: 'Build A Pizza', unit: 'pts',
     flavor: 'Grab the right topping right as it passes the marker.' },
   { id: 'clawmachine', label: 'Claw Machine', unit: 'pts',
@@ -3905,6 +3912,710 @@ function createWhackPigeonGame() {
       ctx.fillStyle = '#6a6070';
       ctx.font = '15px monospace';
       ctx.fillText('X to walk away anytime', cx, phase === 'done' ? 456 : 444);
+    },
+  };
+}
+
+// ---- Mic Drop: shared judge bands + hype-tier data -------------------------
+// Shared between the classic 2D version and the 3D remake so both modes
+// score identically and feed the same 'micdrop' trophy, the same way
+// DARTS_RINGS is shared between Darts' two renderers. `distFrac` is 0 at a
+// dead-center catch and 1 at the outer edge of the catch window -- each
+// renderer computes its own distFrac (pixels vs. world units) but the
+// judging bands themselves live here once.
+function micDropJudge(distFrac) {
+  if (distFrac <= 0.16) return { label: 'FIRE!!', pts: 80, tier: 3 };
+  if (distFrac <= 0.42) return { label: 'NICE',   pts: 40, tier: 2 };
+  if (distFrac <= 0.78) return { label: 'MEH',    pts: 15, tier: 1 };
+  return { label: 'BOOED', pts: 0, tier: 0 };
+}
+// Hype-meter tiers: the club levels itself up purely off how well the
+// player is spitting bars -- more of the crowd files in, the light rig
+// comes alive, and the top tier gets confetti. Both renderers read this
+// same table so the room "evolves" in step whether it's flat shapes or
+// the full 3D club. `crowd` is a headcount the 3D version maps straight
+// onto its crowd array; the classic version just uses it as a row count.
+const MIC_DROP_TIERS = [
+  { min: 0,  name: 'EMPTY ROOM', crowd: 2,  disco: false, confetti: false, color: '#6a6070' },
+  { min: 30, name: 'WARMING UP', crowd: 6,  disco: false, confetti: false, color: '#e0b040' },
+  { min: 60, name: 'GOING OFF',  crowd: 10, disco: true,  confetti: false, color: '#4ad0ff' },
+  { min: 85, name: 'LEGENDARY',  crowd: 14, disco: true,  confetti: true,  color: '#ff5fa2' },
+];
+function micDropTierIndex(hype) {
+  let idx = 0;
+  for (let i = 0; i < MIC_DROP_TIERS.length; i++) if (hype >= MIC_DROP_TIERS[i].min) idx = i;
+  return idx;
+}
+
+// ---- Mic Drop: freestyle cypher rhythm game --------------------------------
+// VT Comedy Club's other mic -- an open-mic freestyle cypher tucked next to
+// Mitch's stool (see the `comedy` shop's `minigames` list). Three lanes of
+// bars scroll toward a hit line; catch them on the beat with LEFT/UP/RIGHT
+// (or a tap in that third of the screen) to build combo. There are no
+// rounds -- it's an endless set that gets faster the longer it goes, scored
+// by a hype meter instead of a lives counter, so letting the meter hit zero
+// gets you booed off stage. The room levels up as hype climbs (see
+// MIC_DROP_TIERS above): an empty room fills in, the lights come alive, and
+// a packed house rains confetti at LEGENDARY. See MINIGAME_ACTIONS.micdrop
+// and createMicDrop3DGame() below for the Three.js remake.
+function createMicDropGame() {
+  const cx = VIEW_W / 2;
+  const LANES = [
+    { x: cx - 150, key: 'arrowleft',  color: '#e0603a', hint: '\u25C0' },
+    { x: cx,       key: 'arrowup',    color: '#e0b040', hint: '\u25B2' },
+    { x: cx + 150, key: 'arrowright', color: '#4ad0ff', hint: '\u25B6' },
+  ];
+  const HIT_Y = 460, SPAWN_Y = 96, CATCH_WINDOW = 150, MISS_PAST = HIT_Y + 40;
+
+  let phase = 'ready'; // ready | play | done
+  let notes = []; // { lane, y, hit }
+  let spawnTimer = 0.6;
+  let lastLane = -1, laneStreak = 0;
+  let survived = 0;
+  let score = 0, combo = 0, hype = 55;
+  let tier = 0;
+  let lastLabel = '', labelTimer = 0, labelColor = '#f4ecd8';
+  let tierPopup = '', tierPopupTimer = 0;
+  let bestRecorded = false, isNewBest = false;
+  const prevKey = {};
+
+  function speedFor() { return 160 + Math.min(200, survived * 6); } // px/s
+  function spawnIntervalFor() { return Math.max(0.38, 0.95 - survived * 0.012); }
+
+  function setLabel(text, color) { lastLabel = text; labelColor = color; labelTimer = 0.6; }
+
+  function updateTier() {
+    const idx = micDropTierIndex(hype);
+    if (idx === tier) return;
+    tier = idx;
+    tierPopup = MIC_DROP_TIERS[idx].name + '!';
+    tierPopupTimer = 1.4;
+  }
+
+  function spawnNote() {
+    let lane = Math.floor(Math.random() * 3);
+    if (lane === lastLane) {
+      laneStreak++;
+      if (laneStreak >= 2 && Math.random() < 0.7) lane = (lane + 1 + Math.floor(Math.random() * 2)) % 3;
+    } else laneStreak = 0;
+    lastLane = lane;
+    notes.push({ lane, y: SPAWN_Y, hit: false });
+  }
+
+  function resolveLane(laneIdx) {
+    let best = null, bestDist = Infinity;
+    for (const n of notes) {
+      if (n.lane !== laneIdx || n.hit) continue;
+      const d = Math.abs(n.y - HIT_Y);
+      if (d < bestDist) { bestDist = d; best = n; }
+    }
+    if (best && bestDist <= CATCH_WINDOW) {
+      const res = micDropJudge(bestDist / CATCH_WINDOW);
+      best.hit = true;
+      if (res.tier > 0) {
+        combo++;
+        const mult = 1 + Math.min(4, Math.floor(combo / 6)) * 0.5;
+        score += Math.round(res.pts * mult);
+        hype = Math.min(100, hype + [0, 1, 4, 7][res.tier]);
+      } else {
+        combo = 0;
+        hype = Math.max(0, hype - 14);
+      }
+      setLabel(res.label, LANES[laneIdx].color);
+      updateTier();
+    } else {
+      combo = 0;
+      setLabel('WHIFF', '#6a6070');
+    }
+  }
+
+  return {
+    onPointerDown(vx, vy) {
+      if (phase === 'ready') { phase = 'play'; return; }
+      if (phase !== 'play') return;
+      const laneIdx = vx < cx - 60 ? 0 : (vx > cx + 60 ? 2 : 1);
+      resolveLane(laneIdx);
+    },
+    update(dt) {
+      if (buyPressed) { exitMinigame(); return; }
+      if (phase === 'ready') {
+        if (interactPressed) phase = 'play';
+        return;
+      }
+      if (phase === 'done') {
+        if (!bestRecorded) { isNewBest = recordMinigameScore('micdrop', score); bestRecorded = true; }
+        if (interactPressed) exitMinigame();
+        return;
+      }
+
+      survived += dt;
+      labelTimer = Math.max(0, labelTimer - dt);
+      tierPopupTimer = Math.max(0, tierPopupTimer - dt);
+
+      LANES.forEach((l, i) => {
+        const down = !!keys[l.key];
+        if (down && !prevKey[l.key]) resolveLane(i);
+        prevKey[l.key] = down;
+      });
+
+      spawnTimer -= dt;
+      if (spawnTimer <= 0) { spawnTimer = spawnIntervalFor(); spawnNote(); }
+
+      const spd = speedFor();
+      notes.forEach((n) => { if (!n.hit) n.y += spd * dt; });
+      notes = notes.filter((n) => {
+        if (n.hit) return false;
+        if (n.y > MISS_PAST) {
+          combo = 0;
+          hype = Math.max(0, hype - 14);
+          setLabel('BOOED', '#c04070');
+          updateTier();
+          return false;
+        }
+        return true;
+      });
+
+      if (hype <= 0) phase = 'done';
+    },
+    draw() {
+      const td = MIC_DROP_TIERS[tier];
+      ctx.fillStyle = '#0a0714';
+      ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
+      // simple crowd row along the back wall, headcount scales with tier
+      for (let i = 0; i < td.crowd; i++) {
+        const fx2 = 40 + (i * (VIEW_W - 80) / Math.max(1, td.crowd - 1));
+        const bob = Math.sin(performance.now() / 220 + i) * (tier >= 2 ? 5 : 1.5);
+        ctx.fillStyle = '#1c1424';
+        ctx.beginPath(); ctx.arc(fx2, 78 + bob, 9, 0, Math.PI * 2); ctx.fill();
+        ctx.fillRect(fx2 - 7, 84 + bob, 14, 18);
+      }
+
+      // lanes
+      LANES.forEach((l) => {
+        ctx.fillStyle = 'rgba(244,236,216,0.05)';
+        ctx.fillRect(l.x - 40, 0, 80, VIEW_H);
+        ctx.strokeStyle = 'rgba(244,236,216,0.18)';
+        ctx.beginPath(); ctx.moveTo(l.x - 40, 0); ctx.lineTo(l.x - 40, VIEW_H); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(l.x + 40, 0); ctx.lineTo(l.x + 40, VIEW_H); ctx.stroke();
+      });
+      // hit line
+      ctx.strokeStyle = td.color;
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(cx - 190, HIT_Y); ctx.lineTo(cx + 190, HIT_Y); ctx.stroke();
+      ctx.lineWidth = 1;
+
+      LANES.forEach((l) => {
+        ctx.fillStyle = 'rgba(244,236,216,0.5)';
+        ctx.font = 'bold 20px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(l.hint, l.x, HIT_Y + 30);
+      });
+
+      notes.forEach((n) => {
+        const l = LANES[n.lane];
+        ctx.fillStyle = l.color;
+        ctx.beginPath(); ctx.arc(l.x, n.y, 16, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#181418';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      });
+
+      // HUD
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#e0b040';
+      ctx.font = 'bold 26px monospace';
+      ctx.fillText('MIC DROP', cx, 150);
+      ctx.fillStyle = '#f4ecd8';
+      ctx.font = '15px monospace';
+      ctx.fillText(`SCORE ${score}   COMBO x${combo}   ${td.name}`, cx, 172);
+
+      const barW = 260, barX = cx - barW / 2, barY = 184;
+      ctx.fillStyle = 'rgba(244,236,216,0.15)';
+      ctx.fillRect(barX, barY, barW, 8);
+      ctx.fillStyle = hype > 30 ? td.color : '#c04070';
+      ctx.fillRect(barX, barY, barW * (hype / 100), 8);
+
+      if (labelTimer > 0) {
+        ctx.fillStyle = labelColor;
+        ctx.font = 'bold 22px monospace';
+        ctx.fillText(lastLabel, cx, HIT_Y - 40);
+      }
+      if (tierPopupTimer > 0) {
+        ctx.fillStyle = td.color;
+        ctx.font = 'bold 20px monospace';
+        ctx.globalAlpha = Math.min(1, tierPopupTimer);
+        ctx.fillText(tierPopup, cx, 230);
+        ctx.globalAlpha = 1;
+      }
+
+      if (phase === 'ready') {
+        ctx.fillStyle = 'rgba(8,6,12,0.7)';
+        ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+        ctx.fillStyle = '#e0b040';
+        ctx.font = 'bold 24px monospace';
+        ctx.fillText('DROP A FREESTYLE', cx, 260);
+        ctx.fillStyle = '#f4ecd8';
+        ctx.font = '15px monospace';
+        ctx.fillText('CATCH THE BARS ON THE BEAT -- \u25C0 \u25B2 \u25B6', cx, 298);
+        ctx.fillText('KEEP THE HYPE METER UP. NO ROUNDS -- GO AS LONG AS YOU CAN.', cx, 320);
+        ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#e0b040' : '#f4ecd8';
+        ctx.font = 'bold 17px monospace';
+        ctx.fillText('- PRESS E TO START -', cx, 366);
+      } else if (phase === 'done') {
+        ctx.fillStyle = 'rgba(8,6,12,0.75)';
+        ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+        ctx.fillStyle = '#c04070';
+        ctx.font = 'bold 26px monospace';
+        ctx.fillText('BOOED OFF STAGE', cx, 260);
+        ctx.fillStyle = '#f4ecd8';
+        ctx.font = '17px monospace';
+        ctx.fillText(`FINAL SCORE: ${score}`, cx, 292);
+        ctx.fillStyle = isNewBest ? '#8cff5f' : '#9a90a8';
+        ctx.font = '15px monospace';
+        ctx.fillText(isNewBest ? 'NEW BEST!' : `BEST: ${bestFor('micdrop') || 0}`, cx, 314);
+        ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#e0b040' : '#f4ecd8';
+        ctx.font = 'bold 16px monospace';
+        ctx.fillText('- PRESS E TO LEAVE -', cx, 350);
+      }
+
+      ctx.fillStyle = '#6a6070';
+      ctx.font = '13px monospace';
+      ctx.fillText('X to walk away anytime', cx, VIEW_H - 14);
+    },
+  };
+}
+
+// ---- mic drop mode chooser --------------------------------------------------
+function createMicDropModeSelect() {
+  return createModeSelectMenu({
+    title: 'MIC DROP',
+    pickLabel: 'STEP TO THE MIC',
+    classicSub: 'The original flat three-lane cypher',
+    threeDSub: 'Step on stage -- full 3D',
+    createClassic: () => createMicDropGame(),
+    createThreeD: () => createMicDrop3DGame(),
+  });
+}
+
+// ---- Mic Drop 3D ------------------------------------------------------------
+// The Three.js remake of Mic Drop. Identical rules to the classic version --
+// same three lanes, same PERFECT/GOOD/OK/MISS judging bands (micDropJudge),
+// same endless hype-meter survival, same 'micdrop' trophy -- only the
+// rendering changed: the player stands on a real dance floor looking down
+// three glowing lanes toward the back wall, bars fly in as spinning discs,
+// a boombox thumps in the foreground, and the crowd/light rig/confetti all
+// evolve live as MIC_DROP_TIERS climbs. Renders to an offscreen WebGL
+// canvas (see getMinigame3DRenderer()) blitted into the main 2D canvas each
+// frame, so input handling, CSS scaling, and the rAF loop are all
+// untouched, and the HUD is drawn over the blit with the same monospace
+// styling every other mini-game uses.
+function createMicDrop3DGame() {
+  const T = window.THREE;
+  const { renderer, canvas: mic3DCanvas } = getMinigame3DRenderer('micdrop');
+  const fx = createMiniFX();
+
+  // ---- gameplay state: mirrors createMicDropGame exactly (see that
+  // function just above for the full rules writeup)
+  const LANE_X = [-1.3, 0, 1.3];
+  const LANE_KEYS = ['arrowleft', 'arrowup', 'arrowright'];
+  const LANE_COLORS = [0xe0603a, 0xe0b040, 0x4ad0ff];
+  const LANE_COLORS_CSS = ['#e0603a', '#e0b040', '#4ad0ff'];
+  const SPAWN_Z = -13, HIT_Z = 0, MISS_PAST_Z = 1.6, CATCH_WINDOW = 3.1;
+
+  let phase = 'ready'; // ready | play | done
+  let notes = []; // { lane, z, mesh, hit }
+  let spawnTimer = 0.7;
+  let lastLane = -1, laneStreak = 0;
+  let survived = 0;
+  let score = 0, combo = 0, hype = 55;
+  let tier = 0;
+  let lastLabel = '', labelTimer = 0, labelColor = '#f4ecd8';
+  let tierPopup = '', tierPopupTimer = 0;
+  let boomPulse = 0;
+  let bestRecorded = false, isNewBest = false;
+  const prevKey = {};
+  let t = 0;
+
+  function speedFor() { return 6 + Math.min(7.5, survived * 0.16); }
+  function spawnIntervalFor() { return Math.max(0.36, 0.85 - survived * 0.011); }
+
+  // ---- scene ----
+  const scene = new T.Scene();
+  scene.background = new T.Color(0x0a0714);
+  scene.fog = new T.Fog(0x0a0714, 7, 17);
+
+  const camera = new T.PerspectiveCamera(58, VIEW_W / VIEW_H, 0.1, 30);
+  const CAM_POS = new T.Vector3(0, 1.9, 3.1);
+  camera.position.copy(CAM_POS);
+  camera.lookAt(0, 1.3, -9);
+  scene.add(camera); // added so its child props (the mic, below) render
+
+  // dance floor, dark with three glowing lane strips running from the mic
+  // back toward the wall
+  const floor = new T.Mesh(
+    new T.PlaneGeometry(9, 22),
+    new T.MeshStandardMaterial({ color: 0x1c1422, roughness: 0.9 })
+  );
+  floor.rotation.x = -Math.PI / 2;
+  floor.position.set(0, 0, -6);
+  floor.receiveShadow = true;
+  scene.add(floor);
+
+  const laneMats = LANE_COLORS.map((c) => new T.MeshStandardMaterial({
+    color: 0x181420, emissive: c, emissiveIntensity: 0.35, roughness: 0.6,
+  }));
+  LANE_X.forEach((x, i) => {
+    const strip = new T.Mesh(new T.BoxGeometry(0.9, 0.02, 20), laneMats[i]);
+    strip.position.set(x, 0.011, -6);
+    scene.add(strip);
+  });
+
+  // hit-line ring markers, one per lane, pulsing with the beat
+  const hitRings = LANE_X.map((x, i) => {
+    const ring = new T.Mesh(
+      new T.TorusGeometry(0.34, 0.045, 10, 28),
+      new T.MeshStandardMaterial({ color: LANE_COLORS[i], emissive: LANE_COLORS[i], emissiveIntensity: 1, roughness: 0.4 })
+    );
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.set(x, 0.03, HIT_Z);
+    scene.add(ring);
+    return ring;
+  });
+
+  // back wall
+  const wall = new T.Mesh(
+    new T.PlaneGeometry(14, 8),
+    new T.MeshStandardMaterial({ color: 0x150f1c, roughness: 1 })
+  );
+  wall.position.set(0, 3, -16);
+  scene.add(wall);
+
+  // foreground mic, anchored to the camera like a first-person view-model
+  // so it always reads as "you're the one holding it"
+  const mic = new T.Group();
+  const micBody = new T.Mesh(
+    new T.CylinderGeometry(0.045, 0.045, 0.5, 10),
+    new T.MeshStandardMaterial({ color: 0x2a2a2e, metalness: 0.6, roughness: 0.35 })
+  );
+  mic.add(micBody);
+  const micHead = new T.Mesh(
+    new T.SphereGeometry(0.08, 12, 12),
+    new T.MeshStandardMaterial({ color: 0xd8d8e0, metalness: 0.3, roughness: 0.5 })
+  );
+  micHead.position.y = 0.28;
+  mic.add(micHead);
+  mic.position.set(0.55, -0.55, -1.05);
+  mic.rotation.z = -0.35;
+  camera.add(mic);
+
+  // boombox prop, foreground-left, thumps on every good hit
+  const boombox = new T.Group();
+  const boomBody = new T.Mesh(
+    new T.BoxGeometry(0.9, 0.5, 0.35),
+    new T.MeshStandardMaterial({ color: 0x1a1220, roughness: 0.8 })
+  );
+  boombox.add(boomBody);
+  [-0.28, 0.28].forEach((sx) => {
+    const cone = new T.Mesh(
+      new T.CircleGeometry(0.14, 20),
+      new T.MeshStandardMaterial({ color: 0xe0b040, emissive: 0x4a3010, roughness: 0.6 })
+    );
+    cone.position.set(sx, 0, 0.18);
+    boombox.add(cone);
+  });
+  boombox.position.set(-2.6, 0.35, 1.4);
+  boombox.rotation.y = 0.4;
+  scene.add(boombox);
+
+  // crowd: simple silhouette figures flanking the lanes, visibility count
+  // driven by the current hype tier (see updateTier())
+  const CROWD_MAT = new T.MeshStandardMaterial({ color: 0x120c18, roughness: 1 });
+  const crowd = [];
+  [-1, 1].forEach((side) => {
+    for (let i = 0; i < 7; i++) {
+      const person = new T.Group();
+      const body = new T.Mesh(new T.CylinderGeometry(0.15, 0.19, 0.55, 8), CROWD_MAT);
+      body.position.y = 0.32;
+      person.add(body);
+      const head = new T.Mesh(new T.SphereGeometry(0.14, 10, 10), CROWD_MAT);
+      head.position.y = 0.68;
+      person.add(head);
+      person.position.set(side * (2.8 + (i % 2) * 0.6), 0, -1 - i * 2.1);
+      person.visible = false;
+      scene.add(person);
+      crowd.push(person);
+    }
+  });
+
+  // disco lights: three colored point lights that only come alive once the
+  // room hits the "GOING OFF" tier, orbiting slowly overhead
+  const discoLights = [0xff5fa2, 0x4ad0ff, 0x8cff5f].map((c) => {
+    const l = new T.PointLight(c, 0, 9);
+    l.position.set(0, 4, -6);
+    scene.add(l);
+    return l;
+  });
+
+  // confetti: a pool of small colored planes that only fall at the top
+  // ("LEGENDARY") tier, recycled from the top once they hit the floor
+  const CONFETTI_COLORS = [0xff5fa2, 0x4ad0ff, 0xffe14d, 0x8cff5f, 0xc85fff];
+  const confetti = [];
+  for (let i = 0; i < 36; i++) {
+    const p = new T.Mesh(
+      new T.PlaneGeometry(0.1, 0.1),
+      new T.MeshBasicMaterial({ color: CONFETTI_COLORS[i % CONFETTI_COLORS.length], side: T.DoubleSide })
+    );
+    p.position.set((Math.random() - 0.5) * 8, 3 + Math.random() * 4, -2 - Math.random() * 12);
+    p.userData.spin = Math.random() * 4;
+    p.visible = false;
+    scene.add(p);
+    confetti.push(p);
+  }
+
+  // lights
+  scene.add(new T.AmbientLight(0x302840, 0.55));
+  const spot = new T.SpotLight(0xffe2c0, 0.85, 16, 0.6, 0.5);
+  spot.position.set(0, 4, 1);
+  spot.target = floor;
+  scene.add(spot);
+
+  // note geometry/materials, shared across every note mesh below -- one
+  // geometry, one material per lane, never created per-note
+  const NOTE_GEO = new T.TorusGeometry(0.26, 0.09, 10, 20);
+  const NOTE_MATS = LANE_COLORS.map((c) => new T.MeshStandardMaterial({
+    color: c, emissive: c, emissiveIntensity: 0.7, roughness: 0.35,
+  }));
+
+  function spawnNote() {
+    let lane = Math.floor(Math.random() * 3);
+    if (lane === lastLane) {
+      laneStreak++;
+      if (laneStreak >= 2 && Math.random() < 0.7) lane = (lane + 1 + Math.floor(Math.random() * 2)) % 3;
+    } else laneStreak = 0;
+    lastLane = lane;
+    const mesh = new T.Mesh(NOTE_GEO, NOTE_MATS[lane]);
+    mesh.position.set(LANE_X[lane], 0.55, SPAWN_Z);
+    scene.add(mesh);
+    notes.push({ lane, z: SPAWN_Z, mesh, hit: false });
+  }
+
+  function setLabel(text, color) { lastLabel = text; labelColor = color; labelTimer = 0.6; }
+
+  function updateTier() {
+    const idx = micDropTierIndex(hype);
+    if (idx === tier) return;
+    tier = idx;
+    tierPopup = MIC_DROP_TIERS[idx].name + '!';
+    tierPopupTimer = 1.5;
+    crowd.forEach((p, i) => { p.visible = i < MIC_DROP_TIERS[idx].crowd; });
+    fx.cameraPunch(0.1, 0.3);
+  }
+
+  function resolveLane(laneIdx) {
+    let best = null, bestDist = Infinity;
+    notes.forEach((n) => {
+      if (n.lane !== laneIdx || n.hit) return;
+      const d = Math.abs(n.z - HIT_Z);
+      if (d < bestDist) { bestDist = d; best = n; }
+    });
+    if (best && bestDist <= CATCH_WINDOW) {
+      const res = micDropJudge(bestDist / CATCH_WINDOW);
+      best.hit = true;
+      scene.remove(best.mesh);
+      if (res.tier > 0) {
+        combo++;
+        const mult = 1 + Math.min(4, Math.floor(combo / 6)) * 0.5;
+        score += Math.round(res.pts * mult);
+        hype = Math.min(100, hype + [0, 1, 4, 7][res.tier]);
+        boomPulse = 0.18;
+        fx.perfect3D(T, scene, new T.Vector3(LANE_X[laneIdx], 0.55, HIT_Z), LANE_COLORS[laneIdx]);
+        if (res.tier === 3) fx.cameraPunch(0.07, 0.18);
+      } else {
+        combo = 0;
+        hype = Math.max(0, hype - 14);
+        fx.shake(0.05, 0.2);
+      }
+      setLabel(res.label, LANE_COLORS_CSS[laneIdx]);
+      updateTier();
+    } else {
+      combo = 0;
+      setLabel('WHIFF', '#6a6070');
+    }
+  }
+
+  function cleanup() {
+    fx.disposeParticles3D();
+    scene.traverse((obj) => {
+      if (obj.geometry) obj.geometry.dispose();
+      if (obj.material) {
+        if (Array.isArray(obj.material)) obj.material.forEach((m) => m.dispose());
+        else obj.material.dispose();
+      }
+    });
+    scene.clear();
+  }
+  function leave() { cleanup(); exitMinigame(); }
+
+  return {
+    onPointerDown(vx, vy) {
+      if (phase === 'ready') { phase = 'play'; return; }
+      if (phase !== 'play') return;
+      const laneIdx = vx < VIEW_W / 3 ? 0 : (vx > VIEW_W * 2 / 3 ? 2 : 1);
+      resolveLane(laneIdx);
+    },
+    update(dt) {
+      if (buyPressed) { leave(); return; }
+      fx.update(dt);
+
+      if (phase === 'ready') {
+        if (interactPressed) phase = 'play';
+      } else if (phase === 'play') {
+        survived += dt;
+        t += dt;
+        labelTimer = Math.max(0, labelTimer - dt);
+        tierPopupTimer = Math.max(0, tierPopupTimer - dt);
+        boomPulse = Math.max(0, boomPulse - dt);
+
+        LANE_KEYS.forEach((k, i) => {
+          const down = !!keys[k];
+          if (down && !prevKey[k]) resolveLane(i);
+          prevKey[k] = down;
+        });
+
+        spawnTimer -= dt;
+        if (spawnTimer <= 0) { spawnTimer = spawnIntervalFor(); spawnNote(); }
+
+        const spd = speedFor();
+        notes.forEach((n) => {
+          if (n.hit) return;
+          n.z += spd * dt;
+          n.mesh.position.z = n.z;
+          n.mesh.rotation.z += dt * 5;
+        });
+        notes = notes.filter((n) => {
+          if (n.hit) return false;
+          if (n.z > MISS_PAST_Z) {
+            scene.remove(n.mesh);
+            combo = 0;
+            hype = Math.max(0, hype - 14);
+            setLabel('BOOED', '#c04070');
+            updateTier();
+            return false;
+          }
+          return true;
+        });
+
+        if (hype <= 0) phase = 'done';
+      } else if (phase === 'done') {
+        if (!bestRecorded) { isNewBest = recordMinigameScore('micdrop', score); bestRecorded = true; }
+        if (interactPressed) { leave(); return; }
+      }
+
+      // visuals that keep animating regardless of phase
+      const td = MIC_DROP_TIERS[tier];
+      hitRings.forEach((r, i) => { r.material.emissiveIntensity = 0.7 + Math.sin(t * 4 + i) * 0.3; });
+      boombox.scale.setScalar(1 + (boomPulse / 0.18) * 0.12);
+      boombox.rotation.y += dt * (0.15 + combo * 0.02);
+
+      discoLights.forEach((l, i) => {
+        l.intensity += ((td.disco ? 2.4 : 0) - l.intensity) * Math.min(1, dt * 4);
+        const a = t * (0.8 + i * 0.3) + i * 2.1;
+        l.position.set(Math.sin(a) * 3.2, 3.6 + Math.sin(a * 1.3) * 0.5, -6 + Math.cos(a) * 3);
+      });
+
+      confetti.forEach((p) => {
+        if (!td.confetti) { p.visible = false; return; }
+        p.visible = true;
+        p.position.y -= dt * 1.4;
+        p.rotation.z += dt * p.userData.spin;
+        p.rotation.x += dt * p.userData.spin * 0.6;
+        if (p.position.y < 0) {
+          p.position.y = 5 + Math.random() * 2;
+          p.position.x = (Math.random() - 0.5) * 8;
+          p.position.z = -2 - Math.random() * 12;
+        }
+      });
+
+      fx.updateParticles3D(dt);
+
+      // camera: idle sway, tier-change punch, decaying miss shake -- always
+      // looking down the lanes toward the back wall
+      const sway = Math.sin(t * 0.6) * 0.02;
+      camera.position.set(
+        CAM_POS.x + sway + fx.shakeOffset.x,
+        CAM_POS.y + Math.sin(t * 0.8) * 0.015 + fx.shakeOffset.y,
+        CAM_POS.z - fx.cameraPunchOffset
+      );
+      camera.lookAt(0, 1.3, -9);
+    },
+    draw() {
+      renderer.render(scene, camera);
+      ctx.drawImage(mic3DCanvas, 0, 0);
+      fx.draw();
+
+      const td = MIC_DROP_TIERS[tier];
+      const cx = VIEW_W / 2;
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#e0b040';
+      ctx.font = 'bold 26px monospace';
+      ctx.fillText('MIC DROP', cx, 42);
+      ctx.fillStyle = '#f4ecd8';
+      ctx.font = '15px monospace';
+      ctx.fillText(`SCORE ${score}   COMBO x${combo}   ${td.name}`, cx, 64);
+
+      const barW = 260, barX = cx - barW / 2, barY = 76;
+      ctx.fillStyle = 'rgba(244,236,216,0.15)';
+      ctx.fillRect(barX, barY, barW, 8);
+      ctx.fillStyle = hype > 30 ? td.color : '#c04070';
+      ctx.fillRect(barX, barY, barW * (hype / 100), 8);
+
+      if (labelTimer > 0) {
+        ctx.fillStyle = labelColor;
+        ctx.font = 'bold 24px monospace';
+        ctx.fillText(lastLabel, cx, 300);
+      }
+      if (tierPopupTimer > 0) {
+        ctx.globalAlpha = Math.min(1, tierPopupTimer);
+        ctx.fillStyle = td.color;
+        ctx.font = 'bold 22px monospace';
+        ctx.fillText(tierPopup, cx, 130);
+        ctx.globalAlpha = 1;
+      }
+
+      if (phase === 'ready') {
+        ctx.fillStyle = 'rgba(8,6,12,0.55)';
+        ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+        ctx.fillStyle = '#e0b040';
+        ctx.font = 'bold 26px monospace';
+        ctx.fillText('DROP A FREESTYLE', cx, 250);
+        ctx.fillStyle = '#f4ecd8';
+        ctx.font = '15px monospace';
+        ctx.fillText('CATCH THE BARS ON THE BEAT -- \u25C0 \u25B2 \u25B6', cx, 288);
+        ctx.fillText('KEEP THE HYPE METER UP -- NO ROUNDS, GO AS LONG AS YOU CAN', cx, 310);
+        ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#e0b040' : '#f4ecd8';
+        ctx.font = 'bold 17px monospace';
+        ctx.fillText('- PRESS E TO START -', cx, 356);
+      } else if (phase === 'done') {
+        ctx.fillStyle = 'rgba(8,6,12,0.6)';
+        ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+        ctx.fillStyle = '#c04070';
+        ctx.font = 'bold 26px monospace';
+        ctx.fillText('BOOED OFF STAGE', cx, 250);
+        ctx.fillStyle = '#f4ecd8';
+        ctx.font = '17px monospace';
+        ctx.fillText(`FINAL SCORE: ${score}`, cx, 282);
+        ctx.fillStyle = isNewBest ? '#8cff5f' : '#9a90a8';
+        ctx.font = '15px monospace';
+        ctx.fillText(isNewBest ? 'NEW BEST!' : `BEST: ${bestFor('micdrop') || 0}`, cx, 304);
+        ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#e0b040' : '#f4ecd8';
+        ctx.font = 'bold 16px monospace';
+        ctx.fillText('- PRESS E TO LEAVE -', cx, 340);
+      }
+
+      ctx.fillStyle = '#6a6070';
+      ctx.font = '13px monospace';
+      ctx.fillText('X to walk away anytime', cx, VIEW_H - 14);
     },
   };
 }
@@ -9206,9 +9917,12 @@ const shops = {
         ] },
     ],
     // Corner arcade sign for the staring contest -- clear of the crate at
-    // (1,4) and the skeptic NPC at (10,6).
+    // (1,4) and the skeptic NPC at (10,6). Mic Drop's sign sits on open
+    // floor between the counter table (row 3) and the stool row (row 7),
+    // clear of everything else in the room.
     minigames: [
       { id: 'staringcontest', tx: 11, ty: 4, label: 'STARE DOWN THE CAT' },
+      { id: 'micdrop', tx: 6, ty: 5, label: 'DROP A FREESTYLE' },
     ],
   }),
   church: makeShop('church', {
