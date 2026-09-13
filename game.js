@@ -13569,6 +13569,76 @@ let syrupRoadsOverlayEl = null, syrupRoadsOverlayFrame = null;
 let syrupRoadsReturnState = 'play';
 let syrupRoadsHistoryPushed = false; // mirrors labHistoryPushed/.../homeRunDerbyHistoryPushed -- see openSyrupRoadsApp()/closeSyrupRoadsApp()
 
+// ---------------------------------------------------------------- Syrup Roads intro splash video
+// Plays once, full-screen, every time the player triggers the cabinet --
+// right before the iframe overlay above opens. Same pattern as the brand
+// intro video at the very top of this file: a plain local <video> file
+// (no network request), layered above everything, skippable by tap/click/
+// any key, with a hard timeout safety net so a slow or blocked video never
+// strands the player on a black screen. It ships as a local file alongside
+// Syrup Roads' other bundled assets (instruments/syrup-roads/), so it loads
+// and plays identically with or without a connection -- no online/offline
+// branching needed.
+const SYRUP_ROADS_INTRO_VIDEO_URL = 'instruments/syrup-roads/syrup-roads-vid.mp4';
+
+function playSyrupRoadsIntroVideo(onDone) {
+  const v = document.createElement('video');
+  v.src = SYRUP_ROADS_INTRO_VIDEO_URL;
+  v.preload = 'auto';
+  v.playsInline = true; // iOS: play inline instead of forcing fullscreen
+  v.setAttribute('webkit-playsinline', 'true');
+  v.disablePictureInPicture = true;
+  v.controls = false;
+  v.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;'
+    + 'object-fit:contain;background:#000;z-index:2147483647;';
+  document.body.appendChild(v);
+
+  // Same visible SKIP button as the brand intro / character-intro splash,
+  // so the player always has an obvious way out.
+  const skipBtn = document.createElement('div');
+  skipBtn.textContent = 'SKIP \u25b8';
+  skipBtn.style.cssText = 'position:fixed;right:14px;bottom:14px;'
+    + 'padding:8px 16px;padding-bottom:calc(8px + env(safe-area-inset-bottom, 0px));'
+    + 'background:rgba(20,16,26,0.55);border:1.5px solid rgba(244,236,216,0.55);'
+    + 'border-radius:8px;color:#f4ecd8;font:bold 12px monospace;letter-spacing:0.5px;'
+    + '-webkit-user-select:none;user-select:none;z-index:2147483647;cursor:pointer;';
+  document.body.appendChild(skipBtn);
+
+  let done = false;
+  function finish() {
+    if (done) return;
+    done = true;
+    clearTimeout(safety);
+    v.pause();
+    v.remove();
+    skipBtn.remove();
+    onDone();
+  }
+  // Skippable with a tap/click or any key, same as every other
+  // "press to continue" screen elsewhere in this game.
+  v.addEventListener('click', finish);
+  v.addEventListener('ended', finish);
+  v.addEventListener('error', finish); // missing/corrupt file -> never block the mini-game on it
+  skipBtn.addEventListener('click', finish);
+  skipBtn.addEventListener('touchend', (e) => { e.preventDefault(); finish(); });
+  window.addEventListener('keydown', finish, { once: true });
+  // Hard safety net: if the browser blocks autoplay entirely or the file
+  // is unexpectedly slow, don't strand the player before the mini-game.
+  const safety = setTimeout(finish, 9000);
+
+  // Autoplay-with-sound requires a prior user gesture in every major
+  // browser; since opening the cabinet IS a user gesture (an E-press or a
+  // tap), try WITH sound first, and only fall back to muted if that's
+  // rejected, so the video still starts instantly either way.
+  const tryPlay = v.play();
+  if (tryPlay && typeof tryPlay.catch === 'function') {
+    tryPlay.catch(() => {
+      v.muted = true;
+      v.play().catch(finish); // if even muted autoplay fails, just skip straight in
+    });
+  }
+}
+
 function createSyrupRoadsOverlay() {
   const style = document.createElement('style');
   style.textContent = `
@@ -13631,17 +13701,23 @@ createSyrupRoadsOverlay();
 // Opens the Syrup Roads overlay and switches state to 'syrupRoadsApp'.
 // Called from MINIGAME_ACTIONS.syruproads (E on the cabinet, or tapping its
 // floating arcade sign), same entry points every other mini-game uses.
+// The intro splash video plays first (see playSyrupRoadsIntroVideo() above)
+// and the actual overlay/state-switch below only happens once that video
+// finishes or is skipped -- all gameplay/opening logic is unchanged from
+// before, just deferred behind the splash.
 function openSyrupRoadsApp() {
-  syrupRoadsReturnState = state;
-  syrupRoadsOverlayFrame.src = SYRUP_ROADS_APP_URL;
-  syrupRoadsOverlayEl.classList.add('open');
-  state = 'syrupRoadsApp';
-  // Same throwaway-history-entry trick as openInstrument()/openChessApp()/
-  // openBeatBotApp()/openOrganApp()/openMiniGolfApp()/
-  // openHomeRunDerbyApp() above, so the browser/OS back gesture closes the
-  // Syrup Roads overlay instead of leaving the game entirely.
-  history.pushState({ ricoSyrupRoadsApp: true }, '');
-  syrupRoadsHistoryPushed = true;
+  playSyrupRoadsIntroVideo(() => {
+    syrupRoadsReturnState = state;
+    syrupRoadsOverlayFrame.src = SYRUP_ROADS_APP_URL;
+    syrupRoadsOverlayEl.classList.add('open');
+    state = 'syrupRoadsApp';
+    // Same throwaway-history-entry trick as openInstrument()/openChessApp()/
+    // openBeatBotApp()/openOrganApp()/openMiniGolfApp()/
+    // openHomeRunDerbyApp() above, so the browser/OS back gesture closes the
+    // Syrup Roads overlay instead of leaving the game entirely.
+    history.pushState({ ricoSyrupRoadsApp: true }, '');
+    syrupRoadsHistoryPushed = true;
+  });
 }
 
 // Tears the iframe back down and returns to ordinary gameplay in HEY BUD.
