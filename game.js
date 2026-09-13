@@ -1025,6 +1025,13 @@ const MINIGAME_ACTIONS = {
   // DOM overlay with an <iframe>" trick. See openMiniGolfApp()/
   // createMiniGolfOverlay() below.
   minigolf: () => openMiniGolfApp(),
+  // The boombox out on the open grass in town (see the town map's
+  // `minigames` list, icon: 'boombox'). Unlike chess/beatbot/organ/mini
+  // golf above, this doesn't open a DOM/iframe app -- it plays a short
+  // track once start-to-finish while a vinyl-cascade effect takes over the
+  // screen, then returns straight to normal gameplay. See startDanceParty()
+  // in the "Dance Party" section below.
+  danceparty: () => startDanceParty(),
   // Connect 45s -- a little vinyl-themed Connect Four board left out on the
   // open grass in town (see the town map's `minigames` list below). Like
   // chess/beatbot/organ/mini golf, this is a full standalone web app (its
@@ -8968,6 +8975,21 @@ function makeOverworld() {
       { id: 'minigolf', tx: 6, ty: 21, label: 'PLAY MINI GOLF', icon: 'golfclubs' },
       { id: 'connectfour', tx: 33, ty: 21, label: 'PLAY CONNECT 45s', icon: 'connectfour' },
       { id: 'kangaiden', tx: 37, ty: 11, label: 'PLAY KANGAIDEN' },
+      // A boombox left out on the open grass just east of the Vermont Green
+      // FC stadium wall -- tx/ty (24, 21) sits in a clear patch beyond the
+      // stadium footprint (STADIUM_X/Y/W/H above, columns 17-22, rows
+      // 17-23), well clear of the flea market crates (26,20)/(28,21)/
+      // (30,20), the tree at (24,23), and every road row (bikeRows 9,
+      // walkerRow 12, dogRow 6). `icon: 'boombox'` swaps the usual floating
+      // arcade-cabinet sign for a boombox sprite (see drawMinigameBoombox())
+      // the same way the golf clubs/soccer ball/Connect 45s board do
+      // elsewhere. Doesn't open a DOM/iframe app like those -- pressing [E]
+      // (or tapping it) calls startDanceParty() directly, which plays
+      // danceparty.mp3/.ogg/.wav once start-to-finish while a cascade of
+      // spinning vinyl records takes over the screen for the length of the
+      // track, then hands control straight back to normal gameplay. See
+      // MINIGAME_ACTIONS.danceparty and the "Dance Party" section below.
+      { id: 'danceparty', tx: 24, ty: 21, label: 'START A DANCE PARTY', icon: 'boombox' },
     ],
   };
   // Talkable townsfolk: Gary (the old hippy guitarist by the deli garbage
@@ -10306,7 +10328,7 @@ const player = {
   tempItem: null, tempItemTimer: 0,
 };
 const collected = new Set();
-let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | portal | fifa | minigame | hotkeys | crate | photo | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | vinylSnakeApp | bayouBreakApp | gatorJamSlamApp | swampCaveApp | vtDirtApp | penaltyKingsApp | digDashApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | diggerApp | hyperSwimApp | connectFourApp | syrupRoadsApp | kangaidenSplash | kangaidenApp
+let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | danceParty | portal | fifa | minigame | hotkeys | crate | photo | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | vinylSnakeApp | bayouBreakApp | gatorJamSlamApp | swampCaveApp | vtDirtApp | penaltyKingsApp | digDashApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | diggerApp | hyperSwimApp | connectFourApp | syrupRoadsApp | kangaidenSplash | kangaidenApp
 // State to snap back to when the [H] hotkeys popup is closed -- currently
 // always 'play' since that's the only state H can be opened from, but kept
 // as its own var in case another state wants to offer the popup later.
@@ -10620,6 +10642,19 @@ function loadSfx(basePath) {
   });
   return a;
 }
+
+// The Dance Party track, played once start-to-finish by startDanceParty()
+// (see the "Dance Party" section further down). Same loadSfx() helper as
+// letsDoThisSfx above -- drop danceparty.mp3/.ogg/.wav in assets/ and
+// whichever the browser picks up first plays; all three are same-origin
+// local files, so this works fully offline with no extra handling. mp3/ogg
+// are strongly recommended over a bare .wav here: a ~20-second uncompressed
+// WAV runs several MB, while an mp3/ogg encode of the same clip is
+// typically 10-20x smaller and just as instant to start once loaded (audio
+// decode for a clip this short is effectively free) -- <source> fallback
+// order below means the browser always prefers the compressed formats when
+// they're present and only falls back to the wav if they're missing.
+const dancePartySfx = loadSfx('assets/danceparty');
 
 // Locks in a playable character and boots straight into the game with them.
 // Behavior depends on how the player got here (see pendingMode, set by the
@@ -10967,7 +11002,7 @@ const music = {
 // enter/exit call sites, so it can't drift out of sync no matter which
 // of the several ways the player backs out of the lab popup (keyboard
 // [X], on-screen [X] button, closing the instrument iframe, etc.).
-const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'vinylSnakeApp', 'bayouBreakApp', 'gatorJamSlamApp', 'swampCaveApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'hyperSwimApp', 'connectFourApp', 'syrupRoadsApp', 'kangaidenApp']);
+const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'vinylSnakeApp', 'bayouBreakApp', 'gatorJamSlamApp', 'swampCaveApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'hyperSwimApp', 'connectFourApp', 'syrupRoadsApp', 'kangaidenApp', 'danceParty']);
 function syncMusicDuck() {
   music.duck(DUCKED_STATES.has(state));
 }
@@ -15350,6 +15385,15 @@ function update(dt) {
     if (interactPressed) openKangaidenApp();
   } else if (state === 'win') {
     if (interactPressed) state = 'play';
+  } else if (state === 'danceParty') {
+    // Player movement is frozen for the duration (no movePlayer() call
+    // here, same as every other non-'play' overlay state) -- it's a beat to
+    // watch, not something to keep skating through. [E] ends it early, same
+    // skip convention as every other overlay in this game; otherwise it
+    // ends itself the moment dancePartySfx fires its 'ended' event (see
+    // endDanceParty()/the safety timer in startDanceParty()).
+    updateDanceCascade(dt);
+    if (interactPressed) endDanceParty();
   } else if (state === 'portal') {
     if (interactPressed) {
       state = 'play';
@@ -15667,6 +15711,144 @@ function drawMountains(camX) {
   for (const layer of MOUNTAIN_LAYERS) drawMountainLayer(layer, camX);
 }
 
+// ---------------------------------------------------------------- Dance Party (vinyl cascade takeover)
+// Triggered by the boombox out on the grass in town (icon: 'boombox' in the
+// town map's `minigames` list; see MINIGAME_ACTIONS.danceparty above and
+// drawMinigameBoombox() below). Pressing [E] on it (or tapping its sign)
+// calls startDanceParty(): dancePartySfx plays once start-to-finish while a
+// cascade of spinning vinyl records rains across the screen and builds up a
+// permanent trail as it goes -- same idea as the Windows Solitaire win
+// animation, records instead of cards -- fully taking over the screen by
+// the time the track ends. Player movement is paused for the duration (see
+// the 'danceParty' branch in update()) since it's meant to be watched, not
+// skated through, but [E] still cuts it short early, same as every other
+// skippable overlay in this game (the intro video, the character splash).
+//
+// The trail effect specifically needs its own persistent offscreen canvas:
+// the main game canvas gets fully redrawn every frame (tiles, buildings,
+// player, HUD...) so records drawn straight onto it would never leave a
+// mark behind. danceTrailCanvas is never cleared while a party is running --
+// only reset (via clearRect) when a new one starts -- so every record
+// leaves the previous frame's copy of itself sitting underneath it as it
+// moves, and drawDanceCascade() just composites that whole accumulated
+// buffer over the freshly-drawn world each frame.
+const danceTrailCanvas = document.createElement('canvas');
+danceTrailCanvas.width = VIEW_W;
+danceTrailCanvas.height = VIEW_H;
+const danceTrailCtx = danceTrailCanvas.getContext('2d');
+
+const DANCE_VINYL_COLORS = ['#D85A30', '#1D9E75', '#378ADD', '#D4537E', '#BA7517', '#7F77DD', '#639922', '#F0997B'];
+const DANCE_GRAVITY = 2500; // px/s^2 -- same bounce weight as the standalone vinyl-cascade demo this was adapted from
+const DANCE_STREAM_COUNT = 14;
+
+let danceCascade = { streams: [] };
+let danceSafetyTimer = null;
+
+function makeDanceVinyl(randomX) {
+  const r = 15 + Math.random() * 14;
+  return {
+    x: randomX ? Math.random() * VIEW_W : VIEW_W + r + Math.random() * 120,
+    y: 10 + Math.random() * 100,
+    vx: -(90 + Math.random() * 210),
+    vy: -40 + Math.random() * 160,
+    r,
+    angle: Math.random() * Math.PI * 2,
+    color: DANCE_VINYL_COLORS[Math.floor(Math.random() * DANCE_VINYL_COLORS.length)],
+  };
+}
+
+// Starts the party: resets the trail buffer and the record streams, plays
+// dancePartySfx from the top, and switches state so update()/render() take
+// over from here. Guarded the same way doBuy() guards its cart interactions
+// -- only fires from ordinary 'play' gameplay, never mid-dialog/menu/etc.
+function startDanceParty() {
+  if (state !== 'play') return;
+  danceTrailCtx.clearRect(0, 0, VIEW_W, VIEW_H);
+  danceCascade.streams = [];
+  for (let i = 0; i < DANCE_STREAM_COUNT; i++) danceCascade.streams.push(makeDanceVinyl(true));
+
+  try {
+    dancePartySfx.currentTime = 0;
+    const p = dancePartySfx.play();
+    if (p && typeof p.catch === 'function') p.catch(() => {}); // autoplay-with-sound is fine here since [E] is a real user gesture
+  } catch (err) { /* missing/corrupt file -- the safety timer below still ends the party on schedule */ }
+
+  // Safety net, same spirit as the brand-intro video's: if the audio file
+  // is missing, fails to decode, or its 'ended' event never fires for any
+  // reason, don't strand the player frozen in the dance state forever.
+  // 30s comfortably covers the track with room to spare; endDanceParty()
+  // clears this the moment the track actually finishes (or is skipped).
+  clearTimeout(danceSafetyTimer);
+  danceSafetyTimer = setTimeout(endDanceParty, 30000);
+
+  state = 'danceParty';
+}
+
+// Ends the party (track finished, skipped early with [E], or the safety
+// timer fired) and hands control straight back to normal gameplay.
+function endDanceParty() {
+  clearTimeout(danceSafetyTimer);
+  danceSafetyTimer = null;
+  dancePartySfx.pause();
+  if (state === 'danceParty') state = 'play';
+}
+dancePartySfx.addEventListener('ended', endDanceParty);
+dancePartySfx.addEventListener('error', () => { if (state === 'danceParty') endDanceParty(); });
+
+function updateDanceCascade(dt) {
+  const step = Math.min(dt, 0.05);
+  for (let i = 0; i < danceCascade.streams.length; i++) {
+    const s = danceCascade.streams[i];
+    s.vy += DANCE_GRAVITY * step;
+    s.x += s.vx * step;
+    s.y += s.vy * step;
+    s.angle += (s.vx * 0.012) * step * 10;
+    if (s.y + s.r > VIEW_H) { s.y = VIEW_H - s.r; s.vy = -Math.abs(s.vy); }
+    if (s.x < -s.r - 20) danceCascade.streams[i] = makeDanceVinyl(false);
+  }
+}
+
+// Draws one record -- label, grooves, and all -- onto whichever context is
+// passed in (always danceTrailCtx; kept as a parameter rather than a global
+// so this stays a pure drawing function like the rest of the file's draw*
+// helpers).
+function drawDanceVinylTo(tctx, s) {
+  tctx.save();
+  tctx.translate(s.x, s.y);
+  tctx.rotate(s.angle);
+  const r = s.r;
+  tctx.fillStyle = '#141414';
+  tctx.beginPath(); tctx.arc(0, 0, r, 0, Math.PI * 2); tctx.fill();
+  tctx.strokeStyle = 'rgba(255,255,255,0.12)';
+  tctx.lineWidth = 1;
+  for (let i = 1; i <= 3; i++) {
+    tctx.beginPath();
+    tctx.arc(0, 0, r * (0.55 + i * 0.11), 0, Math.PI * 2);
+    tctx.stroke();
+  }
+  tctx.fillStyle = s.color;
+  tctx.beginPath(); tctx.arc(0, 0, r * 0.4, 0, Math.PI * 2); tctx.fill();
+  tctx.fillStyle = '#141414';
+  tctx.beginPath(); tctx.arc(0, 0, r * 0.09, 0, Math.PI * 2); tctx.fill();
+  tctx.fillStyle = 'rgba(255,255,255,0.2)';
+  tctx.beginPath(); tctx.arc(-r * 0.26, -r * 0.3, r * 0.14, 0, Math.PI * 2); tctx.fill();
+  tctx.restore();
+}
+
+// Called from render() while state === 'danceParty'. Stamps every record's
+// current position into the persistent trail buffer (see danceTrailCanvas
+// above -- this is what makes the trails accumulate frame over frame) then
+// composites that whole buffer over the already-drawn world/HUD.
+function drawDanceCascade() {
+  for (const s of danceCascade.streams) drawDanceVinylTo(danceTrailCtx, s);
+  ctx.drawImage(danceTrailCanvas, 0, 0);
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#ffd23c' : '#f4ecd8';
+  ctx.font = 'bold 15px monospace';
+  ctx.fillText('- DANCE PARTY! -', VIEW_W / 2, VIEW_H - 18);
+}
+
 // ---------------------------------------------------------------- mini-game arcade sign
 // Every mini-game automatically gets this, driven entirely by each map's
 // `minigames` list -- so a future mini-game only needs an entry there (plus
@@ -15848,6 +16030,88 @@ function drawMinigameGolfClubs(wx, wy, time, seed, label) {
   ctx.fillText(flashOnLabel ? (label || 'MINI-GAME') : 'TAP TO PLAY', cx, cy - bagH / 2 - 22 * s);
 
   return { cx, cy, hw: bagW / 2 + 18, hh: bagH / 2 + 32 };
+}
+
+// Alternate mini-game marker used when a map entry sets `icon: 'boombox'`
+// (currently just the Dance Party boombox, out on the open grass in town)
+// -- same bob/label/hitbox contract as drawMinigameArcadeSign()/
+// drawMinigameSoccerBall()/drawMinigameGolfClubs() above so it drops into
+// the exact same per-frame loop and tap-shortcut handling. Drawn as a
+// boombox with two speakers, a handle, and a little antenna, plus a couple
+// of small sound-wave arcs that pulse so it reads as "playing music" even
+// before the player interacts with it.
+function drawMinigameBoombox(wx, wy, time, seed, label) {
+  const s = MINIGAME_OBJECT_SCALE;
+  const bob = Math.sin(time * 0.003 + seed) * 3;
+  const cx = wx, cy = wy - 18 + bob;
+  const boxW = 30 * s, boxH = 18 * s;
+
+  // soft contact shadow on the grass, independent of the box's bob
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.beginPath();
+  ctx.ellipse(wx, wy + 2, boxW * 0.55, boxW * 0.2, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // carry handle, arced above the body
+  ctx.strokeStyle = '#2a2a2a';
+  ctx.lineWidth = 2 * s;
+  ctx.beginPath();
+  ctx.arc(cx, cy - boxH / 2, boxW * 0.28, Math.PI, 0);
+  ctx.stroke();
+
+  // antenna, cocked off to one side
+  ctx.strokeStyle = '#8a8a8a';
+  ctx.lineWidth = 1.4 * s;
+  ctx.beginPath();
+  ctx.moveTo(cx + boxW * 0.32, cy - boxH / 2);
+  ctx.lineTo(cx + boxW * 0.46, cy - boxH / 2 - 14 * s);
+  ctx.stroke();
+
+  // body
+  ctx.fillStyle = '#d8482e';
+  ctx.beginPath();
+  ctx.roundRect(cx - boxW / 2, cy - boxH / 2, boxW, boxH, 3 * s);
+  ctx.fill();
+  ctx.strokeStyle = '#241206';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // two speaker cones
+  [-1, 1].forEach((side) => {
+    const scx = cx + side * boxW * 0.26;
+    ctx.fillStyle = '#1c1420';
+    ctx.beginPath(); ctx.arc(scx, cy, boxH * 0.36, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#3a2e34';
+    ctx.beginPath(); ctx.arc(scx, cy, boxH * 0.2, 0, Math.PI * 2); ctx.fill();
+  });
+
+  // small cyan display between the speakers, like a tape deck window
+  ctx.fillStyle = '#4ad0ff';
+  ctx.fillRect(cx - 3 * s, cy - 2.5 * s, 6 * s, 5 * s);
+
+  // pulsing sound-wave arcs off each speaker, so it reads as "playing"
+  const pulse = 0.5 + 0.5 * Math.sin(time * 0.008 + seed);
+  ctx.strokeStyle = `rgba(255,210,60,${0.35 + 0.35 * pulse})`;
+  ctx.lineWidth = 1.5 * s;
+  [-1, 1].forEach((side) => {
+    const scx = cx + side * boxW * 0.26;
+    for (let i = 1; i <= 2; i++) {
+      ctx.beginPath();
+      ctx.arc(scx, cy, boxH * 0.36 + i * 5 * s + pulse * 2, side < 0 ? Math.PI * 0.7 : -Math.PI * 0.3,
+        side < 0 ? Math.PI * 1.3 : Math.PI * 0.3);
+      ctx.stroke();
+    }
+  });
+
+  // floating label above the boombox -- same flash-between-label-and-tap-
+  // hint behavior as the arcade sign / soccer ball / golf clubs
+  const flashOnLabel = Math.floor(time / 1400) % 2 === 0;
+  ctx.fillStyle = '#ffd23c';
+  ctx.font = `bold ${Math.round(9 * s)}px monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillText(flashOnLabel ? (label || 'MINI-GAME') : 'TAP TO PLAY', cx, cy - boxH / 2 - 24 * s);
+
+  return { cx, cy, hw: boxW / 2 + 16, hh: boxH / 2 + 30 };
 }
 
 // Alternate mini-game marker used when a map entry sets `icon: 'connectfour'`
@@ -16269,6 +16533,8 @@ function render(time) {
         ? drawMinigameSamuraiSword(wx, wy, time, seed, mg.label)
         : mg.icon === 'baseball'
         ? drawMinigameBaseball(wx, wy, time, seed, mg.label)
+        : mg.icon === 'boombox'
+        ? drawMinigameBoombox(wx, wy, time, seed, mg.label)
         : drawMinigameArcadeSign(wx, wy, time, seed, mg.label);
       minigameSignHitboxes.push({ map: player.map, id: mg.id, ...rect });
     });
@@ -16300,6 +16566,7 @@ function render(time) {
   if (state === 'vinylNinjaSplash') drawVinylNinjaSplash();
   if (state === 'kangaidenSplash') drawKangaidenSplash();
   if (state === 'win') drawWin();
+  if (state === 'danceParty') drawDanceCascade();
   if (state === 'portal') drawPortalPopup();
   if (state === 'labLocked') drawLabLockedPopup();
   if (state === 'lab') drawLabPopup(time);
