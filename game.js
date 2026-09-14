@@ -796,6 +796,21 @@ const TRUTHLAB_JUNK = [
     reply: 'Nothing you\'re hunting for tonight -- but Tha Truth keeps this crate stocked with heat just for the love of it.' },
 ];
 
+// Four extra swamp boardwalk dig crates -- same 1:1 pairing via
+// c.streisandSeed as NECTARS_JUNK/HENRYS_JUNK/TRUTHLAB_JUNK above. Every
+// crate here is a Barbra Streisand LP, never one of the 5 collectibles --
+// pure "yep, that's a crate-digging swamp for you" filler.
+const STREISAND_JUNK = [
+  { line: 'A well-loved copy of "Guilty" — the falsetto harmonies bleeding through even with the volume all the way down.',
+    reply: 'A genuine classic. Not the one you\'re digging for tonight, though.' },
+  { line: '"The Broadway Album", gatefold sleeve gone soft at the corners from decades of handling.',
+    reply: 'Belts every note. Still isn\'t one of the five.' },
+  { line: 'A "Yentl" soundtrack pressing, still sealed in its original shrink wrap.',
+    reply: 'Somebody never got around to opening this one. Keep digging.' },
+  { line: 'A duets record — half the tracklist trading verses with singers who are, frankly, out of their depth.',
+    reply: 'Not it. But respect to whoever kept this in this kind of shape.' },
+];
+
 // Fake front-page stories for the town's newspaper stands. Onion/Daily Show
 // style Vermont satire — one random headline+body pops up each time a stand
 // is read. Keep these silly and harmless, no real people, just generic
@@ -9664,6 +9679,14 @@ function makeSwamp() {
     [10, 21, { junkSeed: 0 }],
     [34, 17, { junkSeed: 6 }],
     [14, 12, { junkSeed: 3 }],
+    // four more boardwalk-trunk dig spots -- same "row 12 is guaranteed
+    // clear across the full map width" placement as the junk crates above,
+    // filled with an all-Streisand pool (see STREISAND_JUNK) instead of the
+    // usual JUNK grab-bag.
+    [3, 12,  { streisandSeed: 0 }],
+    [11, 12, { streisandSeed: 1 }],
+    [28, 12, { streisandSeed: 2 }],
+    [35, 12, { streisandSeed: 3 }],
   ];
   for (const [x, y, d] of crateDefs) { g[y][x] = 'c'; crates[key(x, y)] = d; }
   // Tracked so shuffleRecordCrates() can rotate which of these boardwalk
@@ -10008,32 +10031,32 @@ const shops = {
           'Got the MPC, got the notebook, got the headphones warmed up. Always cooking something back here.',
         ] },
     ],
-    // Beat-matching mini-game, pushed up against the back wall (top row of
-    // the room, right below the wall tile) instead of out on the floor.
-    // ty nudged down 2 tiles from the wall so its top edge doesn't get
-    // clipped by the wall tile above it.
-    // Beat Jam sits on open floor near the bottom of the room, clear of
-    // the gear tiles (4,7)/(10,7), the mic stand (7,5), and the couch run
-    // along the bottom-left wall (1,8)/(2,8)/(3,8).
+    // The four minigames are spread toward the room's four corners instead
+    // of clustering in the middle of the floor, while each still keeps
+    // clear approach tiles on at least two sides so it's always reachable.
+    // ty stays 3+ everywhere (never row 1 or 2) so the floating arcade-sign
+    // marker (drawMinigameArcadeSign, which extends roughly 2.25 tiles above
+    // its tile) never gets clipped by the top wall.
     minigames: [
-      { id: 'beatmatch', tx: 5, ty: 3, label: 'PLAY BEAT MATCH' },
-      { id: 'beatjam', tx: 9, ty: 7, label: 'FREESTYLE BEAT JAM' },
-      // Rico's Beat Bot. Originally parked right beside Zach's SKYLAB desk
-      // at (3,2), but that's only 2 rows below the top wall, and the
-      // floating arcade-sign marker (drawMinigameArcadeSign) extends roughly
-      // 2.25 tiles above its tile -- not enough clearance, so its top edge
-      // was getting clipped by the wall. Moved to (7,4), open floor nearer
-      // the middle of the room -- 4 rows down from the wall (comfortably
-      // more than beatmatch's ty:3, which already renders uncut) with clear
-      // approach tiles open above (7,3) and to the right (8,4); kanga (6,4)
-      // sits just to the left and the mic stand (7,5) just below. Opens the
-      // full standalone drum-machine app in its own DOM overlay; see
-      // openBeatBotApp()/createBeatBotOverlay().
-      { id: 'beatbot', tx: 7, ty: 4, label: "RICO'S BEAT BOT" },
-      // The Green Door Cypher is the studio's main community gathering.
-      // It lives on the open floor beside the mic stand so the player can
-      // literally walk into the circle to start it.
+      // Beat Match: upper-left, on open floor just right of the gear pile
+      // at (3,3) and above kanga (6,4) -- clear approach from (4,2) above,
+      // (5,3) to the right, and (4,4) below.
+      { id: 'beatmatch', tx: 4, ty: 3, label: 'PLAY BEAT MATCH' },
+      // Rico's Beat Bot: upper-right, tucked past the counter table/armchair
+      // and clear of the crate at (12,4) -- approach from (10,4) to the
+      // left and (11,5) below. Opens the full standalone drum-machine app
+      // in its own DOM overlay; see openBeatBotApp()/createBeatBotOverlay().
+      { id: 'beatbot', tx: 11, ty: 4, label: "RICO'S BEAT BOT" },
+      // The Green Door Cypher is the studio's main community gathering. It
+      // stays put on the open floor right beside the mic stand (7,5) so the
+      // player can literally walk into the circle to start it -- this also
+      // anchors the room's center-bottom so the other three can spread out
+      // toward the corners around it.
       { id: 'cypher', tx: 7, ty: 6, label: 'JOIN THE CYPHER' },
+      // Freestyle Beat Jam: lower-left, clear of the gear tile at (4,7) and
+      // the couch run at (1,8)/(2,8)/(3,8) -- approach from (3,6) above and
+      // (2,7) to the left.
+      { id: 'beatjam', tx: 3, ty: 7, label: 'FREESTYLE BEAT JAM' },
     ],
   }),
   wax: makeShop('wax', {
@@ -11553,6 +11576,10 @@ function doInteract() {
     } else if (c.truthLabSeed !== undefined) {
       const tj = TRUTHLAB_JUNK[c.truthLabSeed % TRUTHLAB_JUNK.length];
       dialog = { name: 'CRATE', lines: [tj.line, tj.reply], i: 0 };
+      state = 'dialog';
+    } else if (c.streisandSeed !== undefined) {
+      const sj = STREISAND_JUNK[c.streisandSeed % STREISAND_JUNK.length];
+      dialog = { name: 'CRATE', lines: [sj.line, sj.reply], i: 0 };
       state = 'dialog';
     } else {
       dialog = { name: 'CRATE', lines: [JUNK[c.junkSeed % JUNK.length], 'Keep digging...'], i: 0 };
