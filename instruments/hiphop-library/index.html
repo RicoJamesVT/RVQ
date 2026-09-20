@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hip Hop Library</title>
+<style>
+  :root{
+    --bg0:#0b0805; --bg1:#17111d; --panel:#241a12; --panel2:#302116;
+    --gold:#ffd23c; --gold-dim:#e0b040; --red:#e04858; --cyan:#4ad0ff;
+    --green:#7ad04a; --cream:#fff8e8; --dim:#d7cdb5; --line:rgba(224,176,64,.38);
+    --text:clamp(16px,1.25vw,19px);
+    --small:clamp(14px,1.05vw,16px);
+    --tiny:clamp(12px,.95vw,14px);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; width:100%; height:100%; min-height:100%;
+    background:var(--bg0); color:var(--cream);
+    font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
+    -webkit-user-select:none; user-select:none;
+  }
+  body{overflow:hidden;}
+  button,.tabBtn,.eraNode,.elCard,.filChip,.cardWrap,.bpStep,.bpBtn{touch-action:manipulation;}
+  #app{position:fixed; inset:0; display:flex; flex-direction:column; min-height:100dvh;}
+
+  /* Header: larger title + high-contrast, horizontally scrollable navigation */
+  #topbar{
+    flex:0 0 auto; padding:14px max(16px,2vw) 0;
+    background:linear-gradient(180deg,#2a1b0e,#140d08);
+    border-bottom:2px solid var(--gold-dim);
+    box-shadow:0 5px 18px rgba(0,0,0,.28);
+  }
+  #titleRow{display:flex; align-items:center; gap:13px; padding:2px 2px 14px;}
+  #titleRow .mark{font-size:clamp(30px,3vw,42px); line-height:1;}
+  #titleRow h1{
+    margin:0; font-size:clamp(22px,2.2vw,34px); line-height:1.05;
+    letter-spacing:1px; color:var(--gold);
+    text-shadow:0 0 10px rgba(255,210,60,.3);
+  }
+  #titleRow .sub{font-size:clamp(13px,1vw,16px); color:var(--dim); margin-top:5px; letter-spacing:.3px;}
+
+  #tabs{
+    display:flex; gap:8px; overflow-x:auto; padding:0 0 10px;
+    scrollbar-width:none; -webkit-overflow-scrolling:touch;
+  }
+  #tabs::-webkit-scrollbar{display:none;}
+  .tabBtn{
+    flex:0 0 auto; cursor:pointer; min-height:46px;
+    padding:10px 17px; font:bold clamp(14px,1.05vw,17px)/1 system-ui,sans-serif;
+    letter-spacing:.3px; color:var(--dim); background:rgba(255,255,255,.05);
+    border:2px solid transparent; border-radius:10px 10px 0 0; white-space:nowrap;
+  }
+  .tabBtn.active{
+    color:var(--gold); background:var(--bg1);
+    border-color:var(--line); border-bottom-color:var(--bg1);
+  }
+  .tabBtn:active{background:rgba(255,210,60,.15);}
+
+  /* Main content */
+  #content{
+    flex:1 1 auto; min-height:0; overflow-y:auto; overflow-x:hidden;
+    background:
+      radial-gradient(circle at 15% 0%,rgba(255,210,60,.055),transparent 32rem),
+      var(--bg1);
+    padding:clamp(18px,2.2vw,34px) max(16px,3vw) 50px;
+    -webkit-overflow-scrolling:touch;
+  }
+  .fadeIn{animation:fadeIn .22s ease;}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+
+  .fadeIn > *{max-width:1200px; margin-left:auto; margin-right:auto;}
+  h2.sectionTitle{
+    margin:4px auto 14px; font-size:clamp(22px,2vw,30px);
+    line-height:1.15; letter-spacing:.7px; color:var(--gold);
+    border-bottom:2px solid var(--line); padding-bottom:9px;
+  }
+  p.blurb{
+    font-size:var(--text); line-height:1.65; color:var(--dim);
+    margin:0 auto 20px;
+  }
+
+  #ticker{
+    font-size:var(--small); line-height:1.45; color:var(--cyan);
+    padding:11px 14px; background:rgba(74,208,255,.08);
+    border:2px solid rgba(74,208,255,.3); border-radius:10px; margin-bottom:20px;
+    display:flex; gap:10px; align-items:flex-start;
+  }
+  #ticker .lbl{color:var(--gold);font-weight:800;white-space:nowrap;}
+
+  /* Timeline */
+  #timelineTrack{
+    display:flex; gap:0; overflow-x:auto; padding:8px 4px 22px;
+    scrollbar-width:thin; -webkit-overflow-scrolling:touch;
+  }
+  .eraNode{
+    flex:0 0 clamp(145px,15vw,190px); cursor:pointer; text-align:center;
+    padding:0 8px; position:relative;
+  }
+  .eraNode .dot{
+    width:18px;height:18px;border-radius:50%;background:var(--panel2);
+    border:3px solid var(--gold-dim);margin:0 auto 9px;transition:transform .15s;
+  }
+  .eraNode.active .dot{background:var(--gold);box-shadow:0 0 12px rgba(255,210,60,.7);transform:scale(1.12);}
+  .eraNode .years{font-size:var(--small);color:var(--gold-dim);font-weight:800;}
+  .eraNode .label{font-size:var(--small);color:var(--dim);margin-top:4px;line-height:1.3;}
+  .eraNode.active .label{color:var(--cream);}
+  .eraNode:not(:last-child)::after{
+    content:'';position:absolute;top:7px;left:calc(50% + 18px);
+    width:calc(100% - 18px);height:3px;background:var(--line);
+  }
+  #eraDetail{
+    background:linear-gradient(145deg,var(--panel),var(--panel2));
+    border:2px solid var(--line);border-radius:14px;padding:clamp(18px,2vw,26px);
+  }
+  #eraDetail h3{margin:0 0 6px;color:var(--gold);font-size:clamp(20px,1.8vw,27px);}
+  #eraDetail .years{font-size:var(--small);color:var(--gold-dim);margin-bottom:14px;letter-spacing:.4px;}
+  #eraDetail p{font-size:var(--text);line-height:1.7;color:var(--cream);margin:0 0 14px;}
+  #eraDetail .who{font-size:var(--small);line-height:1.55;color:var(--dim);}
+  #eraDetail .who b{color:var(--cyan);}
+
+  /* Five elements */
+  #elGrid{
+    display:grid;grid-template-columns:repeat(5,minmax(120px,1fr));
+    gap:12px;margin-bottom:18px;
+  }
+  .elCard{
+    min-height:128px;background:var(--panel);border:2px solid var(--line);
+    border-radius:13px;padding:17px 10px;text-align:center;cursor:pointer;
+    transition:transform .15s,border-color .15s,box-shadow .15s;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+  }
+  .elCard:active{transform:scale(.98);}
+  .elCard.active{border-color:var(--gold);box-shadow:0 0 14px rgba(255,210,60,.25);}
+  .elCard .ic{font-size:38px;line-height:1;}
+  .elCard .nm{font-size:var(--small);font-weight:800;color:var(--cream);margin-top:9px;letter-spacing:.3px;}
+  #elDetail{
+    background:linear-gradient(145deg,var(--panel),var(--panel2));
+    border:2px solid var(--line);border-radius:14px;padding:clamp(18px,2vw,26px);
+  }
+  #elDetail h3{margin:0 0 10px;color:var(--gold);font-size:clamp(21px,1.8vw,28px);}
+  #elDetail p{font-size:var(--text);line-height:1.7;color:var(--cream);margin:0 0 13px;}
+  #elDetail .pios{font-size:var(--small);line-height:1.55;color:var(--dim);margin-bottom:13px;}
+  #elDetail .pios b{color:var(--cyan);}
+  #elDetail .fact{
+    font-size:var(--small);line-height:1.5;color:var(--green);
+    background:rgba(122,208,74,.1);border:1px solid rgba(122,208,74,.3);
+    border-radius:9px;padding:11px 13px;
+  }
+
+  /* Break pad */
+  #breakPad{margin-top:16px;background:var(--panel2);border:2px solid var(--line);border-radius:14px;padding:16px;}
+  #breakPad .bpTitle{font-size:var(--text);font-weight:800;color:var(--gold);margin-bottom:12px;letter-spacing:.2px;}
+  .bpRow{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+  .bpRow .bpName{width:72px;font-size:var(--tiny);font-weight:700;color:var(--dim);flex:0 0 auto;}
+  .bpSteps{display:flex;gap:6px;flex:1 1 auto;}
+  .bpStep{
+    flex:1 1 auto;aspect-ratio:1/1;max-width:52px;min-width:30px;border-radius:7px;
+    cursor:pointer;background:rgba(255,255,255,.06);border:2px solid rgba(255,255,255,.12);
+  }
+  .bpStep.on{background:var(--gold);border-color:var(--gold);box-shadow:0 0 8px rgba(255,210,60,.6);}
+  .bpStep.now{outline:3px solid var(--cyan);}
+  .bpControls{display:flex;gap:10px;align-items:center;margin-top:14px;flex-wrap:wrap;}
+  .bpBtn{
+    cursor:pointer;padding:11px 17px;min-height:44px;font:bold var(--small) system-ui,sans-serif;
+    border-radius:9px;background:rgba(224,176,64,.15);border:2px solid var(--gold-dim);color:var(--cream);
+  }
+  .bpBtn:active{background:rgba(224,176,64,.4);}
+  .bpBtn.playing{background:rgba(122,208,74,.25);border-color:var(--green);}
+  .bpHint{font-size:var(--tiny);color:var(--dim);margin-top:10px;line-height:1.55;}
+
+  /* Hall of Fame */
+  #legFilter{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;}
+  .filChip{
+    font-size:var(--small);font-weight:700;padding:9px 13px;border-radius:16px;
+    cursor:pointer;background:rgba(255,255,255,.05);border:2px solid var(--line);color:var(--dim);
+  }
+  .filChip.active{background:var(--gold);color:#1c1420;border-color:var(--gold);font-weight:900;}
+  #legGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px;}
+  .cardWrap{perspective:1000px;min-height:210px;height:clamp(210px,22vw,250px);cursor:pointer;}
+  .cardInner{position:relative;width:100%;height:100%;transition:transform .5s;transform-style:preserve-3d;}
+  .cardWrap.flipped .cardInner{transform:rotateY(180deg);}
+  .cardFace{
+    position:absolute;inset:0;backface-visibility:hidden;border-radius:13px;
+    border:2px solid var(--line);padding:16px;display:flex;flex-direction:column;
+  }
+  .cardFront{background:linear-gradient(160deg,var(--panel),var(--panel2));align-items:center;justify-content:center;text-align:center;}
+  .cardFront .av{font-size:46px;line-height:1;}
+  .cardFront .nm{font-size:var(--text);color:var(--gold);margin-top:11px;font-weight:900;}
+  .cardFront .era{font-size:var(--small);color:var(--dim);margin-top:4px;}
+  .cardFront .tap{font-size:var(--tiny);color:var(--cyan);margin-top:14px;}
+  .cardBack{background:var(--panel);transform:rotateY(180deg);overflow-y:auto;}
+  .cardBack .nm{font-size:var(--text);color:var(--gold);font-weight:900;margin-bottom:7px;}
+  .cardBack p{font-size:var(--small);line-height:1.55;color:var(--cream);margin:0 0 9px;}
+  .cardBack .ff{font-size:var(--small);line-height:1.5;color:var(--green);margin-top:auto;}
+
+  /* Quiz */
+  #quizWrap{background:linear-gradient(145deg,var(--panel),var(--panel2));border:2px solid var(--line);border-radius:14px;padding:clamp(18px,2.5vw,30px);}
+  #quizIntro .bpBtn{margin-top:10px;}
+  #quizStat{display:flex;justify-content:space-between;font-size:var(--small);color:var(--dim);margin-bottom:14px;gap:10px;}
+  #quizStat b{color:var(--gold);}
+  #quizQ{font-size:clamp(19px,1.55vw,24px);font-weight:750;color:var(--cream);line-height:1.5;margin-bottom:16px;}
+  .qOpt{
+    display:block;width:100%;text-align:left;padding:14px 15px;min-height:52px;margin-bottom:10px;
+    background:rgba(255,255,255,.04);border:2px solid var(--line);border-radius:10px;
+    color:var(--cream);font:var(--text)/1.45 system-ui,sans-serif;cursor:pointer;
+  }
+  .qOpt:active{background:rgba(255,255,255,.1);}
+  .qOpt.correct{background:rgba(122,208,74,.25);border-color:var(--green);}
+  .qOpt.wrong{background:rgba(224,72,88,.25);border-color:var(--red);}
+  #quizExplain{
+    font-size:var(--small);color:var(--dim);background:rgba(255,255,255,.03);
+    border-radius:9px;padding:12px 13px;margin-top:8px;line-height:1.55;display:none;
+  }
+  #quizResult{text-align:center;}
+  #quizResult .rank{font-size:clamp(22px,2vw,30px);color:var(--gold);margin:7px 0;}
+  #quizResult .score{font-size:var(--text);color:var(--cream);}
+  #quizResult .best{font-size:var(--small);color:var(--dim);margin-top:5px;}
+
+  /* Tablet / portrait */
+  @media (max-width:900px){
+    #elGrid{grid-template-columns:repeat(3,1fr);}
+    #legGrid{grid-template-columns:repeat(2,minmax(0,1fr));}
+  }
+
+  @media (max-width:600px){
+    #topbar{padding:11px 12px 0;}
+    #titleRow{padding-bottom:11px;gap:10px;}
+    #titleRow h1{font-size:22px;}
+    #titleRow .sub{font-size:13px;}
+    #content{padding:16px 12px 38px;}
+    .fadeIn > *{max-width:none;}
+    #elGrid{grid-template-columns:repeat(2,1fr);gap:9px;}
+    .elCard{min-height:105px;padding:13px 7px;}
+    .elCard .ic{font-size:32px;}
+    #legGrid{grid-template-columns:1fr;gap:11px;}
+    .cardWrap{height:205px;min-height:205px;}
+    .bpRow .bpName{width:64px;}
+  }
+
+  /* Landscape phones: use the width instead of wasting vertical space */
+  @media (max-height:520px) and (orientation:landscape){
+    #topbar{padding-top:7px;}
+    #titleRow{padding-bottom:7px;}
+    #titleRow .mark{font-size:26px;}
+    #titleRow h1{font-size:20px;}
+    #titleRow .sub{font-size:11px;margin-top:2px;}
+    .tabBtn{min-height:38px;padding:8px 13px;}
+    #tabs{padding-bottom:6px;}
+    #content{padding-top:12px;}
+    #elGrid{grid-template-columns:repeat(5,minmax(100px,1fr));}
+    .elCard{min-height:92px;}
+    .cardWrap{height:190px;min-height:190px;}
+  }
+
+  @media (prefers-reduced-motion:reduce){
+    .fadeIn,.cardInner{animation:none;transition:none;}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="topbar">
+    <div id="titleRow">
+      <span class="mark">💽</span>
+      <div>
+        <h1>THE HIP HOP LIBRARY</h1>
+        <div class="sub">an interactive history kiosk · works offline</div>
+      </div>
+    </div>
+    <div id="tabs">
+      <button type="button" class="tabBtn" data-tab="timeline">TIMELINE</button>
+      <button type="button" class="tabBtn" data-tab="elements">5 ELEMENTS</button>
+      <button type="button" class="tabBtn" data-tab="legends">HALL OF FAME</button>
+      <button type="button" class="tabBtn" data-tab="quiz">TRIVIA</button>
+    </div>
+  </div>
+  <div id="content"></div>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+/* ===================================================================
+   DATA — every fact below is a short, original-wording summary, not
+   copied text from any source. No lyrics, no quoted passages, no
+   real photos: avatars are plain emoji/CSS, standing in for portraits.
+=================================================================== */
+
+var ERAS = [
+  { years:'1973–1979', label:'Bronx Block\nParties', title:'The Bronx Block Party Era',
+    body:'Hip hop traces its birth to August 11, 1973, at a back-to-school party in the rec room of 1520 Sedgwick Avenue in the Bronx, thrown by Cindy Campbell and hosted by her brother, DJ Kool Herc. Herc extended the instrumental "breaks" of funk and soul records by switching between two copies of the same record on twin turntables — the technique that became the rhythmic backbone of the whole culture. Dancers who specialized in that stretched-out break became known as b-boys and b-girls.',
+    who:'<b>Key figures:</b> DJ Kool Herc, Cindy Campbell, Coke La Rock (an early party MC who hyped the crowd between records).' },
+  { years:'1979–1983', label:'Hip Hop\nGoes on Wax', title:'Hip Hop Goes on Wax',
+    body:'For years hip hop lived only at parties and park jams — nobody thought it belonged on a record. That changed in 1979 when "Rapper\'s Delight" by The Sugarhill Gang became a surprise crossover hit, introducing rap to a national and eventually global audience. In 1982, Grandmaster Flash and the Furious Five released "The Message," a stark, socially conscious track that proved rap could tackle serious subject matter, not just party rhymes.',
+    who:'<b>Key figures:</b> The Sugarhill Gang, Grandmaster Flash & the Furious Five, Kurtis Blow.' },
+  { years:'1983–1986', label:'Drum Machines\n& New School', title:'Drum Machines & the New School',
+    body:'Affordable drum machines like the Roland TR-808 gave producers a punchy, programmable beat that didn\'t rely on live breaks, opening the door to a sparser, harder-hitting sound. Run-DMC fused rap with rock guitars and stripped-down beats, while acts on the young Def Jam label pushed the genre toward a leaner, more aggressive "new school" identity.',
+    who:'<b>Key figures:</b> Run-DMC, LL Cool J, Beastie Boys, producer Rick Rubin.' },
+  { years:'1986–1993', label:'The\nGolden Age', title:'The Golden Age',
+    body:'Widely considered hip hop\'s creative peak, this stretch saw an explosion of styles: Public Enemy\'s dense, politically charged production; De La Soul and A Tribe Called Quest\'s jazz-sampling, playful "Native Tongues" sound; Eric B. & Rakim\'s complex, internal-rhyme lyricism; and Boogie Down Productions\' street-knowledge focus. Sampling technology (the E-mu SP-1200, the Akai MPC) let producers build entirely new tracks out of old vinyl breaks.',
+    who:'<b>Key figures:</b> Public Enemy, Eric B. & Rakim, Boogie Down Productions (KRS-One), De La Soul, A Tribe Called Quest, Big Daddy Kane.' },
+  { years:'1988–1995', label:'West Coast &\nGangsta Rap', title:'The West Coast & Gangsta Rap',
+    body:'N.W.A\'s 1988 album "Straight Outta Compton" put unfiltered, first-person accounts of West Coast street life at the center of hip hop and ignited national controversy. Dr. Dre\'s smoothed-out, funk-sampling "G-funk" production style (heard on his 1992 solo album "The Chronic") became the dominant West Coast sound of the early-to-mid \'90s, launching Snoop Dogg into stardom.',
+    who:'<b>Key figures:</b> N.W.A, Dr. Dre, Ice Cube, Snoop Dogg, Tupac Shakur.' },
+  { years:'1994–1999', label:'Coastal Rise &\nMainstream Break', title:'Coastal Rivalries & the Mainstream Breakthrough',
+    body:'The mid-\'90s brought hip hop\'s biggest commercial explosion yet, led by East Coast acts like The Notorious B.I.G. and Wu-Tang Clan and West Coast stars like Tupac Shakur — alongside a genuinely damaging, media-amplified "East Coast vs. West Coast" rivalry that ended in both Tupac\'s and Biggie\'s deaths in 1996 and 1997. Meanwhile Lauryn Hill, Missy Elliott, and Jay-Z (whose "Reasonable Doubt" dropped in 1996) helped push the genre toward greater artistic range and mainstream chart dominance.',
+    who:'<b>Key figures:</b> The Notorious B.I.G., Tupac Shakur, Wu-Tang Clan, Jay-Z, Lauryn Hill, Missy Elliott, Nas.' },
+  { years:'2000–2006', label:'The South\nRises', title:'The South Rises / the Bling Era',
+    body:'Southern hip hop moved from regional scene to national force: Atlanta\'s crunk sound (Lil Jon & the East Side Boyz), the Dirty South of OutKast (whose "Stankonia" and "Speakerboxxx/The Love Below" were massive crossover successes), Houston\'s slowed-down screwed-and-chopped style, and a wave of flashy, celebratory "bling era" mainstream rap defined the sound of the early 2000s.',
+    who:'<b>Key figures:</b> OutKast, Lil Jon, UGK, Ludacris, 50 Cent.' },
+  { years:'2005–2012', label:'Blogs &\nMixtapes', title:'The Blog Era & Mixtape Culture',
+    body:'Free mixtapes, MP3 blogs, and early social platforms (MySpace, then LimeWire-era file sharing) let artists build huge followings completely outside the traditional record-label system. Lil Wayne\'s prolific "Tha Carter" mixtape run and Kanye West\'s genre-blending albums (from "The College Dropout" through "My Beautiful Dark Twisted Fantasy") reshaped what a rap career — and a rap beat — could sound like.',
+    who:'<b>Key figures:</b> Lil Wayne, Kanye West, Drake (who broke out via mixtapes before signing a label deal), J. Cole.' },
+  { years:'2013–Present', label:'Streaming &\nGlobal Hip Hop', title:'Streaming, SoundCloud & Global Hip Hop',
+    body:'Streaming platforms and SoundCloud flattened the path from bedroom studio to global audience, birthing a wave of DIY "SoundCloud rap" artists alongside genre-blurring superstars like Kendrick Lamar (whose socially engaged albums earned hip hop its first Pulitzer Prize in 2018) and Cardi B. Hip hop is now the most consumed music genre in the United States and a dominant global sound, with thriving regional scenes on every continent.',
+    who:'<b>Key figures:</b> Kendrick Lamar, Cardi B, Travis Scott, Chance the Rapper.' }
+];
+
+var ELEMENTS = [
+  { icon:'🎧', name:'DJing', summary:'The original engine of hip hop: using two turntables and a mixer to loop, extend, and blend the "break" — the short instrumental section of a record where the drums cut loose — so dancers had something to dance to for minutes instead of seconds.',
+    pios:'<b>Pioneers:</b> DJ Kool Herc (breakbeat looping), Grandmaster Flash (the quick-mix theory & scratch techniques), Grand Wizzard Theodore (credited with inventing the scratch, reportedly by accident around age 13).',
+    fact:'Fun fact: DJs often soaked the labels off their most valuable breakbeat records, or swapped in fake labels, so rival DJs digging through the crate next to them couldn\'t identify — and steal — their secret weapon.' },
+  { icon:'🎤', name:'MCing', summary:'Short for "Master of Ceremonies." What began as a DJ\'s hype-man shouting encouragement over the breakbeat evolved into rapping itself — rhythmic, rhyming spoken word that became the genre\'s lead voice.',
+    pios:'<b>Pioneers:</b> Coke La Rock (widely cited as one of the first hip hop MCs), Melle Mel of the Furious Five (an early master of complex rhyme schemes), Kurtis Blow (one of the first solo rap stars).',
+    fact:'Fun fact: early MCs mostly hyped the crowd and the DJ ("throw your hands in the air") — story-driven, personality-driven rapping as we know it today took several more years to develop.' },
+  { icon:'🕺', name:'Breaking', summary:'Also called b-boying/b-girling (never "breakdancing" to purists) — an acrobatic, athletic dance style built around the "break" in a record, featuring top-rock footwork, floor-based power moves, and freezes.',
+    pios:'<b>Pioneers:</b> Crews like Rock Steady Crew and the Zulu Kings helped take breaking from Bronx parks to global stages and eventually competitive battles.',
+    fact:'Fun fact: breaking became so globally established as a dance and sport that it was added as an official Olympic event for the first time at the Paris 2024 Games.' },
+  { icon:'🎨', name:'Graffiti Art', summary:'Spray-painted lettering and murals, especially on New York City subway cars in the 1970s and \'80s, that turned city walls and trains into a moving, citywide gallery — and a way for writers to get their name (their "tag") seen everywhere.',
+    pios:'<b>Pioneers:</b> Early NYC writers like TAKI 183 helped kick off the tagging craze; later, whole-car "masterpieces" pushed the style into elaborate, colorful lettering (called "wildstyle").',
+    fact:'Fun fact: TAKI 183 (a Greek-American teen from Washington Heights) got a 1971 New York Times profile for his ubiquitous tag — one of the first times graffiti writing got mainstream media attention.' },
+  { icon:'📚', name:'Knowledge', summary:'Often called hip hop\'s fifth element: the self-awareness, history, and social consciousness that ties the other four together — the idea that the culture is also a source of identity, education, and community uplift, not just entertainment.',
+    pios:'<b>Popularized by:</b> Afrika Bambaataa, founder of the Zulu Nation, who explicitly framed hip hop as a movement for peace, unity, and self-improvement in a period of NYC gang violence.',
+    fact:'Fun fact: Afrika Bambaataa named the culture itself — he\'s widely credited with popularizing the term "hip hop" to describe the whole movement, not just the music.' }
+];
+
+var LEGENDS = [
+  { tag:'DJing', av:'🎧', nm:'DJ Kool Herc', era:'b. 1955', bio:'Jamaican-born Bronx DJ whose 1973 back-to-school party is considered hip hop\'s founding moment. Pioneered looping the instrumental "break" with two copies of the same record.', ff:'Often called the "Father of Hip Hop."' },
+  { tag:'DJing', av:'🎛️', nm:'Grandmaster Flash', era:'b. 1958', bio:'Bronx DJ who engineered the "quick-mix theory," letting DJs cut seamlessly between two records in perfect rhythm. Formed the Furious Five with a rotating cast of MCs.', ff:'Inducted into the Rock & Roll Hall of Fame in 2007 — hip hop\'s first inductee.' },
+  { tag:'Knowledge', av:'☮️', nm:'Afrika Bambaataa', era:'b. 1957', bio:'Former Bronx gang member turned DJ and community organizer who founded the Zulu Nation, an organization using hip hop culture to steer youth away from gang violence.', ff:'His 1982 track "Planet Rock" fused hip hop with electronic and Kraftwerk-inspired sounds.' },
+  { tag:'MCing', av:'🎤', nm:'Melle Mel', era:'b. 1961', bio:'Member of the Furious Five known for dense, athletic rhyme patterns. Co-wrote and performed the socially conscious 1982 landmark "The Message."', ff:'One of the first rappers to describe himself on record as an "MC."' },
+  { tag:'MCing', av:'👑', nm:'Queen Latifah', era:'b. 1970', bio:'New Jersey MC whose 1989 debut championed self-respect and female empowerment in a male-dominated genre, opening doors for a generation of women in hip hop.', ff:'Went on to a decorated acting and producing career, including an Oscar nomination.' },
+  { tag:'MCing', av:'🐝', nm:'MC Lyte', era:'b. 1970', bio:'Brooklyn MC and one of the first solo female rappers to release a full album (1988\'s "Lyte as a Rock"), known for sharp battle-rap lyricism.', ff:'The first female solo rapper to achieve a gold-certified single.' },
+  { tag:'Breaking', av:'🕺', nm:'Rock Steady Crew', era:'formed 1977', bio:'One of the most influential b-boy/b-girl crews, formed in the Bronx and later based in Manhattan, who helped bring breaking to stages, films, and eventually the world.', ff:'Their 1983 track "(Hey You) The Rock Steady Crew" became a surprise pop hit.' },
+  { tag:'Graffiti', av:'🖍️', nm:'TAKI 183', era:'active early 1970s', bio:'Greek-American teenager from Washington Heights whose subway tag was so widespread it earned a 1971 profile in The New York Times, helping ignite the citywide tagging craze.', ff:'His tag combined his name "Demetrius" (nicknamed Taki) with his street number, 183rd.' },
+  { tag:'MCing', av:'💥', nm:'Public Enemy', era:'formed 1985', bio:'Long Island group led by Chuck D and Flavor Flav, famous for dense, layered production and unapologetically political lyrics that pushed rap into new territory.', ff:'Chuck D once described rap music as "the CNN of Black America."' },
+  { tag:'MCing', av:'🅰️', nm:'Rakim', era:'b. 1968', bio:'One half of Eric B. & Rakim, widely credited with revolutionizing rap lyricism through internal rhyme, complex multisyllabic patterns, and a laid-back, jazz-influenced flow.', ff:'Frequently cited by later rappers as the single biggest influence on modern rhyme technique.' },
+  { tag:'MCing', av:'💿', nm:'N.W.A', era:'formed 1986', bio:'Compton group (Eazy-E, Dr. Dre, Ice Cube, MC Ren, DJ Yella) whose blunt, first-person street narratives on 1988\'s "Straight Outta Compton" made West Coast gangsta rap a national phenomenon.', ff:'The group\'s name and lyrics sparked national controversy, including attention from the FBI.' },
+  { tag:'DJing', av:'🎚️', nm:'Dr. Dre', era:'b. 1965', bio:'N.W.A member turned solo artist and producer who defined the smooth, funk-sampling "G-funk" sound of early-\'90s West Coast rap, and later became a hit-making producer for a generation of artists.', ff:'Co-founded Death Row Records, then later Aftermath Entertainment and Beats Electronics.' },
+  { tag:'MCing', av:'🌹', nm:'Tupac Shakur', era:'1971–1996', bio:'One of the best-selling and most influential rappers ever, known for blending raw street storytelling with poetic vulnerability and social commentary.', ff:'Studied poetry and acting at the Baltimore School for the Arts before becoming a rapper.' },
+  { tag:'MCing', av:'👑', nm:'The Notorious B.I.G.', era:'1972–1997', bio:'Brooklyn MC celebrated for his vivid, novelistic storytelling and effortless-sounding flow, whose 1994 debut "Ready to Die" is regarded as one of hip hop\'s greatest albums.', ff:'Born Christopher Wallace, he grew up just blocks from where he\'d later record his biggest hits.' },
+  { tag:'Knowledge', av:'⚔️', nm:'Wu-Tang Clan', era:'formed 1992', bio:'Nine-member Staten Island collective built around gritty, kung-fu-film-inspired production and complex lyrical chemistry, who pioneered launching solo careers for every member from one crew.', ff:'Their business model — one crew signed as a group, members free to sign solo deals elsewhere — was unheard of at the time.' },
+  { tag:'MCing', av:'💎', nm:'Jay-Z', era:'b. 1969', bio:'Brooklyn MC turned mogul whose 1996 debut "Reasonable Doubt" is a genre benchmark; went on to become one of the most successful artists-turned-executives in music history.', ff:'Co-founded Roc-A-Fella Records and later became a streaming-platform owner and billionaire businessman.' },
+  { tag:'MCing', av:'🌸', nm:'Lauryn Hill', era:'b. 1975', bio:'Fugees member whose 1998 solo album "The Miseducation of Lauryn Hill" blended rap and soul singing, winning Album of the Year at the Grammys — a first for a hip hop-rooted record.', ff:'That album remains one of the best-selling debut albums by a female artist in any genre.' },
+  { tag:'DJing', av:'🎯', nm:'Missy Elliott', era:'b. 1971', bio:'Virginia rapper and producer known for boundary-pushing, futuristic sound and iconic music videos, and for shaping the sound of pop and R&B far beyond her own records.', ff:'The first female rapper inducted into the Songwriters Hall of Fame (2023).' },
+  { tag:'MCing', av:'🧢', nm:'OutKast', era:'formed 1992', bio:'Atlanta duo (André 3000 and Big Boi) whose genre-blending, experimental records helped establish the American South as a hip hop powerhouse rather than a regional afterthought.', ff:'Their 2003 album "Speakerboxxx/The Love Below" is one of the best-selling hip hop albums ever.' },
+  { tag:'Knowledge', av:'🦋', nm:'Kendrick Lamar', era:'b. 1987', bio:'Compton MC known for dense, socially engaged concept albums exploring race, faith, and identity, widely regarded as one of the defining artists of hip hop\'s modern era.', ff:'His 2017 album "DAMN." made him the first non-classical/jazz artist to win the Pulitzer Prize for Music.' }
+];
+
+var QUIZ = [
+  { q:'Hip hop\'s founding moment is usually traced to a 1973 party in which borough of New York City?', opts:['Brooklyn','The Bronx','Queens','Harlem'], a:1,
+    ex:'DJ Kool Herc\'s August 11, 1973 back-to-school party at 1520 Sedgwick Avenue in the Bronx is widely cited as hip hop\'s birthplace.' },
+  { q:'What technique is DJ Kool Herc famous for pioneering?', opts:['Auto-Tune vocals','Looping the instrumental "break" of a record using two copies','Sampling from CDs','Beatboxing'], a:1,
+    ex:'By switching between two copies of the same record, Herc could extend the short instrumental "break" indefinitely, giving dancers more to move to.' },
+  { q:'Which 1979 song is widely credited with introducing rap to a mainstream national audience?', opts:['"The Message"','"Rapper\'s Delight"','"Planet Rock"','"Straight Outta Compton"'], a:1,
+    ex:'"Rapper\'s Delight" by The Sugarhill Gang was a surprise crossover hit that put rap music on the map commercially.' },
+  { q:'What are hip hop\'s traditionally recognized "five elements"?', opts:['DJing, MCing, Breaking, Graffiti, Knowledge','Singing, Dancing, Painting, Acting, Producing','Beat, Rhyme, Flow, Hook, Bridge','Turntables, Mixer, Mic, Speaker, Crate'], a:0,
+    ex:'DJing, MCing (rapping), Breaking (b-boying/b-girling), Graffiti art, and Knowledge are the culture\'s traditionally cited five elements.' },
+  { q:'Who is credited with founding the Zulu Nation and popularizing the term "hip hop" for the whole culture?', opts:['Grandmaster Flash','Afrika Bambaataa','DJ Kool Herc','Russell Simmons'], a:1,
+    ex:'Afrika Bambaataa framed hip hop as a movement for unity and self-improvement, and is widely credited with naming the culture.' },
+  { q:'"The Message" (1982) by Grandmaster Flash and the Furious Five is notable for being one of the first major rap songs to:', opts:['Use a drum machine exclusively','Tackle serious social and economic struggles instead of just party themes','Feature a female MC','Top the pop charts'], a:1,
+    ex:'Its stark lyrics about poverty and urban struggle proved rap could be a vehicle for serious storytelling, not only celebration.' },
+  { q:'Which duo is credited with revolutionizing rap lyricism through complex internal rhyme schemes in the late 1980s?', opts:['Run-DMC','Eric B. & Rakim','OutKast','Mobb Deep'], a:1,
+    ex:'Rakim\'s intricate, multisyllabic rhyme patterns are frequently cited as one of the single biggest technical leaps in rap lyricism.' },
+  { q:'N.W.A\'s 1988 album "Straight Outta Compton" is considered a defining record of which subgenre?', opts:['Golden Age jazz-rap','Gangsta rap','Crunk','Mumble rap'], a:1,
+    ex:'N.W.A\'s blunt, first-person portrayals of West Coast street life helped define and popularize gangsta rap nationally.' },
+  { q:'Dr. Dre\'s 1992 solo album "The Chronic" is closely associated with which production style?', opts:['Boom bap','G-funk','Trap','Drill'], a:1,
+    ex:'"The Chronic" popularized G-funk — smooth, synth-and-funk-sample-heavy West Coast production.' },
+  { q:'Which two hugely influential MCs both died within about a year of each other, in 1996 and 1997, amid a media-fueled coastal rivalry?', opts:['Jay-Z and Nas','Tupac Shakur and The Notorious B.I.G.','Eazy-E and Ice Cube','Run and DMC'], a:1,
+    ex:'Tupac Shakur (1996) and The Notorious B.I.G. (1997) were both killed amid the "East Coast vs. West Coast" rivalry of the mid-\'90s.' },
+  { q:'Which Southern duo helped establish Atlanta as a major hip hop hub with genre-blending albums in the late \'90s/2000s?', opts:['UGK','OutKast','Ying Yang Twins','Migos'], a:1,
+    ex:'André 3000 and Big Boi\'s OutKast pushed experimental, genre-crossing sounds that helped put the South on the map nationally.' },
+  { q:'What crate-digging-era studio hardware became famous for letting producers chop and loop old vinyl breaks into brand-new beats?', opts:['The Akai MPC sampler','The electric guitar','The vocoder','The grand piano'], a:0,
+    ex:'Samplers like the Akai MPC and E-mu SP-1200 let producers cut up old records into fresh drum and melody loops.' },
+  { q:'Which 1998 solo album by a former Fugees member won Album of the Year at the Grammys?', opts:['"The Miseducation of Lauryn Hill"','"Ready to Die"','"Illmatic"','"The Score"'], a:0,
+    ex:'Lauryn Hill\'s solo debut blended rap and soul singing and became a landmark, genre-crossing critical and commercial success.' },
+  { q:'What made Wu-Tang Clan\'s business approach unusual for a rap group in the early 1990s?', opts:['They refused to release physical albums','Members could sign individual solo deals with other labels while still in the group','They only performed instrumentals','They banned sampling'], a:1,
+    ex:'Wu-Tang signed as a collective while its members were free to pursue solo deals elsewhere — an unconventional model at the time.' },
+  { q:'Kendrick Lamar made history in 2018 by becoming the first non-classical/jazz artist to win which major honor?', opts:['A Nobel Prize','The Pulitzer Prize for Music','An Academy Award','A Kennedy Center Honor'], a:1,
+    ex:'His album "DAMN." won the Pulitzer Prize for Music in 2018, a first for a rapper.' },
+  { q:'Which dance style, born from dancing during a record\'s instrumental "break," was added as an official event at the 2024 Paris Olympics?', opts:['Graffiti writing','Breaking (b-boying/b-girling)','Beatboxing','DJ battling'], a:1,
+    ex:'Breaking\'s athletic, competitive nature made it a natural fit for the Olympic stage in 2024.' },
+  { q:'What 1970s NYC phenomenon — a teenager\'s widely seen subway tag that earned a newspaper profile — is often cited as helping spark the graffiti art movement?', opts:['TAKI 183','The A-Train Bombers','Zulu Nation murals','Wildstyle Crew'], a:0,
+    ex:'TAKI 183\'s ubiquitous subway tag earned a 1971 New York Times profile, helping fuel the citywide tagging craze.' },
+  { q:'The mid-2000s "blog era" is best described as a period when:', opts:['Major labels controlled all rap distribution','Artists built large followings through free mixtapes and MP3 blogs, outside the traditional label system','Rap moved exclusively to vinyl-only releases','Streaming services launched and dominated instantly'], a:1,
+    ex:'Free mixtapes and MP3 blogs let artists like Lil Wayne and Kanye West build massive audiences outside the traditional industry gatekeepers.' }
+];
+
+/* ===================================================================
+   STATE + NAV
+=================================================================== */
+var activeTab = 'timeline';
+var activeEraIdx = 0;
+var activeElIdx = 0;
+var legFilter = 'All';
+var quizIdx = 0, quizScore = 0, quizAnswered = false, quizStarted = false;
+
+var TICKER_FACTS = [
+  'The term "hip hop" is often credited to Afrika Bambaataa, who used it to describe the whole culture, not just the music.',
+  'DJ Kool Herc\'s legendary party happened in the rec room of an apartment building — not a club or a studio.',
+  '"Rapper\'s Delight" (1979) ran over 14 minutes on its original 12-inch single.',
+  'Grandmaster Flash was the first hip hop artist inducted into the Rock & Roll Hall of Fame, in 2007.',
+  'Breaking became an official Olympic sport for the first time at the Paris 2024 Games.',
+  'The Akai MPC and E-mu SP-1200 samplers let producers build entire songs out of old vinyl breaks.',
+  'Kendrick Lamar\'s "DAMN." won the 2018 Pulitzer Prize for Music — a first for hip hop.',
+  'Wu-Tang Clan let all nine members sign solo deals with other labels — almost unheard of at the time.'
+];
+
+var content = document.getElementById('content');
+
+function el(tag, cls, html){
+  var e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (html !== undefined) e.innerHTML = html;
+  return e;
+}
+
+function renderTicker(){
+  var t = TICKER_FACTS[Math.floor(Math.random() * TICKER_FACTS.length)];
+  return '<div id="ticker"><span class="lbl">DID YOU KNOW?</span><span>' + t + '</span></div>';
+}
+
+/* ---------------- TIMELINE TAB ---------------- */
+function renderTimeline(){
+  content.innerHTML = '';
+  var wrap = el('div', 'fadeIn');
+  wrap.innerHTML = renderTicker();
+  wrap.appendChild(el('h2', 'sectionTitle', 'THE TIMELINE'));
+  wrap.appendChild(el('p', 'blurb', 'Tap an era to read about it. Scroll sideways to see the whole story, from a Bronx rec room in 1973 to the global sound hip hop is today.'));
+
+  var track = el('div'); track.id = 'timelineTrack';
+  ERAS.forEach(function(era, i){
+    var node = el('div', 'eraNode' + (i === activeEraIdx ? ' active' : ''));
+    node.innerHTML = '<div class="dot"></div><div class="years">' + era.years + '</div><div class="label">' + era.label.replace(/\n/g,'<br>') + '</div>';
+    node.onclick = function(){ activeEraIdx = i; renderTimeline(); };
+    track.appendChild(node);
+  });
+  wrap.appendChild(track);
+
+  var era = ERAS[activeEraIdx];
+  var det = el('div'); det.id = 'eraDetail';
+  det.innerHTML = '<h3>' + era.title + '</h3><div class="years">' + era.years + '</div>' +
+    '<p>' + era.body + '</p><div class="who">' + era.who + '</div>';
+  wrap.appendChild(det);
+
+  content.appendChild(wrap);
+}
+
+/* ---------------- ELEMENTS TAB ---------------- */
+function renderElements(){
+  content.innerHTML = '';
+  var wrap = el('div', 'fadeIn');
+  wrap.appendChild(el('h2', 'sectionTitle', 'THE FIVE ELEMENTS'));
+  wrap.appendChild(el('p', 'blurb', 'Hip hop is more than rapping — it\'s five interlocking art forms. Tap one to dig in.'));
+
+  var grid = el('div'); grid.id = 'elGrid';
+  ELEMENTS.forEach(function(e, i){
+    var c = el('div', 'elCard' + (i === activeElIdx ? ' active' : ''));
+    c.innerHTML = '<div class="ic">' + e.icon + '</div><div class="nm">' + e.name + '</div>';
+    c.onclick = function(){ activeElIdx = i; renderElements(); };
+    grid.appendChild(c);
+  });
+  wrap.appendChild(grid);
+
+  var e = ELEMENTS[activeElIdx];
+  var det = el('div'); det.id = 'elDetail';
+  det.innerHTML = '<h3>' + e.icon + ' ' + e.name + '</h3><p>' + e.summary + '</p>' +
+    '<div class="pios">' + e.pios + '</div><div class="fact">' + e.fact + '</div>';
+  wrap.appendChild(det);
+
+  if (e.name === 'DJing') wrap.appendChild(buildBreakPad());
+
+  content.appendChild(wrap);
+}
+
+/* ---- tiny WebAudio breakbeat pad — no samples, just oscillators/noise ---- */
+var audioCtx = null;
+function ac(){ if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); return audioCtx; }
+function playKick(t){
+  var c = ac(); var o = c.createOscillator(), g = c.createGain();
+  o.frequency.setValueAtTime(140, t); o.frequency.exponentialRampToValueAtTime(45, t + 0.12);
+  g.gain.setValueAtTime(0.9, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+  o.connect(g); g.connect(c.destination); o.start(t); o.stop(t + 0.2);
+}
+function playSnare(t){
+  var c = ac(); var bufSize = c.sampleRate * 0.15;
+  var buf = c.createBuffer(1, bufSize, c.sampleRate);
+  var data = buf.getChannelData(0);
+  for (var i=0;i<bufSize;i++) data[i] = (Math.random()*2-1) * (1 - i/bufSize);
+  var noise = c.createBufferSource(); noise.buffer = buf;
+  var g = c.createGain(); g.gain.setValueAtTime(0.5, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+  var hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1200;
+  noise.connect(hp); hp.connect(g); g.connect(c.destination); noise.start(t); noise.stop(t + 0.15);
+}
+function playHat(t){
+  var c = ac(); var bufSize = c.sampleRate * 0.05;
+  var buf = c.createBuffer(1, bufSize, c.sampleRate);
+  var data = buf.getChannelData(0);
+  for (var i=0;i<bufSize;i++) data[i] = (Math.random()*2-1) * (1 - i/bufSize);
+  var noise = c.createBufferSource(); noise.buffer = buf;
+  var g = c.createGain(); g.gain.setValueAtTime(0.25, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+  var hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 6000;
+  noise.connect(hp); hp.connect(g); g.connect(c.destination); noise.start(t); noise.stop(t + 0.05);
+}
+function playScratch(t){
+  var c = ac(); var o = c.createOscillator(), g = c.createGain();
+  o.type = 'sawtooth';
+  o.frequency.setValueAtTime(320, t); o.frequency.linearRampToValueAtTime(140, t + 0.09);
+  g.gain.setValueAtTime(0.35, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.11);
+  o.connect(g); g.connect(c.destination); o.start(t); o.stop(t + 0.12);
+}
+var BP_LANES = [
+  { name:'KICK', fn:playKick, pattern:[1,0,0,0,1,0,0,0] },
+  { name:'SNARE', fn:playSnare, pattern:[0,0,1,0,0,0,1,0] },
+  { name:'HI-HAT', fn:playHat, pattern:[1,1,1,1,1,1,1,1] },
+  { name:'SCRATCH', fn:playScratch, pattern:[0,0,0,0,0,0,0,0] }
+];
+var bpPlaying = false, bpStepIdx = 0, bpTimer = null;
+
+function buildBreakPad(){
+  var box = el('div'); box.id = 'breakPad';
+  box.innerHTML = '<div class="bpTitle">🔁 THE BREAKBEAT PAD — build your own loop</div>';
+  BP_LANES.forEach(function(lane, li){
+    var row = el('div', 'bpRow');
+    row.appendChild(el('div', 'bpName', lane.name));
+    var steps = el('div', 'bpSteps');
+    lane.pattern.forEach(function(v, si){
+      var s = el('div', 'bpStep' + (v ? ' on' : ''));
+      s.dataset.lane = li; s.dataset.step = si;
+      s.onclick = function(){
+        lane.pattern[si] = lane.pattern[si] ? 0 : 1;
+        s.classList.toggle('on');
+      };
+      steps.appendChild(s);
+    });
+    row.appendChild(steps);
+    box.appendChild(row);
+  });
+  var ctrl = el('div', 'bpControls');
+  var playBtn = el('div', 'bpBtn', '▶ PLAY LOOP');
+  playBtn.onclick = function(){ toggleBreakPad(playBtn); };
+  ctrl.appendChild(playBtn);
+  box.appendChild(ctrl);
+  box.appendChild(el('div', 'bpHint', 'This is the same basic idea DJ Kool Herc pioneered: loop a break, layer sounds on top, keep the floor moving. Tap the squares to build your own beat.'));
+  return box;
+}
+function toggleBreakPad(btn){
+  if (bpPlaying){
+    bpPlaying = false; clearInterval(bpTimer); btn.textContent = '▶ PLAY LOOP'; btn.classList.remove('playing');
+    document.querySelectorAll('.bpStep.now').forEach(function(n){ n.classList.remove('now'); });
+    return;
+  }
+  bpPlaying = true; bpStepIdx = 0; btn.textContent = '■ STOP'; btn.classList.add('playing');
+  var stepMs = 220;
+  bpTimer = setInterval(function(){
+    document.querySelectorAll('.bpStep.now').forEach(function(n){ n.classList.remove('now'); });
+    var t = ac().currentTime + 0.02;
+    BP_LANES.forEach(function(lane, li){
+      if (lane.pattern[bpStepIdx]) lane.fn(t);
+      var cell = document.querySelector('.bpStep[data-lane="' + li + '"][data-step="' + bpStepIdx + '"]');
+      if (cell) cell.classList.add('now');
+    });
+    bpStepIdx = (bpStepIdx + 1) % 8;
+  }, stepMs);
+}
+
+/* ---------------- LEGENDS TAB ---------------- */
+function renderLegends(){
+  content.innerHTML = '';
+  var wrap = el('div', 'fadeIn');
+  wrap.appendChild(el('h2', 'sectionTitle', 'HALL OF FAME'));
+  wrap.appendChild(el('p', 'blurb', 'Flip a card to read about a figure who helped build the culture. Filter by element below.'));
+
+  var filWrap = el('div'); filWrap.id = 'legFilter';
+  ['All','DJing','MCing','Breaking','Graffiti','Knowledge'].forEach(function(f){
+    var chip = el('div', 'filChip' + (f === legFilter ? ' active' : ''), f.toUpperCase());
+    chip.onclick = function(){ legFilter = f; renderLegends(); };
+    filWrap.appendChild(chip);
+  });
+  wrap.appendChild(filWrap);
+
+  var grid = el('div'); grid.id = 'legGrid';
+  LEGENDS.filter(function(p){ return legFilter === 'All' || p.tag === legFilter; }).forEach(function(p){
+    var cw = el('div', 'cardWrap');
+    var inner = el('div', 'cardInner');
+    var front = el('div', 'cardFace cardFront');
+    front.innerHTML = '<div class="av">' + p.av + '</div><div class="nm">' + p.nm + '</div><div class="era">' + p.era + '</div><div class="tap">tap to flip</div>';
+    var back = el('div', 'cardFace cardBack');
+    back.innerHTML = '<div class="nm">' + p.nm + '</div><p>' + p.bio + '</p><div class="ff">★ ' + p.ff + '</div>';
+    inner.appendChild(front); inner.appendChild(back);
+    cw.appendChild(inner);
+    cw.onclick = function(){ cw.classList.toggle('flipped'); };
+    grid.appendChild(cw);
+  });
+  wrap.appendChild(grid);
+
+  content.appendChild(wrap);
+}
+
+/* ---------------- QUIZ TAB ---------------- */
+var QUIZ_HS_KEY = 'hiphopLibraryQuizBest';
+function getBestScore(){ try{ return parseInt(localStorage.getItem(QUIZ_HS_KEY) || '0', 10); }catch(e){ return 0; } }
+function setBestScore(v){ try{ localStorage.setItem(QUIZ_HS_KEY, String(v)); }catch(e){} }
+
+function rankForScore(score, total){
+  var pct = score / total;
+  if (pct === 1) return 'Certified Crate Digger — Perfect Score!';
+  if (pct >= 0.8) return 'Old-School Historian';
+  if (pct >= 0.6) return 'Solid Student of the Culture';
+  if (pct >= 0.4) return 'Just Getting Into the Crates';
+  return 'Fresh Ears — Keep Studying!';
+}
+
+function renderQuiz(){
+  content.innerHTML = '';
+  var wrap = el('div', 'fadeIn');
+  wrap.appendChild(el('h2', 'sectionTitle', 'HIP HOP TRIVIA'));
+
+  var qw = el('div'); qw.id = 'quizWrap';
+
+  if (!quizStarted){
+    var intro = el('div'); intro.id = 'quizIntro';
+    intro.innerHTML = '<p class="blurb">' + QUIZ.length + ' questions on the history you just explored. Best score so far: <b style="color:var(--gold)">' + getBestScore() + '/' + QUIZ.length + '</b></p>';
+    var startBtn = el('div', 'bpBtn', '▶ START QUIZ');
+    startBtn.onclick = function(){ quizStarted = true; quizIdx = 0; quizScore = 0; quizAnswered = false; renderQuiz(); };
+    intro.appendChild(startBtn);
+    qw.appendChild(intro);
+    wrap.appendChild(qw);
+    content.appendChild(wrap);
+    return;
+  }
+
+  if (quizIdx >= QUIZ.length){
+    if (quizScore > getBestScore()) setBestScore(quizScore);
+    var res = el('div'); res.id = 'quizResult';
+    res.innerHTML = '<div class="rank">' + rankForScore(quizScore, QUIZ.length) + '</div>' +
+      '<div class="score">You scored ' + quizScore + ' / ' + QUIZ.length + '</div>' +
+      '<div class="best">Best: ' + getBestScore() + ' / ' + QUIZ.length + '</div>';
+    var again = el('div', 'bpBtn', '↻ PLAY AGAIN'); again.style.marginTop = '14px';
+    again.onclick = function(){ quizStarted = false; renderQuiz(); };
+    res.appendChild(again);
+    qw.appendChild(res);
+    wrap.appendChild(qw);
+    content.appendChild(wrap);
+    return;
+  }
+
+  var q = QUIZ[quizIdx];
+  var stat = el('div'); stat.id = 'quizStat';
+  stat.innerHTML = '<span>Question <b>' + (quizIdx+1) + '</b> / ' + QUIZ.length + '</span><span>Score: <b>' + quizScore + '</b></span>';
+  qw.appendChild(stat);
+  qw.appendChild(el('div', null, '<div id="quizQ">' + q.q + '</div>'));
+
+  var explainEl = el('div'); explainEl.id = 'quizExplain'; explainEl.textContent = q.ex;
+
+  q.opts.forEach(function(opt, i){
+    var b = el('div', 'qOpt', opt);
+    b.onclick = function(){
+      if (quizAnswered) return;
+      quizAnswered = true;
+      var opts = qw.querySelectorAll('.qOpt');
+      opts[q.a].classList.add('correct');
+      if (i !== q.a) b.classList.add('wrong'); else quizScore++;
+      explainEl.style.display = 'block';
+      var nextBtn = el('div', 'bpBtn', quizIdx === QUIZ.length - 1 ? 'SEE RESULTS →' : 'NEXT →');
+      nextBtn.style.marginTop = '12px';
+      nextBtn.onclick = function(){ quizIdx++; quizAnswered = false; renderQuiz(); };
+      qw.appendChild(nextBtn);
+      if (i === q.a){ try{ playHat(ac().currentTime); playHat(ac().currentTime+0.09);}catch(e){} }
+    };
+    qw.appendChild(b);
+  });
+  qw.appendChild(explainEl);
+
+  wrap.appendChild(qw);
+  content.appendChild(wrap);
+}
+
+/* ---------------- TAB SWITCHING ---------------- */
+var TAB_RENDER = { timeline: renderTimeline, elements: renderElements, legends: renderLegends, quiz: renderQuiz };
+function setTab(t){
+  activeTab = t;
+  document.querySelectorAll('.tabBtn').forEach(function(b){
+    b.classList.toggle('active', b.dataset.tab === t);
+  });
+  if (bpPlaying){ bpPlaying = false; clearInterval(bpTimer); }
+  TAB_RENDER[t]();
+}
+document.querySelectorAll('.tabBtn').forEach(function(b){
+  b.addEventListener('click', function(){ setTab(b.dataset.tab); });
+});
+
+setTab('timeline');
+})();
+</script>
+</body>
+</html>
