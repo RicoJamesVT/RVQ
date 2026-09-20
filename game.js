@@ -995,7 +995,18 @@ const MINIGAME_ACTIONS = {
   // beat match/etc. See createMicDropModeSelect()/createMicDrop3DGame().
   micdrop: () => enterMinigame(createMicDropModeSelect()),
   buildpizza: () => enterMinigame(createPizzaBuildGame()),
-  clawmachine: () => enterMinigame(createClawMachineModeSelect()),
+  // Claw Machine -- "EXOTIC BLOOMS", a 3D rare-flower claw machine parked on
+  // the floor of HEY BUD (see the `wax` shop's `minigames` list), right
+  // alongside Syrup Roads. Used to be a from-scratch canvas mini-game with a
+  // CLASSIC-vs-3D chooser (both versions since removed); it's now a full
+  // standalone web app, same shape as chess/
+  // beatbot/organ/mini golf/Dig Dash/Syrup Roads above (own DOM/iframe
+  // overlay, bundled locally). Its scene is Three.js, so -- same as Dig Dash/
+  // Swamp Cave Summer -- it loads the vendored '../../lib/three.min.js'
+  // instead of a CDN, and uses no web fonts or other network calls, so it
+  // loads and plays the same with or without a connection. See
+  // openClawMachineApp()/createClawMachineOverlay() below.
+  clawmachine: () => openClawMachineApp(),
   beatjam: () => enterMinigame(createBeatJamModeSelect()),
   scratchdj: () => enterMinigame(createScratchDJModeSelect()),
   // Tightrope Walk -- the big-top's other marquee stunt, tucked into THE
@@ -1283,8 +1294,11 @@ const MINIGAME_TROPHIES = [
     flavor: 'Catch bars on the beat and keep the crowd hyped.' },
   { id: 'buildpizza', label: 'Build A Pizza', unit: 'pts',
     flavor: 'Grab the right topping right as it passes the marker.' },
-  { id: 'clawmachine', label: 'Claw Machine', unit: 'pts',
-    flavor: 'Six tries to walk off with the good flowers.' },
+  // Claw Machine moved to a full standalone web app (see
+  // MINIGAME_ACTIONS.clawmachine/openClawMachineApp() below), so like the
+  // other bundled iframe apps (chess, mini golf, VT Dirt, Penalty Kicks,
+  // etc.) it keeps its own tally internally rather than reporting into
+  // personalBests/the trophy case here.
   { id: 'scratchdj', label: 'Freestyle Scratch-DJ', unit: 'pts',
     flavor: 'Two needles, two hands, no time to think about either.' },
   // Penalty Kicks moved to a full standalone web app (see
@@ -6927,670 +6941,6 @@ function createPizzaBuildGame() {
   };
 }
 
-// Claw Machine: a classic arcade grabber stocked with tiny potted flowers
-// instead of plushies -- fits right in at Hey Bud. Hold LEFT/RIGHT to slide
-// the claw along the top rail, tap E to drop it straight down. Whatever
-// flower is closest to the claw's X when it bottoms out gets a grab attempt
-// -- rarer blooms score more but are harder to hold, so the claw can still
-// fumble one on the way up to the chute, same petty betrayal every real
-// claw machine pulls. A fixed number of drops, score tallied, then
-// auto-exits back to 'play'. Canvas primitives only -- no images, no new
-// assets, same one-function-per-minigame pattern as the games above.
-function createClawMachineGame() {
-  const TRIES_TOTAL = 6;
-  const RAIL_Y = 130;                 // claw's resting height, top of the case
-  const FLOOR_Y = 360;                // where flowers sit at the bottom of the case
-  const CASE_LEFT = VIEW_W / 2 - 220, CASE_RIGHT = VIEW_W / 2 + 220;
-  const CLAW_SPEED = 240;             // px/sec sliding left/right
-  const DROP_SPEED = 260;             // px/sec descending/ascending
-  const GRAB_RADIUS = 26;             // how close, in x, the claw needs to be to a flower to try grabbing it
-  const CHUTE_X = CASE_RIGHT + 46, CHUTE_Y = RAIL_Y;
-
-  // Weighted so daisies are the bread-and-butter grab and a rose is a rare,
-  // hard-won prize -- same weighted-pick trick as speed sweep's dust piles.
-  const FLOWER_TYPES = [
-    { type: 'daisy', pts: 10, grabChance: 0.85, petal: '#f4ecd8', center: '#e0b040', weight: 5 },
-    { type: 'tulip', pts: 20, grabChance: 0.65, petal: '#d94f9a', center: '#e0b040', weight: 3 },
-    { type: 'rose',  pts: 40, grabChance: 0.45, petal: '#c0392b', center: '#8e2418', weight: 1 },
-  ];
-  function pickType() {
-    const total = FLOWER_TYPES.reduce((s, o) => s + o.weight, 0);
-    let r = Math.random() * total;
-    for (const o of FLOWER_TYPES) { if (r < o.weight) return o; r -= o.weight; }
-    return FLOWER_TYPES[0];
-  }
-  function spawnFlowers(n) {
-    const out = [];
-    for (let i = 0; i < n; i++) {
-      out.push({
-        id: i,
-        x: CASE_LEFT + 24 + Math.random() * (CASE_RIGHT - CASE_LEFT - 48),
-        wobble: Math.random() * 10,
-        ...pickType(),
-      });
-    }
-    return out;
-  }
-
-  let flowers = spawnFlowers(9);
-  let triesLeft = TRIES_TOTAL;
-  let score = 0, caught = 0;
-  let phase = 'aim';         // aim | drop | rise | deliver | done
-  let clawX = VIEW_W / 2, clawY = RAIL_Y;
-  let held = null;           // flower currently gripped, or null
-  let pops = [];             // "+pts" / "SLIPPED!" / "MISS" pop effects
-  let bestRecorded = false, isNewBest = false;
-
-  // Common exit for the drop/rise/deliver branches: back to aiming if
-  // there's a try and a flower left to go for, otherwise the round's over.
-  function afterAttempt() {
-    phase = (triesLeft > 0 && flowers.length > 0) ? 'aim' : 'done';
-  }
-
-  function nearestFlower(x) {
-    let best = null, bestD = Infinity;
-    flowers.forEach((f) => {
-      const d = Math.abs(f.x - x);
-      if (d < GRAB_RADIUS && d < bestD) { best = f; bestD = d; }
-    });
-    return best;
-  }
-
-  function drawClawArm(x, y, closed) {
-    ctx.strokeStyle = '#5a5060';
-    ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.moveTo(x, RAIL_Y - 30); ctx.lineTo(x, y); ctx.stroke();
-    ctx.fillStyle = '#9a90a8';
-    ctx.fillRect(x - 10, y - 6, 20, 10);
-    ctx.strokeStyle = '#c8bcd8';
-    ctx.lineWidth = 4;
-    ctx.lineCap = 'round';
-    const spread = closed ? 4 : 14;
-    ctx.beginPath();
-    ctx.moveTo(x - 8, y + 4); ctx.lineTo(x - spread, y + 22);
-    ctx.moveTo(x + 8, y + 4); ctx.lineTo(x + spread, y + 22);
-    ctx.stroke();
-  }
-
-  function drawFlower(f, y) {
-    const wob = Math.sin(performance.now() / 400 + f.wobble) * 1.5;
-    ctx.strokeStyle = '#4f9a52';
-    ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(f.x, y + 14); ctx.lineTo(f.x + wob, y - 2); ctx.stroke();
-    for (let i = 0; i < 6; i++) {
-      const a = (i / 6) * Math.PI * 2;
-      ctx.fillStyle = f.petal;
-      ctx.beginPath();
-      ctx.ellipse(f.x + wob + Math.cos(a) * 6, y - 2 + Math.sin(a) * 6, 4, 3, a, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.fillStyle = f.center;
-    ctx.beginPath(); ctx.arc(f.x + wob, y - 2, 3.5, 0, Math.PI * 2); ctx.fill();
-  }
-
-  return {
-    update(dt) {
-      if (buyPressed) { exitMinigame(); return; }
-
-      if (phase === 'aim') {
-        let dx = 0;
-        if (keys['arrowleft'] || keys['a']) dx -= 1;
-        if (keys['arrowright'] || keys['d']) dx += 1;
-        clawX += dx * CLAW_SPEED * dt;
-        clawX = Math.max(CASE_LEFT + 10, Math.min(CASE_RIGHT - 10, clawX));
-        if (interactPressed && triesLeft > 0) phase = 'drop';
-      } else if (phase === 'drop') {
-        clawY += DROP_SPEED * dt;
-        if (clawY >= FLOOR_Y) {
-          clawY = FLOOR_Y;
-          const f = nearestFlower(clawX);
-          if (f && Math.random() < f.grabChance) {
-            held = f;
-            flowers = flowers.filter((x) => x !== f);
-          }
-          phase = 'rise';
-        }
-      } else if (phase === 'rise') {
-        clawY -= DROP_SPEED * dt;
-        if (clawY <= RAIL_Y) {
-          clawY = RAIL_Y;
-          triesLeft--;
-          if (held) {
-            // one more chance for the claw to fumble it before the chute
-            if (Math.random() < 0.22) {
-              pops.push({ x: clawX, y: RAIL_Y, life: 0.7, color: '#e0603a', text: 'SLIPPED!' });
-              flowers.push({ ...held, x: clawX });
-              held = null;
-              afterAttempt();
-            } else {
-              phase = 'deliver';
-            }
-          } else {
-            pops.push({ x: clawX, y: RAIL_Y, life: 0.6, color: '#9a90a8', text: 'MISS' });
-            afterAttempt();
-          }
-        }
-      } else if (phase === 'deliver') {
-        const dxp = CHUTE_X - clawX;
-        clawX += Math.sign(dxp) * CLAW_SPEED * 1.3 * dt;
-        if (Math.abs(dxp) < 6) {
-          score += held.pts;
-          caught++;
-          pops.push({ x: CHUTE_X, y: CHUTE_Y, life: 0.7, color: '#8cff5f', text: `+${held.pts}` });
-          held = null;
-          afterAttempt();
-        }
-      } else if (phase === 'done') {
-        if (!bestRecorded) { isNewBest = recordMinigameScore('clawmachine', score); bestRecorded = true; }
-        if (interactPressed) exitMinigame();
-      }
-
-      pops.forEach((p) => { p.life -= dt; p.y -= dt * 20; });
-      pops = pops.filter((p) => p.life > 0);
-    },
-    draw() {
-      ctx.fillStyle = 'rgba(8,6,12,0.9)';
-      ctx.fillRect(0, 0, VIEW_W, VIEW_H);
-
-      ctx.textAlign = 'center';
-      ctx.fillStyle = '#e0b040';
-      ctx.font = 'bold 28px monospace';
-      ctx.fillText('CLAW MACHINE', VIEW_W / 2, 56);
-      ctx.fillStyle = '#f4ecd8';
-      ctx.font = '17px monospace';
-      ctx.fillText(`SCORE ${score}   CAUGHT ${caught}   TRIES LEFT ${Math.max(0, triesLeft)}`, VIEW_W / 2, 78);
-
-      // glass case
-      ctx.strokeStyle = 'rgba(200,220,255,0.5)';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(CASE_LEFT - 20, RAIL_Y - 40, CASE_RIGHT - CASE_LEFT + 40, FLOOR_Y - RAIL_Y + 60);
-      ctx.fillStyle = 'rgba(200,220,255,0.05)';
-      ctx.fillRect(CASE_LEFT - 20, RAIL_Y - 40, CASE_RIGHT - CASE_LEFT + 40, FLOOR_Y - RAIL_Y + 60);
-      // planter-box floor of the case
-      ctx.fillStyle = '#3c5c40';
-      ctx.fillRect(CASE_LEFT - 20, FLOOR_Y + 14, CASE_RIGHT - CASE_LEFT + 40, 16);
-
-      // prize chute off to the right
-      ctx.fillStyle = '#6a4a2c';
-      ctx.fillRect(CHUTE_X - 16, RAIL_Y - 46, 32, 24);
-      ctx.fillStyle = '#8a6438';
-      ctx.fillRect(CHUTE_X - 12, RAIL_Y - 42, 24, 16);
-      ctx.fillStyle = '#f4ecd8';
-      ctx.font = 'bold 14px monospace';
-      ctx.fillText('WIN', CHUTE_X, RAIL_Y - 52);
-
-      flowers.forEach((f) => drawFlower(f, FLOOR_Y));
-      if (held) drawFlower(held, clawY + 20);
-      drawClawArm(clawX, clawY, !!held || (phase === 'drop' && clawY >= FLOOR_Y - 6));
-
-      pops.forEach((p) => {
-        ctx.globalAlpha = Math.max(0, p.life / 0.7);
-        ctx.fillStyle = p.color;
-        ctx.font = 'bold 18px monospace';
-        ctx.fillText(p.text, p.x, p.y - 10);
-        ctx.globalAlpha = 1;
-      });
-
-      ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#8cff5f' : '#f4ecd8';
-      ctx.font = 'bold 19px monospace';
-      if (phase === 'done') {
-        ctx.fillText(`OUT OF TRIES! FINAL SCORE: ${score} - PRESS E TO LEAVE`, VIEW_W / 2, 420);
-      } else if (phase === 'aim') {
-        ctx.fillText('- HOLD \u25c0 \u25b6 TO AIM, TAP E TO DROP -', VIEW_W / 2, 420);
-      }
-
-      if (phase === 'done') {
-        ctx.font = '16px monospace';
-        ctx.fillStyle = isNewBest ? '#8cff5f' : '#9a90a8';
-        ctx.fillText(isNewBest ? 'NEW BEST!' : `BEST: ${bestFor('clawmachine')}`, VIEW_W / 2, 438);
-      }
-
-      ctx.fillStyle = '#6a6070';
-      ctx.font = '15px monospace';
-      ctx.fillText('X to walk away anytime', VIEW_W / 2, phase === 'done' ? 456 : 444);
-    },
-  };
-}
-
-// ---- claw machine mode chooser -----------------------------------------------
-function createClawMachineModeSelect() {
-  return createModeSelectMenu({
-    title: 'CLAW MACHINE',
-    pickLabel: 'PICK YOUR CABINET',
-    classicSub: 'The original flat glass case',
-    threeDSub: 'Reach right into the case -- full 3D',
-    createClassic: () => createClawMachineGame(),
-    createThreeD: () => createClawMachine3DGame(),
-  });
-}
-
-// ---- Claw Machine 3D --------------------------------------------------------
-// The Three.js remake of Claw Machine. Identical gameplay contract to the
-// classic version -- same 6 tries, same weighted flower types/grab chances/
-// point values, same GRAB_RADIUS logic, same 22% post-grab fumble chance,
-// same 'clawmachine' trophy -- only the rendering changed: a real glass
-// case with a planter floor, a claw that actually descends on a rod and
-// opens/closes its fingers, and flowers built from primitives instead of
-// drawn circles. The scene renders to an offscreen WebGL canvas (see
-// getMinigame3DRenderer()) that gets blitted into the main 2D canvas each
-// frame, so input handling, CSS scaling, and the rAF loop are all
-// untouched, and the HUD is drawn over the blit with the same monospace
-// styling every other mini-game uses.
-function createClawMachine3DGame() {
-  const T = window.THREE;
-  const { renderer, canvas: claw3DCanvas } = getMinigame3DRenderer('clawmachine');
-
-  // ---- gameplay state: mirrors createClawMachineGame exactly, just in
-  // world-space units instead of screen pixels (world Y increases upward,
-  // so "descending" now means clawY decreasing toward FLOOR_Y).
-  const TRIES_TOTAL = 6;
-  const RAIL_Y = 1.85;                // claw's resting height, top of the case
-  const FLOOR_Y = 0.25;               // where flowers sit at the bottom of the case
-  const CASE_X_HALF = 1.3;
-  const CASE_Z = -2.6, CASE_DEPTH = 0.85;
-  const CLAW_SPEED = 1.4;             // world units/sec sliding left/right
-  const DROP_SPEED = 1.8;             // world units/sec descending/ascending
-  const GRAB_RADIUS = 0.16;           // how close, in x, the claw needs to be to a flower to try grabbing it
-  const CHUTE_X = CASE_X_HALF + 0.55, CHUTE_Y = RAIL_Y;
-
-  const FLOWER_TYPES = [
-    { type: 'daisy', pts: 10, grabChance: 0.85, petal: '#f4ecd8', center: '#e0b040', weight: 5 },
-    { type: 'tulip', pts: 20, grabChance: 0.65, petal: '#d94f9a', center: '#e0b040', weight: 3 },
-    { type: 'rose',  pts: 40, grabChance: 0.45, petal: '#c0392b', center: '#8e2418', weight: 1 },
-  ];
-  function pickType() {
-    const total = FLOWER_TYPES.reduce((s, o) => s + o.weight, 0);
-    let r = Math.random() * total;
-    for (const o of FLOWER_TYPES) { if (r < o.weight) return o; r -= o.weight; }
-    return FLOWER_TYPES[0];
-  }
-  function spawnFlowerData(n) {
-    const out = [];
-    for (let i = 0; i < n; i++) {
-      out.push({
-        id: i,
-        x: -CASE_X_HALF + 0.18 + Math.random() * (CASE_X_HALF * 2 - 0.36),
-        z: CASE_Z + (Math.random() - 0.5) * (CASE_DEPTH - 0.15),
-        wobble: Math.random() * 10,
-        ...pickType(),
-      });
-    }
-    return out;
-  }
-
-  let triesLeft = TRIES_TOTAL;
-  let score = 0, caught = 0;
-  let phase = 'aim';         // aim | drop | rise | deliver | done
-  let clawX = 0, clawY = RAIL_Y;
-  let held = null;           // flower currently gripped, or null
-  let message = null;        // { text, color, timer } -- one-at-a-time HUD callout
-  let bestRecorded = false, isNewBest = false;
-  let t = 0;
-
-  function showMessage(text, color, dur) { message = { text, color, timer: dur }; }
-
-  // Common exit for the drop/rise/deliver branches: back to aiming if
-  // there's a try and a flower left to go for, otherwise the round's over.
-  function afterAttempt() {
-    phase = (triesLeft > 0 && flowers.length > 0) ? 'aim' : 'done';
-  }
-
-  function nearestFlower(x) {
-    let best = null, bestD = Infinity;
-    flowers.forEach((f) => {
-      const d = Math.abs(f.x - x);
-      if (d < GRAB_RADIUS && d < bestD) { best = f; bestD = d; }
-    });
-    return best;
-  }
-
-  // ---- scene ----
-  const scene = new T.Scene();
-  scene.background = new T.Color(0x0a0714);
-  scene.fog = new T.Fog(0x0a0714, 6, 16);
-
-  const camera = new T.PerspectiveCamera(52, VIEW_W / VIEW_H, 0.1, 30);
-  const CAM_POS = new T.Vector3(0, 1.5, 1.1);
-  const CAM_Z_IN = -0.25;
-  let camZ = CAM_POS.z;
-  camera.position.copy(CAM_POS);
-  camera.lookAt(0, (RAIL_Y + FLOOR_Y) / 2, CASE_Z);
-
-  // room: dark backdrop, same purple family as the rest of the world
-  const wall = new T.Mesh(
-    new T.PlaneGeometry(12, 7),
-    new T.MeshStandardMaterial({ color: 0x150f1c, roughness: 1 })
-  );
-  wall.position.set(0, 2.6, -4.0);
-  wall.receiveShadow = true;
-  scene.add(wall);
-  const floor = new T.Mesh(
-    new T.PlaneGeometry(12, 14),
-    new T.MeshStandardMaterial({ color: 0x1c1422, roughness: 0.95 })
-  );
-  floor.rotation.x = -Math.PI / 2;
-  floor.position.set(0, 0, -2);
-  floor.receiveShadow = true;
-  scene.add(floor);
-
-  // glass case: transparent box with visible edges, plus a planter-box
-  // floor at the bottom -- same footprint as the classic's stroked rect
-  const caseCenterY = (RAIL_Y + FLOOR_Y) / 2 + 0.15;
-  const caseH = RAIL_Y - FLOOR_Y + 0.5, caseW = CASE_X_HALF * 2 + 0.3, caseD = CASE_DEPTH + 0.3;
-  const glassMat = new T.MeshPhysicalMaterial({
-    color: 0xc8dcff, transparent: true, opacity: 0.07, roughness: 0.1,
-    metalness: 0, transmission: 0.6, side: T.DoubleSide,
-  });
-  const glassBox = new T.Mesh(new T.BoxGeometry(caseW, caseH, caseD), glassMat);
-  glassBox.position.set(0, caseCenterY, CASE_Z);
-  scene.add(glassBox);
-  const glassEdges = new T.LineSegments(
-    new T.EdgesGeometry(new T.BoxGeometry(caseW, caseH, caseD)),
-    new T.LineBasicMaterial({ color: 0xc8dcff, transparent: true, opacity: 0.5 })
-  );
-  glassEdges.position.copy(glassBox.position);
-  scene.add(glassEdges);
-
-  const planter = new T.Mesh(
-    new T.BoxGeometry(caseW, 0.14, caseD),
-    new T.MeshStandardMaterial({ color: 0x3c5c40, roughness: 0.9 })
-  );
-  planter.position.set(0, FLOOR_Y - 0.08, CASE_Z);
-  planter.receiveShadow = true;
-  scene.add(planter);
-
-  // rail the claw's carriage rides along, top of the case
-  const railBar = new T.Mesh(
-    new T.BoxGeometry(caseW - 0.1, 0.04, 0.04),
-    new T.MeshStandardMaterial({ color: 0x5a4a6a, roughness: 0.6, metalness: 0.3 })
-  );
-  railBar.position.set(0, RAIL_Y + 0.1, CASE_Z);
-  scene.add(railBar);
-
-  // prize chute off to the right
-  const chuteOuter = new T.Mesh(
-    new T.BoxGeometry(0.3, 0.22, 0.28),
-    new T.MeshStandardMaterial({ color: 0x6a4a2c, roughness: 0.85 })
-  );
-  chuteOuter.position.set(CHUTE_X, RAIL_Y - 0.1, CASE_Z);
-  chuteOuter.castShadow = true;
-  scene.add(chuteOuter);
-  const chuteInner = new T.Mesh(
-    new T.BoxGeometry(0.22, 0.15, 0.05),
-    new T.MeshStandardMaterial({ color: 0x8a6438, roughness: 0.8 })
-  );
-  chuteInner.position.set(CHUTE_X, RAIL_Y - 0.1, CASE_Z + CASE_DEPTH / 2 - 0.02);
-  scene.add(chuteInner);
-
-  // flowers: built from primitives, one group per flower, kept alive for
-  // the flower's whole lifetime (floor -> held -> either back to the floor
-  // on a fumble, or disposed once delivered)
-  function buildFlowerMesh(f) {
-    const g = new T.Group();
-    const stem = new T.Mesh(
-      new T.CylinderGeometry(0.008, 0.012, 0.22, 6),
-      new T.MeshStandardMaterial({ color: 0x4f9a52, roughness: 0.85 })
-    );
-    stem.position.y = 0.11;
-    g.add(stem);
-    const head = new T.Group();
-    head.position.y = 0.23;
-    for (let i = 0; i < 6; i++) {
-      const a = (i / 6) * Math.PI * 2;
-      const petal = new T.Mesh(
-        new T.SphereGeometry(0.035, 8, 6),
-        new T.MeshStandardMaterial({ color: f.petal, roughness: 0.7 })
-      );
-      petal.scale.set(1, 0.5, 0.6);
-      petal.position.set(Math.cos(a) * 0.045, 0, Math.sin(a) * 0.045);
-      head.add(petal);
-    }
-    const center = new T.Mesh(
-      new T.SphereGeometry(0.025, 10, 8),
-      new T.MeshStandardMaterial({ color: f.center, roughness: 0.6 })
-    );
-    head.add(center);
-    g.add(head);
-    g.userData.head = head;
-    g.castShadow = true;
-    scene.add(g);
-    return g;
-  }
-
-  let flowers = spawnFlowerData(9);
-  flowers.forEach((f) => { f.mesh = buildFlowerMesh(f); });
-
-  function disposeFlowerMesh(f) {
-    if (!f.mesh) return;
-    scene.remove(f.mesh);
-    f.mesh.traverse((obj) => {
-      if (obj.geometry) obj.geometry.dispose();
-      if (obj.material) obj.material.dispose();
-    });
-    f.mesh = null;
-  }
-
-  // claw rig: a rod from the rail down to the fingers, plus a small
-  // carriage riding the rail and two fingers that open/close
-  const carriage = new T.Mesh(
-    new T.BoxGeometry(0.14, 0.08, 0.14),
-    new T.MeshStandardMaterial({ color: 0x9a90a8, roughness: 0.5, metalness: 0.35 })
-  );
-  scene.add(carriage);
-  const clawRod = new T.Mesh(
-    new T.CylinderGeometry(0.012, 0.012, 1, 8),
-    new T.MeshStandardMaterial({ color: 0x5a5060, roughness: 0.6 })
-  );
-  scene.add(clawRod);
-  const clawHead = new T.Mesh(
-    new T.BoxGeometry(0.09, 0.05, 0.09),
-    new T.MeshStandardMaterial({ color: 0x9a90a8, roughness: 0.5, metalness: 0.3 })
-  );
-  scene.add(clawHead);
-  const fingerMat = new T.MeshStandardMaterial({ color: 0xc8bcd8, roughness: 0.4, metalness: 0.4 });
-  const fingerL = new T.Mesh(new T.ConeGeometry(0.018, 0.11, 6), fingerMat);
-  const fingerR = new T.Mesh(new T.ConeGeometry(0.018, 0.11, 6), fingerMat);
-  fingerL.rotation.z = 0.55;
-  fingerR.rotation.z = -0.55;
-  scene.add(fingerL, fingerR);
-  let fingerSpread = 0.09;
-
-  // lights: warm spot into the case, dim ambient, matching the rest of the
-  // world's palette
-  scene.add(new T.AmbientLight(0x352c40, 0.8));
-  const spot = new T.SpotLight(0xffe2c0, 1.0, 14, 0.5, 0.45);
-  spot.position.set(0, 3.6, -1.4);
-  spot.target = glassBox;
-  spot.castShadow = true;
-  spot.shadow.mapSize.set(1024, 1024);
-  scene.add(spot);
-  scene.add(spot.target);
-
-  let shakeT = 0;
-  let impactRing = null, impactT = 0;
-
-  function disposeImpactRing() {
-    if (!impactRing) return;
-    scene.remove(impactRing);
-    impactRing.geometry.dispose();
-    impactRing.material.dispose();
-    impactRing = null;
-  }
-  function spawnImpact(pos, color) {
-    disposeImpactRing();
-    impactRing = new T.Mesh(
-      new T.TorusGeometry(0.09, 0.012, 8, 28),
-      new T.MeshBasicMaterial({ color, transparent: true, opacity: 0.9 })
-    );
-    impactRing.position.copy(pos);
-    scene.add(impactRing);
-    impactT = 0;
-  }
-
-  // Full teardown -- called right before every exitMinigame().
-  function cleanup() {
-    disposeImpactRing();
-    flowers.forEach((f) => disposeFlowerMesh(f));
-    if (held) disposeFlowerMesh(held);
-    scene.traverse((obj) => {
-      if (obj.geometry) obj.geometry.dispose();
-      if (obj.material) {
-        if (Array.isArray(obj.material)) obj.material.forEach((m) => m.dispose());
-        else obj.material.dispose();
-      }
-    });
-    scene.clear();
-  }
-  function leave() { cleanup(); exitMinigame(); }
-
-  return {
-    update(dt) {
-      t += dt;
-      if (buyPressed) { leave(); return; }
-
-      if (phase === 'aim') {
-        let dx = 0;
-        if (keys['arrowleft'] || keys['a']) dx -= 1;
-        if (keys['arrowright'] || keys['d']) dx += 1;
-        clawX += dx * CLAW_SPEED * dt;
-        clawX = Math.max(-CASE_X_HALF + 0.1, Math.min(CASE_X_HALF - 0.1, clawX));
-        if (interactPressed && triesLeft > 0) phase = 'drop';
-      } else if (phase === 'drop') {
-        clawY -= DROP_SPEED * dt;
-        if (clawY <= FLOOR_Y) {
-          clawY = FLOOR_Y;
-          const f = nearestFlower(clawX);
-          if (f && Math.random() < f.grabChance) {
-            held = f;
-            flowers = flowers.filter((x) => x !== f);
-          }
-          phase = 'rise';
-        }
-      } else if (phase === 'rise') {
-        clawY += DROP_SPEED * dt;
-        if (clawY >= RAIL_Y) {
-          clawY = RAIL_Y;
-          triesLeft--;
-          if (held) {
-            // one more chance for the claw to fumble it before the chute
-            if (Math.random() < 0.22) {
-              showMessage('SLIPPED!', '#e0603a', 0.7);
-              spawnImpact(new T.Vector3(clawX, RAIL_Y, CASE_Z), 0xe0603a);
-              shakeT = 0.14;
-              held.x = clawX;
-              flowers.push(held);
-              held = null;
-              afterAttempt();
-            } else {
-              phase = 'deliver';
-            }
-          } else {
-            showMessage('MISS', '#9a90a8', 0.6);
-            afterAttempt();
-          }
-        }
-      } else if (phase === 'deliver') {
-        const dxp = CHUTE_X - clawX;
-        clawX += Math.sign(dxp) * CLAW_SPEED * 1.3 * dt;
-        if (Math.abs(dxp) < 0.03) {
-          score += held.pts;
-          caught++;
-          showMessage(`+${held.pts}`, '#8cff5f', 0.7);
-          spawnImpact(new T.Vector3(CHUTE_X, CHUTE_Y, CASE_Z), 0x8cff5f);
-          shakeT = 0.12;
-          disposeFlowerMesh(held);
-          held = null;
-          afterAttempt();
-        }
-      } else if (phase === 'done') {
-        if (!bestRecorded) { isNewBest = recordMinigameScore('clawmachine', score); bestRecorded = true; }
-        if (interactPressed) { leave(); return; }
-      }
-
-      if (message) {
-        message.timer -= dt;
-        if (message.timer <= 0) message = null;
-      }
-
-      // flowers still on the floor: settle at their spot with a gentle sway
-      flowers.forEach((f) => {
-        f.mesh.position.set(f.x, FLOOR_Y, f.z);
-        f.mesh.userData.head.position.x = Math.sin(t * 2 + f.wobble) * 0.02;
-      });
-      // the held flower rides along under the claw
-      if (held) {
-        held.mesh.position.set(clawX, clawY - 0.12, CASE_Z);
-        held.mesh.userData.head.position.x = Math.sin(t * 3 + held.wobble) * 0.012;
-      }
-
-      // claw rig follows clawX/clawY every frame
-      const railTopY = RAIL_Y + 0.1;
-      carriage.position.set(clawX, railTopY, CASE_Z);
-      clawRod.position.set(clawX, (railTopY + clawY) / 2, CASE_Z);
-      clawRod.scale.y = Math.max(0.001, railTopY - clawY);
-      clawHead.position.set(clawX, clawY, CASE_Z);
-      const closed = !!held || (phase === 'drop' && clawY <= FLOOR_Y + 0.04);
-      const targetSpread = closed ? 0.028 : 0.09;
-      fingerSpread += (targetSpread - fingerSpread) * Math.min(1, dt * 10);
-      fingerL.position.set(clawX - fingerSpread, clawY - 0.05, CASE_Z);
-      fingerR.position.set(clawX + fingerSpread, clawY - 0.05, CASE_Z);
-
-      if (impactRing) {
-        impactT += dt;
-        const k = Math.min(1, impactT / 0.35);
-        impactRing.scale.setScalar(1 + k * 3);
-        impactRing.material.opacity = 0.9 * (1 - k);
-      }
-
-      // camera: gentle idle sway, decaying impact shake
-      const sway = Math.sin(t * 0.5) * 0.02;
-      camera.position.set(CAM_POS.x + sway, CAM_POS.y + Math.sin(t * 0.7) * 0.01, camZ);
-      if (shakeT > 0) {
-        shakeT -= dt;
-        const s = Math.max(0, shakeT / 0.14) * 0.02;
-        camera.position.x += (Math.random() - 0.5) * s;
-        camera.position.y += (Math.random() - 0.5) * s;
-      }
-      camera.lookAt(0, caseCenterY - 0.1, CASE_Z);
-    },
-    draw() {
-      renderer.render(scene, camera);
-      ctx.drawImage(claw3DCanvas, 0, 0);
-
-      // HUD: same layout and styling as the classic version
-      const cx = VIEW_W / 2;
-      ctx.textAlign = 'center';
-      ctx.fillStyle = '#e0b040';
-      ctx.font = 'bold 28px monospace';
-      ctx.fillText('CLAW MACHINE 3D', cx, 56);
-      ctx.fillStyle = '#f4ecd8';
-      ctx.font = '17px monospace';
-      ctx.fillText(`SCORE ${score}   CAUGHT ${caught}   TRIES LEFT ${Math.max(0, triesLeft)}`, cx, 78);
-
-      ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#8cff5f' : '#f4ecd8';
-      ctx.font = 'bold 19px monospace';
-      if (phase === 'done') {
-        ctx.fillText(`OUT OF TRIES! FINAL SCORE: ${score} - PRESS E TO LEAVE`, cx, 540);
-      } else if (message) {
-        ctx.fillStyle = message.color;
-        ctx.fillText(message.text, cx, 540);
-      } else if (phase === 'aim') {
-        ctx.fillText('- HOLD \u25c0 \u25b6 TO AIM, TAP E TO DROP -', cx, 540);
-      }
-
-      if (phase === 'done') {
-        ctx.font = '16px monospace';
-        ctx.fillStyle = isNewBest ? '#8cff5f' : '#9a90a8';
-        ctx.fillText(isNewBest ? 'NEW BEST!' : `BEST: ${bestFor('clawmachine')}`, cx, 558);
-      }
-
-      ctx.fillStyle = '#6a6070';
-      ctx.font = '15px monospace';
-      ctx.fillText('X to walk away anytime', cx, phase === 'done' ? 576 : 564);
-    },
-  };
-}
-
 // Freestyle Scratch-DJ: twin turntables instead of beat match's one bar --
 // a left needle (under [E]) and a right needle (under [Q]) sweep back and
 // forth completely independently, at different speeds and out of phase
@@ -8159,7 +7509,7 @@ function createScratchDJ3DGame() {
 // Bayou Boogie: a four-lane boardwalk stepper tucked inside BURLINGTON
 // RECORDS (see the `burlington` shop's `minigames` list), same "CLASSIC vs
 // 3D" shape as Darts/Beat Match/Whack-a-Pigeon/Crate Digging/Speed Sweep/
-// Claw Machine/Scratch-DJ above -- goes straight into the 3D version via
+// Scratch-DJ above -- goes straight into the 3D version via
 // createModeSelectMenu(), classic kept only as the Three.js/WebGL-failure
 // fallback. Lily pads scroll down four lanes (left/down/up/right, mapped to
 // the arrow keys and WASD) toward a hit line/ring on a Crawdad Drums-style
@@ -8733,6 +8083,7 @@ window.addEventListener('keydown', (e) => {
     if (k === 'escape' && state === 'diggerApp') { closeDiggerApp(); }
     if (k === 'escape' && state === 'connectFourApp') { closeConnectFourApp(); }
     if (k === 'escape' && state === 'syrupRoadsApp') { closeSyrupRoadsApp(); }
+    if (k === 'escape' && state === 'clawMachineApp') { closeClawMachineApp(); }
     if (k === 'arrowleft') selectMove = -1;
     if (k === 'arrowright') selectMove = 1;
     if (k === 'arrowup') menuMove = -1;
@@ -10772,7 +10123,7 @@ const player = {
   tempItem: null, tempItemTimer: 0,
 };
 const collected = new Set();
-let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | danceParty | portal | fifa | minigame | hotkeys | crate | photo | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | vinylSnakeApp | bayouBreakApp | gatorJamSlamApp | swampCaveApp | vtDirtApp | penaltyKingsApp | digDashApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | diggerApp | hyperSwimApp | connectFourApp | syrupRoadsApp | kangaidenVideo | kangaidenSplash | kangaidenApp | hiphopLibraryApp
+let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | danceParty | portal | fifa | minigame | hotkeys | crate | photo | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | vinylSnakeApp | bayouBreakApp | gatorJamSlamApp | swampCaveApp | vtDirtApp | penaltyKingsApp | digDashApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | diggerApp | hyperSwimApp | connectFourApp | syrupRoadsApp | clawMachineApp | kangaidenVideo | kangaidenSplash | kangaidenApp | hiphopLibraryApp
 // State to snap back to when the [H] hotkeys popup is closed -- currently
 // always 'play' since that's the only state H can be opened from, but kept
 // as its own var in case another state wants to offer the popup later.
@@ -11446,7 +10797,7 @@ const music = {
 // enter/exit call sites, so it can't drift out of sync no matter which
 // of the several ways the player backs out of the lab popup (keyboard
 // [X], on-screen [X] button, closing the instrument iframe, etc.).
-const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'vinylSnakeApp', 'bayouBreakApp', 'gatorJamSlamApp', 'swampCaveApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'hyperSwimApp', 'connectFourApp', 'syrupRoadsApp', 'kangaidenVideo', 'kangaidenApp', 'hiphopLibraryApp', 'danceParty']);
+const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'vinylSnakeApp', 'bayouBreakApp', 'gatorJamSlamApp', 'swampCaveApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'hyperSwimApp', 'connectFourApp', 'syrupRoadsApp', 'clawMachineApp', 'kangaidenVideo', 'kangaidenApp', 'hiphopLibraryApp', 'danceParty']);
 function syncMusicDuck() {
   const minigameDucked = state === 'minigame' && activeMinigame && activeMinigame.musicDucked;
   music.duck(DUCKED_STATES.has(state) || !!minigameDucked);
@@ -13826,6 +13177,149 @@ function closeSyrupRoadsApp(fromPopState) {
   }
 }
 
+// ---------------------------------------------------------------- Claw Machine overlay
+// "EXOTIC BLOOMS" -- the claw machine inside HEY BUD (see
+// MINIGAME_ACTIONS.clawmachine and the `wax` shop's `minigames` list), right
+// alongside Syrup Roads. Launches a full standalone web app, not a
+// from-scratch canvas mini-game, so it reuses the same "full-screen DOM
+// overlay with an <iframe>" trick as chess/the beat bot/the organ/mini golf/
+// Dig Dash/Syrup Roads above.
+//
+// It ships as a bundled, self-contained page (its own Three.js scene, its own
+// on-screen joystick + DROP button, its own WebAudio beeps, artwork embedded
+// as data: URIs) at instruments/claw-machine/index.html -- the exact same
+// local-file pattern CHESS_APP_URL/.../SYRUP_ROADS_APP_URL use. Like Dig Dash
+// and Swamp Cave Summer, its <script> tag points at the same
+// '../../lib/three.min.js' the main game already vendors locally (see
+// loadThreeJS() above) instead of a CDN, and it pulls in no web fonts, so it
+// loads and plays the same with or without a connection -- no online/offline
+// branching needed here either.
+//
+// Controls work on desktop (WASD/arrows + Space) and touch (joystick + DROP),
+// and the page re-fits its camera to the iframe on every resize/rotation, so
+// portrait and landscape both work.
+const CLAW_MACHINE_APP_URL = 'instruments/claw-machine/index.html';
+let clawMachineOverlayEl = null, clawMachineOverlayFrame = null;
+let clawMachineReturnState = 'play';
+let clawMachineHistoryPushed = false; // mirrors labHistoryPushed/.../syrupRoadsHistoryPushed -- see openClawMachineApp()/closeClawMachineApp()
+
+function createClawMachineOverlay() {
+  const style = document.createElement('style');
+  style.textContent = `
+    #ricoClawMachineApp {
+      position: fixed; inset: 0; z-index: 1000;
+      background: #0b0318;
+      display: none; flex-direction: column;
+    }
+    #ricoClawMachineApp.open { display: flex; }
+    #ricoClawMachineApp .rcm-bar {
+      flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 10px 14px;
+      background: linear-gradient(#2f1b52, #1c1033);
+      border-bottom: 2px solid #ff2e88;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
+      padding-left: calc(14px + env(safe-area-inset-left, 0px));
+      padding-right: calc(14px + env(safe-area-inset-right, 0px));
+    }
+    #ricoClawMachineApp .rcm-title {
+      color: #f4ecd8; font: bold 14px monospace; letter-spacing: 0.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #ricoClawMachineApp .rcm-close {
+      flex: 0 0 auto; cursor: pointer;
+      background: rgba(255,46,136,0.15);
+      border: 1.5px solid rgba(255,46,136,0.85);
+      color: #f4ecd8; border-radius: 8px;
+      padding: 7px 16px; font: bold 13px monospace;
+      -webkit-user-select: none; user-select: none;
+    }
+    #ricoClawMachineApp .rcm-close:active { background: rgba(255,46,136,0.4); }
+    #ricoClawMachineApp iframe {
+      flex: 1 1 auto; width: 100%; min-height: 0; border: 0; background: #0b0318;
+    }
+    /* Phones on their side: a slimmer title bar leaves more room for the cabinet. */
+    @media (orientation: landscape) and (max-height: 480px) {
+      #ricoClawMachineApp .rcm-bar {
+        padding-top: calc(4px + env(safe-area-inset-top, 0px)); padding-bottom: 4px;
+      }
+      #ricoClawMachineApp .rcm-title { font-size: 12px; }
+      #ricoClawMachineApp .rcm-close { padding: 4px 12px; font-size: 12px; }
+    }
+  `;
+  document.head.appendChild(style);
+
+  clawMachineOverlayEl = document.createElement('div');
+  clawMachineOverlayEl.id = 'ricoClawMachineApp';
+
+  const bar = document.createElement('div');
+  bar.className = 'rcm-bar';
+  const title = document.createElement('div');
+  title.className = 'rcm-title';
+  title.textContent = 'CLAW MACHINE';
+  const closeBtn = document.createElement('div');
+  closeBtn.className = 'rcm-close';
+  closeBtn.textContent = '\u2190 BACK TO HEY BUD';
+  bindTap(closeBtn, closeClawMachineApp);
+  bar.appendChild(title);
+  bar.appendChild(closeBtn);
+
+  clawMachineOverlayFrame = document.createElement('iframe');
+  clawMachineOverlayFrame.setAttribute('allow', 'autoplay');
+  // Hand keyboard focus to the game as soon as it loads, so WASD/arrows and
+  // Space work right away on desktop without an extra click. (Ignored for
+  // the about:blank load fired on close.)
+  clawMachineOverlayFrame.addEventListener('load', () => {
+    if (!clawMachineOverlayEl.classList.contains('open')) return;
+    try { clawMachineOverlayFrame.contentWindow.focus(); } catch (e) { /* cross-origin/sandboxed -- a click will focus it */ }
+  });
+
+  clawMachineOverlayEl.appendChild(bar);
+  clawMachineOverlayEl.appendChild(clawMachineOverlayFrame);
+  document.body.appendChild(clawMachineOverlayEl);
+
+  // [Esc] pressed while the iframe itself has keyboard focus never reaches
+  // this page's keydown handler, so the page posts a message instead.
+  window.addEventListener('message', (e) => {
+    if (!clawMachineOverlayFrame || e.source !== clawMachineOverlayFrame.contentWindow) return;
+    if (e.data && e.data.ricoClawMachine === 'close' && state === 'clawMachineApp') closeClawMachineApp();
+  });
+}
+createClawMachineOverlay();
+
+// Opens the Claw Machine overlay and switches state to 'clawMachineApp'.
+// Called from MINIGAME_ACTIONS.clawmachine (E on the cabinet, or tapping its
+// floating arcade sign), same entry points every other mini-game uses.
+function openClawMachineApp() {
+  clawMachineReturnState = state;
+  clawMachineOverlayFrame.src = CLAW_MACHINE_APP_URL;
+  clawMachineOverlayEl.classList.add('open');
+  state = 'clawMachineApp';
+  // Same throwaway-history-entry trick as openInstrument()/openChessApp()/
+  // .../openSyrupRoadsApp() above, so the browser/OS back gesture closes the
+  // Claw Machine overlay instead of leaving the game entirely.
+  history.pushState({ ricoClawMachineApp: true }, '');
+  clawMachineHistoryPushed = true;
+}
+
+// Tears the iframe back down (which also frees its WebGL context) and returns
+// to ordinary gameplay in HEY BUD. fromPopState mirrors closeSyrupRoadsApp()'s
+// parameter -- true when triggered by the browser's back button (whose
+// history entry is already consumed), so we must not call history.back()
+// again in that case.
+function closeClawMachineApp(fromPopState) {
+  if (state !== 'clawMachineApp') return; // already closed (e.g. Esc message racing the close button)
+  clawMachineOverlayEl.classList.remove('open');
+  clawMachineOverlayFrame.src = 'about:blank';
+  reclaimGameFocus(clawMachineOverlayFrame);
+  state = clawMachineReturnState;
+  if (!fromPopState && clawMachineHistoryPushed) {
+    clawMachineHistoryPushed = false;
+    history.back();
+  } else {
+    clawMachineHistoryPushed = false;
+  }
+}
+
 // ---------------------------------------------------------------- Vinyl Ninja splash + overlay
 // Vinyl Ninja -- a fruit-ninja-style slice-the-records arcade game, reached
 // by walking up to the samurai sword left stuck in the mud out in the swamp
@@ -15844,6 +15338,8 @@ window.addEventListener('popstate', () => {
     closeConnectFourApp(true);
   } else if (state === 'syrupRoadsApp') {
     closeSyrupRoadsApp(true);
+  } else if (state === 'clawMachineApp') {
+    closeClawMachineApp(true);
   } else if (state === 'kangaidenApp') {
     closeKangaidenApp(true);
   } else if (state === 'hiphopLibraryApp') {
@@ -15863,7 +15359,7 @@ canvas.addEventListener('pointerdown', (e) => {
     const vx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const vy = (e.clientY - rect.top) * (canvas.height / rect.height);
     handleLabTap(vx, vy);
-  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'hyperSwimApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'kangaidenApp' || state === 'hiphopLibraryApp') {
+  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'hyperSwimApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'hiphopLibraryApp') {
     // The DOM overlay sits on top of (and outside) the canvas while an
     // instrument/the chess app/the beat bot/the organ/mini golf/the
     // blackbook/Gator Grooves/Vinyl Snake/Bayou Break Station/Gator Jam
@@ -16333,6 +15829,13 @@ function update(dt) {
     // closing it directly. buyPressed is still consumed here too so the
     // on-screen [X] touch button works while Syrup Roads is open.
     if (buyPressed) closeSyrupRoadsApp();
+  } else if (state === 'clawMachineApp') {
+    // Same reasoning as 'labApp'/'chessApp'/.../'syrupRoadsApp' just above:
+    // the DOM overlay (see createClawMachineOverlay()) owns input while the
+    // Claw Machine is loaded -- its own close button and [Esc] handle
+    // closing it directly. buyPressed is still consumed here too so the
+    // on-screen [X] touch button works while the Claw Machine is open.
+    if (buyPressed) closeClawMachineApp();
   } else if (state === 'hotkeys') {
     if (interactPressed || buyPressed) state = hotkeysReturnState;
   } else if (state === 'crate') {
@@ -17237,7 +16740,7 @@ function render(time) {
     drawSplash();
     return;
   }
-  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'hyperSwimApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'kangaidenApp' || state === 'hiphopLibraryApp') {
+  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'hyperSwimApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'hiphopLibraryApp') {
     // Same reasoning as the labApp overlay: a DOM element (the <video>,
     // see createCharacterIntroOverlay(), the chess <iframe>, see
     // createChessOverlay(), the beat bot <iframe>, see
