@@ -1240,6 +1240,22 @@ const MINIGAME_ACTIONS = {
   // actual DOM/iframe overlay (openKangaidenApp()/createKangaidenOverlay())
   // once the player presses E or taps again from that splash.
   kangaiden: () => openKangaidenSplash(),
+  // The Hip Hop Library -- a learning kiosk parked out on the open grass
+  // on every overworld map (see the town/swamp maps' `minigames` lists
+  // below), not tucked inside any building -- same "doesn't need a
+  // physical building" placement as VT Dirt/Vinyl Ninja/Connect 45s/
+  // KANGAIDEN above. `icon: 'hiphopkiosk'` swaps the usual floating
+  // arcade-cabinet sign for a little graffiti-tagged info kiosk (see
+  // drawMinigameHipHopKiosk()), so it reads as "come learn something"
+  // rather than "come play a game." Same "full standalone web app, not a
+  // canvas mini-game" shape as chess/beatbot/organ/mini golf/blackbook/
+  // Gator Grooves/.../KANGAIDEN above (own DOM/iframe overlay, bundled
+  // locally -- an interactive hip hop history timeline, five-elements
+  // guide, hall-of-fame flip cards, a tiny breakbeat pad, and a trivia
+  // quiz, all built from inline data with no external assets and no
+  // network calls -- so it works with no connection). See
+  // openHipHopLibraryApp()/createHipHopLibraryOverlay() below.
+  hiphoplibrary: () => openHipHopLibraryApp(),
 };
 
 // ---- trophy case: personal bests for the 8 scored mini-games --------------
@@ -8713,6 +8729,7 @@ window.addEventListener('keydown', (e) => {
     if (k === 'escape' && state === 'ricoDawApp') { closeRicoDawApp(); }
     if (k === 'escape' && state === 'filterLabApp') { closeFilterLabApp(); }
     if (k === 'escape' && state === 'kangaidenApp') { closeKangaidenApp(); }
+    if (k === 'escape' && state === 'hiphopLibraryApp') { closeHipHopLibraryApp(); }
     if (k === 'escape' && state === 'diggerApp') { closeDiggerApp(); }
     if (k === 'escape' && state === 'connectFourApp') { closeConnectFourApp(); }
     if (k === 'escape' && state === 'syrupRoadsApp') { closeSyrupRoadsApp(); }
@@ -9342,11 +9359,27 @@ function makeOverworld() {
     // MINIGAME_ACTIONS.kangaiden/openKangaidenSplash()/
     // drawKangaidenSplash() and openKangaidenApp()/createKangaidenOverlay()
     // below.
+    // A little plywood info kiosk -- THE HIP HOP LIBRARY -- set out on the
+    // open grass between the two rows of shopfronts, tx/ty (20, 10) sits
+    // well east of the winding river (which runs roughly cols 15-16 at
+    // this row), well west of Henry's Diner/Hey Bud (cols 23-34, rows
+    // 3-6), north of the stadium (cols 17-22, rows 17-23) and the
+    // diner/Nectars/thrift/Junior's/comedy-club row (rows 14-19), and
+    // clear of every road row (bikeRows 9, walkerRow 12, dogRow 6).
+    // `icon: 'hiphopkiosk'` swaps the usual floating arcade-cabinet sign
+    // for a little graffiti-tagged reading stand (see
+    // drawMinigameHipHopKiosk()), so it reads as "come learn something"
+    // rather than "play this cabinet". Opens the full standalone Hip Hop
+    // Library app (an interactive history timeline, five-elements guide,
+    // hall-of-fame flip cards, a tiny breakbeat pad, and a trivia quiz) in
+    // its own DOM overlay; see openHipHopLibraryApp()/
+    // createHipHopLibraryOverlay().
     minigames: [
       { id: 'penaltyshootout', tx: 19, ty: 19, label: 'PENALTY KICKS', icon: 'soccerball' },
       { id: 'minigolf', tx: 6, ty: 21, label: 'PLAY MINI GOLF', icon: 'golfclubs' },
       { id: 'connectfour', tx: 33, ty: 21, label: 'PLAY CONNECT 45s', icon: 'connectfour' },
       { id: 'kangaiden', tx: 37, ty: 11, label: 'PLAY KANGAIDEN' },
+      { id: 'hiphoplibrary', tx: 20, ty: 10, label: 'THE HIP HOP LIBRARY', icon: 'hiphopkiosk' },
       // A boombox left out on the open grass just east of the Vermont Green
       // FC stadium wall -- tx/ty (24, 21) sits in a clear patch beyond the
       // stadium footprint (STADIUM_X/Y/W/H above, columns 17-22, rows
@@ -9778,6 +9811,21 @@ function makeSwamp() {
       // than an arcade cabinet, the same way the soccer ball does out on
       // the pitch back in town.
       { id: 'homerunderby', tx: 27, ty: 6, label: 'HOME RUN DERBY', icon: 'baseball' },
+      // THE HIP HOP LIBRARY -- a little plywood info kiosk set out on the
+      // open mud south of GUT HUT, tx/ty (31, 21) sits inside HUT_CLEAR
+      // (x23-32, y13-23) but well clear of the GUT HUT building itself
+      // (x25-30, y15-18) and its door (28, 18), well clear of JOHNNY'S FUN
+      // PARK/the pool (x36-41, rows 16-24), the crate at (34,17), the
+      // newsstand at (25,22), the boardwalk trunk (snakeRow 12), and the
+      // x=8/x=34 frog spurs -- checked against the same deterministic
+      // swamp layout the rest of this file relies on. `icon: 'hiphopkiosk'`
+      // swaps the usual floating arcade-cabinet sign for a little
+      // graffiti-tagged reading stand (see drawMinigameHipHopKiosk()), the
+      // same "reads as something to walk up to, not a cabinet" idea as the
+      // dirt bike/samurai sword above. Opens the full standalone Hip Hop
+      // Library app (same one as the town kiosk) in its own DOM overlay;
+      // see openHipHopLibraryApp()/createHipHopLibraryOverlay().
+      { id: 'hiphoplibrary', tx: 31, ty: 21, label: 'THE HIP HOP LIBRARY', icon: 'hiphopkiosk' },
     ],
   };
 }
@@ -10712,7 +10760,7 @@ const player = {
   tempItem: null, tempItemTimer: 0,
 };
 const collected = new Set();
-let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | danceParty | portal | fifa | minigame | hotkeys | crate | photo | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | vinylSnakeApp | bayouBreakApp | gatorJamSlamApp | swampCaveApp | vtDirtApp | penaltyKingsApp | digDashApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | diggerApp | hyperSwimApp | connectFourApp | syrupRoadsApp | kangaidenSplash | kangaidenApp
+let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | danceParty | portal | fifa | minigame | hotkeys | crate | photo | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | vinylSnakeApp | bayouBreakApp | gatorJamSlamApp | swampCaveApp | vtDirtApp | penaltyKingsApp | digDashApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | diggerApp | hyperSwimApp | connectFourApp | syrupRoadsApp | kangaidenSplash | kangaidenApp | hiphopLibraryApp
 // State to snap back to when the [H] hotkeys popup is closed -- currently
 // always 'play' since that's the only state H can be opened from, but kept
 // as its own var in case another state wants to offer the popup later.
@@ -11386,7 +11434,7 @@ const music = {
 // enter/exit call sites, so it can't drift out of sync no matter which
 // of the several ways the player backs out of the lab popup (keyboard
 // [X], on-screen [X] button, closing the instrument iframe, etc.).
-const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'vinylSnakeApp', 'bayouBreakApp', 'gatorJamSlamApp', 'swampCaveApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'hyperSwimApp', 'connectFourApp', 'syrupRoadsApp', 'kangaidenApp', 'danceParty']);
+const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'vinylSnakeApp', 'bayouBreakApp', 'gatorJamSlamApp', 'swampCaveApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'hyperSwimApp', 'connectFourApp', 'syrupRoadsApp', 'kangaidenApp', 'hiphopLibraryApp', 'danceParty']);
 function syncMusicDuck() {
   const minigameDucked = state === 'minigame' && activeMinigame && activeMinigame.musicDucked;
   music.duck(DUCKED_STATES.has(state) || !!minigameDucked);
@@ -15276,6 +15324,119 @@ function closeFilterLabApp(fromPopState) {
   }
 }
 
+// The Hip Hop Library -- an interactive history kiosk (timeline, five
+// elements, hall-of-fame flip cards, a tiny breakbeat pad, and a trivia
+// quiz), parked out on the open grass on every overworld map (see the
+// town/swamp maps' `minigames` lists further down), not tucked inside any
+// building. Same "full-screen DOM overlay with an <iframe>" pattern as
+// chess/the beat bot/the organ/mini golf/the blackbook/.../Filter Lab
+// above.
+//
+// Ships as a bundled, self-contained app (its own HTML/CSS/JS, WebAudio
+// breakbeat pad included, no external assets, fonts, or network calls at
+// all) at instruments/hiphop-library/index.html -- the exact same local-
+// file pattern CHESS_APP_URL/BEAT_BOT_APP_URL/.../FILTER_LAB_APP_URL use.
+// Being a same-origin local asset rather than a live remote site means it
+// loads and plays identically with or without a connection, so -- same as
+// the others -- there's no online/offline branching needed here either.
+const HIPHOP_LIBRARY_APP_URL = 'instruments/hiphop-library/index.html';
+let hiphopLibraryOverlayEl = null, hiphopLibraryOverlayFrame = null;
+let hiphopLibraryReturnState = 'play';
+let hiphopLibraryHistoryPushed = false; // mirrors labHistoryPushed/chessHistoryPushed/.../filterLabHistoryPushed -- see openHipHopLibraryApp()/closeHipHopLibraryApp()
+
+function createHipHopLibraryOverlay() {
+  const style = document.createElement('style');
+  style.textContent = `
+    #hiphopLibraryApp {
+      position: fixed; inset: 0; z-index: 1000;
+      background: #000;
+      display: none; flex-direction: column;
+    }
+    #hiphopLibraryApp.open { display: flex; }
+    #hiphopLibraryApp .hhl-bar {
+      flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 10px 14px;
+      background: linear-gradient(#241a0e, #120d06);
+      border-bottom: 2px solid #e0b040;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    }
+    #hiphopLibraryApp .hhl-title {
+      color: #f4ecd8; font: bold 14px monospace; letter-spacing: 0.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #hiphopLibraryApp .hhl-close {
+      flex: 0 0 auto; cursor: pointer;
+      background: rgba(224,176,64,0.15);
+      border: 1.5px solid rgba(224,176,64,0.85);
+      color: #f4ecd8; border-radius: 8px;
+      padding: 7px 16px; font: bold 13px monospace;
+      -webkit-user-select: none; user-select: none;
+    }
+    #hiphopLibraryApp .hhl-close:active { background: rgba(224,176,64,0.4); }
+    #hiphopLibraryApp iframe {
+      flex: 1 1 auto; width: 100%; border: 0; background: #000;
+    }
+  `;
+  document.head.appendChild(style);
+
+  hiphopLibraryOverlayEl = document.createElement('div');
+  hiphopLibraryOverlayEl.id = 'hiphopLibraryApp';
+
+  const bar = document.createElement('div');
+  bar.className = 'hhl-bar';
+  const title = document.createElement('div');
+  title.className = 'hhl-title';
+  title.textContent = 'THE HIP HOP LIBRARY';
+  const closeBtn = document.createElement('div');
+  closeBtn.className = 'hhl-close';
+  closeBtn.textContent = '\u2190 BACK OUTSIDE';
+  bindTap(closeBtn, closeHipHopLibraryApp);
+  bar.appendChild(title);
+  bar.appendChild(closeBtn);
+
+  hiphopLibraryOverlayFrame = document.createElement('iframe');
+  hiphopLibraryOverlayFrame.setAttribute('allow', 'autoplay');
+
+  hiphopLibraryOverlayEl.appendChild(bar);
+  hiphopLibraryOverlayEl.appendChild(hiphopLibraryOverlayFrame);
+  document.body.appendChild(hiphopLibraryOverlayEl);
+}
+createHipHopLibraryOverlay();
+
+// Opens the Hip Hop Library overlay and switches state to
+// 'hiphopLibraryApp'. Called from MINIGAME_ACTIONS.hiphoplibrary (E on the
+// kiosk, or tapping its floating sign), same entry points every other
+// mini-game uses.
+function openHipHopLibraryApp() {
+  hiphopLibraryReturnState = state;
+  hiphopLibraryOverlayFrame.src = HIPHOP_LIBRARY_APP_URL;
+  hiphopLibraryOverlayEl.classList.add('open');
+  state = 'hiphopLibraryApp';
+  // Same throwaway-history-entry trick as openInstrument()/openChessApp()/
+  // .../openFilterLabApp() above, so the browser/OS back gesture closes
+  // the Hip Hop Library overlay instead of leaving the game entirely.
+  history.pushState({ hiphopLibraryApp: true }, '');
+  hiphopLibraryHistoryPushed = true;
+}
+
+// Tears the iframe back down and returns to ordinary gameplay outside.
+// fromPopState mirrors closeInstrument()/closeChessApp()/.../
+// closeFilterLabApp()'s parameter -- true when triggered by the browser's
+// back button (whose history entry is already consumed), so we must not
+// call history.back() again in that case.
+function closeHipHopLibraryApp(fromPopState) {
+  hiphopLibraryOverlayEl.classList.remove('open');
+  hiphopLibraryOverlayFrame.src = 'about:blank';
+  reclaimGameFocus(hiphopLibraryOverlayFrame);
+  state = hiphopLibraryReturnState;
+  if (!fromPopState && hiphopLibraryHistoryPushed) {
+    hiphopLibraryHistoryPushed = false;
+    history.back();
+  } else {
+    hiphopLibraryHistoryPushed = false;
+  }
+}
+
 // Digger -- a classic boulder-dash-style digging game (dig through dirt,
 // dodge falling boulders, collect diamonds) tucked inside JOHNNY'S FUN PARK
 // (see the `johnnysfunpark` shop's `minigames` list). Same "full-screen DOM
@@ -15607,6 +15768,8 @@ window.addEventListener('popstate', () => {
     closeSyrupRoadsApp(true);
   } else if (state === 'kangaidenApp') {
     closeKangaidenApp(true);
+  } else if (state === 'hiphopLibraryApp') {
+    closeHipHopLibraryApp(true);
   }
 });
 
@@ -15622,7 +15785,7 @@ canvas.addEventListener('pointerdown', (e) => {
     const vx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const vy = (e.clientY - rect.top) * (canvas.height / rect.height);
     handleLabTap(vx, vy);
-  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'hyperSwimApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'kangaidenApp') {
+  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'hyperSwimApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'kangaidenApp' || state === 'hiphopLibraryApp') {
     // The DOM overlay sits on top of (and outside) the canvas while an
     // instrument/the chess app/the beat bot/the organ/mini golf/the
     // blackbook/Gator Grooves/Vinyl Snake/Bayou Break Station/Gator Jam
@@ -16020,6 +16183,13 @@ function update(dt) {
     // it directly. buyPressed is still consumed here too so the on-screen
     // [X] touch button works while KANGAIDEN is open.
     if (buyPressed) closeKangaidenApp();
+  } else if (state === 'hiphopLibraryApp') {
+    // Same reasoning as 'labApp'/'chessApp'/.../'kangaidenApp' just above:
+    // the DOM overlay (see createHipHopLibraryOverlay()) owns input while
+    // the Hip Hop Library is loaded -- its own close button and [Esc]
+    // handle closing it directly. buyPressed is still consumed here too
+    // so the on-screen [X] touch button works while it's open.
+    if (buyPressed) closeHipHopLibraryApp();
   } else if (state === 'digDashApp') {
     // Same reasoning as 'labApp'/'chessApp'/'beatBotApp'/'organApp'/
     // 'minigolfApp'/'blackbookApp'/'crocSwampApp'/'vinylSnakeApp'/
@@ -16579,6 +16749,102 @@ function drawMinigameBoombox(wx, wy, time, seed, label) {
   return { cx, cy, hw: boxW / 2 + 16, hh: boxH / 2 + 30 };
 }
 
+// Alternate mini-game marker used when a map entry sets `icon: 'hiphopkiosk'`
+// (currently just the Hip Hop Library, out on the open grass on every
+// overworld map) -- same bob/label/hitbox contract as
+// drawMinigameArcadeSign()/drawMinigameSoccerBall()/drawMinigameBoombox()
+// above so it drops into the exact same per-frame loop and tap-shortcut
+// handling. Drawn as a little plywood info kiosk -- a slanted reading
+// board with an open book propped on it, a strip of graffiti-style tags
+// along the base, and a small speaker on top -- so it reads as "come
+// learn something" out in the world rather than "come play a game."
+function drawMinigameHipHopKiosk(wx, wy, time, seed, label) {
+  const s = MINIGAME_OBJECT_SCALE;
+  const bob = Math.sin(time * 0.003 + seed) * 3;
+  const cx = wx, cy = wy - 24 + bob;
+  const postW = 26 * s, postH = 30 * s;
+
+  // soft contact shadow on the grass, independent of the kiosk's bob
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.beginPath();
+  ctx.ellipse(wx, wy + 2, postW * 0.7, postW * 0.24, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // plywood post/body, warm wood tone
+  ctx.fillStyle = '#8a6a42';
+  ctx.beginPath();
+  ctx.roundRect(cx - postW / 2, cy - postH / 2, postW, postH, 2 * s);
+  ctx.fill();
+  ctx.strokeStyle = '#3a2a16';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // a couple of quick spray-tag scribbles along the base, like the
+  // graffiti tags dotted around the rest of the world (drawGraffitiTags)
+  ctx.strokeStyle = 'rgba(224,72,88,0.8)';
+  ctx.lineWidth = 1.6 * s;
+  ctx.beginPath();
+  ctx.moveTo(cx - postW * 0.3, cy + postH * 0.2);
+  ctx.quadraticCurveTo(cx, cy + postH * 0.32, cx + postW * 0.32, cy + postH * 0.16);
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(74,208,255,0.7)';
+  ctx.beginPath();
+  ctx.moveTo(cx - postW * 0.22, cy + postH * 0.38);
+  ctx.lineTo(cx + postW * 0.18, cy + postH * 0.42);
+  ctx.stroke();
+
+  // slanted reading-stand top with an open book on it
+  const topY = cy - postH / 2;
+  ctx.fillStyle = '#5c4326';
+  ctx.beginPath();
+  ctx.moveTo(cx - postW * 0.62, topY + 6 * s);
+  ctx.lineTo(cx + postW * 0.62, topY + 6 * s);
+  ctx.lineTo(cx + postW * 0.5, topY - 6 * s);
+  ctx.lineTo(cx - postW * 0.5, topY - 6 * s);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#241206';
+  ctx.lineWidth = 1.2;
+  ctx.stroke();
+
+  // open book pages
+  ctx.fillStyle = '#f4ecd8';
+  ctx.beginPath();
+  ctx.moveTo(cx, topY - 1 * s);
+  ctx.lineTo(cx - postW * 0.36, topY - 4 * s);
+  ctx.lineTo(cx - postW * 0.36, topY + 3 * s);
+  ctx.lineTo(cx, topY + 5 * s);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(cx, topY - 1 * s);
+  ctx.lineTo(cx + postW * 0.36, topY - 4 * s);
+  ctx.lineTo(cx + postW * 0.36, topY + 3 * s);
+  ctx.lineTo(cx, topY + 5 * s);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#c9bfa6';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // tiny speaker perched on top -- ties it back to the game's boombox/
+  // turntable iconography, "history you can also hear"
+  ctx.fillStyle = '#1c1420';
+  ctx.beginPath(); ctx.arc(cx, topY - 10 * s, 4.5 * s, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#ffd23c';
+  ctx.beginPath(); ctx.arc(cx, topY - 10 * s, 2 * s, 0, Math.PI * 2); ctx.fill();
+
+  // floating label -- same flash-between-label-and-tap-hint behavior as
+  // the arcade sign/soccer ball/boombox above
+  const flashOnLabel = Math.floor(time / 1400) % 2 === 0;
+  ctx.fillStyle = '#ffd23c';
+  ctx.font = `bold ${Math.round(9 * s)}px monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillText(flashOnLabel ? (label || 'MINI-GAME') : 'TAP TO LEARN', cx, topY - 20 * s);
+
+  return { cx, cy, hw: postW / 2 + 14, hh: postH / 2 + 34 };
+}
+
 // Alternate mini-game marker used when a map entry sets `icon: 'connectfour'`
 // (currently just Connect 45s, out on the open grass in town) -- same
 // bob/label/hitbox contract as drawMinigameArcadeSign()/
@@ -16893,7 +17159,7 @@ function render(time) {
     drawSplash();
     return;
   }
-  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'hyperSwimApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'kangaidenApp') {
+  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'hyperSwimApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'kangaidenApp' || state === 'hiphopLibraryApp') {
     // Same reasoning as the labApp overlay: a DOM element (the <video>,
     // see createCharacterIntroOverlay(), the chess <iframe>, see
     // createChessOverlay(), the beat bot <iframe>, see
@@ -17000,6 +17266,8 @@ function render(time) {
         ? drawMinigameBaseball(wx, wy, time, seed, mg.label)
         : mg.icon === 'boombox'
         ? drawMinigameBoombox(wx, wy, time, seed, mg.label)
+        : mg.icon === 'hiphopkiosk'
+        ? drawMinigameHipHopKiosk(wx, wy, time, seed, mg.label)
         : drawMinigameArcadeSign(wx, wy, time, seed, mg.label);
       minigameSignHitboxes.push({ map: player.map, id: mg.id, ...rect });
     });
