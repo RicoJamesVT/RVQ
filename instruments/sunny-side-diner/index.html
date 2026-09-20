@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Sunny Side Diner — SNES Remix</title>
+<style>
+*{box-sizing:border-box;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#100d1b;font-family:monospace}
+body{display:grid;place-items:center;touch-action:none}
+#wrap{position:relative;width:min(100vw,100vh*1.7778);height:min(100vh,100vw*.5625);max-width:100vw;max-height:100vh}
+canvas{width:100%;height:100%;display:block;image-rendering:pixelated;image-rendering:crisp-edges;background:#1a1730}
+#portrait{display:none;position:absolute;inset:0;z-index:20;background:#17132a;color:#fff;text-align:center;align-items:center;justify-content:center;padding:28px}
+#portrait b{color:#ffd84d;font-size:22px;display:block;margin-bottom:10px}
+#portrait span{font-size:14px;line-height:1.5;color:#ddd}
+#touch{position:absolute;inset:0;pointer-events:none;z-index:10}
+.pad,.act{pointer-events:auto;position:absolute;border:3px solid #fff8;background:#211b35dd;color:#fff;font:bold 22px monospace;border-radius:14px;box-shadow:0 4px 0 #090711;display:grid;place-items:center;touch-action:none}
+.pad{width:58px;height:58px}
+#up{left:76px;bottom:124px}#down{left:76px;bottom:8px}#left{left:14px;bottom:66px}#right{left:138px;bottom:66px}
+.act{right:18px;bottom:30px;width:104px;height:104px;border-radius:50%;background:#d94a46dd;font-size:16px}
+#tip{position:absolute;top:9px;left:50%;transform:translateX(-50%);padding:6px 10px;background:#111a;border:2px solid #fff4;color:#fff;font-size:11px;z-index:11;text-align:center;white-space:nowrap;pointer-events:none}
+@media (min-width:800px){#touch{display:none}}
+@media (orientation:portrait) and (max-width:799px){#wrap{width:100vw;height:100vh}canvas{width:100%;height:100%}#portrait{display:flex}}
+</style>
+</head>
+<body>
+<div id="wrap">
+<canvas id="game" width="960" height="540" aria-label="Sunny Side Diner SNES-style cooking game"></canvas>
+<div id="tip">WASD / ARROWS MOVE • SPACE / E COOK • ENTER START</div>
+<div id="portrait"><div><b>TURN YOUR DEVICE SIDEWAYS!</b><span>Sunny Side Diner is designed for landscape play.<br>Rotate your phone/tablet to keep the diner big and juicy.</span></div></div>
+<div id="touch">
+<button class="pad" id="up">▲</button><button class="pad" id="left">◀</button>
+<button class="pad" id="right">▶</button><button class="pad" id="down">▼</button>
+<button class="act" id="action">COOK!</button>
+</div>
+</div>
+<script>
+'use strict';
+const c=document.getElementById('game'),ctx=c.getContext('2d');
+ctx.imageSmoothingEnabled=false;
+const W=960,H=540,keys=Object.create(null);
+let started=false,gameOver=false,score=0,combo=0,time=82,order=null,particles=[],last=0,msg='',msgT=0,shake=0,high=0;
+try{high=Number(localStorage.getItem('ssdHigh')||0)}catch(e){high=0}
+
+const player={x:480,y:430,s:205,dir:1,bob:0};
+const stations=[
+ {x:155,y:270,type:'EGG',color:'#ffd447'},
+ {x:345,y:270,type:'BACON',color:'#ff7057'},
+ {x:515,y:270,type:'PANCAKE',color:'#e9a34e'},
+ {x:690,y:270,type:'TOAST',color:'#f4c36c'}
+];
+const recipes=['EGG','BACON','PANCAKE','TOAST'];
+const names={EGG:'SUNNY EGG',BACON:'CRISPY BACON',PANCAKE:'STACK O’ CAKES',TOAST:'GOLDEN TOAST'};
+const customer={x:820,y:166,blink:0,happy:0};
+
+function rect(x,y,w,h,col){ctx.fillStyle=col;ctx.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h))}
+function text(t,x,y,size=18,col='#fff',align='left'){
+ ctx.fillStyle=col;ctx.font=`bold ${size}px monospace`;ctx.textAlign=align;ctx.textBaseline='alphabetic';ctx.fillText(t,Math.round(x),Math.round(y))
+}
+function ellipse(x,y,rx,ry,col,stroke){
+ ctx.beginPath();ctx.ellipse(x,y,rx,ry,0,0,Math.PI*2);ctx.fillStyle=col;ctx.fill();
+ if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=3;ctx.stroke()}
+}
+function shadow(x,y,w=50){rect(x-w/2,y,w,7,'#11101b88')}
+function dish(x,y,type,scale=1){
+ ctx.save();ctx.translate(x,y);ctx.scale(scale,scale);
+ ellipse(0,18,34,8,'#0b0a12');ellipse(0,15,32,7,'#e9edf2');
+ if(type==='EGG'){ellipse(0,2,24,16,'#fff4cf');ellipse(2,2,9,9,'#ffc928','#e69b21')}
+ if(type==='BACON'){for(let i=-22;i<18;i+=10){rect(i,-13,7,31,i%20===0?'#bd3f3b':'#8f2d36');rect(i+2,-10,3,25,'#f7aa6c')}}
+ if(type==='PANCAKE'){for(let i=0;i<3;i++){ellipse(0,4-i*7,26-i*3,9,'#d78b42');rect(-17+i*3,-1-i*7,34-i*6,3,'#f2ba67')}}
+ if(type==='TOAST'){rect(-22,-18,44,34,'#bd753c');rect(-18,-14,36,26,'#f1b35f');rect(-10,-7,20,12,'#d88945')}
+ ctx.restore();
+}
+function spawn(x,y,col,n=14){
+ for(let i=0;i<n;i++)particles.push({x,y,vx:(Math.random()-.5)*190,vy:(Math.random()-.75)*190,life:.45+Math.random()*.7,col,s:2+Math.random()*5})
+}
+function stars(){
+ for(let i=0;i<70;i++){let x=(i*137)%960,y=102+(i*71)%150;rect(x,y,2,2,i%3?'#6d668f':'#ffd65a')}
+}
+function newOrder(){
+ order=recipes[Math.floor(Math.random()*recipes.length)];
+ msg='NEW ORDER! '+names[order];msgT=1.8;customer.happy=0;
+}
+function start(){
+ started=true;gameOver=false;score=0;combo=0;time=82;newOrder();player.x=480;player.y=430;
+}
+function nearest(){
+ let best=null,d=1e9;
+ for(const s of stations){let q=Math.hypot(player.x-s.x,player.y-s.y);if(q<d){d=q;best=s}}
+ return d<92?best:null;
+}
+function cook(){
+ if(!started){start();return}
+ const s=nearest();
+ if(!s){msg='GET CLOSER TO A STATION!';msgT=1.1;shake=.12;return}
+ if(s.type===order){
+  const gain=100+combo*30;score+=gain;combo++;time=Math.min(88,time+2.5);
+  msg='PERFECT!  +'+gain;msgT=1.35;customer.happy=1;spawn(s.x,s.y,s.color,28);shake=.18;newOrder();
+ }else{
+  combo=0;time=Math.max(0,time-6);msg='WRONG DISH!  -5 SEC';msgT=1.2;customer.happy=-1;spawn(s.x,s.y,'#ff514f',16);shake=.25;
+ }
+}
+function endGame(){
+ started=false;gameOver=true;high=Math.max(high,score);
+ try{localStorage.setItem('ssdHigh',String(high))}catch(e){}
+ msg='SHIFT OVER!';msgT=99;spawn(player.x,player.y,'#ffd447',35);
+}
+function update(dt){
+ if(started){
+  let dx=(keys.ArrowRight||keys.d?1:0)-(keys.ArrowLeft||keys.a?1:0);
+  let dy=(keys.ArrowDown||keys.s?1:0)-(keys.ArrowUp||keys.w?1:0);
+  if(dx||dy){let m=Math.hypot(dx,dy);const moveSpeed=player.s+(combo>=3?20:0);player.x+=dx/m*moveSpeed*dt;player.y+=dy/m*moveSpeed*dt;player.dir=dx||player.dir;player.bob+=dt*13}
+  player.x=Math.max(58,Math.min(902,player.x));player.y=Math.max(350,Math.min(480,player.y));
+  time-=dt;if(time<=0){time=0;endGame()}
+ }
+ for(const p of particles){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=280*dt;p.life-=dt}
+ particles=particles.filter(p=>p.life>0);
+ customer.blink=Math.max(0,customer.blink-dt);msgT=Math.max(0,msgT-dt);shake=Math.max(0,shake-dt);
+}
+function drawBackground(){
+ rect(0,0,W,H,'#16132a');
+ rect(0,0,W,94,'#27234a');
+ // starry night window
+ rect(0,96,W,205,'#302b57');stars();
+ rect(0,292,W,248,'#3a2d32');
+ // checker floor
+ for(let y=292;y<H;y+=48)for(let x=0;x<W;x+=48)rect(x,y,46,46,((x/48+y/48)%2?'#4c3940':'#392e39'));
+ // back counter
+ rect(42,224,876,76,'#8a4b43');rect(42,216,876,12,'#ffd05a');rect(42,294,876,9,'#211923');
+ // neon sign
+ rect(305,18,350,60,'#0b0a13');rect(312,25,336,46,'#5d2948');
+ text('SUNNY SIDE',480,57,31,'#ffd44d','center');
+ text('DINER',480,76,11,'#ff7661','center');
+ // stools / tables
+ for(let x=88;x<920;x+=160){ellipse(x,335,38,12,'#211b27');rect(x-28,337,56,10,'#d55c45');rect(x-4,346,8,38,'#17151d')}
+}
+function drawStation(s){
+ shadow(s.x,s.y+42,80);rect(s.x-52,s.y-38,104,78,'#17141f');rect(s.x-47,s.y-33,94,67,'#625064');
+ rect(s.x-40,s.y-27,80,51,'#24202c');rect(s.x-35,s.y-22,70,41,'#111019');
+ dish(s.x,s.y-2,s.type,0.8);
+ text(s.type,s.x,s.y+54,12,'#fff','center');
+ if(order===s.type){rect(s.x-47,s.y-54,94,7,'#1b1520');rect(s.x-47,s.y-54,94*Math.min(1,Math.max(0,time/82)),7,s.color)}
+}
+function drawCustomer(){
+ shadow(customer.x,226,76);
+ ellipse(customer.x,178,31,34,'#d58e67','#9c5a4b'); // hair
+ rect(customer.x-32,196,64,51,'#bd3f3f');rect(customer.x-37,239,74,11,'#752b37');
+ rect(customer.x-19,169,8,7,'#211823');rect(customer.x+11,169,8,7,'#211823');
+ rect(customer.x-10,184,20,5,customer.happy<0?'#632c32':'#512632');
+ if(customer.happy>0)text('♥',customer.x,154,19,'#ff5d71','center');
+ if(customer.happy<0)text('!',customer.x,154,19,'#ff5d52','center');
+ // speech bubble
+ rect(734,112,178,74,'#fff6d7');rect(744,122,158,54,'#3b2634');
+ text('ORDER UP!',823,143,12,'#ffd84d','center');text(names[order]||'—',823,165,13,'#fff','center');
+}
+function drawPlayer(){
+ const bob=Math.sin(player.bob)*2;
+ ctx.save();ctx.translate(player.x,player.y+bob);ctx.scale(player.dir,1);
+ shadow(0,45,44);
+ // legs
+ rect(-18,11,14,34,'#25243b');rect(4,11,14,34,'#25243b');rect(-21,41,19,8,'#11101a');rect(2,41,19,8,'#11101a');
+ // body/apron
+ rect(-25,-34,50,49,'#f1d6a5');rect(-22,-29,44,41,'#c94642');rect(-14,-18,28,7,'#ffd04b');
+ // head
+ rect(-18,-63,36,31,'#d9966c');rect(-15,-69,30,8,'#7d403c');rect(-22,-62,44,9,'#252034');
+ rect(-11,-51,5,5,'#17121d');rect(8,-51,5,5,'#17121d');rect(-7,-39,14,4,'#6a3034');
+ // arm
+ rect(20,-27,18,9,'#d9966c');rect(32,-30,10,14,'#d9966c');
+ ctx.restore();
+}
+function drawHUD(){
+ rect(18,14,190,66,'#171321dd');rect(24,20,178,26,'#3a2942');
+ text('SCORE',34,39,11,'#b9a9bc');text(String(score).padStart(5,'0'),194,40,17,'#ffd54a','right');
+ text('BEST '+String(high).padStart(5,'0'),34,66,11,'#fff','left');
+ rect(714,18,226,54,'#171321dd');text('TIME',730,39,11,'#b9a9bc');text(String(Math.ceil(time)).padStart(2,'0'),790,47,25,time<15?'#ff665d':'#ffd54a');
+ rect(827,29,96,14,'#3a2942');rect(827,29,96*Math.min(1,time/82),14,time<15?'#ff665d':'#63d36d');
+}
+function draw(){
+ ctx.clearRect(0,0,W,H);ctx.save();
+ if(shake>0){ctx.translate((Math.random()-.5)*7,(Math.random()-.5)*7)}
+ drawBackground();drawStation(stations[0]);drawStation(stations[1]);drawStation(stations[2]);drawStation(stations[3]);
+ drawCustomer();drawPlayer();
+ particles.forEach(p=>rect(p.x,p.y,p.s,p.s,p.col));
+ drawHUD();
+ if(msgT>0)text(msg,480,320,18,msg.includes('WRONG')||msg.includes('CLOSER')?'#ff7661':'#fff','center');
+ if(combo>1)text('COMBO x'+combo,480,346,15,'#ffd54a','center');
+ if(!started){
+  rect(220,132,520,270,'#0d0b15ee');rect(230,142,500,250,'#38243e');
+  text('SUNNY SIDE DINER',480,190,31,'#ffd54a','center');
+  text('SNES BREAKFAST RUSH',480,219,15,'#ff7565','center');
+  if(gameOver){text('SHIFT OVER!',480,257,23,'#fff','center');text('SCORE  '+score+'   •   BEST  '+high,480,284,15,'#ffd54a','center')}
+  else{text('KEEP MOVING — ORDERS GET TIGHTER!',480,260,13,'#fff','center')}
+  text('ENTER / SPACE / TAP COOK',480,316,16,'#fff','center');
+  text('Move • Find the matching station • Cook!',480,346,12,'#b9a9bc','center');
+ }
+ ctx.restore();
+}
+function loop(t){let dt=Math.min(.033,(t-last)/1000||0);last=t;update(dt);draw();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+
+addEventListener('keydown',e=>{
+ if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' ','Enter','w','a','s','d','W','A','S','D','e','E'].includes(e.key))e.preventDefault();
+ keys[e.key]=true;
+ if([' ','Enter','e','E'].includes(e.key))cook();
+});
+addEventListener('keyup',e=>keys[e.key]=false);
+
+function bind(id,k){
+ const el=document.getElementById(id);
+ el.addEventListener('pointerdown',e=>{e.preventDefault();keys[k]=true;el.setPointerCapture?.(e.pointerId)});
+ ['pointerup','pointercancel','pointerleave'].forEach(ev=>el.addEventListener(ev,e=>{e.preventDefault();keys[k]=false}));
+}
+bind('up','ArrowUp');bind('down','ArrowDown');bind('left','ArrowLeft');bind('right','ArrowRight');
+document.getElementById('action').addEventListener('pointerdown',e=>{e.preventDefault();cook()});
+addEventListener('blur',()=>{for(const k in keys)keys[k]=false});
+addEventListener('contextmenu',e=>e.preventDefault());
+</script>
+</body>
+</html>
