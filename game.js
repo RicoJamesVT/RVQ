@@ -9013,6 +9013,18 @@ vinylNinjaSplashImg.src = 'assets/vinyl_ninja_splash.png';
 const kangaidenSplashImg = new Image();
 kangaidenSplashImg.src = 'assets/kangaiden_splash.png';
 
+// KANGAIDEN intro video -- plays once, full-screen, the instant the player
+// steps up to the cabinet, before the still key-art splash above and the
+// actual iframe. Same "plain local file, no fetch()/blob: URL, no network
+// request" pattern as every other bundled asset here, so it plays
+// identically online or off. Just the source path is declared up here
+// (mirroring kangaidenSplashImg's early `.src` assignment, which lets the
+// browser start caching it well before the player ever reaches the
+// cabinet); the actual <video> element is built fresh each time by
+// playKangaidenSplashVideo() below, so replaying it (walking away and back)
+// never has to fight leftover playback state from the previous run.
+const KANGAIDEN_SPLASH_VIDEO_SRC = 'assets/KANGAIDEN_splash_vid.mp4';
+
 const purePopPosterImg = new Image();
 purePopPosterImg.src = 'assets/purepop_poster.png';
 
@@ -10760,7 +10772,7 @@ const player = {
   tempItem: null, tempItemTimer: 0,
 };
 const collected = new Set();
-let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | danceParty | portal | fifa | minigame | hotkeys | crate | photo | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | vinylSnakeApp | bayouBreakApp | gatorJamSlamApp | swampCaveApp | vtDirtApp | penaltyKingsApp | digDashApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | diggerApp | hyperSwimApp | connectFourApp | syrupRoadsApp | kangaidenSplash | kangaidenApp | hiphopLibraryApp
+let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | danceParty | portal | fifa | minigame | hotkeys | crate | photo | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | vinylSnakeApp | bayouBreakApp | gatorJamSlamApp | swampCaveApp | vtDirtApp | penaltyKingsApp | digDashApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | diggerApp | hyperSwimApp | connectFourApp | syrupRoadsApp | kangaidenVideo | kangaidenSplash | kangaidenApp | hiphopLibraryApp
 // State to snap back to when the [H] hotkeys popup is closed -- currently
 // always 'play' since that's the only state H can be opened from, but kept
 // as its own var in case another state wants to offer the popup later.
@@ -11434,7 +11446,7 @@ const music = {
 // enter/exit call sites, so it can't drift out of sync no matter which
 // of the several ways the player backs out of the lab popup (keyboard
 // [X], on-screen [X] button, closing the instrument iframe, etc.).
-const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'vinylSnakeApp', 'bayouBreakApp', 'gatorJamSlamApp', 'swampCaveApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'hyperSwimApp', 'connectFourApp', 'syrupRoadsApp', 'kangaidenApp', 'hiphopLibraryApp', 'danceParty']);
+const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'vinylSnakeApp', 'bayouBreakApp', 'gatorJamSlamApp', 'swampCaveApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'hyperSwimApp', 'connectFourApp', 'syrupRoadsApp', 'kangaidenVideo', 'kangaidenApp', 'hiphopLibraryApp', 'danceParty']);
 function syncMusicDuck() {
   const minigameDucked = state === 'minigame' && activeMinigame && activeMinigame.musicDucked;
   music.duck(DUCKED_STATES.has(state) || !!minigameDucked);
@@ -13880,12 +13892,78 @@ function drawVinylNinjaSplash() {
 // calls openKangaidenApp() below.
 let kangaidenSplashReturnState = 'play';
 
-// Opens the splash and switches state to 'kangaidenSplash'. Called from
-// MINIGAME_ACTIONS.kangaiden (E on the cabinet, or tapping its floating
-// sign).
+// Full-screen, skippable video that plays once before the still key-art
+// splash below -- same shape as the M85 Games brand-intro video at the very
+// top of this file (skip button in the corner; a click/tap, the [Skip]
+// button, `ended`, `error`, or any keypress all dismiss it the same way;
+// sound-first-then-muted-fallback autoplay, since browsers only allow
+// autoplay-with-sound right after a user gesture like the E-press/tap that
+// got us here; and a hard safety timeout so a slow or blocked file never
+// strands the player on a black screen) -- just triggered on demand here
+// instead of once at page load, and parameterized with an `onDone` callback
+// instead of always resuming the same fixed startup flow. `onDone` fires
+// exactly once, however playback ends, and is what actually hands off to
+// the rest of the KANGAIDEN flow (see openKangaidenSplash() below).
+function playKangaidenSplashVideo(onDone) {
+  const v = document.createElement('video');
+  v.src = KANGAIDEN_SPLASH_VIDEO_SRC;
+  v.preload = 'auto';
+  v.playsInline = true; // iOS: play inline instead of forcing fullscreen
+  v.setAttribute('webkit-playsinline', 'true');
+  v.disablePictureInPicture = true;
+  v.controls = false;
+  v.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;'
+    + 'object-fit:contain;background:#000;z-index:2147483647;';
+  document.body.appendChild(v);
+
+  const skipBtn = document.createElement('div');
+  skipBtn.textContent = 'SKIP \u25b8';
+  skipBtn.style.cssText = 'position:fixed;right:14px;bottom:14px;'
+    + 'padding:8px 16px;padding-bottom:calc(8px + env(safe-area-inset-bottom, 0px));'
+    + 'background:rgba(20,16,26,0.55);border:1.5px solid rgba(244,236,216,0.55);'
+    + 'border-radius:8px;color:#f4ecd8;font:bold 12px monospace;letter-spacing:0.5px;'
+    + '-webkit-user-select:none;user-select:none;z-index:2147483647;cursor:pointer;';
+  document.body.appendChild(skipBtn);
+
+  let done = false;
+  function finish() {
+    if (done) return;
+    done = true;
+    clearTimeout(safety);
+    v.pause();
+    v.remove();
+    skipBtn.remove();
+    onDone();
+  }
+  v.addEventListener('click', finish);
+  v.addEventListener('ended', finish);
+  v.addEventListener('error', finish); // missing/corrupt file -> never block the game on it
+  skipBtn.addEventListener('click', finish);
+  skipBtn.addEventListener('touchend', (e) => { e.preventDefault(); finish(); });
+  window.addEventListener('keydown', finish, { once: true });
+  const safety = setTimeout(finish, 9000);
+
+  const tryPlay = v.play();
+  if (tryPlay && typeof tryPlay.catch === 'function') {
+    tryPlay.catch(() => {
+      v.muted = true;
+      v.play().catch(finish); // if even muted autoplay fails, just skip straight in
+    });
+  }
+}
+
+// Kicks off the video and switches state to 'kangaidenVideo' (blocking
+// ordinary input/movement the same way every other overlay state here
+// does), then -- once playKangaidenSplashVideo()'s onDone fires -- hands
+// off to the still key-art splash exactly as before (state =
+// 'kangaidenSplash'). Called from MINIGAME_ACTIONS.kangaiden (E on the
+// cabinet, or tapping its floating sign).
 function openKangaidenSplash() {
   kangaidenSplashReturnState = state;
-  state = 'kangaidenSplash';
+  state = 'kangaidenVideo';
+  playKangaidenSplashVideo(() => {
+    state = 'kangaidenSplash';
+  });
 }
 
 // Full-screen splash card -- see drawVinylNinjaSplash() just above for the
