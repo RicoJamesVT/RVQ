@@ -1267,6 +1267,23 @@ const MINIGAME_ACTIONS = {
   // network calls -- so it works with no connection). See
   // openHipHopLibraryApp()/createHipHopLibraryOverlay() below.
   hiphoplibrary: () => openHipHopLibraryApp(),
+  // TRUTH KNOCKS -- "The Swamp Is Not A Secret," a 16-bit-style beat 'em up
+  // (punch/kick/cane combos, a chargeable Special, and a boss rotation of
+  // the Frog King/King Gator/Rat King every 5th wave) parked out on the
+  // open mud in the swamp overworld itself (see the swamp map's
+  // `minigames` list below), right alongside VT Dirt/Vinyl Ninja/the Hip
+  // Hop Library. Same "full standalone web app, not a canvas mini-game"
+  // shape as every other entry above (own DOM/iframe overlay, bundled
+  // locally -- its own canvas engine, sprites, and WebAudio sound effects,
+  // no external assets and no network calls -- so it works with no
+  // connection). Like Vinyl Ninja/KANGAIDEN, stepping up to it first plays
+  // a short intro video, then shows a still key-art splash (the "TRUTH
+  // KNOCKS" title card) rather than jumping straight into the iframe --
+  // see openTruthKnocksSplash()/drawTruthKnocksSplash() below -- and only
+  // opens the actual DOM/iframe overlay (openTruthKnocksApp()/
+  // createTruthKnocksOverlay()) once the player presses E or taps again
+  // from that splash.
+  truthknocks: () => openTruthKnocksSplash(),
 };
 
 // ---- trophy case: personal bests for the 8 scored mini-games --------------
@@ -8079,6 +8096,7 @@ window.addEventListener('keydown', (e) => {
     if (k === 'escape' && state === 'ricoDawApp') { closeRicoDawApp(); }
     if (k === 'escape' && state === 'filterLabApp') { closeFilterLabApp(); }
     if (k === 'escape' && state === 'kangaidenApp') { closeKangaidenApp(); }
+    if (k === 'escape' && state === 'truthKnocksApp') { closeTruthKnocksApp(); }
     if (k === 'escape' && state === 'hiphopLibraryApp') { closeHipHopLibraryApp(); }
     if (k === 'escape' && state === 'diggerApp') { closeDiggerApp(); }
     if (k === 'escape' && state === 'connectFourApp') { closeConnectFourApp(); }
@@ -8375,6 +8393,28 @@ kangaidenSplashImg.src = 'assets/kangaiden_splash.png';
 // playKangaidenSplashVideo() below, so replaying it (walking away and back)
 // never has to fight leftover playback state from the previous run.
 const KANGAIDEN_SPLASH_VIDEO_SRC = 'assets/KANGAIDEN_splash_vid.mp4';
+
+// TRUTH KNOCKS key-art splash shown by drawTruthKnocksSplash() the same way
+// kangaidenSplashImg/vinylNinjaSplashImg are above -- preloaded here so
+// it's already decoded and ready by the time openTruthKnocksSplash() flips
+// state, with no first-frame pop-in. Plain <img>, no fetch()/blob: URL
+// involved, so it's cached and served like any other same-origin image
+// asset for offline handling. See
+// MINIGAME_ACTIONS.truthknocks/openTruthKnocksSplash()/
+// drawTruthKnocksSplash() below.
+const truthKnocksSplashImg = new Image();
+truthKnocksSplashImg.src = 'assets/truth_knocks_splash.png';
+
+// TRUTH KNOCKS intro video -- plays once, full-screen, the instant the
+// player steps up to the cabinet, before the still key-art splash above and
+// the actual iframe. Same "plain local file, no fetch()/blob: URL, no
+// network request" pattern as KANGAIDEN_SPLASH_VIDEO_SRC above, so it plays
+// identically online or off. Just the source path is declared up here
+// (mirroring truthKnocksSplashImg's early `.src` assignment); the actual
+// <video> element is built fresh each time by playTruthKnocksSplashVideo()
+// below, so replaying it (walking away and back) never has to fight
+// leftover playback state from the previous run.
+const TRUTH_KNOCKS_SPLASH_VIDEO_SRC = 'assets/TRUTH_KNOCKS_splash_vid.mp4';
 
 const purePopPosterImg = new Image();
 purePopPosterImg.src = 'assets/purepop_poster.png';
@@ -9189,6 +9229,23 @@ function makeSwamp() {
       // Library app (same one as the town kiosk) in its own DOM overlay;
       // see openHipHopLibraryApp()/createHipHopLibraryOverlay().
       { id: 'hiphoplibrary', tx: 31, ty: 21, label: 'THE HIP HOP LIBRARY', icon: 'hiphopkiosk' },
+      // TRUTH KNOCKS -- an arcade cabinet left out on the open mud inside
+      // TRUTH LAB's clearing (TL_CLEAR_X/Y/W/H above: x10-18, y13-23).
+      // tx/ty (16, 22) sits well clear of the TRUTH LAB building itself
+      // (x12-17, y15-18) and its door (15, 18) plus the door's forced
+      // step-out tile (15, 19), and clear of the VT Dirt dirt bike at
+      // (14, 21) two tiles over, the crate at (10, 21), and every
+      // newsstand (9,2)/(16,10)/(18,15)/(37,15)/(25,22) -- verified
+      // against the deterministic swamp layout (same seed as the `rng`
+      // above), same "checked against the fixed layout" approach the
+      // dirt bike/samurai sword/newsstands above use. No `icon` override,
+      // so it draws with the default floating arcade-cabinet sign (see
+      // drawMinigameArcadeSign()), the same as KANGAIDEN on the town map.
+      // Opens the TRUTH KNOCKS splash first, not the iframe directly; see
+      // MINIGAME_ACTIONS.truthknocks/openTruthKnocksSplash()/
+      // drawTruthKnocksSplash() and openTruthKnocksApp()/
+      // createTruthKnocksOverlay() below.
+      { id: 'truthknocks', tx: 16, ty: 22, label: 'PLAY TRUTH KNOCKS' },
     ],
   };
 }
@@ -10123,7 +10180,7 @@ const player = {
   tempItem: null, tempItemTimer: 0,
 };
 const collected = new Set();
-let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | danceParty | portal | fifa | minigame | hotkeys | crate | photo | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | vinylSnakeApp | bayouBreakApp | gatorJamSlamApp | swampCaveApp | vtDirtApp | penaltyKingsApp | digDashApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | diggerApp | hyperSwimApp | connectFourApp | syrupRoadsApp | clawMachineApp | kangaidenVideo | kangaidenSplash | kangaidenApp | hiphopLibraryApp
+let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | danceParty | portal | fifa | minigame | hotkeys | crate | photo | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | vinylSnakeApp | bayouBreakApp | gatorJamSlamApp | swampCaveApp | vtDirtApp | penaltyKingsApp | digDashApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | diggerApp | hyperSwimApp | connectFourApp | syrupRoadsApp | clawMachineApp | kangaidenVideo | kangaidenSplash | kangaidenApp | hiphopLibraryApp | truthKnocksVideo | truthKnocksSplash | truthKnocksApp
 // State to snap back to when the [H] hotkeys popup is closed -- currently
 // always 'play' since that's the only state H can be opened from, but kept
 // as its own var in case another state wants to offer the popup later.
@@ -10797,7 +10854,7 @@ const music = {
 // enter/exit call sites, so it can't drift out of sync no matter which
 // of the several ways the player backs out of the lab popup (keyboard
 // [X], on-screen [X] button, closing the instrument iframe, etc.).
-const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'vinylSnakeApp', 'bayouBreakApp', 'gatorJamSlamApp', 'swampCaveApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'hyperSwimApp', 'connectFourApp', 'syrupRoadsApp', 'clawMachineApp', 'kangaidenVideo', 'kangaidenApp', 'hiphopLibraryApp', 'danceParty']);
+const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'vinylSnakeApp', 'bayouBreakApp', 'gatorJamSlamApp', 'swampCaveApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'hyperSwimApp', 'connectFourApp', 'syrupRoadsApp', 'clawMachineApp', 'kangaidenVideo', 'kangaidenApp', 'hiphopLibraryApp', 'danceParty', 'truthKnocksVideo', 'truthKnocksApp']);
 function syncMusicDuck() {
   const minigameDucked = state === 'minigame' && activeMinigame && activeMinigame.musicDucked;
   music.duck(DUCKED_STATES.has(state) || !!minigameDucked);
@@ -13720,6 +13777,234 @@ function closeKangaidenApp(fromPopState) {
   }
 }
 
+// TRUTH KNOCKS -- "The Swamp Is Not A Secret," a 16-bit-style beat 'em up
+// (punch/kick/cane combo chains that build Energy for a Special move,
+// dash/jump dodging, and a boss rotation of the Frog King/King Gator/Rat
+// King every 5th wave, cycling tougher each lap) parked out on the open mud
+// in the swamp overworld itself, right alongside VT Dirt/Vinyl Ninja/the
+// Hip Hop Library (see the swamp map's `minigames` list above and
+// MINIGAME_ACTIONS.truthknocks). Same "full-screen splash card before the
+// iframe" shape as Vinyl Ninja/KANGAIDEN above -- see
+// drawVinylNinjaSplash()/drawKangaidenSplash() -- drawn over the still-
+// running swamp scene the same way drawLabUnlock()/drawVinylNinjaSplash()/
+// drawKangaidenSplash() draw over their own worlds. Pressing E or tapping
+// again from the splash is what actually calls openTruthKnocksApp() below.
+let truthKnocksSplashReturnState = 'play';
+
+// Full-screen, skippable video that plays once before the still key-art
+// splash below -- same shape as playKangaidenSplashVideo() above (skip
+// button in the corner; a click/tap, the [Skip] button, `ended`, `error`,
+// or any keypress all dismiss it the same way; sound-first-then-muted-
+// fallback autoplay, since browsers only allow autoplay-with-sound right
+// after a user gesture like the E-press/tap that got us here; and a hard
+// safety timeout so a slow or blocked file never strands the player on a
+// black screen) -- parameterized with an `onDone` callback the same way.
+// `onDone` fires exactly once, however playback ends, and is what actually
+// hands off to the rest of the TRUTH KNOCKS flow (see
+// openTruthKnocksSplash() below).
+function playTruthKnocksSplashVideo(onDone) {
+  const v = document.createElement('video');
+  v.src = TRUTH_KNOCKS_SPLASH_VIDEO_SRC;
+  v.preload = 'auto';
+  v.playsInline = true; // iOS: play inline instead of forcing fullscreen
+  v.setAttribute('webkit-playsinline', 'true');
+  v.disablePictureInPicture = true;
+  v.controls = false;
+  v.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;'
+    + 'object-fit:contain;background:#000;z-index:2147483647;';
+  document.body.appendChild(v);
+
+  const skipBtn = document.createElement('div');
+  skipBtn.textContent = 'SKIP \u25b8';
+  skipBtn.style.cssText = 'position:fixed;right:14px;bottom:14px;'
+    + 'padding:8px 16px;padding-bottom:calc(8px + env(safe-area-inset-bottom, 0px));'
+    + 'background:rgba(20,16,26,0.55);border:1.5px solid rgba(244,236,216,0.55);'
+    + 'border-radius:8px;color:#f4ecd8;font:bold 12px monospace;letter-spacing:0.5px;'
+    + '-webkit-user-select:none;user-select:none;z-index:2147483647;cursor:pointer;';
+  document.body.appendChild(skipBtn);
+
+  let done = false;
+  function finish() {
+    if (done) return;
+    done = true;
+    clearTimeout(safety);
+    v.pause();
+    v.remove();
+    skipBtn.remove();
+    onDone();
+  }
+  v.addEventListener('click', finish);
+  v.addEventListener('ended', finish);
+  v.addEventListener('error', finish); // missing/corrupt file -> never block the game on it
+  skipBtn.addEventListener('click', finish);
+  skipBtn.addEventListener('touchend', (e) => { e.preventDefault(); finish(); });
+  window.addEventListener('keydown', finish, { once: true });
+  const safety = setTimeout(finish, 9000);
+
+  const tryPlay = v.play();
+  if (tryPlay && typeof tryPlay.catch === 'function') {
+    tryPlay.catch(() => {
+      v.muted = true;
+      v.play().catch(finish); // if even muted autoplay fails, just skip straight in
+    });
+  }
+}
+
+// Kicks off the video and switches state to 'truthKnocksVideo' (blocking
+// ordinary input/movement the same way every other overlay state here
+// does), then -- once playTruthKnocksSplashVideo()'s onDone fires -- hands
+// off to the still key-art splash (state = 'truthKnocksSplash'). Called
+// from MINIGAME_ACTIONS.truthknocks (E on the cabinet, or tapping its
+// floating sign).
+function openTruthKnocksSplash() {
+  truthKnocksSplashReturnState = state;
+  state = 'truthKnocksVideo';
+  playTruthKnocksSplashVideo(() => {
+    state = 'truthKnocksSplash';
+  });
+}
+
+// Full-screen splash card -- see drawVinylNinjaSplash()/drawKangaidenSplash()
+// for the same "scale art to fully cover the view, blink a continue prompt
+// at the bottom" shape this reuses. Drawn on top of the ordinary swamp
+// render() pass (not one of the WORLD_HIDDEN_STATES/DOM-overlay states), so
+// the swamp stays visible/dimmed underneath exactly like those do over
+// their own worlds.
+function drawTruthKnocksSplash() {
+  ctx.fillStyle = 'rgba(8,6,12,0.6)';
+  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
+  if (truthKnocksSplashImg.complete && truthKnocksSplashImg.naturalWidth) {
+    const iw = truthKnocksSplashImg.naturalWidth, ih = truthKnocksSplashImg.naturalHeight;
+    const scale = Math.max(VIEW_W / iw, VIEW_H / ih);
+    const dw = iw * scale, dh = ih * scale;
+    const dx = (VIEW_W - dw) / 2, dy = (VIEW_H - dh) / 2;
+    ctx.drawImage(truthKnocksSplashImg, dx, dy, dw, dh);
+    ctx.fillStyle = 'rgba(8,6,12,0.35)';
+    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+  } else {
+    // fallback text-only version, in case the art hasn't loaded in yet
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#a735ff';
+    ctx.font = 'bold 26px monospace';
+    ctx.fillText('TRUTH KNOCKS', VIEW_W / 2, VIEW_H / 2 - 10);
+    ctx.fillStyle = '#f4ecd8';
+    ctx.font = '14px monospace';
+    ctx.fillText('Prepare to be unchained.', VIEW_W / 2, VIEW_H / 2 + 16);
+  }
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#bfff32' : '#f4ecd8';
+  ctx.font = 'bold 16px monospace';
+  ctx.fillText('- PRESS E TO DROP IN -', VIEW_W / 2, VIEW_H - 24);
+}
+
+// Ships as a bundled, self-contained page (its own canvas beat-'em-up
+// engine, sprite frames, and synthesized WebAudio hit/combo sound effects,
+// no external assets and no network calls at all) at
+// instruments/truth-knocks/index.html -- the exact same local-file pattern
+// CHESS_APP_URL/.../KANGAIDEN_APP_URL use. Being a same-origin local asset
+// rather than a live remote site means it loads and plays the same with or
+// without a connection, so -- same as the others -- there's no online/
+// offline branching needed here either.
+const TRUTH_KNOCKS_APP_URL = 'instruments/truth-knocks/index.html';
+let truthKnocksOverlayEl = null, truthKnocksOverlayFrame = null;
+let truthKnocksReturnState = 'play';
+let truthKnocksHistoryPushed = false; // mirrors labHistoryPushed/.../kangaidenHistoryPushed -- see openTruthKnocksApp()/closeTruthKnocksApp()
+
+function createTruthKnocksOverlay() {
+  const style = document.createElement('style');
+  style.textContent = `
+    #truthKnocksApp {
+      position: fixed; inset: 0; z-index: 1000;
+      background: #000;
+      display: none; flex-direction: column;
+    }
+    #truthKnocksApp.open { display: flex; }
+    #truthKnocksApp .tk-bar {
+      flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 10px 14px;
+      background: linear-gradient(#1a1420, #0b0810);
+      border-bottom: 2px solid #a735ff;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    }
+    #truthKnocksApp .tk-title {
+      color: #f4ecd8; font: bold 14px monospace; letter-spacing: 0.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #truthKnocksApp .tk-close {
+      flex: 0 0 auto; cursor: pointer;
+      background: rgba(167,53,255,0.15);
+      border: 1.5px solid rgba(167,53,255,0.85);
+      color: #f4ecd8; border-radius: 8px;
+      padding: 7px 16px; font: bold 13px monospace;
+      -webkit-user-select: none; user-select: none;
+    }
+    #truthKnocksApp .tk-close:active { background: rgba(167,53,255,0.4); }
+    #truthKnocksApp iframe {
+      flex: 1 1 auto; width: 100%; border: 0; background: #000;
+    }
+  `;
+  document.head.appendChild(style);
+
+  truthKnocksOverlayEl = document.createElement('div');
+  truthKnocksOverlayEl.id = 'truthKnocksApp';
+
+  const bar = document.createElement('div');
+  bar.className = 'tk-bar';
+  const title = document.createElement('div');
+  title.className = 'tk-title';
+  title.textContent = 'TRUTH KNOCKS';
+  const closeBtn = document.createElement('div');
+  closeBtn.className = 'tk-close';
+  closeBtn.textContent = '\u2190 BACK TO THE SWAMP';
+  bindTap(closeBtn, closeTruthKnocksApp);
+  bar.appendChild(title);
+  bar.appendChild(closeBtn);
+
+  truthKnocksOverlayFrame = document.createElement('iframe');
+  truthKnocksOverlayFrame.setAttribute('allow', 'autoplay');
+
+  truthKnocksOverlayEl.appendChild(bar);
+  truthKnocksOverlayEl.appendChild(truthKnocksOverlayFrame);
+  document.body.appendChild(truthKnocksOverlayEl);
+}
+createTruthKnocksOverlay();
+
+// Opens the TRUTH KNOCKS overlay and switches state to 'truthKnocksApp'.
+// Called once the player presses E (or taps) from the splash (see
+// drawTruthKnocksSplash()/the 'truthKnocksSplash' state handling in the
+// input loop) -- not directly from MINIGAME_ACTIONS.truthknocks, which
+// opens the splash first.
+function openTruthKnocksApp() {
+  truthKnocksReturnState = truthKnocksSplashReturnState;
+  truthKnocksOverlayFrame.src = TRUTH_KNOCKS_APP_URL;
+  truthKnocksOverlayEl.classList.add('open');
+  state = 'truthKnocksApp';
+  // Same throwaway-history-entry trick as openInstrument()/openChessApp()/
+  // .../openKangaidenApp() above, so the browser/OS back gesture closes
+  // the TRUTH KNOCKS overlay instead of leaving the game entirely.
+  history.pushState({ truthKnocksApp: true }, '');
+  truthKnocksHistoryPushed = true;
+}
+
+// Tears the iframe back down and returns to ordinary gameplay in the swamp.
+// fromPopState mirrors closeKangaidenApp()'s parameter -- true when
+// triggered by the browser's back button (whose history entry is already
+// consumed), so we must not call history.back() again in that case.
+function closeTruthKnocksApp(fromPopState) {
+  truthKnocksOverlayEl.classList.remove('open');
+  truthKnocksOverlayFrame.src = 'about:blank';
+  reclaimGameFocus(truthKnocksOverlayFrame);
+  state = truthKnocksReturnState;
+  if (!fromPopState && truthKnocksHistoryPushed) {
+    truthKnocksHistoryPushed = false;
+    history.back();
+  } else {
+    truthKnocksHistoryPushed = false;
+  }
+}
+
 // Rico's Blackbook -- BOXGUTS' handstyle library, letter lab, and trace/
 // copy/memory/challenge practice modes, opened from inside GUT HUT (see the
 // `guthut` shop's `minigames` list). Same "full-screen DOM overlay with an
@@ -15342,6 +15627,8 @@ window.addEventListener('popstate', () => {
     closeClawMachineApp(true);
   } else if (state === 'kangaidenApp') {
     closeKangaidenApp(true);
+  } else if (state === 'truthKnocksApp') {
+    closeTruthKnocksApp(true);
   } else if (state === 'hiphopLibraryApp') {
     closeHipHopLibraryApp(true);
   }
@@ -15359,7 +15646,7 @@ canvas.addEventListener('pointerdown', (e) => {
     const vx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const vy = (e.clientY - rect.top) * (canvas.height / rect.height);
     handleLabTap(vx, vy);
-  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'hyperSwimApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'hiphopLibraryApp') {
+  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'hyperSwimApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp') {
     // The DOM overlay sits on top of (and outside) the canvas while an
     // instrument/the chess app/the beat bot/the organ/mini golf/the
     // blackbook/Gator Grooves/Vinyl Snake/Bayou Break Station/Gator Jam
@@ -15585,6 +15872,13 @@ function update(dt) {
     // interactPressed via the generic pointerdown fallback) advances
     // straight into the DOM/iframe overlay.
     if (interactPressed) openKangaidenApp();
+  } else if (state === 'truthKnocksSplash') {
+    // Splash before the actual TRUTH KNOCKS iframe -- see
+    // drawTruthKnocksSplash()/openTruthKnocksSplash() and
+    // MINIGAME_ACTIONS.truthknocks. E (or a tap, which also sets
+    // interactPressed via the generic pointerdown fallback) advances
+    // straight into the DOM/iframe overlay.
+    if (interactPressed) openTruthKnocksApp();
   } else if (state === 'win') {
     if (interactPressed) state = 'play';
   } else if (state === 'danceParty') {
@@ -15757,6 +16051,13 @@ function update(dt) {
     // it directly. buyPressed is still consumed here too so the on-screen
     // [X] touch button works while KANGAIDEN is open.
     if (buyPressed) closeKangaidenApp();
+  } else if (state === 'truthKnocksApp') {
+    // Same reasoning as 'labApp'/'chessApp'/.../'kangaidenApp' just above:
+    // the DOM overlay (see createTruthKnocksOverlay()) owns input while
+    // TRUTH KNOCKS is loaded -- its own close button and [Esc] handle
+    // closing it directly. buyPressed is still consumed here too so the
+    // on-screen [X] touch button works while TRUTH KNOCKS is open.
+    if (buyPressed) closeTruthKnocksApp();
   } else if (state === 'hiphopLibraryApp') {
     // Same reasoning as 'labApp'/'chessApp'/.../'kangaidenApp' just above:
     // the DOM overlay (see createHipHopLibraryOverlay()) owns input while
@@ -16740,7 +17041,7 @@ function render(time) {
     drawSplash();
     return;
   }
-  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'hyperSwimApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'hiphopLibraryApp') {
+  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'hyperSwimApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp') {
     // Same reasoning as the labApp overlay: a DOM element (the <video>,
     // see createCharacterIntroOverlay(), the chess <iframe>, see
     // createChessOverlay(), the beat bot <iframe>, see
@@ -16879,6 +17180,7 @@ function render(time) {
   if (state === 'labUnlock') drawLabUnlock();
   if (state === 'vinylNinjaSplash') drawVinylNinjaSplash();
   if (state === 'kangaidenSplash') drawKangaidenSplash();
+  if (state === 'truthKnocksSplash') drawTruthKnocksSplash();
   if (state === 'win') drawWin();
   if (state === 'danceParty') drawDanceCascade();
   if (state === 'portal') drawPortalPopup();
