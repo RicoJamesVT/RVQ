@@ -1239,6 +1239,20 @@ const MINIGAME_ACTIONS = {
   // connection). See openJohnnySlidesApp()/createJohnnySlidesOverlay()
   // below.
   johnnyslides: () => openJohnnySlidesApp(),
+  // Dust Racing -- a top-down arcade racer (Catmull-Rom dirt track, dust/
+  // tire-mark trails, a short-burst nitro boost, 7 AI racers), tucked
+  // inside JOHNNY'S FUN PARK right alongside Digger and Johnny Slides (see
+  // the `johnnysfunpark` shop's `minigames` list). Same "full standalone
+  // web app, not a canvas mini-game" shape as chess/beatbot/organ/mini
+  // golf/blackbook/Gator Grooves/.../Johnny Slides above (own DOM/iframe
+  // overlay, bundled locally -- its own canvas renderer and local PNG
+  // sprite/texture assets, no external assets and no network calls -- so
+  // it works with no connection). Ships with built-in on-screen touch
+  // controls (steer/gas/brake/boost) alongside the original keyboard
+  // scheme, and its canvas is fit to the viewport at runtime so it plays
+  // cleanly in both portrait and landscape on mobile. See
+  // openDustRacingApp()/createDustRacingOverlay() below.
+  dustracing: () => openDustRacingApp(),
   // Hyper Swim '96 Deluxe -- a retro swim-racing arcade cabinet set up on
   // the deck of JOHNNY'S POOL (see makeJohnnysPool()'s `minigames` list).
   // Same "full standalone web app, not a canvas mini-game" shape as chess/
@@ -8119,6 +8133,7 @@ window.addEventListener('keydown', (e) => {
     if (k === 'escape' && state === 'hiphopLibraryApp') { closeHipHopLibraryApp(); }
     if (k === 'escape' && state === 'diggerApp') { closeDiggerApp(); }
     if (k === 'escape' && state === 'johnnySlidesApp') { closeJohnnySlidesApp(); }
+    if (k === 'escape' && state === 'dustRacingApp') { closeDustRacingApp(); }
     if (k === 'escape' && state === 'connectFourApp') { closeConnectFourApp(); }
     if (k === 'escape' && state === 'syrupRoadsApp') { closeSyrupRoadsApp(); }
     if (k === 'escape' && state === 'clawMachineApp') { closeClawMachineApp(); }
@@ -10079,9 +10094,25 @@ const shops = {
     // external assets and no network calls, so it works with no
     // connection), same "full-screen DOM overlay with an <iframe>" pattern
     // as Digger -- see MINIGAME_ACTIONS.johnnyslides/openJohnnySlidesApp().
+    //
+    // Dust Racing -- a top-down arcade racer, parked on open floor at
+    // (6,8): one row south of Digger/Johnny Slides (row 7), clear of the
+    // counter table (row 3), the crates at (1,4)/(1,6)/(12,4), the
+    // carnivalProps at (2,7)/(11,7), and the door (6,9). Row 8 is
+    // otherwise empty floor in this room, and (6,8) sits one tile north
+    // of the door rather than on the door's own spawn tile (6,7) --
+    // every shop door transition spawns the player at (6.5, 7.5) on
+    // entry (see the `transitions` wiring below), so a solid cabinet
+    // sitting on (6,7) would spawn the player embedded in it, unable to
+    // move in any direction. Full standalone web app (its own canvas
+    // renderer, local PNG sprites/textures, no external assets and no
+    // network calls, so it works with no connection), same "full-screen
+    // DOM overlay with an <iframe>" pattern as Digger/Johnny Slides
+    // above -- see MINIGAME_ACTIONS.dustracing/openDustRacingApp().
     minigames: [
       { id: 'digger', tx: 9, ty: 7, label: 'PLAY DIGGER' },
       { id: 'johnnyslides', tx: 3, ty: 7, label: 'PLAY JOHNNY SLIDES' },
+      { id: 'dustracing', tx: 6, ty: 8, label: 'PLAY DUST RACING' },
     ],
   }),
   // JOHNNY'S POOL -- the fun park's attached outside area (a swimming pool
@@ -10229,7 +10260,7 @@ const player = {
   tempItem: null, tempItemTimer: 0,
 };
 const collected = new Set();
-let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | danceParty | portal | fifa | minigame | hotkeys | crate | photo | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | qsdBalanceApp | vinylSnakeApp | bayouBreakApp | gatorJamSlamApp | swampCaveApp | vtDirtApp | penaltyKingsApp | digDashApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | diggerApp | hyperSwimApp | connectFourApp | syrupRoadsApp | clawMachineApp | kangaidenVideo | kangaidenSplash | kangaidenApp | hiphopLibraryApp | truthKnocksVideo | truthKnocksSplash | truthKnocksApp | johnnySlidesApp
+let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | danceParty | portal | fifa | minigame | hotkeys | crate | photo | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | qsdBalanceApp | vinylSnakeApp | bayouBreakApp | gatorJamSlamApp | swampCaveApp | vtDirtApp | penaltyKingsApp | digDashApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | diggerApp | hyperSwimApp | connectFourApp | syrupRoadsApp | clawMachineApp | kangaidenVideo | kangaidenSplash | kangaidenApp | hiphopLibraryApp | truthKnocksVideo | truthKnocksSplash | truthKnocksApp | johnnySlidesApp | dustRacingApp
 // State to snap back to when the [H] hotkeys popup is closed -- currently
 // always 'play' since that's the only state H can be opened from, but kept
 // as its own var in case another state wants to offer the popup later.
@@ -10908,7 +10939,7 @@ const music = {
 // enter/exit call sites, so it can't drift out of sync no matter which
 // of the several ways the player backs out of the lab popup (keyboard
 // [X], on-screen [X] button, closing the instrument iframe, etc.).
-const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'qsdBalanceApp', 'vinylSnakeApp', 'bayouBreakApp', 'gatorJamSlamApp', 'swampCaveApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'johnnySlidesApp', 'hyperSwimApp', 'connectFourApp', 'syrupRoadsApp', 'clawMachineApp', 'kangaidenVideo', 'kangaidenApp', 'hiphopLibraryApp', 'danceParty', 'truthKnocksVideo', 'truthKnocksApp']);
+const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'qsdBalanceApp', 'vinylSnakeApp', 'bayouBreakApp', 'gatorJamSlamApp', 'swampCaveApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'johnnySlidesApp', 'dustRacingApp', 'hyperSwimApp', 'connectFourApp', 'syrupRoadsApp', 'clawMachineApp', 'kangaidenVideo', 'kangaidenApp', 'hiphopLibraryApp', 'danceParty', 'truthKnocksVideo', 'truthKnocksApp']);
 function syncMusicDuck() {
   const minigameDucked = state === 'minigame' && activeMinigame && activeMinigame.musicDucked;
   music.duck(DUCKED_STATES.has(state) || !!minigameDucked);
@@ -15698,6 +15729,122 @@ function closeJohnnySlidesApp(fromPopState) {
   }
 }
 
+// Dust Racing -- a top-down arcade racer (Catmull-Rom dirt track, dust and
+// tire-mark trails, a short-burst nitro boost, 7 AI racers) tucked inside
+// JOHNNY'S FUN PARK right alongside Digger and Johnny Slides (see the
+// `johnnysfunpark` shop's `minigames` list). Same "full-screen DOM overlay
+// with an <iframe>" pattern as chess/the beat bot/the organ/mini golf/the
+// blackbook/Gator Grooves/.../Johnny Slides above.
+//
+// Ships as a bundled, self-contained app (its own canvas renderer plus a
+// handful of local PNG sprite/texture assets under instruments/dustracing/
+// assets/, no external assets and no network calls at all) at
+// instruments/dustracing/index.html -- the exact same local-file pattern
+// DIGGER_APP_URL/JOHNNYSLIDES_APP_URL/CHESS_APP_URL/.../FILTER_LAB_APP_URL
+// use. Being a same-origin local asset rather than a live remote site means
+// it loads and works the same with or without a connection, so -- same as
+// the others -- there's no online/offline branching needed here either.
+// Its own page also ships built-in on-screen touch controls (steer/gas/
+// brake/boost) that mirror its WASD/arrow-key scheme, plus a runtime
+// viewport-fit pass on its canvas, so it plays cleanly on desktop and on
+// mobile in both portrait and landscape without any special-casing here.
+const DUSTRACING_APP_URL = 'instruments/dustracing/index.html';
+let dustRacingOverlayEl = null, dustRacingOverlayFrame = null;
+let dustRacingReturnState = 'play';
+let dustRacingHistoryPushed = false; // mirrors johnnySlidesHistoryPushed/diggerHistoryPushed/.../filterLabHistoryPushed -- see openDustRacingApp()/closeDustRacingApp()
+
+function createDustRacingOverlay() {
+  const style = document.createElement('style');
+  style.textContent = `
+    #dustRacingApp {
+      position: fixed; inset: 0; z-index: 1000;
+      background: #000;
+      display: none; flex-direction: column;
+    }
+    #dustRacingApp.open { display: flex; }
+    #dustRacingApp .dr-bar {
+      flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 10px 14px;
+      background: linear-gradient(#241a10, #140d08);
+      border-bottom: 2px solid #e0a030;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    }
+    #dustRacingApp .dr-title {
+      color: #f4efe0; font: bold 14px monospace; letter-spacing: 0.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #dustRacingApp .dr-close {
+      flex: 0 0 auto; cursor: pointer;
+      background: rgba(224,160,48,0.15);
+      border: 1.5px solid rgba(224,160,48,0.85);
+      color: #f4efe0; border-radius: 8px;
+      padding: 7px 16px; font: bold 13px monospace;
+      -webkit-user-select: none; user-select: none;
+    }
+    #dustRacingApp .dr-close:active { background: rgba(224,160,48,0.4); }
+    #dustRacingApp iframe {
+      flex: 1 1 auto; width: 100%; border: 0; background: #000;
+    }
+  `;
+  document.head.appendChild(style);
+
+  dustRacingOverlayEl = document.createElement('div');
+  dustRacingOverlayEl.id = 'dustRacingApp';
+
+  const bar = document.createElement('div');
+  bar.className = 'dr-bar';
+  const title = document.createElement('div');
+  title.className = 'dr-title';
+  title.textContent = 'DUST RACING';
+  const closeBtn = document.createElement('div');
+  closeBtn.className = 'dr-close';
+  closeBtn.textContent = '\u2190 BACK TO JOHNNY\'S FUN PARK';
+  bindTap(closeBtn, closeDustRacingApp);
+  bar.appendChild(title);
+  bar.appendChild(closeBtn);
+
+  dustRacingOverlayFrame = document.createElement('iframe');
+  dustRacingOverlayFrame.setAttribute('allow', 'autoplay');
+
+  dustRacingOverlayEl.appendChild(bar);
+  dustRacingOverlayEl.appendChild(dustRacingOverlayFrame);
+  document.body.appendChild(dustRacingOverlayEl);
+}
+createDustRacingOverlay();
+
+// Opens the Dust Racing overlay and switches state to 'dustRacingApp'.
+// Called from MINIGAME_ACTIONS.dustracing (E on the cabinet, or tapping
+// its floating sign), same entry points every other mini-game uses.
+function openDustRacingApp() {
+  dustRacingReturnState = state;
+  dustRacingOverlayFrame.src = DUSTRACING_APP_URL;
+  dustRacingOverlayEl.classList.add('open');
+  state = 'dustRacingApp';
+  // Same throwaway-history-entry trick as openInstrument()/openChessApp()/
+  // .../openJohnnySlidesApp() above, so the browser/OS back gesture closes
+  // the Dust Racing overlay instead of leaving the game entirely.
+  history.pushState({ ricoDustRacingApp: true }, '');
+  dustRacingHistoryPushed = true;
+}
+
+// Tears the iframe back down and returns to ordinary gameplay in JOHNNY'S
+// FUN PARK. fromPopState mirrors closeInstrument()/closeChessApp()/.../
+// closeJohnnySlidesApp()'s parameter -- true when triggered by the
+// browser's back button (whose history entry is already consumed), so we
+// must not call history.back() again in that case.
+function closeDustRacingApp(fromPopState) {
+  dustRacingOverlayEl.classList.remove('open');
+  dustRacingOverlayFrame.src = 'about:blank';
+  reclaimGameFocus(dustRacingOverlayFrame);
+  state = dustRacingReturnState;
+  if (!fromPopState && dustRacingHistoryPushed) {
+    dustRacingHistoryPushed = false;
+    history.back();
+  } else {
+    dustRacingHistoryPushed = false;
+  }
+}
+
 // Character-intro splash video, played once between character select and
 // the first frame of gameplay. Same DOM-overlay approach as the lab-app
 // iframe above and for the same reason: video decode/composite is handled
@@ -15916,6 +16063,8 @@ window.addEventListener('popstate', () => {
     closeDiggerApp(true);
   } else if (state === 'johnnySlidesApp') {
     closeJohnnySlidesApp(true);
+  } else if (state === 'dustRacingApp') {
+    closeDustRacingApp(true);
   } else if (state === 'connectFourApp') {
     closeConnectFourApp(true);
   } else if (state === 'syrupRoadsApp') {
@@ -15943,7 +16092,7 @@ canvas.addEventListener('pointerdown', (e) => {
     const vx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const vy = (e.clientY - rect.top) * (canvas.height / rect.height);
     handleLabTap(vx, vy);
-  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'hyperSwimApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp') {
+  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'dustRacingApp' || state === 'hyperSwimApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp') {
     // The DOM overlay sits on top of (and outside) the canvas while an
     // instrument/the chess app/the beat bot/the organ/mini golf/the
     // blackbook/Gator Grooves/Vinyl Snake/Bayou Break Station/Gator Jam
@@ -16413,6 +16562,13 @@ function update(dt) {
     // closing it directly. buyPressed is still consumed here too so the
     // on-screen [X] touch button works while Johnny Slides is open.
     if (buyPressed) closeJohnnySlidesApp();
+  } else if (state === 'dustRacingApp') {
+    // Same reasoning as 'labApp'/'chessApp'/.../'johnnySlidesApp' just
+    // above: the DOM overlay (see createDustRacingOverlay()) owns input
+    // while Dust Racing is loaded -- its own close button and [Esc] handle
+    // closing it directly. buyPressed is still consumed here too so the
+    // on-screen [X] touch button works while Dust Racing is open.
+    if (buyPressed) closeDustRacingApp();
   } else if (state === 'hyperSwimApp') {
     // Same reasoning as 'labApp'/'chessApp'/.../'diggerApp' just above: the
     // DOM overlay (see createHyperSwimOverlay()) owns input while Hyper
@@ -17345,7 +17501,7 @@ function render(time) {
     drawSplash();
     return;
   }
-  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'hyperSwimApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp') {
+  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'dustRacingApp' || state === 'hyperSwimApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp') {
     // Same reasoning as the labApp overlay: a DOM element (the <video>,
     // see createCharacterIntroOverlay(), the chess <iframe>, see
     // createChessOverlay(), the beat bot <iframe>, see
