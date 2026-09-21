@@ -1229,6 +1229,16 @@ const MINIGAME_ACTIONS = {
   // external assets and no network calls -- so it works with no
   // connection). See openDiggerApp()/createDiggerOverlay() below.
   digger: () => openDiggerApp(),
+  // Johnny Slides -- a classic downhill ski arcade cabinet, tucked inside
+  // JOHNNY'S FUN PARK right alongside Digger (see the `johnnysfunpark`
+  // shop's `minigames` list). Same "full standalone web app, not a canvas
+  // mini-game" shape as chess/beatbot/organ/mini golf/blackbook/Gator
+  // Grooves/.../Digger above (own DOM/iframe overlay, bundled locally --
+  // its own bundled game engine and sprite sheets, all inlined as data
+  // URIs, no external assets and no network calls -- so it works with no
+  // connection). See openJohnnySlidesApp()/createJohnnySlidesOverlay()
+  // below.
+  johnnyslides: () => openJohnnySlidesApp(),
   // Hyper Swim '96 Deluxe -- a retro swim-racing arcade cabinet set up on
   // the deck of JOHNNY'S POOL (see makeJohnnysPool()'s `minigames` list).
   // Same "full standalone web app, not a canvas mini-game" shape as chess/
@@ -8108,6 +8118,7 @@ window.addEventListener('keydown', (e) => {
     if (k === 'escape' && state === 'truthKnocksApp') { closeTruthKnocksApp(); }
     if (k === 'escape' && state === 'hiphopLibraryApp') { closeHipHopLibraryApp(); }
     if (k === 'escape' && state === 'diggerApp') { closeDiggerApp(); }
+    if (k === 'escape' && state === 'johnnySlidesApp') { closeJohnnySlidesApp(); }
     if (k === 'escape' && state === 'connectFourApp') { closeConnectFourApp(); }
     if (k === 'escape' && state === 'syrupRoadsApp') { closeSyrupRoadsApp(); }
     if (k === 'escape' && state === 'clawMachineApp') { closeClawMachineApp(); }
@@ -10056,8 +10067,21 @@ const shops = {
     // no connection), same "full-screen DOM overlay with an <iframe>"
     // pattern as Gator Grooves/Dig Dash/Filter Lab above -- see
     // MINIGAME_ACTIONS.digger/openDiggerApp().
+    //
+    // Johnny Slides cabinet -- a classic downhill ski game, mirrored on
+    // open floor at (3,7): same clearance logic as Digger above (clear of
+    // the counter table row 3, the crates at (1,4)/(1,6)/(12,4), the
+    // carnivalProps at (2,7)/(11,7), and the door (6,9)), just the
+    // opposite side of the room from Digger at (9,7) -- same "two cabinets
+    // mirrored left/right" layout Pure Pop Records uses for Bayou Boogie
+    // (3,7) and Vinyl Snake (9,7). Also a full standalone web app (its own
+    // bundled game engine and sprite sheets, all inlined as data URIs, no
+    // external assets and no network calls, so it works with no
+    // connection), same "full-screen DOM overlay with an <iframe>" pattern
+    // as Digger -- see MINIGAME_ACTIONS.johnnyslides/openJohnnySlidesApp().
     minigames: [
       { id: 'digger', tx: 9, ty: 7, label: 'PLAY DIGGER' },
+      { id: 'johnnyslides', tx: 3, ty: 7, label: 'PLAY JOHNNY SLIDES' },
     ],
   }),
   // JOHNNY'S POOL -- the fun park's attached outside area (a swimming pool
@@ -10205,7 +10229,7 @@ const player = {
   tempItem: null, tempItemTimer: 0,
 };
 const collected = new Set();
-let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | danceParty | portal | fifa | minigame | hotkeys | crate | photo | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | qsdBalanceApp | vinylSnakeApp | bayouBreakApp | gatorJamSlamApp | swampCaveApp | vtDirtApp | penaltyKingsApp | digDashApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | diggerApp | hyperSwimApp | connectFourApp | syrupRoadsApp | clawMachineApp | kangaidenVideo | kangaidenSplash | kangaidenApp | hiphopLibraryApp | truthKnocksVideo | truthKnocksSplash | truthKnocksApp
+let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | danceParty | portal | fifa | minigame | hotkeys | crate | photo | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | qsdBalanceApp | vinylSnakeApp | bayouBreakApp | gatorJamSlamApp | swampCaveApp | vtDirtApp | penaltyKingsApp | digDashApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | diggerApp | hyperSwimApp | connectFourApp | syrupRoadsApp | clawMachineApp | kangaidenVideo | kangaidenSplash | kangaidenApp | hiphopLibraryApp | truthKnocksVideo | truthKnocksSplash | truthKnocksApp | johnnySlidesApp
 // State to snap back to when the [H] hotkeys popup is closed -- currently
 // always 'play' since that's the only state H can be opened from, but kept
 // as its own var in case another state wants to offer the popup later.
@@ -10884,7 +10908,7 @@ const music = {
 // enter/exit call sites, so it can't drift out of sync no matter which
 // of the several ways the player backs out of the lab popup (keyboard
 // [X], on-screen [X] button, closing the instrument iframe, etc.).
-const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'qsdBalanceApp', 'vinylSnakeApp', 'bayouBreakApp', 'gatorJamSlamApp', 'swampCaveApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'hyperSwimApp', 'connectFourApp', 'syrupRoadsApp', 'clawMachineApp', 'kangaidenVideo', 'kangaidenApp', 'hiphopLibraryApp', 'danceParty', 'truthKnocksVideo', 'truthKnocksApp']);
+const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'qsdBalanceApp', 'vinylSnakeApp', 'bayouBreakApp', 'gatorJamSlamApp', 'swampCaveApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'johnnySlidesApp', 'hyperSwimApp', 'connectFourApp', 'syrupRoadsApp', 'clawMachineApp', 'kangaidenVideo', 'kangaidenApp', 'hiphopLibraryApp', 'danceParty', 'truthKnocksVideo', 'truthKnocksApp']);
 function syncMusicDuck() {
   const minigameDucked = state === 'minigame' && activeMinigame && activeMinigame.musicDucked;
   music.duck(DUCKED_STATES.has(state) || !!minigameDucked);
@@ -15562,6 +15586,118 @@ function closeDiggerApp(fromPopState) {
   }
 }
 
+// Johnny Slides -- a classic downhill ski arcade cabinet (dodge trees and
+// rocks, catch air off jumps, outrun the yeti) tucked inside JOHNNY'S FUN
+// PARK right alongside Digger (see the `johnnysfunpark` shop's `minigames`
+// list). Same "full-screen DOM overlay with an <iframe>" pattern as
+// chess/the beat bot/the organ/mini golf/the blackbook/Gator Grooves/.../
+// Digger above.
+//
+// Ships as a bundled, self-contained app (its own game engine and sprite
+// sheets, both inlined as base64 data URIs in a single index.html, no
+// external assets and no network calls at all) at
+// instruments/johnnyslides/index.html -- the exact same local-file pattern
+// DIGGER_APP_URL/CHESS_APP_URL/BEAT_BOT_APP_URL/.../FILTER_LAB_APP_URL use.
+// Being a same-origin local asset rather than a live remote site means it
+// loads and works the same with or without a connection, so -- same as the
+// others -- there's no online/offline branching needed here either.
+const JOHNNYSLIDES_APP_URL = 'instruments/johnnyslides/index.html';
+let johnnySlidesOverlayEl = null, johnnySlidesOverlayFrame = null;
+let johnnySlidesReturnState = 'play';
+let johnnySlidesHistoryPushed = false; // mirrors diggerHistoryPushed/labHistoryPushed/.../filterLabHistoryPushed -- see openJohnnySlidesApp()/closeJohnnySlidesApp()
+
+function createJohnnySlidesOverlay() {
+  const style = document.createElement('style');
+  style.textContent = `
+    #johnnySlidesApp {
+      position: fixed; inset: 0; z-index: 1000;
+      background: #000;
+      display: none; flex-direction: column;
+    }
+    #johnnySlidesApp.open { display: flex; }
+    #johnnySlidesApp .js-bar {
+      flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 10px 14px;
+      background: linear-gradient(#101a24, #08101a);
+      border-bottom: 2px solid #4ab0e0;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    }
+    #johnnySlidesApp .js-title {
+      color: #f4efe0; font: bold 14px monospace; letter-spacing: 0.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #johnnySlidesApp .js-close {
+      flex: 0 0 auto; cursor: pointer;
+      background: rgba(74,176,224,0.15);
+      border: 1.5px solid rgba(74,176,224,0.85);
+      color: #f4efe0; border-radius: 8px;
+      padding: 7px 16px; font: bold 13px monospace;
+      -webkit-user-select: none; user-select: none;
+    }
+    #johnnySlidesApp .js-close:active { background: rgba(74,176,224,0.4); }
+    #johnnySlidesApp iframe {
+      flex: 1 1 auto; width: 100%; border: 0; background: #000;
+    }
+  `;
+  document.head.appendChild(style);
+
+  johnnySlidesOverlayEl = document.createElement('div');
+  johnnySlidesOverlayEl.id = 'johnnySlidesApp';
+
+  const bar = document.createElement('div');
+  bar.className = 'js-bar';
+  const title = document.createElement('div');
+  title.className = 'js-title';
+  title.textContent = 'JOHNNY SLIDES';
+  const closeBtn = document.createElement('div');
+  closeBtn.className = 'js-close';
+  closeBtn.textContent = '\u2190 BACK TO JOHNNY\'S FUN PARK';
+  bindTap(closeBtn, closeJohnnySlidesApp);
+  bar.appendChild(title);
+  bar.appendChild(closeBtn);
+
+  johnnySlidesOverlayFrame = document.createElement('iframe');
+  johnnySlidesOverlayFrame.setAttribute('allow', 'autoplay');
+
+  johnnySlidesOverlayEl.appendChild(bar);
+  johnnySlidesOverlayEl.appendChild(johnnySlidesOverlayFrame);
+  document.body.appendChild(johnnySlidesOverlayEl);
+}
+createJohnnySlidesOverlay();
+
+// Opens the Johnny Slides overlay and switches state to 'johnnySlidesApp'.
+// Called from MINIGAME_ACTIONS.johnnyslides (E on the cabinet, or tapping
+// its floating sign), same entry points every other mini-game uses.
+function openJohnnySlidesApp() {
+  johnnySlidesReturnState = state;
+  johnnySlidesOverlayFrame.src = JOHNNYSLIDES_APP_URL;
+  johnnySlidesOverlayEl.classList.add('open');
+  state = 'johnnySlidesApp';
+  // Same throwaway-history-entry trick as openInstrument()/openChessApp()/
+  // .../openDiggerApp() above, so the browser/OS back gesture closes the
+  // Johnny Slides overlay instead of leaving the game entirely.
+  history.pushState({ ricoJohnnySlidesApp: true }, '');
+  johnnySlidesHistoryPushed = true;
+}
+
+// Tears the iframe back down and returns to ordinary gameplay in JOHNNY'S
+// FUN PARK. fromPopState mirrors closeInstrument()/closeChessApp()/.../
+// closeDiggerApp()'s parameter -- true when triggered by the browser's
+// back button (whose history entry is already consumed), so we must not
+// call history.back() again in that case.
+function closeJohnnySlidesApp(fromPopState) {
+  johnnySlidesOverlayEl.classList.remove('open');
+  johnnySlidesOverlayFrame.src = 'about:blank';
+  reclaimGameFocus(johnnySlidesOverlayFrame);
+  state = johnnySlidesReturnState;
+  if (!fromPopState && johnnySlidesHistoryPushed) {
+    johnnySlidesHistoryPushed = false;
+    history.back();
+  } else {
+    johnnySlidesHistoryPushed = false;
+  }
+}
+
 // Character-intro splash video, played once between character select and
 // the first frame of gameplay. Same DOM-overlay approach as the lab-app
 // iframe above and for the same reason: video decode/composite is handled
@@ -15778,6 +15914,8 @@ window.addEventListener('popstate', () => {
     closeFilterLabApp(true);
   } else if (state === 'diggerApp') {
     closeDiggerApp(true);
+  } else if (state === 'johnnySlidesApp') {
+    closeJohnnySlidesApp(true);
   } else if (state === 'connectFourApp') {
     closeConnectFourApp(true);
   } else if (state === 'syrupRoadsApp') {
@@ -15805,7 +15943,7 @@ canvas.addEventListener('pointerdown', (e) => {
     const vx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const vy = (e.clientY - rect.top) * (canvas.height / rect.height);
     handleLabTap(vx, vy);
-  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'hyperSwimApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp') {
+  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'hyperSwimApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp') {
     // The DOM overlay sits on top of (and outside) the canvas while an
     // instrument/the chess app/the beat bot/the organ/mini golf/the
     // blackbook/Gator Grooves/Vinyl Snake/Bayou Break Station/Gator Jam
@@ -16268,6 +16406,13 @@ function update(dt) {
     // directly. buyPressed is still consumed here too so the on-screen [X]
     // touch button works while Digger is open.
     if (buyPressed) closeDiggerApp();
+  } else if (state === 'johnnySlidesApp') {
+    // Same reasoning as 'labApp'/'chessApp'/.../'diggerApp' just above: the
+    // DOM overlay (see createJohnnySlidesOverlay()) owns input while
+    // Johnny Slides is loaded -- its own close button and [Esc] handle
+    // closing it directly. buyPressed is still consumed here too so the
+    // on-screen [X] touch button works while Johnny Slides is open.
+    if (buyPressed) closeJohnnySlidesApp();
   } else if (state === 'hyperSwimApp') {
     // Same reasoning as 'labApp'/'chessApp'/.../'diggerApp' just above: the
     // DOM overlay (see createHyperSwimOverlay()) owns input while Hyper
@@ -17200,7 +17345,7 @@ function render(time) {
     drawSplash();
     return;
   }
-  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'hyperSwimApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp') {
+  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'hyperSwimApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp') {
     // Same reasoning as the labApp overlay: a DOM element (the <video>,
     // see createCharacterIntroOverlay(), the chess <iframe>, see
     // createChessOverlay(), the beat bot <iframe>, see
