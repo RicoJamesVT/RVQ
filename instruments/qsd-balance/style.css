@@ -1,0 +1,204 @@
+/* FIND BALANCE W/ QSD — theme colours are set per board by game.js (CSS variables below are the Classic defaults). */
+:root{
+  --bg:#8c5866;        /* page */
+  --stage:#000;        /* play area surround */
+  --accent:#ad7788;    /* buttons, rings, labels */
+  --accent2:#088973;   /* primary button, highlights */
+  --ink:#000;
+  --text:#f1ece1;
+  --canvas:#088973;
+  --on-accent:#000;
+  --on-accent2:#fff;
+}
+*{box-sizing:border-box}
+html,body{
+  margin:0;width:100%;height:100%;
+  overflow:hidden;overscroll-behavior:none;
+  background:var(--bg);
+  font-family:Arial,Helvetica,sans-serif;
+  color:var(--text);
+  -webkit-tap-highlight-color:transparent;
+  -webkit-user-select:none;user-select:none;
+  -webkit-touch-callout:none;
+}
+#app{
+  position:fixed;inset:0;
+  display:flex;flex-direction:column;
+  overflow:hidden;
+  background:var(--bg);
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+#hud{
+  flex:0 0 auto;
+  min-height:58px;
+  display:flex;align-items:center;justify-content:space-between;
+  gap:10px;flex-wrap:wrap;
+  padding:8px 12px;
+  background:#000;
+  border-bottom:3px solid var(--accent);
+}
+.brand{
+  font-weight:900;letter-spacing:1px;
+  font-size:clamp(14px,2.7vmin,22px);
+  white-space:nowrap;color:#f1ece1;
+}
+.brand span{color:var(--accent)}
+.stats{display:flex;gap:14px;font-size:clamp(11px,2vmin,14px);font-weight:800;color:#f1ece1}
+#timeLabel{color:var(--accent);min-width:4.2em;font-variant-numeric:tabular-nums}
+.buttons{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
+.btn{
+  font:inherit;font-weight:800;font-size:clamp(11px,1.8vmin,13px);
+  color:var(--on-accent);background:var(--accent);
+  border:2px solid #000;border-radius:7px;
+  padding:7px 10px;min-height:32px;cursor:pointer;touch-action:manipulation;
+  white-space:nowrap;
+}
+.btn:hover{filter:brightness(1.08)}
+.btn:active{transform:translateY(1px)}
+.btn:disabled{opacity:.55;cursor:wait}
+.btn.primary{background:var(--accent2);color:var(--on-accent2);border-color:var(--accent);padding:12px 22px;font-size:15px;letter-spacing:.5px}
+.btn.secondary{padding:12px 18px;font-size:15px}
+.btn.icon{font-size:15px;padding:5px 9px}
+.hidden{display:none !important}
+
+#stage{
+  flex:1 1 auto;min-height:0;min-width:0;
+  position:relative;
+  display:flex;align-items:center;justify-content:center;
+  overflow:hidden;
+  background:var(--stage);
+  padding:16px;
+  touch-action:none;
+}
+#game{
+  display:block;flex:none;
+  touch-action:none;
+  background:var(--canvas);
+  box-shadow:0 0 0 6px var(--accent),0 0 0 9px #000;
+}
+
+/* ---------- start / board picker ---------- */
+.overlay{
+  position:absolute;inset:0;
+  display:flex;align-items:center;justify-content:center;
+  padding:12px;
+  background:rgba(0,0,0,.78);
+  z-index:5;
+}
+.card{
+  width:min(560px,100%);
+  max-height:100%;
+  overflow:auto;-webkit-overflow-scrolling:touch;
+  padding:22px 22px 20px;
+  text-align:center;
+  background:#000;
+  border:3px solid var(--accent);
+  border-radius:14px;
+  box-shadow:0 10px 35px rgba(0,0,0,.35);
+}
+.eyebrow{font-weight:900;letter-spacing:5px;color:var(--accent);font-size:13px}
+.card h1{
+  margin:5px 0 0;color:#f1ece1;
+  font-family:Georgia,serif;
+  font-size:clamp(28px,7vmin,46px);
+  line-height:1;
+}
+.card h2{margin:6px 0 12px;color:var(--accent2);font-size:clamp(18px,4vmin,28px);filter:brightness(1.35)}
+.card p{font-size:14px;line-height:1.4;margin:8px 0;color:#f1ece1}
+.card .small{opacity:.72;font-size:12px}
+.blurb{min-height:1.4em;opacity:.9}
+.picker-label{margin:12px 0 8px;font-weight:900;letter-spacing:3px;font-size:11px;color:var(--accent)}
+.board-grid{
+  display:grid;gap:8px;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+}
+.board-card{
+  font:inherit;color:#f1ece1;background:#111;
+  border:2px solid #333;border-radius:10px;
+  padding:5px 5px 6px;cursor:pointer;touch-action:manipulation;
+  display:flex;flex-direction:column;align-items:stretch;gap:5px;
+  transition:transform .12s,border-color .12s,box-shadow .12s;
+}
+.board-card:hover{border-color:var(--accent)}
+.board-card:active{transform:scale(.97)}
+.board-card.selected{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent),0 0 16px -2px var(--accent);background:#1b1b1b}
+.board-card .thumb{
+  display:flex;align-items:center;justify-content:center;
+  aspect-ratio:4/3;border-radius:6px;overflow:hidden;
+}
+.board-card .thumb img{max-width:100%;max-height:100%;display:block;pointer-events:none}
+.board-card .name{font-size:12px;font-weight:800;letter-spacing:.3px;line-height:1.15}
+.actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:14px}
+.actions .btn{margin:0}
+
+.pause-hint{
+  position:absolute;top:14px;left:50%;transform:translateX(-50%);
+  padding:8px 14px;background:#000;color:#f1ece1;border:2px solid var(--accent);
+  border-radius:8px;font-weight:900;letter-spacing:1px;font-size:13px;cursor:pointer;z-index:4;
+}
+#hint{
+  flex:0 0 auto;text-align:center;
+  font-size:clamp(10px,1.7vmin,12px);line-height:1.35;
+  padding:6px 10px;
+  color:rgba(241,236,225,.78);
+  background:#000;border-top:3px solid var(--accent);
+}
+
+/* ---------- narrow screens (phones, portrait) ---------- */
+@media (max-width:760px){
+  #hud{justify-content:center;padding:6px 8px;gap:6px}
+  .brand{width:100%;text-align:center}
+  .stats{order:2}
+  .buttons{order:3;width:100%;justify-content:center}
+  #stage{padding:14px}
+  .card{padding:16px 14px 14px}
+  .board-grid{gap:6px}
+}
+
+/* ---------- short & wide screens (phones, landscape): controls move to a side panel so the board gets the full height ---------- */
+@media (orientation:landscape) and (max-height:540px){
+  #app{flex-direction:row}
+  #hud{
+    flex:0 0 auto;width:clamp(150px,22vw,200px);min-height:0;height:100%;
+    flex-direction:column;align-items:stretch;justify-content:flex-start;
+    gap:8px;padding:8px 8px;overflow-y:auto;
+    border-bottom:0;border-right:3px solid var(--accent);
+  }
+  .brand{width:auto;text-align:left;font-size:15px;white-space:normal;line-height:1.15}
+  .brand span{display:block}
+  .stats{order:0;justify-content:space-between;font-size:12px}
+  .buttons{order:0;width:100%;display:grid;grid-template-columns:1fr 1fr;gap:5px}
+  .buttons .btn{width:100%;padding:6px 4px;font-size:11px}
+  .buttons .btn.icon{grid-column:auto}
+  #hint{display:none}
+  #stage{padding:12px}
+  #game{box-shadow:0 0 0 4px var(--accent),0 0 0 6px #000}
+  .overlay{padding:8px}
+  .card{
+    width:min(820px,100%);
+    display:grid;grid-template-columns:minmax(130px,.6fr) minmax(0,1.6fr);
+    column-gap:16px;align-items:center;text-align:left;
+    padding:12px 14px;
+  }
+  .card-head{text-align:center}
+  .card h1{font-size:clamp(22px,6vh,32px)}
+  .card h2{margin:4px 0 6px;font-size:clamp(15px,4vh,20px)}
+  .card p{font-size:12px;margin:5px 0}
+  .picker-label{margin:0 0 6px}
+  .board-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+  .board-card .name{font-size:11px}
+  .board-card .thumb{aspect-ratio:16/10}
+  .actions{margin-top:8px;justify-content:flex-start}
+  .btn.primary,.btn.secondary{padding:9px 16px;font-size:13px}
+  .controls-note{display:none}
+}
+/* very short landscape (small phones) */
+@media (orientation:landscape) and (max-height:380px){
+  .board-card .name{font-size:10px}
+  .board-card{padding:3px}
+  .blurb{display:none}
+}
+/* wide & short but NOT a phone (e.g. small browser window): keep the top bar but tighten it */
+@media (orientation:landscape) and (min-height:541px) and (max-height:640px){
+  #hud{min-height:48px;padding:5px 10px}
+}
