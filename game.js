@@ -10656,10 +10656,11 @@ const music = {
     this.master.gain.value = this.muted ? 0 : 0.28;
     toast = { text: this.muted ? 'Music: MUTED' : 'Music: ON', t: 1.2 };
   },
-  // Returns (creating if needed) the layer Set for a given world id, always
-  // starting from the same 'tick' baseline `layers` used to default to.
+  // Returns (creating if needed) the layer Set for a given world id. Starts
+  // empty -- a world is silent until the player finds a record that unlocks
+  // one of its sampler layers (drums/bass/horns/vox/lead).
   layersFor(worldId) {
-    return this.layersByWorld[worldId] || (this.layersByWorld[worldId] = new Set(['tick']));
+    return this.layersByWorld[worldId] || (this.layersByWorld[worldId] = new Set());
   },
   enable(layer) { this.layersFor(currentWorldId()).add(layer); },
   setMenuBreak(on) { this.menuDusty = on; },
@@ -10755,17 +10756,21 @@ const music = {
     }
     const bar = Math.floor(gs / 16);
     const worldId = currentWorldId();
+    const L = this.layersFor(worldId);
+    // Nothing unlocked in this world yet -> schedule nothing at all, so no
+    // audio nodes are created and the output stays truly silent.
+    if (L.size === 0) return;
     // Falls back to town's beat if a world hasn't defined one yet, same
     // spirit as worldDef()'s own `|| WORLD_DEFS.town` fallback.
     const beat = worldDef().beat || WORLD_DEFS.town.beat;
-    const L = this.layersFor(worldId);
     if (L.has('drums')) {
       if (beat.kickSteps.includes(s)) this.kick(t);
       if (beat.snareSteps.includes(s)) this.snare(t);
       if (s % 2 === 0) this.hat(t, s === beat.hatOpenStep, 0.10);
-    } else if (L.has('tick') && s % 4 === 0) {
-      this.hat(t, false, 0.028);
     }
+    // (No baseline "tick" hat any more: with zero sample layers unlocked the
+    // music bus is now completely silent. That quiet metronome-style click
+    // was the only thing playing before the first record was found.)
     if (L.has('bass')) {
       for (const [ps, n, d] of beat.bassPattern)
         if (ps === s) this.note(t, beat.bassWave, n, d * stepDur, 0.10);
