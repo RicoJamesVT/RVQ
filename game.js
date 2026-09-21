@@ -1085,6 +1085,14 @@ const MINIGAME_ACTIONS = {
   // locally so it works with no connection). See openCrocSwampApp()/
   // createCrocSwampOverlay() below.
   crocswamp: () => openCrocSwampApp(),
+  // QSD BALANCE -- "FIND BALANCE W/ QSD", a tilt-and-roll marble game
+  // planted in the garden bed just outside TRUTH LAB (see the swamp map's
+  // `minigames` list). Same "full standalone web app, not a canvas
+  // mini-game" shape as chess/beatbot/organ/mini golf/blackbook/Gator
+  // Grooves above (own DOM/iframe overlay, bundled locally so it works
+  // with no connection). See openQsdBalanceApp()/createQsdBalanceOverlay()
+  // below.
+  qsdbalance: () => openQsdBalanceApp(),
   // Vinyl Snake -- a crate-digging take on classic Snake inside Burlington
   // Records (see the `burlington` shop's `minigames` list). Same "full
   // standalone web app, not a canvas mini-game" shape as chess/beatbot/
@@ -8083,6 +8091,7 @@ window.addEventListener('keydown', (e) => {
     if (k === 'escape' && state === 'minigolfApp') { closeMiniGolfApp(); }
     if (k === 'escape' && state === 'blackbookApp') { closeBlackbookApp(); }
     if (k === 'escape' && state === 'crocSwampApp') { closeCrocSwampApp(); }
+    if (k === 'escape' && state === 'qsdBalanceApp') { closeQsdBalanceApp(); }
     if (k === 'escape' && state === 'vinylSnakeApp') { closeVinylSnakeApp(); }
     if (k === 'escape' && state === 'bayouBreakApp') { closeBayouBreakApp(); }
     if (k === 'escape' && state === 'gatorJamSlamApp') { closeGatorJamSlamApp(); }
@@ -9246,6 +9255,22 @@ function makeSwamp() {
       // drawTruthKnocksSplash() and openTruthKnocksApp()/
       // createTruthKnocksOverlay() below.
       { id: 'truthknocks', tx: 16, ty: 22, label: 'PLAY TRUTH KNOCKS' },
+      // QSD BALANCE -- a little sign planted in the garden bed running
+      // along the west edge of TRUTH LAB's clearing (the strip
+      // drawTruthLabPoolGarden() plants via drawTruthLabGardenBed(10*TILE,
+      // 13*TILE, 2*TILE, 10*TILE, 41), i.e. tiles x10-11, y13-22). tx/ty
+      // (11, 16) sits inside that strip, clear of the TRUTH LAB building
+      // itself (x12-17, y15-18) and its door (15, 18)/step-out tile
+      // (15, 19), clear of the VT Dirt dirt bike at (14, 21), the crate at
+      // (10, 21), TRUTH KNOCKS at (16, 22), and every newsstand
+      // (9,2)/(16,10)/(18,15)/(37,15)/(25,22) -- checked against the same
+      // deterministic swamp layout the rest of this file relies on. No
+      // `icon` override, so it draws with the default floating
+      // arcade-cabinet sign (see drawMinigameArcadeSign()), same as TRUTH
+      // KNOCKS just up the path. Opens the QSD Balance app directly (no
+      // splash screen); see MINIGAME_ACTIONS.qsdbalance/openQsdBalanceApp()/
+      // createQsdBalanceOverlay().
+      { id: 'qsdbalance', tx: 11, ty: 16, label: 'FIND BALANCE W/ QSD' },
     ],
   };
 }
@@ -10180,7 +10205,7 @@ const player = {
   tempItem: null, tempItemTimer: 0,
 };
 const collected = new Set();
-let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | danceParty | portal | fifa | minigame | hotkeys | crate | photo | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | vinylSnakeApp | bayouBreakApp | gatorJamSlamApp | swampCaveApp | vtDirtApp | penaltyKingsApp | digDashApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | diggerApp | hyperSwimApp | connectFourApp | syrupRoadsApp | clawMachineApp | kangaidenVideo | kangaidenSplash | kangaidenApp | hiphopLibraryApp | truthKnocksVideo | truthKnocksSplash | truthKnocksApp
+let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | danceParty | portal | fifa | minigame | hotkeys | crate | photo | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | qsdBalanceApp | vinylSnakeApp | bayouBreakApp | gatorJamSlamApp | swampCaveApp | vtDirtApp | penaltyKingsApp | digDashApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | diggerApp | hyperSwimApp | connectFourApp | syrupRoadsApp | clawMachineApp | kangaidenVideo | kangaidenSplash | kangaidenApp | hiphopLibraryApp | truthKnocksVideo | truthKnocksSplash | truthKnocksApp
 // State to snap back to when the [H] hotkeys popup is closed -- currently
 // always 'play' since that's the only state H can be opened from, but kept
 // as its own var in case another state wants to offer the popup later.
@@ -10859,7 +10884,7 @@ const music = {
 // enter/exit call sites, so it can't drift out of sync no matter which
 // of the several ways the player backs out of the lab popup (keyboard
 // [X], on-screen [X] button, closing the instrument iframe, etc.).
-const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'vinylSnakeApp', 'bayouBreakApp', 'gatorJamSlamApp', 'swampCaveApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'hyperSwimApp', 'connectFourApp', 'syrupRoadsApp', 'clawMachineApp', 'kangaidenVideo', 'kangaidenApp', 'hiphopLibraryApp', 'danceParty', 'truthKnocksVideo', 'truthKnocksApp']);
+const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'qsdBalanceApp', 'vinylSnakeApp', 'bayouBreakApp', 'gatorJamSlamApp', 'swampCaveApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'hyperSwimApp', 'connectFourApp', 'syrupRoadsApp', 'clawMachineApp', 'kangaidenVideo', 'kangaidenApp', 'hiphopLibraryApp', 'danceParty', 'truthKnocksVideo', 'truthKnocksApp']);
 function syncMusicDuck() {
   const minigameDucked = state === 'minigame' && activeMinigame && activeMinigame.musicDucked;
   music.duck(DUCKED_STATES.has(state) || !!minigameDucked);
@@ -14233,6 +14258,133 @@ function closeCrocSwampApp(fromPopState) {
   }
 }
 
+// QSD BALANCE -- "FIND BALANCE W/ QSD", a tilt-and-roll marble game played
+// across a set of QSD artwork boards, planted out in the garden bed just
+// outside TRUTH LAB (see the swamp map's `minigames` list, tx/ty (11, 16)
+// -- inside the west garden strip drawn by drawTruthLabPoolGarden()/
+// drawTruthLabGardenBed(), clear of the lab building itself, its door, the
+// VT Dirt bike, the crate, and every newsstand). Same "full standalone web
+// app, not a canvas mini-game" shape as chess/the beat bot/the organ/mini
+// golf/the blackbook/Gator Grooves above (own DOM/iframe overlay, bundled
+// locally so it works with no connection -- see QSD_BALANCE_APP_URL below).
+// No `icon` override in the map entry, so it draws with the default
+// floating arcade-cabinet sign (see drawMinigameArcadeSign()), same as
+// TRUTH KNOCKS just up the boardwalk.
+//
+// Ships as a bundled, self-contained page (its own canvas renderer, no
+// external assets, no CDN fonts, no network calls) at
+// instruments/qsd-balance/index.html -- the exact same local-file pattern
+// CHESS_APP_URL/BEAT_BOT_APP_URL/.../CROC_SWAMP_APP_URL use. Being a
+// same-origin local asset rather than a live remote site means it loads and
+// works the same with or without a connection, so -- same as the others --
+// there's no online/offline branching needed here either; the app's own
+// bundled sw.js (registered only when served over http(s), a no-op on
+// file://) layers a cache-first service worker on top purely as a bonus,
+// the main game doesn't depend on it. The iframe's `allow` list adds
+// `accelerometer; gyroscope` on top of the usual `autoplay` so the game's
+// device-tilt control (an opt-in button inside the app itself) works the
+// same embedded here as it does standalone.
+const QSD_BALANCE_APP_URL = 'instruments/qsd-balance/index.html';
+let qsdBalanceOverlayEl = null, qsdBalanceOverlayFrame = null;
+let qsdBalanceReturnState = 'play';
+let qsdBalanceHistoryPushed = false; // mirrors labHistoryPushed/.../crocSwampHistoryPushed -- see openQsdBalanceApp()/closeQsdBalanceApp()
+
+function createQsdBalanceOverlay() {
+  const style = document.createElement('style');
+  style.textContent = `
+    #qsdBalanceApp {
+      position: fixed; inset: 0; z-index: 1000;
+      background: #000;
+      display: none; flex-direction: column;
+    }
+    #qsdBalanceApp.open { display: flex; }
+    #qsdBalanceApp .qb-bar {
+      flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 10px 14px;
+      background: linear-gradient(#16301f, #0b1a12);
+      border-bottom: 2px solid #e8b84b;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    }
+    #qsdBalanceApp .qb-title {
+      color: #f4efe0; font: bold 14px monospace; letter-spacing: 0.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #qsdBalanceApp .qb-close {
+      flex: 0 0 auto; cursor: pointer;
+      background: rgba(232,184,75,0.15);
+      border: 1.5px solid rgba(232,184,75,0.85);
+      color: #f4efe0; border-radius: 8px;
+      padding: 7px 16px; font: bold 13px monospace;
+      -webkit-user-select: none; user-select: none;
+    }
+    #qsdBalanceApp .qb-close:active { background: rgba(232,184,75,0.4); }
+    #qsdBalanceApp iframe {
+      flex: 1 1 auto; width: 100%; border: 0; background: #000;
+    }
+  `;
+  document.head.appendChild(style);
+
+  qsdBalanceOverlayEl = document.createElement('div');
+  qsdBalanceOverlayEl.id = 'qsdBalanceApp';
+
+  const bar = document.createElement('div');
+  bar.className = 'qb-bar';
+  const title = document.createElement('div');
+  title.className = 'qb-title';
+  title.textContent = 'FIND BALANCE W/ QSD';
+  const closeBtn = document.createElement('div');
+  closeBtn.className = 'qb-close';
+  closeBtn.textContent = '\u2190 BACK TO THE SWAMP';
+  bindTap(closeBtn, closeQsdBalanceApp);
+  bar.appendChild(title);
+  bar.appendChild(closeBtn);
+
+  qsdBalanceOverlayFrame = document.createElement('iframe');
+  // accelerometer/gyroscope on top of the usual autoplay -- the app's
+  // "Enable Tilt" button drives device-orientation controls, which some
+  // browsers gate behind an explicit Permissions-Policy allow list even for
+  // a same-origin iframe.
+  qsdBalanceOverlayFrame.setAttribute('allow', 'autoplay; accelerometer; gyroscope');
+
+  qsdBalanceOverlayEl.appendChild(bar);
+  qsdBalanceOverlayEl.appendChild(qsdBalanceOverlayFrame);
+  document.body.appendChild(qsdBalanceOverlayEl);
+}
+createQsdBalanceOverlay();
+
+// Opens the QSD Balance overlay and switches state to 'qsdBalanceApp'.
+// Called from MINIGAME_ACTIONS.qsdbalance (E on the sign, or tapping its
+// floating sign), same entry points every other mini-game uses.
+function openQsdBalanceApp() {
+  qsdBalanceReturnState = state;
+  qsdBalanceOverlayFrame.src = QSD_BALANCE_APP_URL;
+  qsdBalanceOverlayEl.classList.add('open');
+  state = 'qsdBalanceApp';
+  // Same throwaway-history-entry trick as openInstrument()/openChessApp()/
+  // .../openCrocSwampApp() above, so the browser/OS back gesture closes the
+  // QSD Balance overlay instead of leaving the game entirely.
+  history.pushState({ qsdBalanceApp: true }, '');
+  qsdBalanceHistoryPushed = true;
+}
+
+// Tears the iframe back down and returns to ordinary gameplay in THE SWAMP.
+// fromPopState mirrors closeInstrument()/closeChessApp()/.../
+// closeCrocSwampApp()'s parameter -- true when triggered by the browser's
+// back button (whose history entry is already consumed), so we must not
+// call history.back() again in that case.
+function closeQsdBalanceApp(fromPopState) {
+  qsdBalanceOverlayEl.classList.remove('open');
+  qsdBalanceOverlayFrame.src = 'about:blank';
+  reclaimGameFocus(qsdBalanceOverlayFrame);
+  state = qsdBalanceReturnState;
+  if (!fromPopState && qsdBalanceHistoryPushed) {
+    qsdBalanceHistoryPushed = false;
+    history.back();
+  } else {
+    qsdBalanceHistoryPushed = false;
+  }
+}
+
 // Dig Dash -- a cozy 3D endless runner (crate-digging critter chasing
 // floating vinyl down a sunset record-shop street) tucked inside Swamp
 // Food (see the `swampfood` shop's `minigames` list), right alongside
@@ -15598,6 +15750,8 @@ window.addEventListener('popstate', () => {
     closeBlackbookApp(true);
   } else if (state === 'crocSwampApp') {
     closeCrocSwampApp(true);
+  } else if (state === 'qsdBalanceApp') {
+    closeQsdBalanceApp(true);
   } else if (state === 'vinylSnakeApp') {
     closeVinylSnakeApp(true);
   } else if (state === 'bayouBreakApp') {
@@ -15651,7 +15805,7 @@ canvas.addEventListener('pointerdown', (e) => {
     const vx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const vy = (e.clientY - rect.top) * (canvas.height / rect.height);
     handleLabTap(vx, vy);
-  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'hyperSwimApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp') {
+  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'hyperSwimApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp') {
     // The DOM overlay sits on top of (and outside) the canvas while an
     // instrument/the chess app/the beat bot/the organ/mini golf/the
     // blackbook/Gator Grooves/Vinyl Snake/Bayou Break Station/Gator Jam
@@ -17046,7 +17200,7 @@ function render(time) {
     drawSplash();
     return;
   }
-  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'hyperSwimApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp') {
+  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'hyperSwimApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp') {
     // Same reasoning as the labApp overlay: a DOM element (the <video>,
     // see createCharacterIntroOverlay(), the chess <iframe>, see
     // createChessOverlay(), the beat bot <iframe>, see
@@ -17698,6 +17852,159 @@ function drawSwampDecorations(time, map, camX, camY) {
   drawSwampBillboard();
   // Vermont Lake Monsters ballpark -- see BB_* in makeSwamp().
   drawBaseballStadium();
+  // TRUTH LAB's pool, deck & garden -- see drawTruthLabPoolGarden().
+  drawTruthLabPoolGarden(time);
+}
+
+// TRUTH LAB pool, deck & garden -- purely cosmetic dressing for the ground
+// just outside the lab, in the same "fixed-position sprite painted straight
+// onto the swamp's already-walkable ground" style as drawSwampJuiceCart()/
+// drawSwampBillboard() above: not tied to the tile grid, no door, nothing
+// to walk into -- unlike JOHNNY'S POOL (which is a real enterable room),
+// this is just scenery. Laid out inside TL_CLEAR_X/Y/W/H from makeSwamp()
+// (tiles 10-18, 13-23): a planted border down the west and south edges of
+// the clearing, and a wooden pool deck south of the lab's building
+// (TL_X/Y/W/H: tiles 12-17,15-18, door on the south wall at TL_DOOR_X,18),
+// clear of the door's step-out tile at row 19.
+function drawTruthLabPoolGarden(time) {
+  // garden bed strip, west edge of the clearing
+  drawTruthLabGardenBed(10 * TILE, 13 * TILE, 2 * TILE, 10 * TILE, 41);
+  // garden bed strip, south edge of the clearing
+  drawTruthLabGardenBed(10 * TILE, 23 * TILE, 9 * TILE, 1 * TILE, 97);
+
+  // wooden deck platform, south of the lab building
+  const dx = 11 * TILE, dy = 19 * TILE, dw = 8 * TILE, dh = 4 * TILE;
+  ctx.fillStyle = '#4a3520';
+  ctx.fillRect(dx, dy, dw, dh);
+  ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+  ctx.lineWidth = 1;
+  for (let px = dx + 8; px < dx + dw; px += 8) {
+    ctx.beginPath(); ctx.moveTo(px, dy); ctx.lineTo(px, dy + dh); ctx.stroke();
+  }
+  ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+  for (let py = dy + 6; py < dy + dh; py += 12) {
+    ctx.beginPath(); ctx.moveTo(dx, py); ctx.lineTo(dx + dw, py); ctx.stroke();
+  }
+  // low rail around the deck's outer edge (skip the north edge -- that
+  // side butts up against the building/door path)
+  ctx.strokeStyle = '#2a1c10';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(dx + 1.5, dy + 1.5, dw - 3, dh - 3);
+
+  // pool, inset within the deck: rounded stone coping around a shimmering
+  // rectangle of water, same "time-based ripple" idea as the lily pads'
+  // gentle bob elsewhere in drawSwampDecorations()
+  const px = 13 * TILE, py = 20 * TILE, pw = 5 * TILE, ph = 3 * TILE;
+  ctx.fillStyle = '#8a8272';
+  roundRectPath(px - 6, py - 6, pw + 12, ph + 12, 6);
+  ctx.fill();
+  ctx.fillStyle = '#1a5a66';
+  roundRectPath(px, py, pw, ph, 3);
+  ctx.fill();
+  ctx.save();
+  roundRectPath(px, py, pw, ph, 3);
+  ctx.clip();
+  ctx.fillStyle = '#2f8a98';
+  for (let i = 0; i < 4; i++) {
+    const ry = py + 10 + i * (ph / 4);
+    const shift = Math.sin(time * 1.3 + i * 1.7) * 6;
+    ctx.fillRect(px - 6 + shift, ry, pw + 12, 3);
+  }
+  ctx.fillStyle = 'rgba(255,255,255,0.18)';
+  const glintX = px + pw / 2 + Math.sin(time * 0.7) * (pw / 3);
+  ctx.beginPath();
+  ctx.ellipse(glintX, py + ph / 2, 14, 5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // a couple of potted palms flanking the pool, and a low lounge chair on
+  // each side, so the deck reads as furnished rather than bare
+  drawTruthLabPottedPalm(dx + 6, dy - 4);
+  drawTruthLabPottedPalm(dx + dw - 22, dy - 4);
+  drawTruthLabLoungeChair(px + 6, py + ph + 14);
+  drawTruthLabLoungeChair(px + pw - 28, py + ph + 14);
+
+  // a couple of warm garden lanterns for a peaceful, lived-in glow at
+  // night -- same drawGlow() halo every other light source in the game
+  // uses, just planted in the garden bed instead of on a floodlight/sign
+  drawGlow(11 * TILE + 8, 15 * TILE + 20, 26, 'rgba(240,200,120,ALPHA)');
+  drawGlow(17 * TILE + 8, 15 * TILE + 20, 26, 'rgba(240,200,120,ALPHA)');
+  ctx.fillStyle = '#241a10';
+  ctx.fillRect(11 * TILE + 4, 15 * TILE + 12, 3, 16);
+  ctx.fillRect(17 * TILE + 4, 15 * TILE + 12, 3, 16);
+  ctx.fillStyle = '#f0c878';
+  ctx.fillRect(11 * TILE + 1, 15 * TILE + 6, 9, 8);
+  ctx.fillRect(17 * TILE + 1, 15 * TILE + 6, 9, 8);
+}
+
+// A loosely-planted garden bed: dark mulch/soil with a scatter of small
+// shrubs and flowers. Positions are derived from hash2(tx, ty) (same
+// deterministic-scatter helper the lily pads/cattails above use) rather
+// than Math.random(), so the planting looks natural but never shifts
+// between frames. `seed` just offsets the hash so the two bed strips
+// (west edge, south edge) don't end up with an identical planting pattern.
+function drawTruthLabGardenBed(x, y, w, h, seed) {
+  ctx.fillStyle = '#2e2418';
+  ctx.fillRect(x, y, w, h);
+  for (let ty = 0; ty < h; ty += TILE)
+    for (let tx = 0; tx < w; tx += TILE) {
+      const h2 = hash2(x + tx + seed, y + ty + seed);
+      const cx = x + tx + 8 + (h2 % 16);
+      const cy = y + ty + 10 + ((h2 >> 4) % 12);
+      if (h2 % 3 === 0) {
+        // small flowering shrub
+        ctx.fillStyle = '#2f5a28';
+        ctx.beginPath(); ctx.arc(cx, cy, 6, 0, Math.PI * 2); ctx.fill();
+        const flowerColors = ['#e06090', '#e0c040', '#f4f4ea'];
+        ctx.fillStyle = flowerColors[h2 % 3];
+        ctx.beginPath(); ctx.arc(cx - 3, cy - 2, 1.6, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(cx + 3, cy + 1, 1.6, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(cx, cy + 3, 1.6, 0, Math.PI * 2); ctx.fill();
+      } else if (h2 % 3 === 1) {
+        // tall grass tuft
+        ctx.strokeStyle = '#4a7c3c';
+        ctx.lineWidth = 1.5;
+        for (let i = -2; i <= 2; i++) {
+          ctx.beginPath();
+          ctx.moveTo(cx + i * 2, cy + 6);
+          ctx.lineTo(cx + i * 2.6, cy - 6 - Math.abs(i));
+          ctx.stroke();
+        }
+      } else {
+        // low round hedge
+        ctx.fillStyle = '#3c6a30';
+        ctx.beginPath(); ctx.ellipse(cx, cy, 8, 5, 0, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+}
+
+// Small potted palm -- terracotta pot plus a few drooping fronds, planted
+// as a corner accent on the pool deck (see drawTruthLabPoolGarden()).
+function drawTruthLabPottedPalm(x, y) {
+  ctx.fillStyle = '#8a5030';
+  ctx.fillRect(x, y + 16, 14, 10);
+  ctx.fillStyle = '#6a3c20';
+  ctx.fillRect(x, y + 16, 14, 3);
+  ctx.strokeStyle = '#2f5a28';
+  ctx.lineWidth = 2;
+  const fronds = [[-1, -1], [1, -1], [-1.4, 0], [1.4, 0], [0, -1.3]];
+  for (const [dx2, dy2] of fronds) {
+    ctx.beginPath();
+    ctx.moveTo(x + 7, y + 16);
+    ctx.quadraticCurveTo(x + 7 + dx2 * 8, y + 4, x + 7 + dx2 * 14, y + dy2 * 10);
+    ctx.stroke();
+  }
+}
+
+// Low wooden lounge chair, seen from a slight top-down angle -- same idea
+// as the deck it sits on, just a smaller prop (see drawTruthLabPoolGarden()).
+function drawTruthLabLoungeChair(x, y) {
+  ctx.fillStyle = '#5a3d22';
+  ctx.fillRect(x, y, 22, 10);
+  ctx.fillRect(x + 2, y - 10, 18, 10);
+  ctx.fillStyle = '#e0d8c0';
+  ctx.fillRect(x + 1, y + 1, 20, 8);
+  ctx.fillRect(x + 3, y - 9, 16, 8);
 }
 
 // A little roadside juice stand parked on open ground just west of GUT HUT,
