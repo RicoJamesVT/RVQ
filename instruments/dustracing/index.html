@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Dust Racing 2D — Turbo Edition</title>
+<style>
+:root{color-scheme:dark}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overscroll-behavior:none}
+body{margin:0;background:radial-gradient(circle at 50% 0,#30343a,#111317 65%);color:#eee;font-family:system-ui,-apple-system,Segoe UI,sans-serif;display:flex;justify-content:center;align-items:center;min-height:100%;touch-action:none;overflow:hidden;
+  padding:calc(8px + env(safe-area-inset-top,0px)) calc(8px + env(safe-area-inset-right,0px)) calc(8px + env(safe-area-inset-bottom,0px)) calc(8px + env(safe-area-inset-left,0px));}
+main{width:min(1180px,100%);padding:10px;display:flex;flex-direction:column;align-items:center;max-height:100%}
+.top{display:flex;gap:16px;align-items:end;justify-content:space-between;flex-wrap:wrap;margin-bottom:10px;width:100%}
+h1{font-size:20px;margin:0;letter-spacing:.3px}
+.hint{font-size:12px;color:#9fa6ad;margin-top:3px}
+.actions{display:flex;gap:8px}
+button{background:#20242a;color:#fff;border:1px solid #4b525b;border-radius:8px;padding:8px 12px;cursor:pointer;font-weight:700;font-size:13px;-webkit-user-select:none;user-select:none}
+button:hover{background:#2a3037}
+button:active{background:#333a42}
+#wrap{position:relative;background:#0d0f12;border:1px solid #555d66;border-radius:14px;overflow:hidden;box-shadow:0 18px 50px #0008;flex:0 0 auto;touch-action:none}
+canvas{display:block;touch-action:none}
+#hud{position:absolute;left:8px;right:8px;top:8px;display:flex;gap:6px;flex-wrap:wrap;pointer-events:none}
+.pill{background:linear-gradient(#1a1e24dd,#0e1116dd);color:#fff;border:1px solid #ffffff24;border-radius:9px;padding:6px 9px;font-size:12px;backdrop-filter:blur(5px);box-shadow:0 4px 14px #0005}
+.speed{font-variant-numeric:tabular-nums;font-weight:800}
+.boost{border-color:#f5c45166}
+.boost span{color:#ffd36b}
+#center{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;text-align:center}
+#message{font-size:44px;font-weight:900;text-shadow:0 5px 25px #000;letter-spacing:1px}
+.sub{font-size:13px;color:#ddd;margin-top:6px}
+.help{margin:8px 2px 0;color:#9aa0a7;font-size:11px;width:100%;text-align:center}
+.key{border:1px solid #555;border-bottom-width:2px;border-radius:4px;padding:1px 5px;color:#ddd}
+
+/* On-screen touch controls -- hidden unless a touch/coarse-pointer device
+   is detected (see the `document.body.classList.add('touch')` gate in the
+   script below). They write into the exact same `keys` Set the existing
+   WASD/arrow-key handling already reads from, so none of the core
+   physics/game-loop code has to know touch exists at all. */
+#touchControls{position:absolute;inset:0;pointer-events:none;display:none}
+.touch #touchControls{display:block}
+.touch .pill.kbhint{display:none}
+.tc-group{position:absolute;bottom:calc(10px + env(safe-area-inset-bottom,0px));display:flex;gap:8px;pointer-events:none}
+.tc-left{left:calc(10px + env(safe-area-inset-left,0px));align-items:flex-end}
+.tc-right{right:calc(10px + env(safe-area-inset-right,0px));align-items:flex-end;flex-direction:row}
+.tc-right .tc-stack{display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.tc-btn{
+  pointer-events:auto;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;
+  display:flex;align-items:center;justify-content:center;
+  width:clamp(46px,11vmin,72px);height:clamp(46px,11vmin,72px);
+  border-radius:14px;background:linear-gradient(#22262ccc,#14171bcc);
+  border:1.5px solid #ffffff30;color:#f4f4f4;font-weight:900;
+  font-size:clamp(16px,4vmin,22px);box-shadow:0 4px 14px #0006;
+}
+.tc-btn:active,.tc-btn.active{background:linear-gradient(#3a4048dd,#22262ccc);border-color:#ffd36bbb;transform:scale(.96)}
+.tc-btn.tc-gas{width:clamp(64px,15vmin,96px);height:clamp(64px,15vmin,96px);border-radius:50%;background:linear-gradient(#2c4a22cc,#152b0fcc);border-color:#6ac03060;font-size:clamp(12px,3vmin,14px)}
+.tc-btn.tc-gas:active,.tc-btn.tc-gas.active{background:linear-gradient(#3d6a2fdd,#1d3a15dd);border-color:#8ee05be0}
+.tc-btn.tc-boost{background:linear-gradient(#4a3a12cc,#2b2109cc);border-color:#f5c45160;font-size:clamp(10px,2.6vmin,13px)}
+.tc-btn.tc-boost:active,.tc-btn.tc-boost.active{background:linear-gradient(#6a5620dd,#3a2e0bdd);border-color:#ffd36be0}
+.tc-btn.tc-brake{font-size:clamp(10px,2.6vmin,13px)}
+
+@media (pointer:coarse){
+  button{padding:10px 14px;font-size:14px}
+}
+@media (max-width:480px){
+  .hint{display:none}
+  h1{font-size:17px}
+}
+@media (max-height:520px){
+  .help{display:none}
+  .top{margin-bottom:4px}
+  h1{font-size:15px}
+  .hint{display:none}
+}
+</style></head>
+<body><main>
+<div class="top"><div><h1>Dust Racing 2D — Turbo Edition</h1><div class="hint">Sharper track rendering, dynamic dust, tire marks, lighting and a much quicker player car.</div></div><div class="actions"><button id="restart">Restart</button><button id="pause">Pause</button></div></div>
+<div id="wrap"><canvas id="game" width="1100" height="700" aria-label="Top-down racing game"></canvas>
+<div id="hud"><div class="pill" id="lap">Lap 1/3</div><div class="pill" id="pos">1st / 8</div><div class="pill speed" id="speed">0 km/h</div><div class="pill boost">BOOST <span id="boost">READY</span></div><div class="pill kbhint">WASD / arrows · Space boost · P pause · R restart</div></div>
+<div id="center"><div><div id="message">3</div><div class="sub" id="sub"></div></div></div>
+<div id="touchControls">
+  <div class="tc-group tc-left">
+    <div class="tc-btn" id="tcLeft" aria-label="Steer left">&#9664;</div>
+    <div class="tc-btn" id="tcRight" aria-label="Steer right">&#9654;</div>
+  </div>
+  <div class="tc-group tc-right">
+    <div class="tc-stack">
+      <div class="tc-btn tc-boost" id="tcBoost" aria-label="Boost">BOOST</div>
+      <div class="tc-btn tc-brake" id="tcBrake" aria-label="Brake">BRAKE</div>
+    </div>
+    <div class="tc-btn tc-gas" id="tcGas" aria-label="Gas">GAS</div>
+  </div>
+</div>
+</div>
+<div class="help">The player car now has substantially more acceleration and top speed. Hold <span class="key">Space</span> for a short turbo burst when the boost meter is ready.</div>
+</main>
+<script>
+(()=>{'use strict';
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d'),W=canvas.width,H=canvas.height;
+const wrap=document.getElementById('wrap'),mainEl=document.querySelector('main'),topbarEl=document.querySelector('.top'),helpEl=document.querySelector('.help');
+const keys=new Set();addEventListener('keydown',e=>{if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key))e.preventDefault();keys.add(e.key.toLowerCase());if(e.key.toLowerCase()==='p')togglePause();if(e.key.toLowerCase()==='r')reset()});addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
+document.getElementById('restart').onclick=reset;document.getElementById('pause').onclick=togglePause;
+const tex={sand:new Image(),asphalt:new Image(),grass:new Image()};tex.sand.src='assets/sand.png';tex.asphalt.src='assets/asphalt.png';tex.grass.src='assets/grass.png';
+const carNames=['carRed.png','carBlue.png','carGreen.png','carYellow.png','carBlack.png','carCyan.png','carOrange.png','carViolet.png'];const imgs=carNames.map(n=>{let im=new Image();im.src='assets/'+n;return im});
+const pts=[[540,92],[675,112],[805,175],[900,285],[915,405],[855,525],[745,600],[600,615],[475,575],[350,600],[235,555],[150,460],[125,345],[165,230],[270,135],[410,98]];
+function cat(p0,p1,p2,p3,t){let t2=t*t,t3=t2*t;return[.5*(2*p1[0]+(-p0[0]+p2[0])*t+(2*p0[0]-5*p1[0]+4*p2[0]-p3[0])*t2+(-p0[0]+3*p1[0]-3*p2[0]+p3[0])*t3),.5*(2*p1[1]+(-p0[1]+p2[1])*t+(2*p0[1]-5*p1[1]+4*p2[1]-p3[1])*t2+(-p0[1]+3*p1[1]-3*p2[1]+p3[1])*t3)];}
+const center=[];for(let i=0;i<pts.length;i++){let p0=pts[(i-1+pts.length)%pts.length],p1=pts[i],p2=pts[(i+1)%pts.length],p3=pts[(i+2)%pts.length];for(let k=0;k<20;k++)center.push(cat(p0,p1,p2,p3,k/20))}
+function nearest(x,y){let best={d:1e9,i:0,x:0,y:0,tx:1,ty:0};for(let i=0;i<center.length;i++){let a=center[i],b=center[(i+1)%center.length],vx=b[0]-a[0],vy=b[1]-a[1],l=vx*vx+vy*vy,t=((x-a[0])*vx+(y-a[1])*vy)/(l||1);t=Math.max(0,Math.min(1,t));let qx=a[0]+vx*t,qy=a[1]+vy*t,d=(x-qx)**2+(y-qy)**2;if(d<best.d){let len=Math.hypot(vx,vy)||1;best={d,i,x:qx,y:qy,tx:vx/len,ty:vy/len}}}return best}
+function pointAt(s){s=((s%center.length)+center.length)%center.length;let i=Math.floor(s),t=s-i,a=center[i],b=center[(i+1)%center.length];return{x:a[0]+(b[0]-a[0])*t,y:a[1]+(b[1]-a[1])*t,ang:Math.atan2(b[1]-a[1],b[0]-a[0])}}
+const startPose=pointAt(0);
+const player={x:540,y:132,a:startPose.ang,v:0,lap:0,lastIdx:0,progress:0,done:false,boost:100,boosting:false};let ai=[],particles=[],marks=[],paused=false,started=false,finish=false,startTime=0,finishTime=0,shake=0;
+function reset(){Object.assign(player,{x:540,y:132,a:startPose.ang,v:0,lap:0,lastIdx:0,progress:0,done:false,boost:100,boosting:false});ai=Array.from({length:7},(_,i)=>({s:-28-i*10,lane:(i%2?1:-1)*(18+(i%3)*8),speed:1.55+i*.055,lap:0,progress:-i*10,img:i+1,x:0,y:0,a:0}));particles=[];marks=[];paused=false;started=false;finish=false;startTime=performance.now()+3000;finishTime=0;document.getElementById('message').textContent='3';document.getElementById('sub').textContent='';document.getElementById('message').style.display='block'}
+function togglePause(){if(!started||finish)return;paused=!paused;document.getElementById('message').textContent=paused?'PAUSED':'';document.getElementById('sub').textContent=paused?'Press P to resume':'';document.getElementById('message').style.display=paused?'block':'none'}
+function dust(x,y,n=2,hot=false){for(let i=0;i<n;i++){let a=Math.random()*Math.PI*2,s=hot?25+Math.random()*70:10+Math.random()*35;particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,r:2+Math.random()*5,life:.45+Math.random()*.5,max:.8,hot})}if(particles.length>500)particles.splice(0,particles.length-500)}
+function update(dt){if(paused||finish)return;let now=performance.now();if(!started){let left=(startTime-now)/1000;if(left<=0){started=true;document.getElementById('message').style.display='none'}else{document.getElementById('message').textContent=Math.ceil(left);return}}
+const gas=keys.has('arrowup')||keys.has('w'),brake=keys.has('arrowdown')||keys.has('s'),left=keys.has('arrowleft')||keys.has('a'),right=keys.has('arrowright')||keys.has('d');let steer=(right?1:0)-(left?1:0),boostKey=keys.has(' ');
+if(boostKey&&player.boost>2&&gas){player.boosting=true;player.boost=Math.max(0,player.boost-34*dt)}else{player.boosting=false;player.boost=Math.min(100,player.boost+9*dt)}
+let accel=gas?(player.boosting?310:225):0;player.v+=accel*dt;player.v-=brake?210*dt:0;player.v*=Math.pow(.988,dt*60);
+const n=nearest(player.x,player.y),off=Math.sqrt(n.d);if(off>65)player.v*=Math.pow(.965,dt*60);if(off>105)player.v*=Math.pow(.86,dt*60);let vmax=player.boosting?520:420;player.v=Math.max(0,Math.min(vmax,player.v));player.a+=steer*2.45*dt*(.18+Math.min(1,Math.abs(player.v)/150));player.x+=Math.cos(player.a)*player.v*dt;player.y+=Math.sin(player.a)*player.v*dt;player.x=Math.max(18,Math.min(W-18,player.x));player.y=Math.max(18,Math.min(H-18,player.y));
+const nn=nearest(player.x,player.y),idx=nn.i;if(player.lastIdx>center.length*.8&&idx<center.length*.2)player.lap++;if(idx<player.lastIdx-center.length*.5)player.lap++;player.lastIdx=idx;player.progress=player.lap*center.length+idx;
+if(player.v>80&&Math.random()<dt*18)marks.push({x:player.x-Math.cos(player.a)*13,y:player.y-Math.sin(player.a)*13,a:player.a,life:1});if(marks.length>900)marks.splice(0,marks.length-900);
+if(player.v>180&&Math.random()<dt*24)dust(player.x-Math.cos(player.a)*18,player.y-Math.sin(player.a)*18,player.boosting?5:2,player.boosting);if(player.lap>=3&&!player.done){player.done=true;finish=true;finishTime=(performance.now()-startTime+3000)/1000;document.getElementById('message').textContent='FINISH!';document.getElementById('sub').textContent=finishTime.toFixed(1)+' seconds';document.getElementById('message').style.display='block'}
+ai.forEach(c=>{c.s+=c.speed*dt*39*(c.lap<3?1:0);if(c.s>=center.length){c.s-=center.length;c.lap++}c.progress=c.lap*center.length+c.s;let q=pointAt(c.s),nx=-Math.sin(q.ang),ny=Math.cos(q.ang),target={x:q.x+nx*c.lane,y:q.y+ny*c.lane};c.x=target.x;c.y=target.y;c.a=q.ang;if(c.v>0&&Math.random()<dt*7)dust(c.x-Math.cos(c.a)*15,c.y-Math.sin(c.a)*15,1,false)});
+for(const c of ai){let dx=player.x-c.x,dy=player.y-c.y,d=Math.hypot(dx,dy);if(d<25){player.v*=.82;shake=5;player.x+=dx/(d||1)*3;player.y+=dy/(d||1)*3}}
+particles.forEach(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=.96;p.vy*=.96;p.life-=dt});particles=particles.filter(p=>p.life>0);marks.forEach(m=>m.life-=dt*.035);marks=marks.filter(m=>m.life>0);shake*=.9}
+function tile(img,scale){let p=ctx.createPattern(img,'repeat');ctx.save();ctx.globalAlpha=.55;ctx.translate(0,0);ctx.scale(scale,scale);ctx.fillStyle=p;ctx.fillRect(0,0,W/scale,H/scale);ctx.restore()}
+function drawTrack(){ctx.fillStyle='#a88949';ctx.fillRect(0,0,W,H);if(tex.sand.complete)tile(tex.sand,1.5);ctx.globalAlpha=.22;ctx.fillStyle='#d6bd72';for(let i=0;i<260;i++){let x=(i*149)%W,y=(i*71)%H;ctx.fillRect(x,y,1.5,1.5)}ctx.globalAlpha=1;
+ctx.save();ctx.lineJoin='round';ctx.lineCap='round';ctx.beginPath();center.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.closePath();
+ctx.shadowColor='#0009';ctx.shadowBlur=24;ctx.shadowOffsetY=9;ctx.strokeStyle='#3d2d1e';ctx.lineWidth=132;ctx.stroke();ctx.shadowColor='transparent';
+ctx.strokeStyle='#eee';ctx.lineWidth=114;ctx.stroke();ctx.strokeStyle='#bf3d2f';ctx.lineWidth=108;ctx.setLineDash([18,18]);ctx.stroke();ctx.lineDashOffset=18;ctx.strokeStyle='#f2e7d0';ctx.stroke();ctx.setLineDash([]);ctx.strokeStyle='#56585b';ctx.lineWidth=92;ctx.stroke();
+ctx.globalAlpha=.32;if(tex.asphalt.complete){ctx.save();ctx.clip();tile(tex.asphalt,1.2);ctx.restore()}ctx.globalAlpha=1;
+ctx.setLineDash([28,24]);ctx.strokeStyle='#e5d17c';ctx.lineWidth=3;ctx.stroke();ctx.setLineDash([]);ctx.restore();
+const s=pointAt(0);ctx.save();ctx.translate(s.x,s.y);ctx.rotate(s.ang);for(let i=-5;i<5;i++)for(let j=-1;j<2;j++){ctx.fillStyle=(i+j)%2?'#f4f4f4':'#181818';ctx.fillRect(i*12-6,j*12-6,12,12)}ctx.restore();
+// trackside markers
+for(let sidx=0;sidx<center.length;sidx+=34){let q=pointAt(sidx),nx=-Math.sin(q.ang),ny=Math.cos(q.ang);for(let side of [-1,1]){let x=q.x+nx*72*side,y=q.y+ny*72*side;ctx.fillStyle='#f3e4bf';ctx.fillRect(x-3,y-3,6,6)}}}
+function drawMarks(){for(const m of marks){ctx.save();ctx.globalAlpha=.18*m.life;ctx.translate(m.x,m.y);ctx.rotate(m.a);ctx.fillStyle='#151515';ctx.fillRect(-15,-2,24,3);ctx.restore()}}
+function drawParticles(){for(const p of particles){ctx.save();ctx.globalAlpha=Math.max(0,p.life/p.max)*.48;ctx.fillStyle=p.hot?'#e0b24e':'#b89b67';ctx.beginPath();ctx.arc(p.x,p.y,p.r*(1.2-p.life/p.max*.4),0,Math.PI*2);ctx.fill();ctx.restore()}}
+function drawCar(c,isPlayer){ctx.save();ctx.translate(c.x,c.y);ctx.rotate(c.a);ctx.shadowColor=isPlayer?(player.boosting?'#ffc64d99':'#0009'):'#0008';ctx.shadowBlur=isPlayer&&player.boosting?20:8;const im=isPlayer?imgs[0]:imgs[c.img];if(im.complete)ctx.drawImage(im,-31,-16,62,33);else{ctx.fillStyle='#e33';ctx.fillRect(-24,-12,48,24)}if(isPlayer&&player.boosting){ctx.shadowBlur=0;ctx.fillStyle='#ffe07a';ctx.beginPath();ctx.moveTo(-31,0);ctx.lineTo(-50,-7);ctx.lineTo(-45,0);ctx.lineTo(-50,7);ctx.closePath();ctx.fill()}ctx.restore()}
+function draw(){ctx.save();if(shake>0)ctx.translate((Math.random()-.5)*shake,(Math.random()-.5)*shake);ctx.clearRect(0,0,W,H);drawTrack();drawMarks();ai.forEach(c=>drawCar(c,false));drawCar(player,true);drawParticles();ctx.restore();
+const place=1+ai.filter(c=>c.progress>player.progress&&!c.done).length;let ord=place===1?'st':place===2?'nd':place===3?'rd':'th';document.getElementById('lap').textContent=`Lap ${Math.min(3,player.lap+1)}/3`;document.getElementById('pos').textContent=`${place}${ord} / 8`;document.getElementById('speed').textContent=`${Math.round(player.v)} km/h`;document.getElementById('boost').textContent=player.boosting?'TURBO':player.boost>=99?'READY':Math.round(player.boost)+'%'}
+let last=performance.now();function loop(now){let dt=Math.min(.033,(now-last)/1000);last=now;update(dt);draw();requestAnimationFrame(loop)}reset();requestAnimationFrame(loop);
+
+// ---- Mobile / touch support -------------------------------------------
+// Everything below is purely additive: it never touches the physics/AI/
+// rendering code above. On-screen buttons just add/remove the same string
+// keys ('arrowup'/'arrowdown'/'arrowleft'/'arrowright'/' ') into the same
+// `keys` Set the keyboard handler already populates, so gas/brake/steer/
+// boost behave identically whether they came from a keypress or a touch.
+const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints||0) > 0 || (window.matchMedia && matchMedia('(pointer: coarse)').matches);
+if (isTouchDevice) document.body.classList.add('touch');
+
+function bindHold(el, keyName){
+  if (!el) return;
+  let active = false;
+  const press = (e) => {
+    if (e) e.preventDefault();
+    if (active) return;
+    active = true;
+    keys.add(keyName);
+    el.classList.add('active');
+    try { if (e && e.pointerId !== undefined) el.setPointerCapture(e.pointerId); } catch (err) {}
+  };
+  const release = (e) => {
+    if (e) e.preventDefault();
+    if (!active) return;
+    active = false;
+    keys.delete(keyName);
+    el.classList.remove('active');
+  };
+  el.addEventListener('pointerdown', press, { passive: false });
+  el.addEventListener('pointerup', release, { passive: false });
+  el.addEventListener('pointercancel', release, { passive: false });
+  el.addEventListener('pointerleave', release, { passive: false });
+  el.addEventListener('contextmenu', (e) => e.preventDefault());
+}
+bindHold(document.getElementById('tcLeft'), 'arrowleft');
+bindHold(document.getElementById('tcRight'), 'arrowright');
+bindHold(document.getElementById('tcGas'), 'arrowup');
+bindHold(document.getElementById('tcBrake'), 'arrowdown');
+bindHold(document.getElementById('tcBoost'), ' ');
+
+// Scales the canvas (via CSS width/height only -- the internal 1100x700
+// drawing-buffer resolution and every bit of game-coordinate math above
+// stays untouched) to fit whatever's actually available: the viewport
+// width AND height both, so a short landscape phone screen never gets
+// clipped or forces the page to scroll, and a tall portrait screen isn't
+// left comically small just because it's narrow. Re-run on load, resize,
+// and orientation change so rotating the device (or resizing a desktop
+// window) always re-fits cleanly.
+function fitCanvas(){
+  const mainStyles = getComputedStyle(mainEl);
+  const padX = parseFloat(mainStyles.paddingLeft) + parseFloat(mainStyles.paddingRight);
+  const padY = parseFloat(mainStyles.paddingTop) + parseFloat(mainStyles.paddingBottom);
+  const bodyStyles = getComputedStyle(document.body);
+  const bodyPadX = parseFloat(bodyStyles.paddingLeft) + parseFloat(bodyStyles.paddingRight);
+  const bodyPadY = parseFloat(bodyStyles.paddingTop) + parseFloat(bodyStyles.paddingBottom);
+  const chromeH = (topbarEl ? topbarEl.offsetHeight : 0) + (helpEl ? helpEl.offsetHeight : 0) + padY + bodyPadY + 20;
+  const availW = Math.min(window.innerWidth - padX - bodyPadX, 1180);
+  const availH = window.innerHeight - chromeH;
+  let scale = Math.min(availW / W, availH / H);
+  if (!isFinite(scale) || scale <= 0) scale = 0.3;
+  scale = Math.max(0.28, Math.min(scale, 1.35));
+  const w = Math.round(W * scale), h = Math.round(H * scale);
+  canvas.style.width = w + 'px';
+  canvas.style.height = h + 'px';
+  wrap.style.width = w + 'px';
+  wrap.style.height = h + 'px';
+}
+addEventListener('resize', fitCanvas);
+addEventListener('orientationchange', () => setTimeout(fitCanvas, 60));
+fitCanvas();
+setTimeout(fitCanvas, 120); // one more pass once fonts/layout fully settle
+})();
+</script></body></html>
