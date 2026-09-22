@@ -1160,6 +1160,17 @@ const MINIGAME_ACTIONS = {
   // other external assets and no network calls -- so it works with no
   // connection). See openDigDashApp()/createDigDashOverlay() below.
   digdash: () => openDigDashApp(),
+  // DIG ON -- a Ludum Dare-style crate-digging/driving arcade game tucked
+  // inside Swamp Food (see the `swampfood` shop's `minigames` list), right
+  // alongside Gator Grooves and Dig Dash. Same "full standalone web app,
+  // not a canvas mini-game" shape as chess/beatbot/organ/mini golf/
+  // blackbook/Gator Grooves/Vinyl Snake/Bayou Break Station/VT Dirt/Dig
+  // Dash above (own DOM/iframe overlay, bundled locally -- its own Phaser
+  // build with every asset (art atlas, audio, font) embedded as base64 data
+  // URIs directly in the page, no external assets and no network calls --
+  // so it works with no connection). See openDigOnApp()/
+  // createDigOnOverlay() below.
+  digon: () => openDigOnApp(),
   // Gator Jam Slam -- a 2-on-2 swamp arcade basketball cabinet tucked
   // inside TRUTH LAB (see the `truthlab` shop's `minigames` list), right
   // alongside Bayou Break Station. Same "full standalone web app, not a
@@ -8125,6 +8136,7 @@ window.addEventListener('keydown', (e) => {
     if (k === 'escape' && state === 'hyperSwimApp') { closeHyperSwimApp(); }
     if (k === 'escape' && state === 'vinylNinjaApp') { closeVinylNinjaApp(); }
     if (k === 'escape' && state === 'digDashApp') { closeDigDashApp(); }
+    if (k === 'escape' && state === 'digOnApp') { closeDigOnApp(); }
     if (k === 'escape' && state === 'rico1200App') { closeRico1200App(); }
     if (k === 'escape' && state === 'ricoDawApp') { closeRicoDawApp(); }
     if (k === 'escape' && state === 'filterLabApp') { closeFilterLabApp(); }
@@ -9997,9 +10009,19 @@ const shops = {
     // the gearTiles at (3,4)/(3,7), the crates at (1,4)/(1,6), and the
     // exit). Same "full-screen DOM overlay with an <iframe>" pattern -- see
     // MINIGAME_ACTIONS.digdash/openDigDashApp().
+    //
+    // DIG ON cabinet, centered on the open floor at (6,6), evenly flanked
+    // by Gator Grooves (10,6) and Dig Dash (3,6) along the same row -- same
+    // "center cabinet between the other two" spacing burlington's Rico's
+    // Mini DAW (6,7) uses between Vinyl Snake (9,7)/Bayou Boogie (3,7).
+    // Clear of the counter table (row 3), the gearTiles at (3,4)/(10,4)/
+    // (3,7)/(10,7), the crates at (1,4)/(1,6), and the door (6,9). Same
+    // "full-screen DOM overlay with an <iframe>" pattern -- see
+    // MINIGAME_ACTIONS.digon/openDigOnApp().
     minigames: [
       { id: 'crocswamp', tx: 10, ty: 6, label: 'PLAY GATOR GROOVES' },
       { id: 'digdash', tx: 3, ty: 6, label: 'PLAY DIG DASH' },
+      { id: 'digon', tx: 6, ty: 6, label: 'PLAY DIG ON' },
     ],
   }),
   // BURLINGTON RECORDS -- the swamp's third building: a proper record shop
@@ -10260,7 +10282,7 @@ const player = {
   tempItem: null, tempItemTimer: 0,
 };
 const collected = new Set();
-let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | danceParty | portal | fifa | minigame | hotkeys | crate | photo | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | qsdBalanceApp | vinylSnakeApp | bayouBreakApp | gatorJamSlamApp | swampCaveApp | vtDirtApp | penaltyKingsApp | digDashApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | diggerApp | hyperSwimApp | connectFourApp | syrupRoadsApp | clawMachineApp | kangaidenVideo | kangaidenSplash | kangaidenApp | hiphopLibraryApp | truthKnocksVideo | truthKnocksSplash | truthKnocksApp | johnnySlidesApp | dustRacingApp
+let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | danceParty | portal | fifa | minigame | hotkeys | crate | photo | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | qsdBalanceApp | vinylSnakeApp | bayouBreakApp | gatorJamSlamApp | swampCaveApp | vtDirtApp | penaltyKingsApp | digDashApp | digOnApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | diggerApp | hyperSwimApp | connectFourApp | syrupRoadsApp | clawMachineApp | kangaidenVideo | kangaidenSplash | kangaidenApp | hiphopLibraryApp | truthKnocksVideo | truthKnocksSplash | truthKnocksApp | johnnySlidesApp | dustRacingApp
 // State to snap back to when the [H] hotkeys popup is closed -- currently
 // always 'play' since that's the only state H can be opened from, but kept
 // as its own var in case another state wants to offer the popup later.
@@ -10939,7 +10961,7 @@ const music = {
 // enter/exit call sites, so it can't drift out of sync no matter which
 // of the several ways the player backs out of the lab popup (keyboard
 // [X], on-screen [X] button, closing the instrument iframe, etc.).
-const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'qsdBalanceApp', 'vinylSnakeApp', 'bayouBreakApp', 'gatorJamSlamApp', 'swampCaveApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'johnnySlidesApp', 'dustRacingApp', 'hyperSwimApp', 'connectFourApp', 'syrupRoadsApp', 'clawMachineApp', 'kangaidenVideo', 'kangaidenApp', 'hiphopLibraryApp', 'danceParty', 'truthKnocksVideo', 'truthKnocksApp']);
+const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'qsdBalanceApp', 'vinylSnakeApp', 'bayouBreakApp', 'gatorJamSlamApp', 'swampCaveApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'digOnApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'johnnySlidesApp', 'dustRacingApp', 'hyperSwimApp', 'connectFourApp', 'syrupRoadsApp', 'clawMachineApp', 'kangaidenVideo', 'kangaidenApp', 'hiphopLibraryApp', 'danceParty', 'truthKnocksVideo', 'truthKnocksApp']);
 function syncMusicDuck() {
   const minigameDucked = state === 'minigame' && activeMinigame && activeMinigame.musicDucked;
   music.duck(DUCKED_STATES.has(state) || !!minigameDucked);
@@ -14553,6 +14575,119 @@ function closeDigDashApp(fromPopState) {
   }
 }
 
+// DIG ON -- a Ludum Dare-style crate-digging/driving arcade game, tucked
+// inside Swamp Food (see the `swampfood` shop's `minigames` list), right
+// alongside Gator Grooves and Dig Dash. Same "full-screen DOM overlay with
+// an <iframe>" trick as chess/the beat bot/the organ/mini golf/the
+// blackbook/Gator Grooves/Dig Dash above.
+//
+// Ships as a single bundled, self-contained page at
+// instruments/dig-on/index.html -- the exact same local-file pattern
+// CHESS_APP_URL/BEAT_BOT_APP_URL/.../CROC_SWAMP_APP_URL/DIG_DASH_APP_URL
+// use. Everything the game needs -- its Phaser build, sprite atlas, audio,
+// and font -- is embedded straight into that one HTML file as base64 data
+// URIs (the same "no external assets, no network calls" shape as every
+// other bundled app here), so it loads and plays the same with or without
+// a connection. Being a same-origin local asset rather than a live remote
+// site means -- same as the others -- there's no online/offline branching
+// needed here either.
+const DIG_ON_APP_URL = 'instruments/dig-on/index.html';
+let digOnOverlayEl = null, digOnOverlayFrame = null;
+let digOnReturnState = 'play';
+let digOnHistoryPushed = false; // mirrors labHistoryPushed/.../crocSwampHistoryPushed/digDashHistoryPushed -- see openDigOnApp()/closeDigOnApp()
+
+function createDigOnOverlay() {
+  const style = document.createElement('style');
+  style.textContent = `
+    #digOnApp {
+      position: fixed; inset: 0; z-index: 1000;
+      background: #000;
+      display: none; flex-direction: column;
+    }
+    #digOnApp.open { display: flex; }
+    #digOnApp .don-bar {
+      flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 10px 14px;
+      background: linear-gradient(#16301f, #0b1a12);
+      border-bottom: 2px solid #e8b84b;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    }
+    #digOnApp .don-title {
+      color: #f4efe0; font: bold 14px monospace; letter-spacing: 0.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #digOnApp .don-close {
+      flex: 0 0 auto; cursor: pointer;
+      background: rgba(232,184,75,0.15);
+      border: 1.5px solid rgba(232,184,75,0.85);
+      color: #f4efe0; border-radius: 8px;
+      padding: 7px 16px; font: bold 13px monospace;
+      -webkit-user-select: none; user-select: none;
+    }
+    #digOnApp .don-close:active { background: rgba(232,184,75,0.4); }
+    #digOnApp iframe {
+      flex: 1 1 auto; width: 100%; border: 0; background: #000;
+    }
+  `;
+  document.head.appendChild(style);
+
+  digOnOverlayEl = document.createElement('div');
+  digOnOverlayEl.id = 'digOnApp';
+
+  const bar = document.createElement('div');
+  bar.className = 'don-bar';
+  const title = document.createElement('div');
+  title.className = 'don-title';
+  title.textContent = 'DIG ON';
+  const closeBtn = document.createElement('div');
+  closeBtn.className = 'don-close';
+  closeBtn.textContent = '\u2190 BACK TO SWAMP FOOD';
+  bindTap(closeBtn, closeDigOnApp);
+  bar.appendChild(title);
+  bar.appendChild(closeBtn);
+
+  digOnOverlayFrame = document.createElement('iframe');
+  digOnOverlayFrame.setAttribute('allow', 'autoplay');
+
+  digOnOverlayEl.appendChild(bar);
+  digOnOverlayEl.appendChild(digOnOverlayFrame);
+  document.body.appendChild(digOnOverlayEl);
+}
+createDigOnOverlay();
+
+// Opens the DIG ON overlay and switches state to 'digOnApp'. Called from
+// MINIGAME_ACTIONS.digon (E on the cabinet, or tapping its floating sign),
+// same entry points every other mini-game uses.
+function openDigOnApp() {
+  digOnReturnState = state;
+  digOnOverlayFrame.src = DIG_ON_APP_URL;
+  digOnOverlayEl.classList.add('open');
+  state = 'digOnApp';
+  // Same throwaway-history-entry trick as openInstrument()/openChessApp()/
+  // .../openCrocSwampApp()/openDigDashApp() above, so the browser/OS back
+  // gesture closes the DIG ON overlay instead of leaving the game entirely.
+  history.pushState({ ricoDigOnApp: true }, '');
+  digOnHistoryPushed = true;
+}
+
+// Tears the iframe back down and returns to ordinary gameplay in Swamp
+// Food. fromPopState mirrors closeInstrument()/closeChessApp()/.../
+// closeCrocSwampApp()/closeDigDashApp()'s parameter -- true when triggered
+// by the browser's back button (whose history entry is already consumed),
+// so we must not call history.back() again in that case.
+function closeDigOnApp(fromPopState) {
+  digOnOverlayEl.classList.remove('open');
+  digOnOverlayFrame.src = 'about:blank';
+  reclaimGameFocus(digOnOverlayFrame);
+  state = digOnReturnState;
+  if (!fromPopState && digOnHistoryPushed) {
+    digOnHistoryPushed = false;
+    history.back();
+  } else {
+    digOnHistoryPushed = false;
+  }
+}
+
 // Vinyl Snake -- a crate-digging take on classic Snake, tucked inside
 // Burlington Records (see the `burlington` shop's `minigames` list). Same
 // "full-screen DOM overlay with an <iframe>" trick as chess/the beat bot/
@@ -16053,6 +16188,8 @@ window.addEventListener('popstate', () => {
     closeVinylNinjaApp(true);
   } else if (state === 'digDashApp') {
     closeDigDashApp(true);
+  } else if (state === 'digOnApp') {
+    closeDigOnApp(true);
   } else if (state === 'rico1200App') {
     closeRico1200App(true);
   } else if (state === 'ricoDawApp') {
@@ -16092,7 +16229,7 @@ canvas.addEventListener('pointerdown', (e) => {
     const vx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const vy = (e.clientY - rect.top) * (canvas.height / rect.height);
     handleLabTap(vx, vy);
-  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'dustRacingApp' || state === 'hyperSwimApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp') {
+  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'dustRacingApp' || state === 'hyperSwimApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp') {
     // The DOM overlay sits on top of (and outside) the canvas while an
     // instrument/the chess app/the beat bot/the organ/mini golf/the
     // blackbook/Gator Grooves/Vinyl Snake/Bayou Break Station/Gator Jam
@@ -16520,6 +16657,15 @@ function update(dt) {
     // buyPressed is still consumed here too so the on-screen [X] touch
     // button works while Dig Dash is open.
     if (buyPressed) closeDigDashApp();
+  } else if (state === 'digOnApp') {
+    // Same reasoning as 'labApp'/'chessApp'/'beatBotApp'/'organApp'/
+    // 'minigolfApp'/'blackbookApp'/'crocSwampApp'/'vinylSnakeApp'/
+    // 'bayouBreakApp'/'gatorJamSlamApp'/'vtDirtApp'/'digDashApp' just
+    // above: the DOM overlay (see createDigOnOverlay()) owns input while
+    // DIG ON is loaded -- its own close button and [Esc] handle closing it
+    // directly. buyPressed is still consumed here too so the on-screen [X]
+    // touch button works while DIG ON is open.
+    if (buyPressed) closeDigOnApp();
   } else if (state === 'rico1200App') {
     // Same reasoning as 'labApp'/'chessApp'/'beatBotApp'/'organApp'/
     // 'minigolfApp'/'blackbookApp'/'crocSwampApp'/'vinylSnakeApp'/
@@ -17501,7 +17647,7 @@ function render(time) {
     drawSplash();
     return;
   }
-  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'dustRacingApp' || state === 'hyperSwimApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp') {
+  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'dustRacingApp' || state === 'hyperSwimApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp') {
     // Same reasoning as the labApp overlay: a DOM element (the <video>,
     // see createCharacterIntroOverlay(), the chess <iframe>, see
     // createChessOverlay(), the beat bot <iframe>, see
