@@ -8477,6 +8477,12 @@ anthillBillboardImg.src = 'assets/anthill_billboard.png';
 const swampBillboardImg = new Image();
 swampBillboardImg.src = 'assets/swamp_billboard.png';
 
+// Second swamp billboard -- spray cans artwork, staked up over by JOHNNY'S
+// FUN PARK's clearing. See drawSpraycansBillboard() below for placement
+// notes; built the same way drawSwampBillboard() above is.
+const spraycansBillboardImg = new Image();
+spraycansBillboardImg.src = 'assets/spraycans.png';
+
 const nectarsNeonImg = new Image();
 nectarsNeonImg.src = 'assets/nectars_neon.png';
 
@@ -18297,6 +18303,8 @@ function drawSwampDecorations(time, map, camX, camY) {
   drawSwampJuiceCart();
   // GUTS promo billboard -- see drawSwampBillboard() for placement notes.
   drawSwampBillboard();
+  // Spray cans billboard -- see drawSpraycansBillboard() for placement notes.
+  drawSpraycansBillboard();
   // Vermont Lake Monsters ballpark -- see BB_* in makeSwamp().
   drawBaseballStadium();
   // TRUTH LAB's pool, deck & garden -- see drawTruthLabPoolGarden().
@@ -18555,6 +18563,57 @@ function drawSwampBillboard() {
     const dx = ix + (iw - dw) / 2;
     const dy = iy + (ih - dh) / 2;
     ctx.drawImage(swampBillboardImg, dx, dy, dw, dh);
+    ctx.restore();
+  }
+
+  ctx.strokeStyle = '#3a2c14';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
+}
+
+// Second swamp billboard -- spray cans artwork, staked up in the open mud
+// at the northwest corner of JOHNNY'S FUN PARK's clearing (tiles 35-38,
+// just above where the JFP_CLEAR building starts), right where the x=33-35
+// boardwalk spur opens onto that clearing so it's one of the first things
+// the player sees arriving from that side. Built exactly the same way
+// drawSwampBillboard() above is (weathered plank posts, dark frame, image
+// cover-fit and clipped to it) -- the only real difference is the frame's
+// w/h ratio, which is set to match spraycansBillboardImg's own proportions
+// (1990x1136, ~1.75:1) so the artwork fills the board with no cropping and
+// isn't stretched out of shape.
+function drawSpraycansBillboard() {
+  const x = 35 * TILE;
+  const y = 13 * TILE;
+  const w = 112, h = 64;
+
+  // weathered plank support posts
+  ctx.fillStyle = '#3a2c14';
+  ctx.fillRect(x + 6, y + h, 4, 20);
+  ctx.fillRect(x + w - 10, y + h, 4, 20);
+
+  // dark frame border
+  ctx.fillStyle = '#241b0d';
+  ctx.fillRect(x - 2, y - 2, w + 4, h + 4);
+
+  // muddy-plank backing
+  ctx.fillStyle = '#6a4e20';
+  ctx.fillRect(x, y, w, h);
+
+  // spray cans artwork fills the board (cover-fit, cropped to the frame --
+  // in practice the frame's ratio matches the source image so this comes
+  // out as a plain contain-fit with no visible cropping)
+  if (spraycansBillboardImg.complete && spraycansBillboardImg.naturalWidth) {
+    const ix = x + 2, iy = y + 2, iw = w - 4, ih = h - 4;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(ix, iy, iw, ih);
+    ctx.clip();
+    const scale = Math.max(iw / spraycansBillboardImg.naturalWidth, ih / spraycansBillboardImg.naturalHeight);
+    const dw = spraycansBillboardImg.naturalWidth * scale;
+    const dh = spraycansBillboardImg.naturalHeight * scale;
+    const dx = ix + (iw - dw) / 2;
+    const dy = iy + (ih - dh) / 2;
+    ctx.drawImage(spraycansBillboardImg, dx, dy, dw, dh);
     ctx.restore();
   }
 
