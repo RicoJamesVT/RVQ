@@ -23570,6 +23570,14 @@ KEEPER_NAMES.forEach((name) => {
   img.src = `assets/keepers/${name.toLowerCase()}.png`;
   keeperImgs[name] = img;
 });
+// THE SWAMP's GUT HUT and TRUTH LAB keepers reuse the same art already
+// loaded for BURLINGTON's BOXGUTS/THA TRUTH npcs (truthImg/boxgutsImg,
+// declared earlier as assets/truth.png and assets/boxguts.png) rather than
+// loading separate assets/keepers/ files -- these two characters just show
+// up in a second spot (the swamp buildings named after them), no new art
+// needed, and BURLINGTON's own placement of them is untouched.
+keeperImgs.TRUTH = truthImg;
+keeperImgs.BOXGUTS = boxgutsImg;
 
 function drawAnt(cx, cy, s) {
   // A white ant silhouette (the Anthill Collective mark), drawn on SK1's hat.
