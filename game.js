@@ -18411,17 +18411,25 @@ function drawSwampDecorations(time, map, camX, camY) {
 // to walk into -- unlike JOHNNY'S POOL (which is a real enterable room),
 // this is just scenery. Laid out inside TL_CLEAR_X/Y/W/H from makeSwamp()
 // (tiles 10-18, 13-23): a planted border down the west and south edges of
-// the clearing, and a wooden pool deck south of the lab's building
-// (TL_X/Y/W/H: tiles 12-17,15-18, door on the south wall at TL_DOOR_X,18),
-// clear of the door's step-out tile at row 19.
+// the clearing, and a wooden pool deck tucked directly south of the lab's
+// door (TL_X/Y/W/H: tiles 12-17,15-18, door on the south wall at
+// TL_DOOR_X,18). The deck is deliberately kept small -- tiles 12-16,
+// rows 19-21 -- clear of the door's step-out tile at row 19, and clear of
+// row 22/columns 17-18 entirely, so it doesn't visually crowd the TRUTH
+// KNOCKS cabinet at (16,22) or the open ground along the clearing's east
+// side (previously the deck ran all the way to column 18 and down through
+// row 22, which put TRUTH KNOCKS right on top of the drawn water and left
+// little clear floor to walk around).
 function drawTruthLabPoolGarden(time) {
   // garden bed strip, west edge of the clearing
   drawTruthLabGardenBed(10 * TILE, 13 * TILE, 2 * TILE, 10 * TILE, 41);
   // garden bed strip, south edge of the clearing
   drawTruthLabGardenBed(10 * TILE, 23 * TILE, 9 * TILE, 1 * TILE, 97);
 
-  // wooden deck platform, south of the lab building
-  const dx = 11 * TILE, dy = 19 * TILE, dw = 8 * TILE, dh = 4 * TILE;
+  // wooden deck platform, tucked directly south of the door -- shrunk down
+  // to tiles 12-16/rows 19-21 (was 11-18/19-22) so it clears row 22 and
+  // columns 17-18 for walking room, and no longer overlaps TRUTH KNOCKS.
+  const dx = 12 * TILE, dy = 19 * TILE, dw = 5 * TILE, dh = 3 * TILE;
   ctx.fillStyle = '#4a3520';
   ctx.fillRect(dx, dy, dw, dh);
   ctx.strokeStyle = 'rgba(0,0,0,0.25)';
@@ -18441,8 +18449,10 @@ function drawTruthLabPoolGarden(time) {
 
   // pool, inset within the deck: rounded stone coping around a shimmering
   // rectangle of water, same "time-based ripple" idea as the lily pads'
-  // gentle bob elsewhere in drawSwampDecorations()
-  const px = 13 * TILE, py = 20 * TILE, pw = 5 * TILE, ph = 3 * TILE;
+  // gentle bob elsewhere in drawSwampDecorations(). Shrunk to match the
+  // smaller deck above (was tiles 13-17/rows 20-22, now 13-15/rows 20-21)
+  // so it stays clear of TRUTH KNOCKS at (16,22).
+  const px = 13 * TILE, py = 20 * TILE, pw = 3 * TILE, ph = 2 * TILE;
   ctx.fillStyle = '#8a8272';
   roundRectPath(px - 6, py - 6, pw + 12, ph + 12, 6);
   ctx.fill();
@@ -18466,11 +18476,13 @@ function drawTruthLabPoolGarden(time) {
   ctx.restore();
 
   // a couple of potted palms flanking the pool, and a low lounge chair on
-  // each side, so the deck reads as furnished rather than bare
-  drawTruthLabPottedPalm(dx + 6, dy - 4);
-  drawTruthLabPottedPalm(dx + dw - 22, dy - 4);
-  drawTruthLabLoungeChair(px + 6, py + ph + 14);
-  drawTruthLabLoungeChair(px + pw - 28, py + ph + 14);
+  // each side, so the deck reads as furnished rather than bare. Chairs are
+  // pulled in to sit on the deck's own bottom edge (dy + dh) rather than
+  // past the pool's edge, now that the deck is shallower.
+  drawTruthLabPottedPalm(dx + 4, dy - 4);
+  drawTruthLabPottedPalm(dx + dw - 18, dy - 4);
+  drawTruthLabLoungeChair(px + 2, dy + dh - 12);
+  drawTruthLabLoungeChair(px + pw - 24, dy + dh - 12);
 
   // a couple of warm garden lanterns for a peaceful, lived-in glow at
   // night -- same drawGlow() halo every other light source in the game
