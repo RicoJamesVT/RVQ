@@ -811,6 +811,18 @@ const STREISAND_JUNK = [
     reply: 'Not it. But respect to whoever kept this in this kind of shape.' },
 ];
 
+// THE SOUL SHACK's two themed dig crates -- same 1:1 pairing via
+// c.soulShackSeed as NECTARS_JUNK/HENRYS_JUNK/TRUTHLAB_JUNK/STREISAND_JUNK
+// above. The Soul Shack is a metaphysical store (gems, crystals, incense,
+// tarot cards), so its crates are stocked with that same vibe -- never one
+// of the 5 collectibles, just deep New Age ephemera.
+const SOUL_SHACK_JUNK = [
+  { line: 'A crate of chakra-tuned wind chime kits, still in their boxes, each one promising to "align your vibration" on the label.',
+    reply: 'Not one of the five. Your aura feels a little lighter anyway.' },
+  { line: 'Loose amethyst clusters, a tangle of rose quartz pendants, and a dog-eared tarot deck missing the Tower card.',
+    reply: 'Great stuff for a reading, useless for the sampler. Keep digging.' },
+];
+
 // Fake front-page stories for the town's newspaper stands. Onion/Daily Show
 // style Vermont satire — one random headline+body pops up each time a stand
 // is read. Keep these silly and harmless, no real people, just generic
@@ -8640,6 +8652,14 @@ boxgutsImg.src = 'assets/boxguts.png';
 const travImg = new Image();
 travImg.src = 'assets/trav.png';
 
+// MRKBH -- the keeper of THE SOUL SHACK out in the swamp: a mysterious,
+// mystical emcee, deadly with the pen. Red ski mask, black thorn-wreath
+// hoodie, olive cargos, tan work boots. Drawn as a shop keeper (see
+// keeperImgs.MRKBH below), not a roaming npc, so he doesn't need an entry
+// in SHOP_NPC_IMAGES.
+const mrkbhImg = new Image();
+mrkbhImg.src = 'assets/mrkbh.png';
+
 // ---------------------------------------------------------------- maps
 const SOLID = new Set(['#', 'w', 'f', '~', 'W', 'T', 'C', 'c', 'K', 'J', 'S', 'A', 'N', 'F', 'R', 'V', 'Z', 'U', 'X']);
 
@@ -8986,6 +9006,16 @@ function makeSwamp() {
   for (let y = TL_CLEAR_Y; y < TL_CLEAR_Y + TL_CLEAR_H; y++)
     for (let x = TL_CLEAR_X; x < TL_CLEAR_X + TL_CLEAR_W; x++) g[y][x] = '.';
 
+  // THE SOUL SHACK clearing -- sixth swamp building, a little metaphysical
+  // shop tucked into the narrow gap between the TRUTH LAB clearing and the
+  // GUT HUT clearing, clear of the samurai sword at (20,19) and news3 at
+  // (18,15). Its top row (row 13) sits directly against the boardwalk trunk
+  // (row 12), same "step off the boardwalk onto solid ground" logic as
+  // every other clearing here.
+  const SOUL_CLEAR_X = 19, SOUL_CLEAR_Y = 13, SOUL_CLEAR_W = 5, SOUL_CLEAR_H = 6;
+  for (let y = SOUL_CLEAR_Y; y < SOUL_CLEAR_Y + SOUL_CLEAR_H; y++)
+    for (let x = SOUL_CLEAR_X; x < SOUL_CLEAR_X + SOUL_CLEAR_W; x++) g[y][x] = '.';
+
   // sprinkle swamp trees over the mud (runs over the new clearing too, so
   // it reads as part of the same swamp rather than a bare patch)
   for (let y = 1; y < H - 1; y++)
@@ -9093,6 +9123,24 @@ function makeSwamp() {
     wall: '#1a1a1e', roof: '#0d0d10', doorX: TL_DOOR_X,
   });
 
+  // THE SOUL SHACK -- sixth swamp building: a small metaphysical store
+  // (gems, crystals, incense, tarot cards) tucked into the clearing carved
+  // out above. Kept deliberately tiny -- just big enough to walk into --
+  // same solid-walls-plus-one-door construction as every other building
+  // here; doorX/doorY are exported below (soulShackDoor) for the transition
+  // wiring outside this function. Deep purple exterior to read as a little
+  // mystic shop against the swamp's greens and browns.
+  const SOUL_X = 19, SOUL_Y = 15, SOUL_W = 4, SOUL_H = 3;
+  const SOUL_DOOR_X = SOUL_X + Math.floor(SOUL_W / 2);
+  const SOUL_DOOR_Y = SOUL_Y + SOUL_H - 1;
+  for (let y = SOUL_Y; y < SOUL_Y + SOUL_H; y++)
+    for (let x = SOUL_X; x < SOUL_X + SOUL_W; x++) g[y][x] = 'w';
+  g[SOUL_DOOR_Y][SOUL_DOOR_X] = 'D';
+  buildings.push({
+    x: SOUL_X, y: SOUL_Y, w: SOUL_W, h: SOUL_H, name: 'THE SOUL SHACK',
+    wall: '#4a1a5e', roof: '#200e2c', doorX: SOUL_DOOR_X,
+  });
+
   // Vermont Lake Monsters ballpark -- a big solid outdoor landmark dropped
   // into the open mud between the two boardwalk spurs, north of the
   // boardwalk trunk and above HUT_CLEAR. Same "no door, just walk around
@@ -9137,6 +9185,7 @@ function makeSwamp() {
     [HUT_DOOR_X, HUT_DOOR_Y], [FOOD_DOOR_X, FOOD_DOOR_Y],
     [BURL_DOOR_X, BURL_DOOR_Y], [JFP_DOOR_X, JFP_DOOR_Y],
     [JPOOL_DOOR_X, JPOOL_DOOR_Y], [TL_DOOR_X, TL_DOOR_Y],
+    [SOUL_DOOR_X, SOUL_DOOR_Y],
   ]) {
     if (g[dy + 1] && g[dy + 1][dx] === '#') g[dy + 1][dx] = '.';
   }
@@ -9197,6 +9246,7 @@ function makeSwamp() {
     jfpDoor: { x: JFP_DOOR_X, y: JFP_DOOR_Y },
     jfpPoolDoor: { x: JPOOL_DOOR_X, y: JPOOL_DOOR_Y },
     truthLabDoor: { x: TL_DOOR_X, y: TL_DOOR_Y },
+    soulShackDoor: { x: SOUL_DOOR_X, y: SOUL_DOOR_Y },
     palette: {
       groundA: '#6a5a35', groundB: '#5c723a', groundDot: '#6d8a46',
       water: '#2c4330', waterHi: '#3d5a3e',
@@ -10220,6 +10270,42 @@ const shops = {
       { id: 'swampcave', tx: 6, ty: 4, label: 'PLAY SWAMP CAVE SUMMER' },
     ],
   }),
+  // THE SOUL SHACK -- the swamp's sixth building: a tiny metaphysical store
+  // selling gems, crystals, incense, and tarot cards, kept by MRKBH (a
+  // mysterious, mystical emcee -- see the keeper below). `world: 'swamp'` for
+  // consistency with the other swamp interiors. No collectible record lives
+  // in here -- both crates are stocked with metaphysical odds and ends (see
+  // SOUL_SHACK_JUNK above), so digging never advances the sampler.
+  soulshack: makeShop('soulshack', {
+    world: 'swamp',
+    floor: '#2a1a38', plank: '#1e1428', wallColor: '#150c1e',
+    // Framed paintings along the back wall, standing in for hung tapestries
+    // and crystal-grid art -- deep violets/golds to read as "mystic shop"
+    // rather than any other swamp interior.
+    paintings: {
+      '2,0': { base: '#3a1a5e', a: '#a855f7', b: '#f0c33e' },
+      '9,0': { base: '#5e1a4a', a: '#f0c33e', b: '#a855f7' },
+    },
+    gearTiles: [[3, 4], [10, 4]],
+    // MRKBH -- powerful, mystical emcee and keeper of the shack. Mysterious,
+    // deadly with the pen. `shirt`/`skin` only matter for the procedural
+    // fallback sprite (drawn until assets/mrkbh.png finishes loading), so
+    // they're set to his black hoodie and skin tone.
+    keeper: { name: 'MRKBH', shirt: '#141216', skin: '#8a5a34',
+      lines: [
+        'You found the Soul Shack. Most folks feel the pull long before they find the door.',
+        'They call me MRKBH. The mask stays on. The pen does the talking.',
+        'Every stone in here\'s got its own charge -- amethyst for clarity, rose quartz for the heart. Words work the same way. Choose them careful.',
+        'Go ahead and dig through the crates. Nothing hidden in them but more of the same good energy.',
+        'The swamp\'s got a strange pull to it. I burn the incense to keep the mist honest, and I write while it burns.',
+        'Some cats need a beat and a crowd. I need a page and a candle. Ink don\'t miss.',
+      ] },
+    // Two crates, both stocked with metaphysical odds and ends on purpose --
+    // The Soul Shack is a curio shop, not a record spot, so neither one
+    // hides any of the swamp's five records (moss, frog, choir, swampdrum,
+    // honeysuckle). See SOUL_SHACK_JUNK above.
+    crates: [ { soulShackSeed: 0 }, { soulShackSeed: 1 } ],
+  }),
 };
 
 // door wiring: town door tile -> shop spawn; shop exit tile -> town spawn
@@ -10252,6 +10338,9 @@ transitions['johnnyspool:' + key(6, 9)] = { map: 'swamp', x: swamp.jfpPoolDoor.x
 // TRUTH LAB door wiring -- same pattern as GUT HUT above.
 transitions['swamp:' + key(swamp.truthLabDoor.x, swamp.truthLabDoor.y)] = { map: 'truthlab', x: 6.5, y: 7.5 };
 transitions['truthlab:' + key(6, 9)] = { map: 'swamp', x: swamp.truthLabDoor.x + 0.5, y: swamp.truthLabDoor.y + 1.6 };
+// THE SOUL SHACK door wiring -- same pattern as GUT HUT above.
+transitions['swamp:' + key(swamp.soulShackDoor.x, swamp.soulShackDoor.y)] = { map: 'soulshack', x: 6.5, y: 7.5 };
+transitions['soulshack:' + key(6, 9)] = { map: 'swamp', x: swamp.soulShackDoor.x + 0.5, y: swamp.soulShackDoor.y + 1.6 };
 const maps = { town, ...shops, swamp };
 
 // Reshuffles, within EACH location that has one, which of that location's
@@ -11161,6 +11250,10 @@ function doInteract() {
     } else if (c.streisandSeed !== undefined) {
       const sj = STREISAND_JUNK[c.streisandSeed % STREISAND_JUNK.length];
       dialog = { name: 'CRATE', lines: [sj.line, sj.reply], i: 0 };
+      state = 'dialog';
+    } else if (c.soulShackSeed !== undefined) {
+      const ssj = SOUL_SHACK_JUNK[c.soulShackSeed % SOUL_SHACK_JUNK.length];
+      dialog = { name: 'CRATE', lines: [ssj.line, ssj.reply], i: 0 };
       state = 'dialog';
     } else {
       dialog = { name: 'CRATE', lines: [JUNK[c.junkSeed % JUNK.length], 'Keep digging...'], i: 0 };
@@ -23578,6 +23671,10 @@ KEEPER_NAMES.forEach((name) => {
 // needed, and BURLINGTON's own placement of them is untouched.
 keeperImgs.TRUTH = truthImg;
 keeperImgs.BOXGUTS = boxgutsImg;
+// THE SOUL SHACK's keeper, MRKBH -- same idea as TRUTH/BOXGUTS above: the
+// art is declared up with the other pre-drawn characters and just registered
+// here so drawKeeper() picks it up by name.
+keeperImgs.MRKBH = mrkbhImg;
 
 function drawAnt(cx, cy, s) {
   // A white ant silhouette (the Anthill Collective mark), drawn on SK1's hat.
