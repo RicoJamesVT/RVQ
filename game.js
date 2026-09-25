@@ -1112,6 +1112,15 @@ const MINIGAME_ACTIONS = {
   // bundled locally so it works with no connection). See
   // openVinylSnakeApp()/createVinylSnakeOverlay() below.
   vinylsnake: () => openVinylSnakeApp(),
+  // The Waveforms Wall -- an interactive sound-shape explainer parked
+  // inside BURLINGTON RECORDS (see the `burlington` shop's `minigames`
+  // list), right alongside Vinyl Snake/Bayou Boogie/Rico's Mini DAW. Same
+  // "full standalone web app, not a canvas mini-game" shape as chess/
+  // beatbot/organ/mini golf/blackbook/Gator Grooves/Vinyl Snake above (own
+  // DOM/iframe overlay, bundled locally so it works with no connection).
+  // See openWaveformPresentationApp()/createWaveformPresentationOverlay()
+  // below.
+  waveforms: () => openWaveformPresentationApp(),
   // Bayou Break Station -- a dirty little swamp synth + drum-pad/break-
   // slicer instrument tucked inside TRUTH LAB (see the `truthlab` shop's
   // `minigames` list). Same "full standalone web app, not a canvas
@@ -1135,6 +1144,16 @@ const MINIGAME_ACTIONS = {
   // connection. See openFrequencyAltarApp()/createFrequencyAltarOverlay()
   // below.
   freqaltar: () => openFrequencyAltarApp(),
+  // The Drum Pattern Doc -- MRKBH's own crate of 16th-note breakdowns, set
+  // up right alongside the Cypher and the Frequency Altar inside THE SOUL
+  // SHACK (see the `soulshack` shop's `minigames` list below). A reference
+  // doc rather than an instrument: genre grooves, Afro-Cuban patterns, and
+  // classic breakbeats, all laid out as tappable step grids. Same
+  // "full-screen DOM overlay with an <iframe>" trick as every other
+  // mini-game here, and same bundled-local-page shape as the Frequency
+  // Altar -- see openDrumPatternDocApp()/createDrumPatternDocOverlay()
+  // below.
+  drumpatterndoc: () => openDrumPatternDocApp(),
   // VT Dirt -- a dirt bike trials/motocross mini-game parked out on the open
   // mud in the swamp overworld itself (see the swamp map's `minigames` list
   // below), not tucked inside any building. Same "full standalone web app,
@@ -8521,8 +8540,10 @@ window.addEventListener('keydown', (e) => {
     if (k === 'escape' && state === 'crocSwampApp') { closeCrocSwampApp(); }
     if (k === 'escape' && state === 'qsdBalanceApp') { closeQsdBalanceApp(); }
     if (k === 'escape' && state === 'vinylSnakeApp') { closeVinylSnakeApp(); }
+    if (k === 'escape' && state === 'waveformApp') { closeWaveformPresentationApp(); }
     if (k === 'escape' && state === 'bayouBreakApp') { closeBayouBreakApp(); }
     if (k === 'escape' && state === 'freqAltarApp') { closeFrequencyAltarApp(); }
+    if (k === 'escape' && state === 'drumPatternDocApp') { closeDrumPatternDocApp(); }
     if (k === 'escape' && state === 'gatorJamSlamApp') { closeGatorJamSlamApp(); }
     if (k === 'escape' && state === 'swampCaveApp') { closeSwampCaveApp(); }
     if (k === 'escape' && state === 'vtDirtApp') { closeVtDirtApp(); }
@@ -10505,10 +10526,21 @@ const shops = {
     // app, same "full-screen DOM overlay with an <iframe>" pattern as
     // Vinyl Snake/Bayou Break Station/Rico1200 above -- see
     // MINIGAME_ACTIONS.ricodaw/openRicoDawApp().
+    // Waveforms Wall cabinet, on open floor at (6,8) -- one row south of
+    // the Vinyl Snake/Bayou Boogie/Rico's Mini DAW row (row 7), directly
+    // above the door (6,9), same "row 8 is otherwise empty floor, one
+    // tile north of the door" placement Johnny's Fun Park uses for Dust
+    // Racing. Full standalone web app (its own canvas waveform renderer
+    // plus a WebAudio oscillator so the shapes can be heard as well as
+    // seen, no external assets and no network calls, so it works with no
+    // connection), same "full-screen DOM overlay with an <iframe>"
+    // pattern as Vinyl Snake/Bayou Boogie/Rico's Mini DAW above -- see
+    // MINIGAME_ACTIONS.waveforms/openWaveformPresentationApp().
     minigames: [
       { id: 'vinylsnake', tx: 9, ty: 7, label: 'PLAY VINYL SNAKE' },
       { id: 'bayouboogie', tx: 3, ty: 7, label: 'PLAY BAYOU BOOGIE' },
       { id: 'ricodaw', tx: 6, ty: 7, label: "PLAY RICO'S MINI DAW" },
+      { id: 'waveforms', tx: 6, ty: 8, label: 'SEE THE WAVEFORMS' },
     ],
   }),
   // JOHNNY'S FUN PARK -- the swamp's fourth building: a little boardwalk
@@ -10696,9 +10728,16 @@ const shops = {
     // floor at (9,6): clear of the counter table (row 3), the gear tiles
     // (3,4)/(10,4), the crates (1,4)/(1,6), the Cypher at (6,6), and the
     // door (6,9). See MINIGAME_ACTIONS.freqaltar/openFrequencyAltarApp().
+    //
+    // The Drum Pattern Doc -- a reference kiosk, set on the open floor at
+    // (12,6): clear of the counter table (row 3), the gear tiles
+    // (3,4)/(10,4), the crates (1,4)/(1,6), the Cypher at (6,6), the
+    // Frequency Altar at (9,6), and the door (6,9). See
+    // MINIGAME_ACTIONS.drumpatterndoc/openDrumPatternDocApp().
     minigames: [
       { id: 'soulcypher', tx: 6, ty: 6, label: 'STEP INTO THE CYPHER' },
       { id: 'freqaltar', tx: 9, ty: 6, label: 'PLAY THE FREQUENCY ALTAR' },
+      { id: 'drumpatterndoc', tx: 12, ty: 6, label: 'READ THE DRUM PATTERN DOC' },
     ],
   }),
 };
@@ -10772,7 +10811,7 @@ const player = {
   tempItem: null, tempItemTimer: 0,
 };
 const collected = new Set();
-let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | danceParty | portal | fifa | minigame | hotkeys | crate | photo | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | qsdBalanceApp | vinylSnakeApp | bayouBreakApp | gatorJamSlamApp | swampCaveApp | vtDirtApp | penaltyKingsApp | digDashApp | digOnApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | diggerApp | hyperSwimApp | connectFourApp | syrupRoadsApp | clawMachineApp | kangaidenVideo | kangaidenSplash | kangaidenApp | hiphopLibraryApp | truthKnocksVideo | truthKnocksSplash | truthKnocksApp | johnnySlidesApp | dustRacingApp
+let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | danceParty | portal | fifa | minigame | hotkeys | crate | photo | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | qsdBalanceApp | vinylSnakeApp | waveformApp | bayouBreakApp | freqAltarApp | drumPatternDocApp | gatorJamSlamApp | swampCaveApp | vtDirtApp | penaltyKingsApp | digDashApp | digOnApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | diggerApp | hyperSwimApp | connectFourApp | syrupRoadsApp | clawMachineApp | kangaidenVideo | kangaidenSplash | kangaidenApp | hiphopLibraryApp | truthKnocksVideo | truthKnocksSplash | truthKnocksApp | johnnySlidesApp | dustRacingApp
 // State to snap back to when the [H] hotkeys popup is closed -- currently
 // always 'play' since that's the only state H can be opened from, but kept
 // as its own var in case another state wants to offer the popup later.
@@ -11451,7 +11490,7 @@ const music = {
 // enter/exit call sites, so it can't drift out of sync no matter which
 // of the several ways the player backs out of the lab popup (keyboard
 // [X], on-screen [X] button, closing the instrument iframe, etc.).
-const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'qsdBalanceApp', 'vinylSnakeApp', 'bayouBreakApp', 'freqAltarApp', 'gatorJamSlamApp', 'swampCaveApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'digOnApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'johnnySlidesApp', 'dustRacingApp', 'hyperSwimApp', 'connectFourApp', 'syrupRoadsApp', 'clawMachineApp', 'kangaidenVideo', 'kangaidenApp', 'hiphopLibraryApp', 'danceParty', 'truthKnocksVideo', 'truthKnocksApp']);
+const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'qsdBalanceApp', 'vinylSnakeApp', 'waveformApp', 'bayouBreakApp', 'freqAltarApp', 'drumPatternDocApp', 'gatorJamSlamApp', 'swampCaveApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'digOnApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'johnnySlidesApp', 'dustRacingApp', 'hyperSwimApp', 'connectFourApp', 'syrupRoadsApp', 'clawMachineApp', 'kangaidenVideo', 'kangaidenApp', 'hiphopLibraryApp', 'danceParty', 'truthKnocksVideo', 'truthKnocksApp']);
 function syncMusicDuck() {
   const minigameDucked = state === 'minigame' && activeMinigame && activeMinigame.musicDucked;
   music.duck(DUCKED_STATES.has(state) || !!minigameDucked);
@@ -15295,6 +15334,118 @@ function closeVinylSnakeApp(fromPopState) {
   }
 }
 
+// The Waveforms Wall -- an interactive sound-shape explainer tucked inside
+// BURLINGTON RECORDS (see the `burlington` shop's `minigames` list), right
+// alongside Vinyl Snake/Bayou Boogie/Rico's Mini DAW. Same "full-screen DOM
+// overlay with an <iframe>" trick as chess/the beat bot/the organ/mini
+// golf/the blackbook/Gator Grooves/Vinyl Snake above.
+//
+// Ships as a bundled, self-contained page (its own canvas waveform
+// renderer and WebAudio oscillator, no external assets, no web fonts, and
+// no network calls at all) at instruments/waveform-presentation/index.html
+// -- the exact same local-file pattern CHESS_APP_URL/BEAT_BOT_APP_URL/
+// ORGAN_APP_URL/MINI_GOLF_APP_URL/BLACKBOOK_APP_URL/CROC_SWAMP_APP_URL/
+// VINYL_SNAKE_APP_URL use. Being a same-origin local asset rather than a
+// live remote site means it loads and every shape plays the same with or
+// without a connection, so -- same as the others -- there's no online/
+// offline branching needed here either.
+const WAVEFORM_APP_URL = 'instruments/waveform-presentation/index.html';
+let waveformOverlayEl = null, waveformOverlayFrame = null;
+let waveformReturnState = 'play';
+let waveformHistoryPushed = false; // mirrors labHistoryPushed/.../vinylSnakeHistoryPushed -- see openWaveformPresentationApp()/closeWaveformPresentationApp()
+
+function createWaveformPresentationOverlay() {
+  const style = document.createElement('style');
+  style.textContent = `
+    #waveformApp {
+      position: fixed; inset: 0; z-index: 1000;
+      background: #000;
+      display: none; flex-direction: column;
+    }
+    #waveformApp.open { display: flex; }
+    #waveformApp .wf-bar {
+      flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 10px 14px;
+      background: linear-gradient(#2a2038, #14101c);
+      border-bottom: 2px solid #b088e0;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    }
+    #waveformApp .wf-title {
+      color: #f4ecd8; font: bold 14px monospace; letter-spacing: 0.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #waveformApp .wf-close {
+      flex: 0 0 auto; cursor: pointer;
+      background: rgba(176,136,224,0.15);
+      border: 1.5px solid rgba(176,136,224,0.85);
+      color: #f4ecd8; border-radius: 8px;
+      padding: 7px 16px; font: bold 13px monospace;
+      -webkit-user-select: none; user-select: none;
+    }
+    #waveformApp .wf-close:active { background: rgba(176,136,224,0.4); }
+    #waveformApp iframe {
+      flex: 1 1 auto; width: 100%; border: 0; background: #000;
+    }
+  `;
+  document.head.appendChild(style);
+
+  waveformOverlayEl = document.createElement('div');
+  waveformOverlayEl.id = 'waveformApp';
+
+  const bar = document.createElement('div');
+  bar.className = 'wf-bar';
+  const title = document.createElement('div');
+  title.className = 'wf-title';
+  title.textContent = 'THE WAVEFORMS WALL';
+  const closeBtn = document.createElement('div');
+  closeBtn.className = 'wf-close';
+  closeBtn.textContent = '\u2190 BACK TO BURLINGTON RECORDS';
+  bindTap(closeBtn, closeWaveformPresentationApp);
+  bar.appendChild(title);
+  bar.appendChild(closeBtn);
+
+  waveformOverlayFrame = document.createElement('iframe');
+  waveformOverlayFrame.setAttribute('allow', 'autoplay');
+
+  waveformOverlayEl.appendChild(bar);
+  waveformOverlayEl.appendChild(waveformOverlayFrame);
+  document.body.appendChild(waveformOverlayEl);
+}
+createWaveformPresentationOverlay();
+
+// Opens the Waveforms Wall overlay and switches state to 'waveformApp'.
+// Called from MINIGAME_ACTIONS.waveforms (E on the cabinet, or tapping its
+// floating sign), same entry points every other mini-game uses.
+function openWaveformPresentationApp() {
+  waveformReturnState = state;
+  waveformOverlayFrame.src = WAVEFORM_APP_URL;
+  waveformOverlayEl.classList.add('open');
+  state = 'waveformApp';
+  // Same throwaway-history-entry trick as openInstrument()/openChessApp()/
+  // .../openVinylSnakeApp() above, so the browser/OS back gesture closes
+  // the Waveforms Wall overlay instead of leaving the game entirely.
+  history.pushState({ ricoWaveformApp: true }, '');
+  waveformHistoryPushed = true;
+}
+
+// Tears the iframe back down and returns to ordinary gameplay in
+// Burlington Records. fromPopState mirrors closeInstrument()/
+// closeChessApp()/.../closeVinylSnakeApp()'s parameter -- true when
+// triggered by the browser's back button (whose history entry is already
+// consumed), so we must not call history.back() again in that case.
+function closeWaveformPresentationApp(fromPopState) {
+  waveformOverlayEl.classList.remove('open');
+  waveformOverlayFrame.src = 'about:blank';
+  reclaimGameFocus(waveformOverlayFrame);
+  state = waveformReturnState;
+  if (!fromPopState && waveformHistoryPushed) {
+    waveformHistoryPushed = false;
+    history.back();
+  } else {
+    waveformHistoryPushed = false;
+  }
+}
+
 // Bayou Break Station -- a dirty little swamp synth + chopped-break drum
 // machine (keyboard synth, 8 swamp-drum pads, and a break slicer) tucked
 // inside TRUTH LAB (see the `truthlab` shop's `minigames` list). Same
@@ -15526,6 +15677,122 @@ function closeFrequencyAltarApp(fromPopState) {
     history.back();
   } else {
     freqAltarHistoryPushed = false;
+  }
+}
+
+// The Drum Pattern Doc -- MRKBH's crate of 16th-note breakdowns (genre
+// grooves, Afro-Cuban patterns, classic breakbeats), set up inside THE
+// SOUL SHACK (see the `soulshack` shop's `minigames` list), right
+// alongside the Cypher and the Frequency Altar. A reference doc rather
+// than a game or instrument, but same "full-screen DOM overlay with an
+// <iframe>" trick as chess/the beat bot/the organ/mini golf/the
+// blackbook/Gator Grooves/Vinyl Snake/Bayou Break Station/the Frequency
+// Altar above.
+//
+// Ships as a bundled, self-contained page (its own HTML/CSS, the actual
+// pattern grids inlined as plain tables, no external assets, no web
+// fonts, and no network calls at all) at instruments/drum-pattern-doc/
+// index.html -- the exact same local-file pattern CHESS_APP_URL/
+// BEAT_BOT_APP_URL/.../FREQUENCY_ALTAR_APP_URL use. Being a same-origin
+// local asset rather than a live remote site means it loads and reads
+// identically with or without a connection, so -- same as every other
+// bundled app here -- there's no online/offline branching needed.
+const DRUM_PATTERN_DOC_APP_URL = 'instruments/drum-pattern-doc/index.html';
+let drumPatternDocOverlayEl = null, drumPatternDocOverlayFrame = null;
+let drumPatternDocReturnState = 'play';
+let drumPatternDocHistoryPushed = false; // mirrors labHistoryPushed/.../freqAltarHistoryPushed -- see openDrumPatternDocApp()/closeDrumPatternDocApp()
+
+function createDrumPatternDocOverlay() {
+  const style = document.createElement('style');
+  style.textContent = `
+    #drumPatternDocApp {
+      position: fixed; inset: 0; z-index: 1000;
+      background: #000;
+      display: none; flex-direction: column;
+    }
+    #drumPatternDocApp.open { display: flex; }
+    #drumPatternDocApp .dpd-bar {
+      flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 10px 14px;
+      background: linear-gradient(#3a1450, #1a0a26);
+      border-bottom: 2px solid #a855f7;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    }
+    #drumPatternDocApp .dpd-title {
+      color: #e9e2c9; font: bold 14px monospace; letter-spacing: 0.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #drumPatternDocApp .dpd-close {
+      flex: 0 0 auto; cursor: pointer;
+      background: rgba(168,85,247,0.15);
+      border: 1.5px solid rgba(168,85,247,0.85);
+      color: #e9e2c9; border-radius: 8px;
+      padding: 7px 16px; font: bold 13px monospace;
+      -webkit-user-select: none; user-select: none;
+    }
+    #drumPatternDocApp .dpd-close:active { background: rgba(168,85,247,0.4); }
+    #drumPatternDocApp iframe {
+      flex: 1 1 auto; width: 100%; border: 0; background: #000;
+    }
+  `;
+  document.head.appendChild(style);
+
+  drumPatternDocOverlayEl = document.createElement('div');
+  drumPatternDocOverlayEl.id = 'drumPatternDocApp';
+
+  const bar = document.createElement('div');
+  bar.className = 'dpd-bar';
+  const title = document.createElement('div');
+  title.className = 'dpd-title';
+  title.textContent = 'THE DRUM PATTERN DOC';
+  const closeBtn = document.createElement('div');
+  closeBtn.className = 'dpd-close';
+  closeBtn.textContent = '\u2190 BACK TO THE SOUL SHACK';
+  bindTap(closeBtn, closeDrumPatternDocApp);
+  bar.appendChild(title);
+  bar.appendChild(closeBtn);
+
+  drumPatternDocOverlayFrame = document.createElement('iframe');
+  drumPatternDocOverlayFrame.setAttribute('allow', 'autoplay');
+
+  drumPatternDocOverlayEl.appendChild(bar);
+  drumPatternDocOverlayEl.appendChild(drumPatternDocOverlayFrame);
+  document.body.appendChild(drumPatternDocOverlayEl);
+}
+createDrumPatternDocOverlay();
+
+// Opens the Drum Pattern Doc overlay and switches state to
+// 'drumPatternDocApp'. Called from MINIGAME_ACTIONS.drumpatterndoc (E on
+// the doc, or tapping its floating sign), same entry point every other
+// mini-game uses.
+function openDrumPatternDocApp() {
+  drumPatternDocReturnState = state;
+  drumPatternDocOverlayFrame.src = DRUM_PATTERN_DOC_APP_URL;
+  drumPatternDocOverlayEl.classList.add('open');
+  state = 'drumPatternDocApp';
+  // Same throwaway-history-entry trick as openInstrument()/openChessApp()/
+  // .../openFrequencyAltarApp() above, so the browser/OS back gesture
+  // closes the Drum Pattern Doc overlay instead of leaving the game
+  // entirely.
+  history.pushState({ ricoDrumPatternDocApp: true }, '');
+  drumPatternDocHistoryPushed = true;
+}
+
+// Tears the iframe back down and returns to ordinary gameplay in THE SOUL
+// SHACK. fromPopState mirrors closeInstrument()/.../
+// closeFrequencyAltarApp()'s parameter -- true when triggered by the
+// browser's back button (whose history entry is already consumed), so we
+// must not call history.back() again in that case.
+function closeDrumPatternDocApp(fromPopState) {
+  drumPatternDocOverlayEl.classList.remove('open');
+  drumPatternDocOverlayFrame.src = 'about:blank';
+  reclaimGameFocus(drumPatternDocOverlayFrame);
+  state = drumPatternDocReturnState;
+  if (!fromPopState && drumPatternDocHistoryPushed) {
+    drumPatternDocHistoryPushed = false;
+    history.back();
+  } else {
+    drumPatternDocHistoryPushed = false;
   }
 }
 
@@ -16782,10 +17049,14 @@ window.addEventListener('popstate', () => {
     closeQsdBalanceApp(true);
   } else if (state === 'vinylSnakeApp') {
     closeVinylSnakeApp(true);
+  } else if (state === 'waveformApp') {
+    closeWaveformPresentationApp(true);
   } else if (state === 'bayouBreakApp') {
     closeBayouBreakApp(true);
   } else if (state === 'freqAltarApp') {
     closeFrequencyAltarApp(true);
+  } else if (state === 'drumPatternDocApp') {
+    closeDrumPatternDocApp(true);
   } else if (state === 'gatorJamSlamApp') {
     closeGatorJamSlamApp(true);
   } else if (state === 'swampCaveApp') {
@@ -16841,7 +17112,7 @@ canvas.addEventListener('pointerdown', (e) => {
     const vx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const vy = (e.clientY - rect.top) * (canvas.height / rect.height);
     handleLabTap(vx, vy);
-  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'dustRacingApp' || state === 'hyperSwimApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp') {
+  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'dustRacingApp' || state === 'hyperSwimApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp') {
     // The DOM overlay sits on top of (and outside) the canvas while an
     // instrument/the chess app/the beat bot/the organ/mini golf/the
     // blackbook/Gator Grooves/Vinyl Snake/Bayou Break Station/Gator Jam
@@ -17185,6 +17456,15 @@ function update(dt) {
     // it directly. buyPressed is still consumed here too so the
     // on-screen [X] touch button works while Vinyl Snake is open.
     if (buyPressed) closeVinylSnakeApp();
+  } else if (state === 'waveformApp') {
+    // Same reasoning as 'labApp'/'chessApp'/'beatBotApp'/'organApp'/
+    // 'minigolfApp'/'blackbookApp'/'crocSwampApp'/'vinylSnakeApp' just
+    // above: the DOM overlay (see createWaveformPresentationOverlay())
+    // owns input while the Waveforms Wall is loaded -- its own close
+    // button and [Esc] handle closing it directly. buyPressed is still
+    // consumed here too so the on-screen [X] touch button works while
+    // it's open.
+    if (buyPressed) closeWaveformPresentationApp();
   } else if (state === 'bayouBreakApp') {
     // Same reasoning as 'labApp'/'chessApp'/'beatBotApp'/'organApp'/
     // 'minigolfApp'/'blackbookApp'/'crocSwampApp'/'vinylSnakeApp' just
@@ -17203,6 +17483,15 @@ function update(dt) {
     // directly. buyPressed is still consumed here too so the on-screen [X]
     // touch button works while The Frequency Altar is open.
     if (buyPressed) closeFrequencyAltarApp();
+  } else if (state === 'drumPatternDocApp') {
+    // Same reasoning as 'labApp'/'chessApp'/'beatBotApp'/'organApp'/
+    // 'minigolfApp'/'blackbookApp'/'crocSwampApp'/'vinylSnakeApp'/
+    // 'bayouBreakApp'/'freqAltarApp' just above: the DOM overlay (see
+    // createDrumPatternDocOverlay()) owns input while The Drum Pattern Doc
+    // is loaded -- its own close button and [Esc] handle closing it
+    // directly. buyPressed is still consumed here too so the on-screen [X]
+    // touch button works while The Drum Pattern Doc is open.
+    if (buyPressed) closeDrumPatternDocApp();
   } else if (state === 'gatorJamSlamApp') {
     // Same reasoning as 'labApp'/'chessApp'/'beatBotApp'/'organApp'/
     // 'minigolfApp'/'blackbookApp'/'crocSwampApp'/'vinylSnakeApp'/
@@ -18268,7 +18557,7 @@ function render(time) {
     drawSplash();
     return;
   }
-  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'dustRacingApp' || state === 'hyperSwimApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp') {
+  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'dustRacingApp' || state === 'hyperSwimApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp') {
     // Same reasoning as the labApp overlay: a DOM element (the <video>,
     // see createCharacterIntroOverlay(), the chess <iframe>, see
     // createChessOverlay(), the beat bot <iframe>, see
