@@ -1121,6 +1121,20 @@ const MINIGAME_ACTIONS = {
   // network calls -- so it works with no connection). See
   // openBayouBreakApp()/createBayouBreakOverlay() below.
   bayoubreak: () => openBayouBreakApp(),
+  // The Frequency Altar -- a real Tone.js-powered instrument (eight
+  // glowing "crystal" pads across a mystic scale, plus a held ambient
+  // drone) tucked inside THE SOUL SHACK (see the `soulshack` shop's
+  // `minigames` list), right alongside MRKBH's Cypher. Same "full
+  // standalone web app, not a canvas mini-game" shape as chess/beatbot/
+  // organ/mini golf/blackbook/Gator Grooves/Vinyl Snake/Bayou Break
+  // Station above (own DOM/iframe overlay, bundled locally). Unlike Bayou
+  // Break Station's hand-rolled WebAudio synth, this one runs on a real
+  // vendored copy of Tone.js (lib/tone.min.js, same pattern as
+  // lib/three.min.js) loaded from the local page itself -- no CDN, no
+  // network calls -- so it loads and plays identically with or without a
+  // connection. See openFrequencyAltarApp()/createFrequencyAltarOverlay()
+  // below.
+  freqaltar: () => openFrequencyAltarApp(),
   // VT Dirt -- a dirt bike trials/motocross mini-game parked out on the open
   // mud in the swamp overworld itself (see the swamp map's `minigames` list
   // below), not tucked inside any building. Same "full standalone web app,
@@ -8508,6 +8522,7 @@ window.addEventListener('keydown', (e) => {
     if (k === 'escape' && state === 'qsdBalanceApp') { closeQsdBalanceApp(); }
     if (k === 'escape' && state === 'vinylSnakeApp') { closeVinylSnakeApp(); }
     if (k === 'escape' && state === 'bayouBreakApp') { closeBayouBreakApp(); }
+    if (k === 'escape' && state === 'freqAltarApp') { closeFrequencyAltarApp(); }
     if (k === 'escape' && state === 'gatorJamSlamApp') { closeGatorJamSlamApp(); }
     if (k === 'escape' && state === 'swampCaveApp') { closeSwampCaveApp(); }
     if (k === 'escape' && state === 'vtDirtApp') { closeVtDirtApp(); }
@@ -10676,8 +10691,14 @@ const shops = {
     // the open floor at (6,6): clear of the counter table (row 3), the gear
     // tiles (3,4)/(10,4), the crates (1,4)/(1,6), and the door (6,9). See
     // MINIGAME_ACTIONS.soulcypher/createSoulCypherGame().
+    //
+    // The Frequency Altar -- a real Tone.js instrument, set on the open
+    // floor at (9,6): clear of the counter table (row 3), the gear tiles
+    // (3,4)/(10,4), the crates (1,4)/(1,6), the Cypher at (6,6), and the
+    // door (6,9). See MINIGAME_ACTIONS.freqaltar/openFrequencyAltarApp().
     minigames: [
       { id: 'soulcypher', tx: 6, ty: 6, label: 'STEP INTO THE CYPHER' },
+      { id: 'freqaltar', tx: 9, ty: 6, label: 'PLAY THE FREQUENCY ALTAR' },
     ],
   }),
 };
@@ -11430,7 +11451,7 @@ const music = {
 // enter/exit call sites, so it can't drift out of sync no matter which
 // of the several ways the player backs out of the lab popup (keyboard
 // [X], on-screen [X] button, closing the instrument iframe, etc.).
-const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'qsdBalanceApp', 'vinylSnakeApp', 'bayouBreakApp', 'gatorJamSlamApp', 'swampCaveApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'digOnApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'johnnySlidesApp', 'dustRacingApp', 'hyperSwimApp', 'connectFourApp', 'syrupRoadsApp', 'clawMachineApp', 'kangaidenVideo', 'kangaidenApp', 'hiphopLibraryApp', 'danceParty', 'truthKnocksVideo', 'truthKnocksApp']);
+const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'qsdBalanceApp', 'vinylSnakeApp', 'bayouBreakApp', 'freqAltarApp', 'gatorJamSlamApp', 'swampCaveApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'digOnApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'johnnySlidesApp', 'dustRacingApp', 'hyperSwimApp', 'connectFourApp', 'syrupRoadsApp', 'clawMachineApp', 'kangaidenVideo', 'kangaidenApp', 'hiphopLibraryApp', 'danceParty', 'truthKnocksVideo', 'truthKnocksApp']);
 function syncMusicDuck() {
   const minigameDucked = state === 'minigame' && activeMinigame && activeMinigame.musicDucked;
   music.duck(DUCKED_STATES.has(state) || !!minigameDucked);
@@ -15392,6 +15413,122 @@ function closeBayouBreakApp(fromPopState) {
   }
 }
 
+// The Frequency Altar -- a real Tone.js instrument (eight crystal pads
+// tuned to a mystic scale, a held ambient drone, a mist/reverb knob) set
+// up inside THE SOUL SHACK (see the `soulshack` shop's `minigames` list),
+// right alongside MRKBH's Cypher. Same "full-screen DOM overlay with an
+// <iframe>" trick as chess/the beat bot/the organ/mini golf/the
+// blackbook/Gator Grooves/Vinyl Snake/Bayou Break Station above.
+//
+// Ships as a bundled, self-contained page at
+// instruments/frequency-altar/index.html -- the exact same local-file
+// pattern CHESS_APP_URL/BEAT_BOT_APP_URL/ORGAN_APP_URL/MINI_GOLF_APP_URL/
+// BLACKBOOK_APP_URL/CROC_SWAMP_APP_URL/VINYL_SNAKE_APP_URL/
+// BAYOU_BREAK_APP_URL use. The one difference from Bayou Break Station is
+// that this page's synth engine is real Tone.js rather than hand-rolled
+// WebAudio -- but it's loaded via a single <script src="../../lib/
+// tone.min.js">, a vendored local copy sitting right next to the main
+// game's own lib/three.min.js, not a CDN import. Being a same-origin
+// local asset with no remote script/font/audio fetches means it loads and
+// plays identically with or without a connection, so -- same as every
+// other bundled app here -- there's no online/offline branching needed.
+const FREQUENCY_ALTAR_APP_URL = 'instruments/frequency-altar/index.html';
+let freqAltarOverlayEl = null, freqAltarOverlayFrame = null;
+let freqAltarReturnState = 'play';
+let freqAltarHistoryPushed = false; // mirrors labHistoryPushed/.../bayouBreakHistoryPushed -- see openFrequencyAltarApp()/closeFrequencyAltarApp()
+
+function createFrequencyAltarOverlay() {
+  const style = document.createElement('style');
+  style.textContent = `
+    #freqAltarApp {
+      position: fixed; inset: 0; z-index: 1000;
+      background: #000;
+      display: none; flex-direction: column;
+    }
+    #freqAltarApp.open { display: flex; }
+    #freqAltarApp .fa-bar {
+      flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 10px 14px;
+      background: linear-gradient(#3a1450, #1a0a26);
+      border-bottom: 2px solid #a855f7;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    }
+    #freqAltarApp .fa-title {
+      color: #e9e2c9; font: bold 14px monospace; letter-spacing: 0.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #freqAltarApp .fa-close {
+      flex: 0 0 auto; cursor: pointer;
+      background: rgba(168,85,247,0.15);
+      border: 1.5px solid rgba(168,85,247,0.85);
+      color: #e9e2c9; border-radius: 8px;
+      padding: 7px 16px; font: bold 13px monospace;
+      -webkit-user-select: none; user-select: none;
+    }
+    #freqAltarApp .fa-close:active { background: rgba(168,85,247,0.4); }
+    #freqAltarApp iframe {
+      flex: 1 1 auto; width: 100%; border: 0; background: #000;
+    }
+  `;
+  document.head.appendChild(style);
+
+  freqAltarOverlayEl = document.createElement('div');
+  freqAltarOverlayEl.id = 'freqAltarApp';
+
+  const bar = document.createElement('div');
+  bar.className = 'fa-bar';
+  const title = document.createElement('div');
+  title.className = 'fa-title';
+  title.textContent = 'THE FREQUENCY ALTAR';
+  const closeBtn = document.createElement('div');
+  closeBtn.className = 'fa-close';
+  closeBtn.textContent = '\u2190 BACK TO THE SOUL SHACK';
+  bindTap(closeBtn, closeFrequencyAltarApp);
+  bar.appendChild(title);
+  bar.appendChild(closeBtn);
+
+  freqAltarOverlayFrame = document.createElement('iframe');
+  freqAltarOverlayFrame.setAttribute('allow', 'autoplay');
+
+  freqAltarOverlayEl.appendChild(bar);
+  freqAltarOverlayEl.appendChild(freqAltarOverlayFrame);
+  document.body.appendChild(freqAltarOverlayEl);
+}
+createFrequencyAltarOverlay();
+
+// Opens the Frequency Altar overlay and switches state to 'freqAltarApp'.
+// Called from MINIGAME_ACTIONS.freqaltar (E on the altar, or tapping its
+// floating sign), same entry point every other mini-game uses.
+function openFrequencyAltarApp() {
+  freqAltarReturnState = state;
+  freqAltarOverlayFrame.src = FREQUENCY_ALTAR_APP_URL;
+  freqAltarOverlayEl.classList.add('open');
+  state = 'freqAltarApp';
+  // Same throwaway-history-entry trick as openInstrument()/openChessApp()/
+  // .../openBayouBreakApp() above, so the browser/OS back gesture closes
+  // the Frequency Altar overlay instead of leaving the game entirely.
+  history.pushState({ ricoFreqAltarApp: true }, '');
+  freqAltarHistoryPushed = true;
+}
+
+// Tears the iframe back down and returns to ordinary gameplay in THE SOUL
+// SHACK. fromPopState mirrors closeInstrument()/.../closeBayouBreakApp()'s
+// parameter -- true when triggered by the browser's back button (whose
+// history entry is already consumed), so we must not call history.back()
+// again in that case.
+function closeFrequencyAltarApp(fromPopState) {
+  freqAltarOverlayEl.classList.remove('open');
+  freqAltarOverlayFrame.src = 'about:blank';
+  reclaimGameFocus(freqAltarOverlayFrame);
+  state = freqAltarReturnState;
+  if (!fromPopState && freqAltarHistoryPushed) {
+    freqAltarHistoryPushed = false;
+    history.back();
+  } else {
+    freqAltarHistoryPushed = false;
+  }
+}
+
 // Gator Jam Slam -- a 2-on-2 swamp arcade basketball cabinet (side-view,
 // pick-up-and-play, turbo/on-fire mechanics) set up inside TRUTH LAB right
 // alongside Bayou Break Station (see the `truthlab` shop's `minigames`
@@ -16647,6 +16784,8 @@ window.addEventListener('popstate', () => {
     closeVinylSnakeApp(true);
   } else if (state === 'bayouBreakApp') {
     closeBayouBreakApp(true);
+  } else if (state === 'freqAltarApp') {
+    closeFrequencyAltarApp(true);
   } else if (state === 'gatorJamSlamApp') {
     closeGatorJamSlamApp(true);
   } else if (state === 'swampCaveApp') {
@@ -16702,7 +16841,7 @@ canvas.addEventListener('pointerdown', (e) => {
     const vx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const vy = (e.clientY - rect.top) * (canvas.height / rect.height);
     handleLabTap(vx, vy);
-  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'dustRacingApp' || state === 'hyperSwimApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp') {
+  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'dustRacingApp' || state === 'hyperSwimApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp') {
     // The DOM overlay sits on top of (and outside) the canvas while an
     // instrument/the chess app/the beat bot/the organ/mini golf/the
     // blackbook/Gator Grooves/Vinyl Snake/Bayou Break Station/Gator Jam
@@ -17055,6 +17194,15 @@ function update(dt) {
     // here too so the on-screen [X] touch button works while Bayou
     // Break Station is open.
     if (buyPressed) closeBayouBreakApp();
+  } else if (state === 'freqAltarApp') {
+    // Same reasoning as 'labApp'/'chessApp'/'beatBotApp'/'organApp'/
+    // 'minigolfApp'/'blackbookApp'/'crocSwampApp'/'vinylSnakeApp'/
+    // 'bayouBreakApp' just above: the DOM overlay (see
+    // createFrequencyAltarOverlay()) owns input while The Frequency Altar
+    // is loaded -- its own close button and [Esc] handle closing it
+    // directly. buyPressed is still consumed here too so the on-screen [X]
+    // touch button works while The Frequency Altar is open.
+    if (buyPressed) closeFrequencyAltarApp();
   } else if (state === 'gatorJamSlamApp') {
     // Same reasoning as 'labApp'/'chessApp'/'beatBotApp'/'organApp'/
     // 'minigolfApp'/'blackbookApp'/'crocSwampApp'/'vinylSnakeApp'/
@@ -18120,7 +18268,7 @@ function render(time) {
     drawSplash();
     return;
   }
-  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'dustRacingApp' || state === 'hyperSwimApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp') {
+  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'dustRacingApp' || state === 'hyperSwimApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp') {
     // Same reasoning as the labApp overlay: a DOM element (the <video>,
     // see createCharacterIntroOverlay(), the chess <iframe>, see
     // createChessOverlay(), the beat bot <iframe>, see
