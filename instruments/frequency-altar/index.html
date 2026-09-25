@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>THE FREQUENCY ALTAR</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg-deep: #150c1e;
+    --bg-mid: #200e2c;
+    --altar: #4a1a5e;
+    --altar-lit: #6a2a86;
+    --gold: #f0c33e;
+    --violet: #a855f7;
+    --ink: #e9e2c9;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
+  html, body {
+    margin: 0; padding: 0; width: 100%; height: 100%;
+    background: radial-gradient(ellipse at 50% 20%, var(--bg-mid), var(--bg-deep) 70%);
+    overflow: hidden; touch-action: manipulation;
+    font-family: Georgia, 'Times New Roman', serif;
+    color: var(--ink);
+  }
+  #root {
+    position: fixed; inset: 0;
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    display: flex; flex-direction: column;
+  }
+
+  /* ---- start veil: WebAudio needs a user gesture before it will make
+     sound, so nothing below is wired up (or even visible) until this is
+     tapped -- see boot() -> Tone.start(). ---- */
+  #veil {
+    position: absolute; inset: 0; z-index: 50;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 14px;
+    background: radial-gradient(ellipse at 50% 40%, var(--bg-mid), var(--bg-deep) 75%);
+  }
+  #veil .glyph { font-size: 15vmin; filter: drop-shadow(0 0 18px rgba(168,85,247,0.65)); }
+  #veil h1 {
+    margin: 0; font-size: clamp(18px, 4.4vmin, 34px); letter-spacing: 3px;
+    color: var(--gold); text-shadow: 0 0 14px rgba(240,195,62,0.5); text-align: center;
+  }
+  #veil p { margin: 0; font-size: clamp(11px, 2.2vmin, 15px); color: rgba(233,226,201,0.7); letter-spacing: 1px; }
+  #veil .tapbtn {
+    margin-top: 6px; padding: 12px 28px; border-radius: 999px;
+    border: 1.5px solid rgba(240,195,62,0.85); background: rgba(240,195,62,0.12);
+    color: var(--gold); font: bold 13px monospace; letter-spacing: 1.5px;
+  }
+
+  header {
+    flex: 0 0 auto; text-align: center; padding: clamp(6px, 1.6vh, 16px) 10px 4px;
+  }
+  header h1 {
+    margin: 0; font-size: clamp(14px, 3.4vmin, 24px); letter-spacing: 3px;
+    color: var(--gold); text-shadow: 0 0 12px rgba(240,195,62,0.45);
+  }
+  header .sub {
+    margin-top: 2px; font-size: clamp(9px, 1.7vmin, 12px); color: rgba(233,226,201,0.55);
+    letter-spacing: 1.5px; font-family: monospace;
+  }
+
+  main {
+    flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: clamp(10px, 2vh, 22px);
+    padding: 4px clamp(8px, 3vw, 28px) clamp(8px, 2vh, 20px);
+  }
+
+  /* the eight crystal pads -- wraps to 2 rows in tall/portrait layouts,
+     stays a single row once there's enough width (landscape / desktop) */
+  #pads {
+    display: flex; flex-wrap: wrap; justify-content: center; align-items: stretch;
+    gap: clamp(6px, 1.6vmin, 14px);
+    width: 100%; max-width: 900px;
+  }
+  .pad {
+    flex: 1 1 clamp(64px, 20vmin, 120px);
+    max-width: 140px;
+    aspect-ratio: 3 / 4;
+    border-radius: 14px 14px 40% 40% / 14px 14px 60% 60%;
+    background: linear-gradient(160deg, var(--altar-lit), var(--altar) 55%, #2c1240);
+    border: 1.5px solid rgba(168,85,247,0.55);
+    box-shadow: 0 0 0 rgba(168,85,247,0);
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+    padding-bottom: 8px; gap: 4px;
+    transition: box-shadow 90ms ease, transform 90ms ease, background 90ms ease;
+  }
+  .pad.lit {
+    background: linear-gradient(160deg, #b06bff, var(--altar-lit) 55%, var(--altar));
+    box-shadow: 0 0 26px 4px rgba(168,85,247,0.75), 0 0 46px 10px rgba(240,195,62,0.25);
+    transform: translateY(-2px) scale(1.03);
+  }
+  .pad .note {
+    font: bold 11px monospace; letter-spacing: 1px; color: var(--ink); opacity: 0.85;
+  }
+  .pad .key {
+    font: 10px monospace; color: rgba(233,226,201,0.55);
+    border: 1px solid rgba(233,226,201,0.35); border-radius: 4px; padding: 1px 5px;
+  }
+
+  /* the drone + controls row */
+  #controls {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+    gap: clamp(10px, 2.4vw, 22px); width: 100%; max-width: 720px;
+  }
+  #droneBtn {
+    flex: 0 0 auto; padding: 12px 22px; border-radius: 999px; cursor: pointer;
+    border: 1.5px solid rgba(240,195,62,0.75); background: rgba(240,195,62,0.10);
+    color: var(--gold); font: bold 12px monospace; letter-spacing: 1.5px;
+    transition: background 120ms ease, box-shadow 120ms ease;
+  }
+  #droneBtn.on {
+    background: rgba(240,195,62,0.32);
+    box-shadow: 0 0 20px 2px rgba(240,195,62,0.4);
+  }
+  .slider-wrap {
+    display: flex; align-items: center; gap: 8px;
+    font: 10px monospace; color: rgba(233,226,201,0.6); letter-spacing: 1px;
+  }
+  input[type=range] {
+    width: clamp(90px, 22vw, 160px); accent-color: var(--violet);
+  }
+  select#scaleSel {
+    background: rgba(74,26,94,0.5); color: var(--ink); border: 1px solid rgba(168,85,247,0.55);
+    border-radius: 6px; font: 10px monospace; letter-spacing: 1px; padding: 5px 6px;
+  }
+
+  footer {
+    flex: 0 0 auto; text-align: center; padding: 2px 10px clamp(6px, 1.4vh, 14px);
+    font: 9px monospace; color: rgba(233,226,201,0.35); letter-spacing: 1px;
+  }
+</style>
+</head>
+<body>
+<div id="root">
+  <div id="veil">
+    <div class="glyph">&#128302;</div>
+    <h1>THE FREQUENCY ALTAR</h1>
+    <p>MRKBH KEEPS THE INCENSE BURNING &mdash; TAP A STONE TO SPEAK</p>
+    <div class="tapbtn" id="tapStart">TOUCH THE ALTAR</div>
+  </div>
+
+  <header>
+    <h1>THE FREQUENCY ALTAR</h1>
+    <div class="sub">EIGHT STONES &middot; ONE DRONE &middot; MRKBH'S SOUL SHACK</div>
+  </header>
+
+  <main>
+    <div id="pads"></div>
+    <div id="controls">
+      <div class="slider-wrap">
+        SCALE
+        <select id="scaleSel"></select>
+      </div>
+      <div id="droneBtn">&#9679; HOLD THE DRONE</div>
+      <div class="slider-wrap">
+        MIST
+        <input id="reverbMix" type="range" min="0" max="100" value="55">
+      </div>
+      <div class="slider-wrap">
+        VOL
+        <input id="volSlider" type="range" min="0" max="100" value="80">
+      </div>
+    </div>
+  </main>
+
+  <footer>NO SIGNAL LEAVES THIS ROOM &mdash; EVERY TONE IS MADE RIGHT HERE</footer>
+</div>
+
+<script src="../../lib/tone.min.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  // ---- scales: each one a mystic/modal flavor to fit the Soul Shack's
+  // gems-and-incense vibe. Eight stones per scale, low to high, spanning a
+  // bit over an octave so the run has some shape to it.
+  var SCALES = {
+    'MYSTIC MINOR': ['A3', 'C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'C5'],
+    'PHRYGIAN':     ['A3', 'Bb3', 'C4', 'D4', 'E4', 'F4', 'G4', 'A4'],
+    'PENTATONIC':   ['A3', 'C4', 'D4', 'E4', 'G4', 'A4', 'C5', 'D5'],
+    'WHOLE-TONE':   ['A3', 'B3', 'Db4', 'Eb4', 'F4', 'G4', 'A4', 'B4'],
+  };
+  var KEY_LABELS = ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K'];
+  var KEY_CODES  = ['KeyA', 'KeyS', 'KeyD', 'KeyF', 'KeyG', 'KeyH', 'KeyJ', 'KeyK'];
+
+  var padsEl = document.getElementById('pads');
+  var droneBtn = document.getElementById('droneBtn');
+  var scaleSel = document.getElementById('scaleSel');
+  var reverbSlider = document.getElementById('reverbMix');
+  var volSlider = document.getElementById('volSlider');
+  var veil = document.getElementById('veil');
+  var tapStart = document.getElementById('tapStart');
+
+  Object.keys(SCALES).forEach(function (name) {
+    var opt = document.createElement('option');
+    opt.value = name; opt.textContent = name;
+    scaleSel.appendChild(opt);
+  });
+
+  var pads = [];
+  function buildPads(scaleName) {
+    padsEl.innerHTML = '';
+    pads = [];
+    var notes = SCALES[scaleName];
+    for (var i = 0; i < notes.length; i++) {
+      (function (i) {
+        var pad = document.createElement('div');
+        pad.className = 'pad';
+        var noteLabel = document.createElement('div');
+        noteLabel.className = 'note';
+        noteLabel.textContent = notes[i];
+        var keyLabel = document.createElement('div');
+        keyLabel.className = 'key';
+        keyLabel.textContent = KEY_LABELS[i];
+        pad.appendChild(noteLabel);
+        pad.appendChild(keyLabel);
+        padsEl.appendChild(pad);
+        pads.push({ el: pad, note: notes[i] });
+      })(i);
+    }
+  }
+  buildPads('MYSTIC MINOR');
+
+  // ---- audio graph, built once Tone.start() has run (see boot()).
+  //   pads:  PolySynth -> FeedbackDelay -> Reverb -> masterVol -> destination
+  //   drone: AMSynth (single voice, held) -> its own slow Tremolo -> Reverb
+  var synth = null, delay = null, reverb = null, masterVol = null;
+  var drone = null, droneTremolo = null;
+  var droneOn = false;
+  var audioReady = false;
+
+  function boot() {
+    if (audioReady) return;
+    audioReady = true;
+
+    Tone.start();
+
+    masterVol = new Tone.Volume(Tone.gainToDb(volSlider.value / 100)).toDestination();
+    reverb = new Tone.Reverb({ decay: 6, preDelay: 0.02, wet: reverbSlider.value / 100 }).connect(masterVol);
+    delay = new Tone.FeedbackDelay({ delayTime: '8n.', feedback: 0.28, wet: 0.22 }).connect(reverb);
+
+    synth = new Tone.PolySynth(Tone.FMSynth, {
+      harmonicity: 1.5, modulationIndex: 3,
+      envelope: { attack: 0.02, decay: 0.5, sustain: 0.35, release: 2.2 },
+      modulationEnvelope: { attack: 0.4, decay: 0.2, sustain: 0.2, release: 1.5 },
+      volume: -6,
+    }).connect(delay);
+
+    droneTremolo = new Tone.Tremolo({ frequency: 0.15, depth: 0.35 }).connect(reverb).start();
+    drone = new Tone.AMSynth({
+      harmonicity: 2,
+      envelope: { attack: 2.5, decay: 0.4, sustain: 1, release: 4 },
+      volume: -14,
+    }).connect(droneTremolo);
+
+    veil.style.display = 'none';
+  }
+
+  tapStart.addEventListener('pointerdown', boot);
+  veil.addEventListener('pointerdown', boot);
+
+  function playPad(pad) {
+    if (!audioReady) { boot(); }
+    if (!synth) return;
+    synth.triggerAttackRelease(pad.note, '1n');
+    pad.el.classList.add('lit');
+    setTimeout(function () { pad.el.classList.remove('lit'); }, 260);
+  }
+
+  pads.forEach ? null : null; // (pads is rebuilt by buildPads; listeners are delegated below)
+
+  padsEl.addEventListener('pointerdown', function (e) {
+    var el = e.target.closest('.pad');
+    if (!el) return;
+    var idx = Array.prototype.indexOf.call(padsEl.children, el);
+    if (pads[idx]) playPad(pads[idx]);
+  });
+
+  scaleSel.addEventListener('change', function () {
+    buildPads(scaleSel.value);
+  });
+
+  function setDrone(on) {
+    if (!audioReady) boot();
+    if (!drone) return;
+    if (on && !droneOn) {
+      droneOn = true;
+      droneBtn.classList.add('on');
+      drone.triggerAttack('A2');
+    } else if (!on && droneOn) {
+      droneOn = false;
+      droneBtn.classList.remove('on');
+      drone.triggerRelease();
+    }
+  }
+  droneBtn.addEventListener('pointerdown', function () { setDrone(true); });
+  droneBtn.addEventListener('pointerup', function () { setDrone(false); });
+  droneBtn.addEventListener('pointerleave', function () { setDrone(false); });
+  droneBtn.addEventListener('pointercancel', function () { setDrone(false); });
+
+  reverbSlider.addEventListener('input', function () {
+    if (reverb) reverb.wet.value = reverbSlider.value / 100;
+  });
+  volSlider.addEventListener('input', function () {
+    if (masterVol) masterVol.volume.value = Tone.gainToDb(Math.max(0.001, volSlider.value / 100));
+  });
+
+  // ---- keyboard: A S D F G H J K play the eight stones, Space holds the
+  // drone -- lets the game's existing focus/iframe handling (which already
+  // forwards keyboard to this frame while it's open) double as a real
+  // keyboard instrument on desktop.
+  var keyDown = {};
+  window.addEventListener('keydown', function (e) {
+    if (e.repeat) return;
+    if (e.code === 'Space') { e.preventDefault(); setDrone(true); return; }
+    var idx = KEY_CODES.indexOf(e.code);
+    if (idx !== -1 && pads[idx] && !keyDown[e.code]) {
+      keyDown[e.code] = true;
+      playPad(pads[idx]);
+    }
+  });
+  window.addEventListener('keyup', function (e) {
+    keyDown[e.code] = false;
+    if (e.code === 'Space') setDrone(false);
+  });
+
+  // Stop the drone cleanly if the page/iframe is hidden (e.g. the overlay
+  // closes while a stone is still glowing) so no note is left hanging.
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) setDrone(false);
+  });
+})();
+</script>
+</body>
+</html>
