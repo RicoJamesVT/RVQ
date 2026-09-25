@@ -1339,6 +1339,14 @@ const MINIGAME_ACTIONS = {
   // createTruthKnocksOverlay()) once the player presses E or taps again
   // from that splash.
   truthknocks: () => openTruthKnocksSplash(),
+  // MRKBH's Cypher -- a call-and-response spirit-circle rhythm game tucked
+  // inside THE SOUL SHACK (see the `soulshack` shop's `minigames` list).
+  // Deliberately different in kind from every other mini-game here:
+  // instead of scrolling lanes or a drum-pad cross, four totems glow in a
+  // growing Simon-Says sequence and the player answers back on the arrow
+  // keys, over MRKBH's own four-note cypher scale. See
+  // createSoulCypherGame() above.
+  soulcypher: () => enterMinigame(createSoulCypherGame()),
 };
 
 // ---- trophy case: personal bests for the 8 scored mini-games --------------
@@ -3758,6 +3766,365 @@ function createBeatJam3DGame() {
 
       ctx.fillStyle = '#6a6070';
       ctx.font = '15px monospace';
+      ctx.fillText('X to walk away anytime', cx, 584);
+    },
+  };
+}
+
+// ---- Soul Cypher (MRKBH's call-and-response séance) -----------------------
+// THE SOUL SHACK's own 3D mini-game -- built to be genuinely different in
+// kind from every other mini-game in the game rather than a reskin: instead
+// of scrolling lanes (Mic Drop), a fixed drum-pad cross (Beat Jam), a dig
+// (Crate Digging), or a reaction check (Whack-a-Pigeon), this is a spatial
+// call-and-response cypher. MRKBH lights four crystal totems arranged in a
+// circle around the player in a sequence (the "call"), then the player has
+// to answer back the same sequence on the arrow keys (the "response"),
+// Simon-Says style, with one more step added to the sequence every round
+// survived. Three candles at MRKBH's feet are the player's lives; losing
+// one just snuffs a candle and reshuffles a fresh sequence at the same
+// length, so a slip never sends the player back to round one. Every call
+// step and every correct response note plays from the same fixed four-note
+// cypher scale (N/E/S/W each own a pitch and a color), so the whole thing
+// plays out like freestyling call-and-response over a beat, not a quiz.
+// Renders to an offscreen WebGL canvas (see getMinigame3DRenderer())
+// blitted into the main 2D canvas each frame, same as Beat Jam/Mic Drop 3D
+// above, so input handling, CSS scaling, and the rAF loop are all untouched.
+function createSoulCypherGame() {
+  const T = window.THREE;
+  const { renderer, canvas: cypher3DCanvas } = getMinigame3DRenderer('soulcypher');
+  const fx = createMiniFX();
+  const cx = VIEW_W / 2;
+
+  const RADIUS = 1.7;
+  const CENTER = new T.Vector3(0, 0, -3.3);
+  // Fixed four-note cypher scale (Cm7 tones) -- N/E/S/W each keep the same
+  // pitch and color every round, so the growing sequence reads as a little
+  // melody, not just a string of flashes.
+  const DIRS = [
+    { key: 'arrowup',    hint: '\u25B2', color: 0xa855f7, hex: '#a855f7', midi: 60, dx: 0,       dz: -RADIUS },
+    { key: 'arrowright', hint: '\u25B6', color: 0xf0c33e, hex: '#f0c33e', midi: 63, dx: RADIUS,  dz: 0 },
+    { key: 'arrowdown',  hint: '\u25BC', color: 0xe0447a, hex: '#e0447a', midi: 67, dx: 0,       dz: RADIUS },
+    { key: 'arrowleft',  hint: '\u25C0', color: 0x4ad0ff, hex: '#4ad0ff', midi: 70, dx: -RADIUS, dz: 0 },
+  ];
+  const flash = [0, 0, 0, 0];
+  const prevKey = {};
+
+  let round = 1;
+  let lives = 3;
+  let seqIndex = 0;
+  let phase = 'intro'; // intro | call | response | success | done
+  let stepTimer = 1.1;
+  let callStepDur = 0.6;
+  let t = 0;
+
+  function randDir() { return Math.floor(Math.random() * 4); }
+  function genSequence(len) {
+    const seq = [];
+    for (let i = 0; i < len; i++) {
+      let d = randDir();
+      // avoid three of the same totem in a row -- reads as a stuck record,
+      // not a pattern
+      if (seq.length >= 2 && seq[seq.length - 1] === d && seq[seq.length - 2] === d) {
+        d = (d + 1 + Math.floor(Math.random() * 3)) % 4;
+      }
+      seq.push(d);
+    }
+    return seq;
+  }
+  let sequence = genSequence(3);
+
+  // ---- scene: a candlelit circle sunk into the shack's back room, MRKBH
+  // hovering at its center, a crystal totem standing at each of the four
+  // compass points ----
+  const scene = new T.Scene();
+  scene.background = new T.Color(0x120a1a);
+  scene.fog = new T.Fog(0x120a1a, 5, 13);
+
+  const camera = new T.PerspectiveCamera(48, VIEW_W / VIEW_H, 0.1, 30);
+  const CAM_POS = new T.Vector3(0, 2.5, -0.6);
+  camera.position.copy(CAM_POS);
+  camera.lookAt(CENTER.x, 0.1, CENTER.z);
+
+  const floor = new T.Mesh(
+    new T.CircleGeometry(RADIUS + 1.1, 40),
+    new T.MeshStandardMaterial({ color: 0x1c1226, roughness: 0.95 })
+  );
+  floor.rotation.x = -Math.PI / 2;
+  floor.position.set(CENTER.x, 0, CENTER.z);
+  floor.receiveShadow = true;
+  scene.add(floor);
+
+  const ringMesh = new T.Mesh(
+    new T.TorusGeometry(RADIUS, 0.03, 8, 48),
+    new T.MeshStandardMaterial({ color: 0x6a4a8a, emissive: 0x3a1a5e, emissiveIntensity: 0.6, roughness: 0.5 })
+  );
+  ringMesh.rotation.x = Math.PI / 2;
+  ringMesh.position.set(CENTER.x, 0.02, CENTER.z);
+  scene.add(ringMesh);
+
+  scene.add(new T.AmbientLight(0x2a1840, 0.7));
+  const keyLight = new T.PointLight(0xf0c33e, 0.9, 10);
+  keyLight.position.set(CENTER.x, 2.6, CENTER.z + 0.6);
+  scene.add(keyLight);
+
+  // MRKBH -- a hooded, faceless spectral form hovering over the circle's
+  // center; two glowing eye-dots are the only feature, matching his
+  // in-shop "the mask stays on" line.
+  const mrkbh = new T.Group();
+  mrkbh.position.set(CENTER.x, 1.55, CENTER.z);
+  scene.add(mrkbh);
+  const robe = new T.Mesh(
+    new T.ConeGeometry(0.42, 1.1, 10, 1, true),
+    new T.MeshStandardMaterial({ color: 0x141018, roughness: 0.85, side: T.DoubleSide })
+  );
+  robe.position.y = -0.15;
+  mrkbh.add(robe);
+  const hood = new T.Mesh(
+    new T.SphereGeometry(0.3, 12, 10, 0, Math.PI * 2, 0, Math.PI * 0.62),
+    new T.MeshStandardMaterial({ color: 0x1a1420, roughness: 0.8 })
+  );
+  hood.position.y = 0.42;
+  mrkbh.add(hood);
+  const eyeGeo = new T.SphereGeometry(0.028, 6, 6);
+  const eyeMat = new T.MeshBasicMaterial({ color: 0xf0c33e });
+  const eyeL = new T.Mesh(eyeGeo, eyeMat); eyeL.position.set(-0.09, 0.4, 0.24); mrkbh.add(eyeL);
+  const eyeR = new T.Mesh(eyeGeo, eyeMat); eyeR.position.set(0.09, 0.4, 0.24); mrkbh.add(eyeR);
+
+  // Four crystal totems, one per direction/pitch/color -- these are what
+  // actually light up during the call and response.
+  const crystalMeshes = [];
+  DIRS.forEach((d) => {
+    const group = new T.Group();
+    group.position.set(CENTER.x + d.dx, 0, CENTER.z + d.dz);
+    scene.add(group);
+    const pedestal = new T.Mesh(
+      new T.CylinderGeometry(0.16, 0.2, 0.3, 8),
+      new T.MeshStandardMaterial({ color: 0x2a2032, roughness: 0.7 })
+    );
+    pedestal.position.y = 0.15;
+    group.add(pedestal);
+    const crystalMat = new T.MeshStandardMaterial({
+      color: d.color, emissive: 0x000000, roughness: 0.25, metalness: 0.3,
+      transparent: true, opacity: 0.95,
+    });
+    const crystal = new T.Mesh(new T.OctahedronGeometry(0.26, 0), crystalMat);
+    crystal.position.y = 0.62;
+    group.add(crystal);
+    const glow = new T.PointLight(d.color, 0, 3.5);
+    glow.position.y = 0.62;
+    group.add(glow);
+    crystalMeshes.push({ group, crystal, glow, mat: crystalMat, baseY: 0.62 });
+  });
+
+  // Three small candles at MRKBH's feet -- the player's lives. Losing one
+  // snuffs its flame (light off, wick dimmed) instead of removing it, so
+  // the player can always see exactly how much runway is left.
+  const candles = [];
+  for (let i = 0; i < 3; i++) {
+    const group = new T.Group();
+    group.position.set(CENTER.x + (i - 1) * 0.24, 0, CENTER.z + 0.95);
+    scene.add(group);
+    const wax = new T.Mesh(
+      new T.CylinderGeometry(0.045, 0.05, 0.22, 8),
+      new T.MeshStandardMaterial({ color: 0xe8dcc0, roughness: 0.8 })
+    );
+    wax.position.y = 0.11;
+    group.add(wax);
+    const flameMat = new T.MeshBasicMaterial({ color: 0xffb347 });
+    const flame = new T.Mesh(new T.ConeGeometry(0.03, 0.09, 6), flameMat);
+    flame.position.y = 0.27;
+    group.add(flame);
+    const light = new T.PointLight(0xffb347, 0.5, 1.4);
+    light.position.y = 0.3;
+    group.add(light);
+    candles.push({ flame, flameMat, light, lit: true });
+  }
+
+  function loseLife() {
+    lives = Math.max(0, lives - 1);
+    const cnd = candles[lives];
+    if (cnd) { cnd.lit = false; cnd.flameMat.color.setHex(0x2a2a2a); cnd.light.intensity = 0; }
+    fx.flash('#e0447a', 0.16, 0.4);
+    fx.shake(0.05, 0.28);
+    fx.cameraPunch(0.05, 0.16);
+    if (music.ctx) music.snare(music.ctx.currentTime);
+    if (lives <= 0) {
+      phase = 'done';
+    } else {
+      sequence = genSequence(sequence.length);
+      seqIndex = 0;
+      phase = 'call';
+      stepTimer = 0.7;
+    }
+  }
+
+  function lightTotem(i, isCall) {
+    flash[i] = 1;
+    const c = crystalMeshes[i];
+    const worldPos = new T.Vector3();
+    c.group.getWorldPosition(worldPos);
+    worldPos.y = 0.62;
+    fx.spawnParticles3D(T, scene, worldPos, { color: DIRS[i].color, count: isCall ? 6 : 9, speed: 1.1 });
+    if (!isCall) { fx.cameraPunch(0.025, 0.12); fx.shake(0.014, 0.1); }
+    if (music.ctx) {
+      const time = music.ctx.currentTime;
+      music.note(time, isCall ? 'sine' : 'triangle', DIRS[i].midi, 0.32, isCall ? 0.14 : 0.17, 0.14, true);
+      if (isCall && seqIndex === 0) music.hat(time, false, 0.08);
+    }
+  }
+
+  function advanceResponse(i) {
+    if (i === sequence[seqIndex]) {
+      lightTotem(i, false);
+      seqIndex++;
+      if (seqIndex >= sequence.length) {
+        phase = 'success';
+        stepTimer = 0.9;
+        if (music.ctx) music.sting();
+      }
+    } else {
+      loseLife();
+    }
+  }
+
+  // Full teardown -- called right before every exitMinigame().
+  function cleanup() {
+    fx.disposeParticles3D();
+    scene.traverse((obj) => {
+      if (obj.geometry) obj.geometry.dispose();
+      if (obj.material) {
+        if (Array.isArray(obj.material)) obj.material.forEach((m) => m.dispose());
+        else obj.material.dispose();
+      }
+    });
+    scene.clear();
+  }
+  function leave() { cleanup(); exitMinigame(); }
+
+  // Same view-space hit zones as the hint icons drawn in draw(), so tapping
+  // a totem on mobile works exactly like pressing its arrow key.
+  function dirAt(vx, vy) {
+    const OFFSET = 126, PAD = 116, hy = 330;
+    const zones = [
+      { i: 0, dx: 0, dy: -OFFSET }, { i: 1, dx: OFFSET, dy: 0 },
+      { i: 2, dx: 0, dy: OFFSET }, { i: 3, dx: -OFFSET, dy: 0 },
+    ];
+    const hit = zones.find((z) => Math.abs(vx - (cx + z.dx)) < PAD / 2 && Math.abs(vy - (hy + z.dy)) < PAD / 2);
+    return hit ? hit.i : -1;
+  }
+
+  return {
+    onPointerDown(vx, vy) {
+      if (phase !== 'response') return;
+      const i = dirAt(vx, vy);
+      if (i >= 0) advanceResponse(i);
+    },
+    update(dt) {
+      t += dt;
+      fx.update(dt);
+      fx.updateParticles3D(dt);
+      if (buyPressed) { leave(); return; }
+      for (let i = 0; i < 4; i++) flash[i] = Math.max(0, flash[i] - dt * 2.6);
+
+      if (phase === 'intro') {
+        stepTimer -= dt;
+        if (stepTimer <= 0) { phase = 'call'; seqIndex = 0; stepTimer = 0; }
+      } else if (phase === 'call') {
+        stepTimer -= dt;
+        if (stepTimer <= 0) {
+          lightTotem(sequence[seqIndex], true);
+          seqIndex++;
+          callStepDur = Math.max(0.3, 0.62 - round * 0.018);
+          stepTimer = callStepDur;
+          if (seqIndex >= sequence.length) { phase = 'response'; seqIndex = 0; stepTimer = 0; }
+        }
+      } else if (phase === 'response') {
+        DIRS.forEach((d, i) => {
+          const down = !!keys[d.key];
+          if (down && !prevKey[d.key]) advanceResponse(i);
+          prevKey[d.key] = down;
+        });
+      } else if (phase === 'success') {
+        stepTimer -= dt;
+        if (stepTimer <= 0) {
+          round++;
+          sequence.push(randDir());
+          phase = 'call';
+          seqIndex = 0;
+          stepTimer = 0.5;
+        }
+      } else if (phase === 'done') {
+        if (interactPressed) { leave(); return; }
+      }
+
+      // gentle idle sway, plus miniFX's decaying shake and camera punch
+      const sway = Math.sin(t * 0.4) * 0.05;
+      camera.position.set(
+        CAM_POS.x + sway + fx.shakeOffset.x,
+        CAM_POS.y + fx.shakeOffset.y,
+        CAM_POS.z + fx.cameraPunchOffset
+      );
+      camera.lookAt(CENTER.x, 0.1, CENTER.z);
+
+      mrkbh.position.y = 1.55 + Math.sin(t * 0.9) * 0.05;
+      mrkbh.rotation.y = Math.sin(t * 0.3) * 0.25;
+
+      crystalMeshes.forEach((c, i) => {
+        c.mat.emissive.setHex(flash[i] > 0 ? DIRS[i].color : 0x000000);
+        c.mat.emissiveIntensity = flash[i];
+        c.glow.intensity = flash[i] * 2.2;
+        c.crystal.rotation.y += dt * (0.4 + flash[i]);
+        c.crystal.position.y = c.baseY + Math.sin(t * 1.4 + i) * 0.02 + flash[i] * 0.06;
+      });
+
+      candles.forEach((cnd) => {
+        if (cnd.lit) cnd.flame.scale.y = 1 + Math.sin(t * 12 + Math.random()) * 0.12;
+      });
+    },
+    draw() {
+      renderer.render(scene, camera);
+      ctx.drawImage(cypher3DCanvas, 0, 0);
+      fx.draw();
+
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#f0c33e';
+      ctx.font = 'bold 26px monospace';
+      ctx.fillText('MRKBH\'S CYPHER', cx, 50);
+      ctx.fillStyle = '#f4ecd8';
+      ctx.font = '16px monospace';
+      ctx.fillText(`ROUND ${round}`, cx, 72);
+
+      ctx.font = '18px monospace';
+      ctx.fillStyle = '#e8dcc0';
+      let livesStr = '';
+      for (let i = 0; i < 3; i++) livesStr += i < lives ? '\u2726 ' : '\u2727 ';
+      ctx.fillText(livesStr.trim(), cx, 96);
+
+      // hint icons over each totem, dimmed unless lit
+      const OFFSET = 126, hy = 330;
+      const POS = [
+        { i: 0, dx: 0, dy: -OFFSET }, { i: 1, dx: OFFSET, dy: 0 },
+        { i: 2, dx: 0, dy: OFFSET }, { i: 3, dx: -OFFSET, dy: 0 },
+      ];
+      POS.forEach((p) => {
+        const lit = flash[p.i] > 0;
+        ctx.globalAlpha = lit ? 1 : 0.55;
+        ctx.fillStyle = lit ? DIRS[p.i].hex : '#f4ecd8';
+        ctx.font = 'bold 24px monospace';
+        ctx.fillText(DIRS[p.i].hint, cx + p.dx, hy + p.dy + 8);
+        ctx.globalAlpha = 1;
+      });
+
+      ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#f0c33e' : '#f4ecd8';
+      ctx.font = 'bold 18px monospace';
+      if (phase === 'intro') ctx.fillText('MRKBH RAISES THE PEN...', cx, 560);
+      else if (phase === 'call') ctx.fillText('WATCH THE CIRCLE...', cx, 560);
+      else if (phase === 'response') ctx.fillText('- ANSWER THE CALL: \u25B2\u25B6\u25BC\u25C0 OR TAP A TOTEM -', cx, 560);
+      else if (phase === 'success') ctx.fillText('YES -- THE CYPHER GROWS', cx, 560);
+      else if (phase === 'done') ctx.fillText(`THE CIRCLE GOES QUIET -- ROUND ${round} -- PRESS E TO LEAVE`, cx, 560);
+
+      ctx.fillStyle = '#6a6070';
+      ctx.font = '14px monospace';
       ctx.fillText('X to walk away anytime', cx, 584);
     },
   };
@@ -10305,6 +10672,13 @@ const shops = {
     // hides any of the swamp's five records (moss, frog, choir, swampdrum,
     // honeysuckle). See SOUL_SHACK_JUNK above.
     crates: [ { soulShackSeed: 0 }, { soulShackSeed: 1 } ],
+    // MRKBH's Cypher -- a four-totem call-and-response rhythm game, set on
+    // the open floor at (6,6): clear of the counter table (row 3), the gear
+    // tiles (3,4)/(10,4), the crates (1,4)/(1,6), and the door (6,9). See
+    // MINIGAME_ACTIONS.soulcypher/createSoulCypherGame().
+    minigames: [
+      { id: 'soulcypher', tx: 6, ty: 6, label: 'STEP INTO THE CYPHER' },
+    ],
   }),
 };
 
