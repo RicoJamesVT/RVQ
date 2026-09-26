@@ -9055,6 +9055,12 @@ boxgutsImg.src = 'assets/boxguts.png';
 const travImg = new Image();
 travImg.src = 'assets/trav.png';
 
+// ES-K -- veteran Burlington hip hop producer, beatmaker, and all-around
+// good human, posted up inside BURLINGTON RECORDS out in the swamp. Same
+// pre-drawn treatment as the rest of the shop npcs above.
+const esKImg = new Image();
+esKImg.src = 'assets/es-k.png';
+
 // MRKBH -- the keeper of THE SOUL SHACK out in the swamp: a mysterious,
 // mystical emcee, deadly with the pen. Red ski mask, black thorn-wreath
 // hoodie, olive cargos, tan work boots. Drawn as a shop keeper (see
@@ -9062,6 +9068,19 @@ travImg.src = 'assets/trav.png';
 // in SHOP_NPC_IMAGES.
 const mrkbhImg = new Image();
 mrkbhImg.src = 'assets/mrkbh.png';
+
+// JOHNNY -- the keeper of JOHNNY'S FUN PARK out in the swamp: big, loud,
+// and always game for whatever's next. Red "ATOMIC SKI TEAM" cap over a
+// hood, safety-glasses goggles, a bushy mustache, a puffy blue ski jacket,
+// camo snow pants, and a pair of ski poles he never seems to put down --
+// the guy dresses like every day out here is a powder day, on the water
+// or off it. He's lived at the fun park longer than anyone can remember
+// and runs the whole boardwalk (Digger, Johnny Slides, Dust Racing, the
+// pool out back) as one long-running excuse for shenanigans. Drawn as a
+// shop keeper (see keeperImgs.JOHNNY below), not a roaming npc, so he
+// doesn't need an entry in SHOP_NPC_IMAGES.
+const johnnyImg = new Image();
+johnnyImg.src = 'assets/johnny.png';
 
 // ---------------------------------------------------------------- maps
 const SOLID = new Set(['#', 'w', 'f', '~', 'W', 'T', 'C', 'c', 'K', 'J', 'S', 'A', 'N', 'F', 'R', 'V', 'Z', 'U', 'X']);
@@ -10505,6 +10524,25 @@ const shops = {
     // Four crates: Honeysuckle Lead (moved in off the boardwalk spur, see
     // makeSwamp()) plus three junk crates.
     crates: [ { junkSeed: 0 }, { record: 'honeysuckle' }, { junkSeed: 1 }, { junkSeed: 2 } ],
+    // ES-K -- veteran Burlington hip hop producer, beatmaker, and all-around
+    // good human, posted up on the open floor at (10,5): clear of the
+    // counter table (row 3), the corner crates (1,4)/(12,4)/(1,6)/(12,6),
+    // and the minigame row at y=7/8. Same "full pre-drawn image, feet
+    // anchored to the floor line" treatment as Kanga/Zach/etc -- see
+    // SHOP_NPC_IMAGES/drawShopImageNpcs.
+    npcs: [
+      { id: 'esk', tx: 10, ty: 5, name: 'ES-K', sprite: 'esk',
+        lines: [
+          'Es-K. Been producing beats out of Burlington since before half this crowd was collecting wax.',
+          'Every crate in this shop has a story in it somewhere. You just gotta be willing to get your hands dusty.',
+          'Sampling\'s not luck, it\'s patience. You put in the digging, the record puts in the rest.',
+          () => collected.has(recKey('swamp', 'honeysuckle'))
+            ? 'Honeysuckle Lead, huh? Good ear. That\'s exactly the kind of thing that turns into a beat nobody forgets.'
+            : 'Keep digging. That one you\'re after is in here somewhere -- it always is if you don\'t quit early.',
+          'The dig is the whole game. Slow down, flip through everything, trust your ears over your eyes.',
+          'It\'s always worth the dig. Every single time.',
+        ] },
+    ],
     // Vinyl Snake cabinet, on open floor -- same (9,7) "clear of the
     // counter table (row 3) and the corner crates (1,4)/(1,6)/(12,4)/
     // (12,6)" spot Pure Pop Records uses for Crate Digging, since this
@@ -10555,12 +10593,21 @@ const shops = {
     floor: '#8a6a2e', plank: '#6a4e20', wallColor: '#2a1c10',
     buntingFlags: true,
     carnivalProps: [[2, 7], [11, 7]],
-    keeper: { name: 'JOHNNY', shirt: '#e0a030', skin: '#8a6a48',
+    // JOHNNY -- big, playful, and permanently up for whatever's next. He
+    // lives here at the fun park and runs every bit of boardwalk chaos
+    // (Digger, Johnny Slides, Dust Racing, the pool out back) as its
+    // self-appointed ringleader. `shirt`/`skin` only matter for the
+    // procedural fallback sprite (drawn until assets/johnny.png finishes
+    // loading), set to his blue ski jacket and skin tone.
+    keeper: { name: 'JOHNNY', shirt: '#2255c0', skin: '#e0a878',
       lines: [
-        'Welcome to Johnny\'s Fun Park! Boardwalk games, boardwalk prizes, boardwalk plumbing -- don\'t ask.',
+        'JOHNNY\'s the name, shenanigans is the game! Welcome to my fun park!',
+        'I live right here, believe it or not. Never saw the point of going home when home is a boardwalk full of games.',
         'Built this whole place myself. Well -- me and whoever I could talk into carrying lumber.',
         'Dig through them crates if you want. I stock the fun park the same way I run it: mostly by accident.',
-        'Got a pool and a deck out back too. My cousin PADDLES keeps an eye on it.',
+        'Got a pool and a deck out back too. My cousin PADDLES keeps an eye on it -- somebody\'s gotta be the responsible one.',
+        'Ski cap in the swamp, I know, I know. A guy\'s gotta stay ready. You never know when adventure\'s gonna show up.',
+        'Digger, Johnny Slides, Dust Racing -- pick your poison. I named one after myself, in case that wasn\'t obvious.',
       ],
       foundLine: 'Frog Chorus Stab! Knew I filed that one somewhere fun.' },
     // Three crates: the swamp's Frog Chorus Stab 45 (moved in here from the
@@ -24498,6 +24545,10 @@ keeperImgs.BOXGUTS = boxgutsImg;
 // art is declared up with the other pre-drawn characters and just registered
 // here so drawKeeper() picks it up by name.
 keeperImgs.MRKBH = mrkbhImg;
+// JOHNNY'S FUN PARK's keeper, JOHNNY -- same idea as MRKBH above: the art
+// is declared up with the other pre-drawn characters and just registered
+// here so drawKeeper() picks it up by name.
+keeperImgs.JOHNNY = johnnyImg;
 
 function drawAnt(cx, cy, s) {
   // A white ant silhouette (the Anthill Collective mark), drawn on SK1's hat.
@@ -24614,7 +24665,7 @@ function drawKeeper(k) {
 // anchored to the tile's floor line — no procedural fallback, since there's
 // no simple shape that stands in for this art; it just waits for the image
 // to finish loading.
-const SHOP_NPC_IMAGES = { kanga: kangaImg, truth: truthImg, bill: billImg, rza: rzaImg, gza: gzaImg, zach: zachImg, humble: humbleImg, hicks: hicksImg, mavstar: mavstarImg, boxguts: boxgutsImg, trav: travImg };
+const SHOP_NPC_IMAGES = { kanga: kangaImg, truth: truthImg, bill: billImg, rza: rzaImg, gza: gzaImg, zach: zachImg, humble: humbleImg, hicks: hicksImg, mavstar: mavstarImg, boxguts: boxgutsImg, trav: travImg, esk: esKImg };
 
 function drawShopImageNpcs(map) {
   if (!map.npcs) return;
