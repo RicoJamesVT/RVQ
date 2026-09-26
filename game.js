@@ -16,63 +16,98 @@
 // way -- a plain relative path, no network request -- so it plays
 // identically with or without a connection.
 (function playIntroVideo() {
-  const v = document.createElement('video');
-  v.src = 'assets/M85_Games_SplashVid-002.mp4';
-  v.preload = 'auto';
-  v.playsInline = true; // iOS: play inline instead of forcing fullscreen
-  v.setAttribute('webkit-playsinline', 'true');
-  v.disablePictureInPicture = true;
-  v.controls = false;
-  // Full-viewport, above absolutely everything else on the page, solid
-  // black backdrop so there's no flash of the page behind it while the
-  // video's first frame is decoding.
-  v.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;'
-    + 'object-fit:contain;background:#000;z-index:2147483647;';
-  document.body.appendChild(v);
+  // Everything below is best-effort cosmetic polish layered in front of the
+  // real game. If ANY of it throws for any reason (missing document.body at
+  // the point this script runs, a browser that rejects video creation, a
+  // DOM API that isn't available, etc.), that must never be allowed to take
+  // down the rest of the script with it -- an uncaught exception here would
+  // abort this whole top-level IIFE and silently skip canvas setup and
+  // requestAnimationFrame(frame) at the bottom of the file, permanently
+  // freezing the page on whatever was last painted (i.e. exactly the
+  // "frozen on the splash screen" symptom this is guarding against). So the
+  // entire feature is wrapped in try/catch and falls through to normal
+  // startup on any failure.
+  try {
+    if (!document.body) return; // nothing sane to append to; just skip the intro
 
-  // Same visible SKIP button as the character-intro splash later on, so
-  // the player is never just staring at a black/loading screen wondering
-  // whether anything is happening -- there's always an obvious way out.
-  const skipBtn = document.createElement('div');
-  skipBtn.textContent = 'SKIP \u25b8';
-  skipBtn.style.cssText = 'position:fixed;right:14px;bottom:14px;'
-    + 'padding:8px 16px;padding-bottom:calc(8px + env(safe-area-inset-bottom, 0px));'
-    + 'background:rgba(20,16,26,0.55);border:1.5px solid rgba(244,236,216,0.55);'
-    + 'border-radius:8px;color:#f4ecd8;font:bold 12px monospace;letter-spacing:0.5px;'
-    + '-webkit-user-select:none;user-select:none;z-index:2147483647;cursor:pointer;';
-  document.body.appendChild(skipBtn);
+    const v = document.createElement('video');
+    v.src = 'assets/M85_Games_SplashVid-002.mp4';
+    v.preload = 'auto';
+    v.playsInline = true; // iOS: play inline instead of forcing fullscreen
+    v.setAttribute('webkit-playsinline', 'true');
+    v.disablePictureInPicture = true;
+    v.controls = false;
+    // Full-viewport, above absolutely everything else on the page, solid
+    // black backdrop so there's no flash of the page behind it while the
+    // video's first frame is decoding.
+    v.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;'
+      + 'object-fit:contain;background:#000;z-index:2147483647;';
+    document.body.appendChild(v);
 
-  let done = false;
-  function finish() {
-    if (done) return;
-    done = true;
-    clearTimeout(safety);
-    v.pause();
-    v.remove();
-    skipBtn.remove();
-  }
-  // Skippable with a tap/click or any key, same as every other
-  // "press to continue" screen elsewhere in this game.
-  v.addEventListener('click', finish);
-  v.addEventListener('ended', finish);
-  v.addEventListener('error', finish); // missing/corrupt file -> never block startup on it
-  skipBtn.addEventListener('click', finish);
-  skipBtn.addEventListener('touchend', (e) => { e.preventDefault(); finish(); });
-  window.addEventListener('keydown', finish, { once: true });
-  // Hard safety net: if the browser blocks autoplay entirely or the file
-  // is unexpectedly slow, don't strand the player on a black screen.
-  const safety = setTimeout(finish, 9000);
+    // Same visible SKIP button as the character-intro splash later on, so
+    // the player is never just staring at a black/loading screen wondering
+    // whether anything is happening -- there's always an obvious way out.
+    const skipBtn = document.createElement('div');
+    skipBtn.textContent = 'SKIP \u25b8';
+    skipBtn.style.cssText = 'position:fixed;right:14px;bottom:14px;'
+      + 'padding:8px 16px;padding-bottom:calc(8px + env(safe-area-inset-bottom, 0px));'
+      + 'background:rgba(20,16,26,0.55);border:1.5px solid rgba(244,236,216,0.55);'
+      + 'border-radius:8px;color:#f4ecd8;font:bold 12px monospace;letter-spacing:0.5px;'
+      + '-webkit-user-select:none;user-select:none;z-index:2147483647;cursor:pointer;';
+    document.body.appendChild(skipBtn);
 
-  // Autoplay-with-sound requires a prior user gesture in every major
-  // browser; muted autoplay is always allowed. Try WITH sound first, and
-  // only fall back to muted if that's rejected, so the video still starts
-  // instantly instead of sitting on a black frame waiting on a click.
-  const tryPlay = v.play();
-  if (tryPlay && typeof tryPlay.catch === 'function') {
-    tryPlay.catch(() => {
-      v.muted = true;
-      v.play().catch(finish); // if even muted autoplay fails, just skip straight in
-    });
+    let done = false;
+    function finish() {
+      if (done) return;
+      done = true;
+      try { clearTimeout(safety); } catch (e) {}
+      try { v.pause(); } catch (e) {}
+      try { v.remove(); } catch (e) {}
+      try { skipBtn.remove(); } catch (e) {}
+    }
+    // Skippable with a tap/click or any key, same as every other
+    // "press to continue" screen elsewhere in this game.
+    v.addEventListener('click', finish);
+    v.addEventListener('ended', finish);
+    v.addEventListener('error', finish); // missing/corrupt file -> never block startup on it
+    skipBtn.addEventListener('click', finish);
+    skipBtn.addEventListener('touchend', (e) => { e.preventDefault(); finish(); });
+    window.addEventListener('keydown', finish, { once: true });
+    // Hard safety net: if the browser blocks autoplay entirely or the file
+    // is unexpectedly slow, don't strand the player on a black screen.
+    const safety = setTimeout(finish, 9000);
+
+    // Autoplay-with-sound requires a prior user gesture in every major
+    // browser; muted autoplay is always allowed. Try WITH sound first, and
+    // only fall back to muted if that's rejected, so the video still starts
+    // instantly instead of sitting on a black frame waiting on a click.
+    // v.play() can reject its promise OR throw synchronously depending on
+    // the browser/error type, so both paths are guarded and both funnel
+    // into finish() rather than being able to strand the overlay onscreen.
+    try {
+      const tryPlay = v.play();
+      if (tryPlay && typeof tryPlay.catch === 'function') {
+        tryPlay.catch(() => {
+          try {
+            v.muted = true;
+            const retry = v.play();
+            if (retry && typeof retry.catch === 'function') {
+              retry.catch(finish); // if even muted autoplay fails, just skip straight in
+            }
+          } catch (e) {
+            finish();
+          }
+        });
+      }
+    } catch (e) {
+      finish(); // synchronous play() failure -> don't strand the overlay, skip straight in
+    }
+  } catch (err) {
+    // Cosmetic feature failed entirely; log for diagnostics and let the
+    // real game (canvas setup, splash, game loop) start normally below.
+    if (typeof console !== 'undefined' && console.warn) {
+      console.warn('Intro video skipped due to an error:', err);
+    }
   }
 })();
 
