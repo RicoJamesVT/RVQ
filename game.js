@@ -1378,8 +1378,11 @@ const MINIGAME_ACTIONS = {
   // instead of scrolling lanes or a drum-pad cross, four totems glow in a
   // growing Simon-Says sequence and the player answers back on the arrow
   // keys, over MRKBH's own four-note cypher scale. See
-  // createSoulCypherGame() above.
-  soulcypher: () => enterMinigame(createSoulCypherGame()),
+  // createSoulCypherGame() above. Routed through createSoulCypherLoader()
+  // (not straight into createSoulCypherGame()) so Three.js is guaranteed
+  // loaded before the scene touches window.THREE -- see the loader's own
+  // comment for why.
+  soulcypher: () => enterMinigame(createSoulCypherLoader()),
 };
 
 // ---- trophy case: personal bests for the 8 scored mini-games --------------
@@ -3822,6 +3825,64 @@ function createBeatJam3DGame() {
 // Renders to an offscreen WebGL canvas (see getMinigame3DRenderer())
 // blitted into the main 2D canvas each frame, same as Beat Jam/Mic Drop 3D
 // above, so input handling, CSS scaling, and the rAF loop are all untouched.
+// ---- Soul Cypher loading gate -----------------------------------------------
+// Every other 3D mini-game in this file (darts, beat match, beat jam, mic
+// drop, whack-a-pigeon, crate digging, speed sweep, scratch DJ, tightrope,
+// bayou boogie) is launched through createModeSelectMenu(), which calls
+// loadThreeJS() and polls threeLoadState until it's 'ready' before ever
+// building a Three.js scene. MRKBH's Cypher has no classic 2D fallback, so
+// it can't just route through that same helper (it requires a
+// createClassic() to fall back to on a load error). This is that same
+// wait-for-Three.js pattern, trimmed down for a 3D-only mini-game: entering
+// the Cypher before any other 3D mini-game has loaded window.THREE this
+// session used to call createSoulCypherGame() directly, which touched
+// window.THREE (undefined) immediately and threw -- and since that throw
+// happened inside doInteract(), called straight from the main update()/
+// requestAnimationFrame loop with no try/catch, it silently killed the
+// entire game loop (the freeze). Waiting here for threeLoadState === 'ready'
+// before calling createSoulCypherGame() fixes that.
+function createSoulCypherLoader() {
+  loadThreeJS();
+  let phase = threeLoadState === 'error' ? 'error' : 'loading'; // 'loading' | 'error'
+  let loadDots = 0;
+  const cx = VIEW_W / 2;
+  return {
+    update(dt) {
+      if (phase === 'loading') {
+        loadDots += dt;
+        if (threeLoadState === 'ready') { activeMinigame = createSoulCypherGame(); return; }
+        if (threeLoadState === 'error') phase = 'error';
+        if (buyPressed) exitMinigame();
+      } else if (phase === 'error') {
+        if (interactPressed || buyPressed) exitMinigame();
+      }
+    },
+    draw() {
+      ctx.fillStyle = 'rgba(8,6,12,0.9)';
+      ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#f0c33e';
+      ctx.font = 'bold 26px monospace';
+      ctx.fillText('MRKBH\'S CYPHER', cx, 260);
+      if (phase === 'loading') {
+        ctx.fillStyle = '#f4ecd8';
+        ctx.font = 'bold 19px monospace';
+        ctx.fillText('THE CIRCLE IS FORMING' + '.'.repeat(1 + (Math.floor(loadDots * 3) % 3)), cx, 300);
+        ctx.fillStyle = '#6a6070';
+        ctx.font = '15px monospace';
+        ctx.fillText('X to walk away', cx, 340);
+      } else {
+        ctx.fillStyle = '#c04070';
+        ctx.font = 'bold 19px monospace';
+        ctx.fillText('THE CIRCLE WON\'T FORM', cx, 300);
+        ctx.fillStyle = '#6a6070';
+        ctx.font = '15px monospace';
+        ctx.fillText('E or X to walk away', cx, 340);
+      }
+    },
+  };
+}
+
 function createSoulCypherGame() {
   const T = window.THREE;
   const { renderer, canvas: cypher3DCanvas } = getMinigame3DRenderer('soulcypher');
@@ -9451,6 +9512,23 @@ function makeSwamp() {
     for (let x = 1; x < W - 1; x++)
       if (g[y][x] === '.' && rng() < 0.10) g[y][x] = '#';
 
+  // Thin out trees around JOHNNY'S FUN PARK / JOHNNY'S POOL and around the
+  // TRUTH LAB pool/garden clearing -- the swamp-wide 10% sprinkle above
+  // was landing enough trees in these two clearings that they were
+  // cramped and annoying to walk through. Knock out most (not all) of the
+  // trees in just these two zones so there's still a little greenery but
+  // plenty of open path to move around in; everywhere else in the swamp
+  // keeps its normal tree density.
+  const TREE_THIN_ZONES = [
+    [JFP_CLEAR_X, JFP_CLEAR_Y, JFP_CLEAR_W, JFP_CLEAR_H],
+    [TL_CLEAR_X, TL_CLEAR_Y, TL_CLEAR_W, TL_CLEAR_H],
+  ];
+  for (const [zx, zy, zw, zh] of TREE_THIN_ZONES) {
+    for (let y = zy; y < zy + zh; y++)
+      for (let x = zx; x < zx + zw; x++)
+        if (g[y][x] === '#' && rng() < 0.75) g[y][x] = '.';
+  }
+
   // GUT HUT -- the swamp's first building: BOXGUTS' hideaway art studio,
   // tucked into the clearing carved out above. Built the same way
   // makeOverworld()'s building() helper works (solid 'w' walls, one
@@ -10546,7 +10624,7 @@ const shops = {
     // ES-K -- veteran Burlington hip hop producer, beatmaker, and all-around
     // good human, posted up on the open floor at (10,5): clear of the
     // counter table (row 3), the corner crates (1,4)/(12,4)/(1,6)/(12,6),
-    // and the minigame row at y=7/8. Same "full pre-drawn image, feet
+    // and the four corner-spread minigame cabinets. Same "full pre-drawn image, feet
     // anchored to the floor line" treatment as Kanga/Zach/etc -- see
     // SHOP_NPC_IMAGES/drawShopImageNpcs.
     npcs: [
@@ -10562,42 +10640,43 @@ const shops = {
           'It\'s always worth the dig. Every single time.',
         ] },
     ],
-    // Vinyl Snake cabinet, on open floor -- same (9,7) "clear of the
-    // counter table (row 3) and the corner crates (1,4)/(1,6)/(12,4)/
-    // (12,6)" spot Pure Pop Records uses for Crate Digging, since this
-    // shop shares that same default layout. Full standalone web app, same
-    // "full-screen DOM overlay with an <iframe>" pattern as chess/the beat
-    // bot/the organ/mini golf/the blackbook/Gator Grooves -- see
+    // Four cabinets, spread into the four corners of the open floor below
+    // the counter table (row 3) instead of bunched into one or two rows --
+    // each sits two tiles in from a side wall, clear of the corner crates
+    // (1,4)/(1,6)/(12,4)/(12,6), ES-K at (10,5), and the door (6,9), with
+    // plenty of walking room between all four.
+    //
+    // Bayou Boogie cabinet, upper-left at (3,4) -- clear of the counter
+    // table above and the (1,4) crate to its left. Real from-scratch
+    // canvas mini-game (plus Three.js remake), not a bundled standalone
+    // app -- see MINIGAME_ACTIONS.bayouboogie/createBayouBoogieModeSelect().
+    //
+    // Rico's Mini DAW cabinet, upper-right at (10,4) -- mirrors Bayou
+    // Boogie across the room, clear of the counter table above and the
+    // (12,4) crate to its right. Full standalone web app, same
+    // "full-screen DOM overlay with an <iframe>" pattern as Vinyl
+    // Snake/Bayou Break Station/Rico1200 above -- see
+    // MINIGAME_ACTIONS.ricodaw/openRicoDawApp().
+    //
+    // Vinyl Snake cabinet, lower-left at (3,8) -- clear of the (1,6) crate
+    // and well off to the side of the door (6,9). Full standalone web app,
+    // same "full-screen DOM overlay with an <iframe>" pattern as chess/the
+    // beat bot/the organ/mini golf/the blackbook/Gator Grooves -- see
     // MINIGAME_ACTIONS.vinylsnake/openVinylSnakeApp().
     //
-    // Bayou Boogie cabinet, mirrored on open floor at (3,7) -- same
-    // clearance logic as Vinyl Snake above, just the opposite side of the
-    // room, clear of the counter table (row 3) and the corner crates
-    // (1,4)/(1,6)/(12,4)/(12,6). Real from-scratch canvas mini-game (plus
-    // Three.js remake), not a bundled standalone app -- see
-    // MINIGAME_ACTIONS.bayouboogie/createBayouBoogieModeSelect().
-    // Rico's Mini DAW cabinet, centered on open floor at (6,7), evenly
-    // flanked by Bayou Boogie (3,7) and Vinyl Snake (9,7) along the same
-    // row -- clear of the counter table (row 3), the corner crates
-    // (1,4)/(1,6)/(12,4)/(12,6), and the door (6,9). Full standalone web
-    // app, same "full-screen DOM overlay with an <iframe>" pattern as
-    // Vinyl Snake/Bayou Break Station/Rico1200 above -- see
-    // MINIGAME_ACTIONS.ricodaw/openRicoDawApp().
-    // Waveforms Wall cabinet, on open floor at (6,8) -- one row south of
-    // the Vinyl Snake/Bayou Boogie/Rico's Mini DAW row (row 7), directly
-    // above the door (6,9), same "row 8 is otherwise empty floor, one
-    // tile north of the door" placement Johnny's Fun Park uses for Dust
-    // Racing. Full standalone web app (its own canvas waveform renderer
-    // plus a WebAudio oscillator so the shapes can be heard as well as
-    // seen, no external assets and no network calls, so it works with no
-    // connection), same "full-screen DOM overlay with an <iframe>"
-    // pattern as Vinyl Snake/Bayou Boogie/Rico's Mini DAW above -- see
+    // Waveforms Wall cabinet, lower-right at (10,8) -- mirrors Vinyl Snake
+    // across the room, clear of the (12,6) crate and the door. Full
+    // standalone web app (its own canvas waveform renderer plus a WebAudio
+    // oscillator so the shapes can be heard as well as seen, no external
+    // assets and no network calls, so it works with no connection), same
+    // "full-screen DOM overlay with an <iframe>" pattern as Vinyl
+    // Snake/Bayou Boogie/Rico's Mini DAW above -- see
     // MINIGAME_ACTIONS.waveforms/openWaveformPresentationApp().
     minigames: [
-      { id: 'vinylsnake', tx: 9, ty: 7, label: 'PLAY VINYL SNAKE' },
-      { id: 'bayouboogie', tx: 3, ty: 7, label: 'PLAY BAYOU BOOGIE' },
-      { id: 'ricodaw', tx: 6, ty: 7, label: "PLAY RICO'S MINI DAW" },
-      { id: 'waveforms', tx: 6, ty: 8, label: 'SEE THE WAVEFORMS' },
+      { id: 'vinylsnake', tx: 3, ty: 8, label: 'PLAY VINYL SNAKE' },
+      { id: 'bayouboogie', tx: 3, ty: 4, label: 'PLAY BAYOU BOOGIE' },
+      { id: 'ricodaw', tx: 10, ty: 4, label: "PLAY RICO'S MINI DAW" },
+      { id: 'waveforms', tx: 10, ty: 8, label: 'SEE THE WAVEFORMS' },
     ],
   }),
   // JOHNNY'S FUN PARK -- the swamp's fourth building: a little boardwalk
