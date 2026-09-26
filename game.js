@@ -1302,9 +1302,11 @@ const MINIGAME_ACTIONS = {
   // Grooves/.../Digger above (own DOM/iframe overlay, bundled locally --
   // its own bundled game engine and sprite sheets, all inlined as data
   // URIs, no external assets and no network calls -- so it works with no
-  // connection). See openJohnnySlidesApp()/createJohnnySlidesOverlay()
-  // below.
-  johnnyslides: () => openJohnnySlidesApp(),
+  // connection). Same "skippable intro video, then a still key-art splash,
+  // then E opens the actual overlay" shape as KANGAIDEN/TRUTH KNOCKS -- see
+  // openJohnnySlidesSplash()/openJohnnySlidesApp()/
+  // createJohnnySlidesOverlay() below.
+  johnnyslides: () => openJohnnySlidesSplash(),
   // Dust Racing -- a top-down arcade racer (Catmull-Rom dirt track, dust/
   // tire-mark trails, a short-burst nitro boost, 7 AI racers), tucked
   // inside JOHNNY'S FUN PARK right alongside Digger and Johnny Slides (see
@@ -8950,6 +8952,29 @@ truthKnocksSplashImg.src = 'assets/truth_knocks_splash.png';
 // leftover playback state from the previous run.
 const TRUTH_KNOCKS_SPLASH_VIDEO_SRC = 'assets/TRUTH_KNOCKS_splash_vid.mp4';
 
+// JOHNNY SLIDES key-art splash shown by drawJohnnySlidesSplash() the same
+// way truthKnocksSplashImg/kangaidenSplashImg are above -- preloaded here so
+// it's already decoded and ready by the time the intro video finishes and
+// openJohnnySlidesSplash() flips state, with no first-frame pop-in. Plain
+// <img>, no fetch()/blob: URL involved, so it's cached and served like any
+// other same-origin image asset for offline handling. See
+// MINIGAME_ACTIONS.johnnyslides/openJohnnySlidesSplash()/
+// drawJohnnySlidesSplash() below.
+const johnnySlidesSplashImg = new Image();
+johnnySlidesSplashImg.src = 'assets/JS_splash.png';
+
+// JOHNNY SLIDES intro video -- plays once, full-screen, the instant the
+// player steps up to the cabinet, before the still key-art splash above and
+// the actual iframe. Same "plain local file, no fetch()/blob: URL, no
+// network request" pattern as TRUTH_KNOCKS_SPLASH_VIDEO_SRC/
+// KANGAIDEN_SPLASH_VIDEO_SRC above, so it plays identically online or off.
+// Just the source path is declared up here (mirroring
+// johnnySlidesSplashImg's early `.src` assignment); the actual <video>
+// element is built fresh each time by playJohnnySlidesSplashVideo() below,
+// so replaying it (walking away and back) never has to fight leftover
+// playback state from the previous run.
+const JOHNNY_SLIDES_SPLASH_VIDEO_SRC = 'assets/JS_splash_vid.mp4';
+
 const purePopPosterImg = new Image();
 purePopPosterImg.src = 'assets/purepop_poster.png';
 
@@ -11034,7 +11059,7 @@ const player = {
   tempItem: null, tempItemTimer: 0,
 };
 const collected = new Set();
-let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | danceParty | portal | fifa | minigame | hotkeys | crate | photo | lab | labLocked | shopBackLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | qsdBalanceApp | vinylSnakeApp | waveformApp | bayouBreakApp | freqAltarApp | drumPatternDocApp | gatorJamSlamApp | swampCaveApp | vocalChopBoothApp | vtDirtApp | penaltyKingsApp | digDashApp | digOnApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | diggerApp | hyperSwimApp | connectFourApp | syrupRoadsApp | clawMachineApp | kangaidenVideo | kangaidenSplash | kangaidenApp | hiphopLibraryApp | truthKnocksVideo | truthKnocksSplash | truthKnocksApp | johnnySlidesApp | dustRacingApp
+let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | danceParty | portal | fifa | minigame | hotkeys | crate | photo | lab | labLocked | shopBackLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | qsdBalanceApp | vinylSnakeApp | waveformApp | bayouBreakApp | freqAltarApp | drumPatternDocApp | gatorJamSlamApp | swampCaveApp | vocalChopBoothApp | vtDirtApp | penaltyKingsApp | digDashApp | digOnApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | diggerApp | hyperSwimApp | connectFourApp | syrupRoadsApp | clawMachineApp | kangaidenVideo | kangaidenSplash | kangaidenApp | hiphopLibraryApp | truthKnocksVideo | truthKnocksSplash | truthKnocksApp | johnnySlidesVideo | johnnySlidesSplash | johnnySlidesApp | dustRacingApp
 // State to snap back to when the [H] hotkeys popup is closed -- currently
 // always 'play' since that's the only state H can be opened from, but kept
 // as its own var in case another state wants to offer the popup later.
@@ -11729,7 +11754,7 @@ const music = {
 // enter/exit call sites, so it can't drift out of sync no matter which
 // of the several ways the player backs out of the lab popup (keyboard
 // [X], on-screen [X] button, closing the instrument iframe, etc.).
-const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'qsdBalanceApp', 'vinylSnakeApp', 'waveformApp', 'bayouBreakApp', 'freqAltarApp', 'drumPatternDocApp', 'gatorJamSlamApp', 'swampCaveApp', 'vocalChopBoothApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'digOnApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'johnnySlidesApp', 'dustRacingApp', 'hyperSwimApp', 'connectFourApp', 'syrupRoadsApp', 'clawMachineApp', 'kangaidenVideo', 'kangaidenApp', 'hiphopLibraryApp', 'danceParty', 'truthKnocksVideo', 'truthKnocksApp']);
+const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'qsdBalanceApp', 'vinylSnakeApp', 'waveformApp', 'bayouBreakApp', 'freqAltarApp', 'drumPatternDocApp', 'gatorJamSlamApp', 'swampCaveApp', 'vocalChopBoothApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'digOnApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'johnnySlidesApp', 'dustRacingApp', 'hyperSwimApp', 'connectFourApp', 'syrupRoadsApp', 'clawMachineApp', 'kangaidenVideo', 'kangaidenApp', 'hiphopLibraryApp', 'danceParty', 'truthKnocksVideo', 'truthKnocksApp', 'johnnySlidesVideo']);
 function syncMusicDuck() {
   const minigameDucked = state === 'minigame' && activeMinigame && activeMinigame.musicDucked;
   music.duck(DUCKED_STATES.has(state) || !!minigameDucked);
@@ -17026,6 +17051,119 @@ let johnnySlidesOverlayEl = null, johnnySlidesOverlayFrame = null;
 let johnnySlidesReturnState = 'play';
 let johnnySlidesHistoryPushed = false; // mirrors diggerHistoryPushed/labHistoryPushed/.../filterLabHistoryPushed -- see openJohnnySlidesApp()/closeJohnnySlidesApp()
 
+// Splash return state, remembered the moment the player steps up to the
+// cabinet (before the video/splash swap `state` a couple times) -- same
+// role as truthKnocksSplashReturnState/kangaidenSplashReturnState above.
+let johnnySlidesSplashReturnState = 'play';
+
+// Full-screen, skippable video that plays once before the still key-art
+// splash below -- same shape as playTruthKnocksSplashVideo()/
+// playKangaidenSplashVideo() above (skip button in the corner; a click/tap,
+// the [Skip] button, `ended`, `error`, or any keypress all dismiss it the
+// same way; sound-first-then-muted-fallback autoplay, since browsers only
+// allow autoplay-with-sound right after a user gesture like the E-press/tap
+// that got us here; and a hard safety timeout so a slow or blocked file
+// never strands the player on a black screen) -- parameterized with an
+// `onDone` callback the same way. `onDone` fires exactly once, however
+// playback ends, and is what actually hands off to the rest of the Johnny
+// Slides flow (see openJohnnySlidesSplash() below).
+function playJohnnySlidesSplashVideo(onDone) {
+  const v = document.createElement('video');
+  v.src = JOHNNY_SLIDES_SPLASH_VIDEO_SRC;
+  v.preload = 'auto';
+  v.playsInline = true; // iOS: play inline instead of forcing fullscreen
+  v.setAttribute('webkit-playsinline', 'true');
+  v.disablePictureInPicture = true;
+  v.controls = false;
+  v.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;'
+    + 'object-fit:contain;background:#000;z-index:2147483647;';
+  document.body.appendChild(v);
+
+  const skipBtn = document.createElement('div');
+  skipBtn.textContent = 'SKIP \u25b8';
+  skipBtn.style.cssText = 'position:fixed;right:14px;bottom:14px;'
+    + 'padding:8px 16px;padding-bottom:calc(8px + env(safe-area-inset-bottom, 0px));'
+    + 'background:rgba(20,16,26,0.55);border:1.5px solid rgba(244,236,216,0.55);'
+    + 'border-radius:8px;color:#f4ecd8;font:bold 12px monospace;letter-spacing:0.5px;'
+    + '-webkit-user-select:none;user-select:none;z-index:2147483647;cursor:pointer;';
+  document.body.appendChild(skipBtn);
+
+  let done = false;
+  function finish() {
+    if (done) return;
+    done = true;
+    clearTimeout(safety);
+    v.pause();
+    v.remove();
+    skipBtn.remove();
+    onDone();
+  }
+  v.addEventListener('click', finish);
+  v.addEventListener('ended', finish);
+  v.addEventListener('error', finish); // missing/corrupt file -> never block the game on it
+  skipBtn.addEventListener('click', finish);
+  skipBtn.addEventListener('touchend', (e) => { e.preventDefault(); finish(); });
+  window.addEventListener('keydown', finish, { once: true });
+  const safety = setTimeout(finish, 9000);
+
+  const tryPlay = v.play();
+  if (tryPlay && typeof tryPlay.catch === 'function') {
+    tryPlay.catch(() => {
+      v.muted = true;
+      v.play().catch(finish); // if even muted autoplay fails, just skip straight in
+    });
+  }
+}
+
+// Kicks off the video and switches state to 'johnnySlidesVideo' (blocking
+// ordinary input/movement the same way every other overlay state here
+// does), then -- once playJohnnySlidesSplashVideo()'s onDone fires -- hands
+// off to the still key-art splash (state = 'johnnySlidesSplash'). Called
+// from MINIGAME_ACTIONS.johnnyslides (E on the cabinet, or tapping its
+// floating sign).
+function openJohnnySlidesSplash() {
+  johnnySlidesSplashReturnState = state;
+  state = 'johnnySlidesVideo';
+  playJohnnySlidesSplashVideo(() => {
+    state = 'johnnySlidesSplash';
+  });
+}
+
+// Full-screen splash card -- see drawTruthKnocksSplash()/
+// drawKangaidenSplash() for the same "scale art to fully cover the view,
+// blink a continue prompt at the bottom" shape this reuses. Drawn on top of
+// the ordinary JOHNNY'S FUN PARK render() pass (not one of the
+// WORLD_HIDDEN_STATES/DOM-overlay states), so the shop stays visible/
+// dimmed underneath exactly like those do over their own worlds.
+function drawJohnnySlidesSplash() {
+  ctx.fillStyle = 'rgba(8,6,12,0.6)';
+  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
+  if (johnnySlidesSplashImg.complete && johnnySlidesSplashImg.naturalWidth) {
+    const iw = johnnySlidesSplashImg.naturalWidth, ih = johnnySlidesSplashImg.naturalHeight;
+    const scale = Math.max(VIEW_W / iw, VIEW_H / ih);
+    const dw = iw * scale, dh = ih * scale;
+    const dx = (VIEW_W - dw) / 2, dy = (VIEW_H - dh) / 2;
+    ctx.drawImage(johnnySlidesSplashImg, dx, dy, dw, dh);
+    ctx.fillStyle = 'rgba(8,6,12,0.35)';
+    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+  } else {
+    // fallback text-only version, in case the art hasn't loaded in yet
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#4ab0e0';
+    ctx.font = 'bold 26px monospace';
+    ctx.fillText('JOHNNY SLIDES', VIEW_W / 2, VIEW_H / 2 - 10);
+    ctx.fillStyle = '#f4efe0';
+    ctx.font = '14px monospace';
+    ctx.fillText('Press Start.', VIEW_W / 2, VIEW_H / 2 + 16);
+  }
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#bfff32' : '#f4efe0';
+  ctx.font = 'bold 16px monospace';
+  ctx.fillText('- PRESS E TO DROP IN -', VIEW_W / 2, VIEW_H - 24);
+}
+
 function createJohnnySlidesOverlay() {
   const style = document.createElement('style');
   style.textContent = `
@@ -17086,10 +17224,12 @@ function createJohnnySlidesOverlay() {
 createJohnnySlidesOverlay();
 
 // Opens the Johnny Slides overlay and switches state to 'johnnySlidesApp'.
-// Called from MINIGAME_ACTIONS.johnnyslides (E on the cabinet, or tapping
-// its floating sign), same entry points every other mini-game uses.
+// Called once the player presses E (or taps) from the splash (see
+// drawJohnnySlidesSplash()/the 'johnnySlidesSplash' state handling in the
+// input loop) -- not directly from MINIGAME_ACTIONS.johnnyslides, which
+// opens the intro video/splash first.
 function openJohnnySlidesApp() {
-  johnnySlidesReturnState = state;
+  johnnySlidesReturnState = johnnySlidesSplashReturnState;
   johnnySlidesOverlayFrame.src = JOHNNYSLIDES_APP_URL;
   johnnySlidesOverlayEl.classList.add('open');
   state = 'johnnySlidesApp';
@@ -17724,6 +17864,13 @@ function update(dt) {
     // interactPressed via the generic pointerdown fallback) advances
     // straight into the DOM/iframe overlay.
     if (interactPressed) openTruthKnocksApp();
+  } else if (state === 'johnnySlidesSplash') {
+    // Splash before the actual Johnny Slides iframe -- see
+    // drawJohnnySlidesSplash()/openJohnnySlidesSplash() and
+    // MINIGAME_ACTIONS.johnnyslides. E (or a tap, which also sets
+    // interactPressed via the generic pointerdown fallback) advances
+    // straight into the DOM/iframe overlay.
+    if (interactPressed) openJohnnySlidesApp();
   } else if (state === 'win') {
     if (interactPressed) state = 'play';
   } else if (state === 'danceParty') {
@@ -19090,6 +19237,7 @@ function render(time) {
   if (state === 'vinylNinjaSplash') drawVinylNinjaSplash();
   if (state === 'kangaidenSplash') drawKangaidenSplash();
   if (state === 'truthKnocksSplash') drawTruthKnocksSplash();
+  if (state === 'johnnySlidesSplash') drawJohnnySlidesSplash();
   if (state === 'win') drawWin();
   if (state === 'danceParty') drawDanceCascade();
   if (state === 'portal') drawPortalPopup();
