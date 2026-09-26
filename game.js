@@ -25687,8 +25687,9 @@ function drawShopBackLockedPopup() {
   ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#e0b040' : '#f4ecd8';
   ctx.font = 'bold 18px monospace';
   ctx.fillText('Press [E] or tap screen to return', VIEW_W / 2, boxY + boxH - 16);
-} the
-// instant that pickup completes the town set and unlocks Rico's Beat Lab
+}
+
+// Drawn the instant that pickup completes the town set and unlocks Rico's Beat Lab
 // (see the 'record'/'labUnlock' state handling in the input loop). Just a
 // scale-to-fit splash plus a blinking continue prompt -- the art itself
 // already carries the "you now have access" message and the "head to the
