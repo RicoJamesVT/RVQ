@@ -1130,6 +1130,16 @@ const MINIGAME_ACTIONS = {
   // network calls -- so it works with no connection). See
   // openBayouBreakApp()/createBayouBreakOverlay() below.
   bayoubreak: () => openBayouBreakApp(),
+  // The Vocal Chop Booth -- Tha Truth's call-and-response vocal chop/looper
+  // instrument, tucked inside TRUTH LAB's back room (see the
+  // `truthlabback` shop's `minigames` list). Same "full standalone web
+  // app, not a canvas mini-game" shape as chess/beatbot/organ/mini golf/
+  // blackbook/Gator Grooves/Vinyl Snake/Bayou Break Station above (own DOM/
+  // iframe overlay, bundled locally -- own mic-input recorder/looper plus
+  // local pre-loaded chant samples, no external assets and no network
+  // calls -- so it works with no connection). See
+  // openVocalChopBoothApp()/createVocalChopBoothOverlay() below.
+  vocalchopbooth: () => openVocalChopBoothApp(),
   // The Frequency Altar -- a real Tone.js-powered instrument (eight
   // glowing "crystal" pads across a mystic scale, plus a held ambient
   // drone) tucked inside THE SOUL SHACK (see the `soulshack` shop's
@@ -8607,6 +8617,7 @@ window.addEventListener('keydown', (e) => {
     if (k === 'escape' && state === 'drumPatternDocApp') { closeDrumPatternDocApp(); }
     if (k === 'escape' && state === 'gatorJamSlamApp') { closeGatorJamSlamApp(); }
     if (k === 'escape' && state === 'swampCaveApp') { closeSwampCaveApp(); }
+    if (k === 'escape' && state === 'vocalChopBoothApp') { closeVocalChopBoothApp(); }
     if (k === 'escape' && state === 'vtDirtApp') { closeVtDirtApp(); }
     if (k === 'escape' && state === 'penaltyKingsApp') { closePenaltyKingsApp(); }
     if (k === 'escape' && state === 'hyperSwimApp') { closeHyperSwimApp(); }
@@ -10004,6 +10015,19 @@ function makeShop(id, opts) {
   // needing to duplicate anything about this shop's specific layout.
   map._crateKeys = opts.crates.map((c, i) => key(...spots[i % spots.length]));
   if (opts.jukebox) { g[2][11] = 'J'; map.jukebox = true; }
+  // A locked "back room" door -- e.g. TRUTH LAB's vocal chop/looper booth,
+  // unlocked once the swamp's 5 records are all found. Punched into the top
+  // wall (row 0) at the given column, replacing the usual 'W' wall tile --
+  // same "wall tile becomes a door tile" trick the town overworld's own
+  // building doors use. Walkability/locking/rendering/the room it leads to
+  // are all handled elsewhere (see SHOP_BACK_ROOMS/checkShopBackDoor()/
+  // drawShopBackDoor()), keyed off map.id and map.backDoorTile here -- so
+  // any future shop can opt into one the same way.
+  if (opts.backDoorTile) {
+    const [bdx, bdy] = opts.backDoorTile;
+    g[bdy][bdx] = 'B';
+    map.backDoorTile = { x: bdx, y: bdy };
+  }
   return map;
 }
 
@@ -10768,6 +10792,12 @@ const shops = {
   truthlab: makeShop('truthlab', {
     world: 'swamp',
     floor: '#242226', plank: '#19171b', wallColor: '#0c0c0e',
+    // A second, initially-locked door in the back wall (row 0, x=9 -- clear
+    // of the four wall paintings at x=2/5/8/11 below), leading to Tha
+    // Truth's back room once every record in the swamp has been found. See
+    // SHOP_BACK_ROOMS/checkShopBackDoor()/drawShopBackDoor() and the
+    // `truthlabback` room defined right after this one.
+    backDoorTile: [9, 0],
     // Bright, stylish framed pieces along the top wall -- the one splash
     // of color against the otherwise all-black lounge walls.
     paintings: {
@@ -10795,6 +10825,7 @@ const shops = {
         'Go ahead and dig through the crates if you want -- all quality hip hop in here, courtesy of DJ BP.',
         'None of what\'s in these crates is what you\'re out here chasing, but I\'m always down to spin whatever\'s sitting around the lab.',
         'Big TV, the record player, that couch -- this room\'s built for hanging out, not for rushing through.',
+        'Sweep every last record out of this swamp and I\'ll open up the back room. Got a booth back there -- that\'s where the real work happens.',
       ] },
     // Four crates, all quality DJ BP hip hop -- see TRUTHLAB_JUNK above.
     crates: [ { truthLabSeed: 0 }, { truthLabSeed: 1 }, { truthLabSeed: 2 }, { truthLabSeed: 3 } ],
@@ -10827,6 +10858,46 @@ const shops = {
       { id: 'bayoubreak', tx: 10, ty: 6, label: 'PLAY BAYOU BREAK STATION' },
       { id: 'gatorjamslam', tx: 3, ty: 6, label: 'PLAY GATOR JAM SLAM' },
       { id: 'swampcave', tx: 6, ty: 4, label: 'PLAY SWAMP CAVE SUMMER' },
+    ],
+  }),
+  // TRUTH LAB's back room -- unlocked once every record in the swamp has
+  // been found (see `truthlab`'s backDoorTile above and
+  // checkShopBackDoor()). Tha Truth's own vocal chop/looper booth: a
+  // call-and-response setup built for freestyling and looping your own
+  // voice over pre-loaded chants pulled from the swamp's own records
+  // ("Moss Hallelujah"'s choir, "Frog Chorus Stab"). Where Rico's Lab
+  // (drums/bass/horns/vox/lead samples) and Santos' guitar work (see Level
+  // 3) bookend the instrument "families" on either side, this is the
+  // middle rung: voice and loops. `world: 'swamp'` for consistency with
+  // every other swamp interior. `noCounterTable`/empty `crates` -- this
+  // room isn't a shop or a dig spot, just Tha Truth's own booth.
+  truthlabback: makeShop('truthlabback', {
+    world: 'swamp',
+    floor: '#191420', plank: '#100c16', wallColor: '#08060c',
+    noCounterTable: true,
+    // Bright neon frames, same palette as the front room's paintings, so
+    // the back room still reads as unmistakably TRUTH LAB.
+    paintings: {
+      '3,0': { base: '#ff2fa0', a: '#39ff8f', b: '#2fd8ff' },
+      '10,0': { base: '#a855f7', a: '#f0c33e', b: '#ff2fa0' },
+    },
+    keeper: { x: 6, y: 3, name: 'TRUTH', shirt: '#1c1a1e', skin: '#8a5a34',
+      lines: [
+        'This is the back room. Not everybody gets back here.',
+        'Booth\'s all yours. Lay down a loop, then freestyle over your own voice -- call and response, just you and you.',
+        'I got some of the swamp\'s own sounds loaded up in there -- that choir off "Moss Hallelujah," the "Frog Chorus." Chop \'em, loop \'em, make \'em yours.',
+        'Rico taught you the drums and the samples. I\'m gonna teach you to use what you were born with -- your own voice.',
+        'Take your time in there. This is where you actually learn to freestyle.',
+      ] },
+    micStand: [6, 5],
+    crates: [],
+    // The booth itself, set on the open floor at (6,6) -- clear of the
+    // keeper (6,3), the mic stand prop (6,5), and the door (6,9). Same
+    // "full-screen DOM overlay with an <iframe>" pattern as Bayou Break
+    // Station/Gator Jam Slam/Swamp Cave Summer/the Frequency Altar above --
+    // see MINIGAME_ACTIONS.vocalchopbooth/openVocalChopBoothApp().
+    minigames: [
+      { id: 'vocalchopbooth', tx: 6, ty: 6, label: 'STEP UP TO THE BOOTH' },
     ],
   }),
   // THE SOUL SHACK -- the swamp's sixth building: a tiny metaphysical store
@@ -10917,6 +10988,13 @@ transitions['johnnyspool:' + key(6, 9)] = { map: 'swamp', x: swamp.jfpPoolDoor.x
 // TRUTH LAB door wiring -- same pattern as GUT HUT above.
 transitions['swamp:' + key(swamp.truthLabDoor.x, swamp.truthLabDoor.y)] = { map: 'truthlab', x: 6.5, y: 7.5 };
 transitions['truthlab:' + key(6, 9)] = { map: 'swamp', x: swamp.truthLabDoor.x + 0.5, y: swamp.truthLabDoor.y + 1.6 };
+// TRUTH LAB's back room exit -- walking out of `truthlabback` drops the
+// player just south of the back door tile (9,0) inside `truthlab`, same
+// "+1.6 past the door" offset every other exit transition above uses. The
+// back door itself (the 'B' tile) is handled separately by
+// checkShopBackDoor() below, not this `transitions` map, since it's
+// conditionally locked rather than an always-open doorway.
+transitions['truthlabback:' + key(6, 9)] = { map: 'truthlab', x: 9.5, y: 1.6 };
 // THE SOUL SHACK door wiring -- same pattern as GUT HUT above.
 transitions['swamp:' + key(swamp.soulShackDoor.x, swamp.soulShackDoor.y)] = { map: 'soulshack', x: 6.5, y: 7.5 };
 transitions['soulshack:' + key(6, 9)] = { map: 'swamp', x: swamp.soulShackDoor.x + 0.5, y: swamp.soulShackDoor.y + 1.6 };
@@ -10956,7 +11034,7 @@ const player = {
   tempItem: null, tempItemTimer: 0,
 };
 const collected = new Set();
-let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | danceParty | portal | fifa | minigame | hotkeys | crate | photo | lab | labLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | qsdBalanceApp | vinylSnakeApp | waveformApp | bayouBreakApp | freqAltarApp | drumPatternDocApp | gatorJamSlamApp | swampCaveApp | vtDirtApp | penaltyKingsApp | digDashApp | digOnApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | diggerApp | hyperSwimApp | connectFourApp | syrupRoadsApp | clawMachineApp | kangaidenVideo | kangaidenSplash | kangaidenApp | hiphopLibraryApp | truthKnocksVideo | truthKnocksSplash | truthKnocksApp | johnnySlidesApp | dustRacingApp
+let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | danceParty | portal | fifa | minigame | hotkeys | crate | photo | lab | labLocked | shopBackLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | qsdBalanceApp | vinylSnakeApp | waveformApp | bayouBreakApp | freqAltarApp | drumPatternDocApp | gatorJamSlamApp | swampCaveApp | vocalChopBoothApp | vtDirtApp | penaltyKingsApp | digDashApp | digOnApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | diggerApp | hyperSwimApp | connectFourApp | syrupRoadsApp | clawMachineApp | kangaidenVideo | kangaidenSplash | kangaidenApp | hiphopLibraryApp | truthKnocksVideo | truthKnocksSplash | truthKnocksApp | johnnySlidesApp | dustRacingApp
 // State to snap back to when the [H] hotkeys popup is closed -- currently
 // always 'play' since that's the only state H can be opened from, but kept
 // as its own var in case another state wants to offer the popup later.
@@ -11086,6 +11164,22 @@ function finishLevelIntro() {
 // recording where drawLabPopup() last drew the splash art so taps can be
 // mapped back onto one of the 4 boxes.
 let activeLabDoor = null; // { x, y } tile the player walked into to open the lab popup
+// A shop's own locked "back room" door (see makeShop()'s backDoorTile opt),
+// mirrors activeLabDoor/activePortal above -- records the tile the player
+// walked into so closing the locked popup can nudge them back off of it.
+// SHOP_BACK_ROOMS maps a shop's map id to the room its back door leads to
+// plus the flavor text for its locked popup -- see checkShopBackDoor()/
+// drawShopBackDoor()/drawShopBackLockedPopup() further down.
+let activeShopBackDoor = null;
+const SHOP_BACK_ROOMS = {
+  // TRUTH LAB's back room -- Tha Truth's vocal chop/looper booth, unlocked
+  // once every record in the swamp has been found.
+  truthlab: {
+    room: 'truthlabback',
+    title: 'TRUTH LAB — BACK ROOM',
+    locked: "This door's not opening yet. Dig up every last record hiding in the swamp first, then come find me back here.",
+  },
+};
 let labIndex = 0;
 let labLayout = null; // { originX, originY, scale, imgW, imgH } of the drawn lab splash art
 let activeLabApp = null; // id of the instrument currently loaded in the DOM overlay, or null
@@ -11635,7 +11729,7 @@ const music = {
 // enter/exit call sites, so it can't drift out of sync no matter which
 // of the several ways the player backs out of the lab popup (keyboard
 // [X], on-screen [X] button, closing the instrument iframe, etc.).
-const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'qsdBalanceApp', 'vinylSnakeApp', 'waveformApp', 'bayouBreakApp', 'freqAltarApp', 'drumPatternDocApp', 'gatorJamSlamApp', 'swampCaveApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'digOnApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'johnnySlidesApp', 'dustRacingApp', 'hyperSwimApp', 'connectFourApp', 'syrupRoadsApp', 'clawMachineApp', 'kangaidenVideo', 'kangaidenApp', 'hiphopLibraryApp', 'danceParty', 'truthKnocksVideo', 'truthKnocksApp']);
+const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'qsdBalanceApp', 'vinylSnakeApp', 'waveformApp', 'bayouBreakApp', 'freqAltarApp', 'drumPatternDocApp', 'gatorJamSlamApp', 'swampCaveApp', 'vocalChopBoothApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'digOnApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'johnnySlidesApp', 'dustRacingApp', 'hyperSwimApp', 'connectFourApp', 'syrupRoadsApp', 'clawMachineApp', 'kangaidenVideo', 'kangaidenApp', 'hiphopLibraryApp', 'danceParty', 'truthKnocksVideo', 'truthKnocksApp']);
 function syncMusicDuck() {
   const minigameDucked = state === 'minigame' && activeMinigame && activeMinigame.musicDucked;
   music.duck(DUCKED_STATES.has(state) || !!minigameDucked);
@@ -11686,6 +11780,7 @@ function movePlayer(dt) {
 
   checkPortal(map);
   checkLabDoor(map);
+  checkShopBackDoor(map);
 }
 
 // Placeholder portal doors: walking onto a 'P' tile pops the "more lands
@@ -11714,6 +11809,29 @@ function checkLabDoor(map) {
     activeLabDoor = { x: tx, y: ty };
     state = completedWorlds.has('town') ? 'lab' : 'labLocked';
     if (state === 'lab') labIndex = 0;
+  }
+}
+
+// A shop's own locked "back room" door (see makeShop()'s backDoorTile opt
+// and SHOP_BACK_ROOMS above): walking onto its 'B' tile steps straight into
+// the back room once that shop's world is fully swept (completedWorlds has
+// it), same as any ordinary door -- just gated. Before that, it pops a
+// "locked" popup -- same activeShopBackDoor-records-the-tile trick as
+// checkPortal()/checkLabDoor() above.
+function checkShopBackDoor(map) {
+  if (!map.backDoorTile) return;
+  const tx = Math.floor(player.x / TILE), ty = Math.floor(player.y / TILE);
+  if (map.grid[ty] && map.grid[ty][tx] === 'B') {
+    if (completedWorlds.has(map.world)) {
+      const dest = SHOP_BACK_ROOMS[map.id];
+      player.map = dest.room;
+      player.x = 6.5 * TILE;
+      player.y = 7.5 * TILE;
+      saveGame(); // silent autosave checkpoint, same as every ordinary door transition
+    } else {
+      activeShopBackDoor = { x: tx, y: ty };
+      state = 'shopBackLocked';
+    }
   }
 }
 
@@ -16176,6 +16294,120 @@ function closeSwampCaveApp(fromPopState) {
   }
 }
 
+// The Vocal Chop Booth -- Tha Truth's call-and-response vocal chop/looper
+// instrument, set up in TRUTH LAB's back room (see the `truthlabback`
+// shop's `minigames` list, and makeShop()'s backDoorTile/SHOP_BACK_ROOMS/
+// checkShopBackDoor() for how that room unlocks). Same "full-screen DOM
+// overlay with an <iframe>" trick as chess/the beat bot/the organ/mini
+// golf/the blackbook/Gator Grooves/Vinyl Snake/Bayou Break Station/Gator
+// Jam Slam/Swamp Cave Summer above.
+//
+// Ships as a bundled, self-contained page (its own mic-input recorder/
+// looper, plus a handful of local pre-loaded chant samples pulled from the
+// swamp's own records -- "Moss Hallelujah"'s choir, the "Frog Chorus" --
+// no external assets, no network calls) at
+// instruments/vocal-chop-booth/index.html -- the exact same local-file
+// pattern BAYOU_BREAK_APP_URL/SWAMP_CAVE_APP_URL/etc. use above. Being a
+// same-origin local asset rather than a live remote site means it loads
+// and plays the same with or without a connection, same as the others.
+const VOCAL_CHOP_BOOTH_APP_URL = 'instruments/vocal-chop-booth/index.html';
+let vocalChopBoothOverlayEl = null, vocalChopBoothOverlayFrame = null;
+let vocalChopBoothReturnState = 'play';
+let vocalChopBoothHistoryPushed = false; // mirrors labHistoryPushed/.../swampCaveHistoryPushed -- see openVocalChopBoothApp()/closeVocalChopBoothApp()
+
+function createVocalChopBoothOverlay() {
+  const style = document.createElement('style');
+  style.textContent = `
+    #vocalChopBoothApp {
+      position: fixed; inset: 0; z-index: 1000;
+      background: #000;
+      display: none; flex-direction: column;
+    }
+    #vocalChopBoothApp.open { display: flex; }
+    #vocalChopBoothApp .vcb-bar {
+      flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 10px 14px;
+      background: linear-gradient(#241830, #120b18);
+      border-bottom: 2px solid #ff2fa0;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    }
+    #vocalChopBoothApp .vcb-title {
+      color: #e9e2c9; font: bold 14px monospace; letter-spacing: 0.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #vocalChopBoothApp .vcb-close {
+      flex: 0 0 auto; cursor: pointer;
+      background: rgba(255,47,160,0.15);
+      border: 1.5px solid rgba(255,47,160,0.85);
+      color: #e9e2c9; border-radius: 8px;
+      padding: 7px 16px; font: bold 13px monospace;
+      -webkit-user-select: none; user-select: none;
+    }
+    #vocalChopBoothApp .vcb-close:active { background: rgba(255,47,160,0.4); }
+    #vocalChopBoothApp iframe {
+      flex: 1 1 auto; width: 100%; border: 0; background: #000;
+    }
+  `;
+  document.head.appendChild(style);
+
+  vocalChopBoothOverlayEl = document.createElement('div');
+  vocalChopBoothOverlayEl.id = 'vocalChopBoothApp';
+
+  const bar = document.createElement('div');
+  bar.className = 'vcb-bar';
+  const title = document.createElement('div');
+  title.className = 'vcb-title';
+  title.textContent = 'VOCAL CHOP BOOTH';
+  const closeBtn = document.createElement('div');
+  closeBtn.className = 'vcb-close';
+  closeBtn.textContent = '\u2190 BACK TO THE BACK ROOM';
+  bindTap(closeBtn, closeVocalChopBoothApp);
+  bar.appendChild(title);
+  bar.appendChild(closeBtn);
+
+  vocalChopBoothOverlayFrame = document.createElement('iframe');
+  vocalChopBoothOverlayFrame.setAttribute('allow', 'microphone; autoplay');
+
+  vocalChopBoothOverlayEl.appendChild(bar);
+  vocalChopBoothOverlayEl.appendChild(vocalChopBoothOverlayFrame);
+  document.body.appendChild(vocalChopBoothOverlayEl);
+}
+createVocalChopBoothOverlay();
+
+// Opens the Vocal Chop Booth overlay and switches state to
+// 'vocalChopBoothApp'. Called from MINIGAME_ACTIONS.vocalchopbooth (E on
+// the booth, or tapping its floating sign), same entry points every other
+// mini-game uses.
+function openVocalChopBoothApp() {
+  vocalChopBoothReturnState = state;
+  vocalChopBoothOverlayFrame.src = VOCAL_CHOP_BOOTH_APP_URL;
+  vocalChopBoothOverlayEl.classList.add('open');
+  state = 'vocalChopBoothApp';
+  // Same throwaway-history-entry trick as openInstrument()/.../
+  // openSwampCaveApp() above, so the browser/OS back gesture closes the
+  // Vocal Chop Booth overlay instead of leaving the game entirely.
+  history.pushState({ ricoVocalChopBoothApp: true }, '');
+  vocalChopBoothHistoryPushed = true;
+}
+
+// Tears the iframe back down and returns to ordinary gameplay in TRUTH
+// LAB's back room. fromPopState mirrors closeInstrument()/.../
+// closeSwampCaveApp()'s parameter -- true when triggered by the browser's
+// back button (whose history entry is already consumed), so we must not
+// call history.back() again in that case.
+function closeVocalChopBoothApp(fromPopState) {
+  vocalChopBoothOverlayEl.classList.remove('open');
+  vocalChopBoothOverlayFrame.src = 'about:blank';
+  reclaimGameFocus(vocalChopBoothOverlayFrame);
+  state = vocalChopBoothReturnState;
+  if (!fromPopState && vocalChopBoothHistoryPushed) {
+    vocalChopBoothHistoryPushed = false;
+    history.back();
+  } else {
+    vocalChopBoothHistoryPushed = false;
+  }
+}
+
 // ---------------------------------------------------------------- Pure Pop Records Rico1200 overlay
 // Rico1200 -- Rico's Beat Lab (a 32-pad sampler/step-sequencer beat-lab
 // instrument) parked inside Pure Pop Records, right alongside Crate Digging
@@ -17206,6 +17438,8 @@ window.addEventListener('popstate', () => {
     closeGatorJamSlamApp(true);
   } else if (state === 'swampCaveApp') {
     closeSwampCaveApp(true);
+  } else if (state === 'vocalChopBoothApp') {
+    closeVocalChopBoothApp(true);
   } else if (state === 'vtDirtApp') {
     closeVtDirtApp(true);
   } else if (state === 'penaltyKingsApp') {
@@ -17257,7 +17491,7 @@ canvas.addEventListener('pointerdown', (e) => {
     const vx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const vy = (e.clientY - rect.top) * (canvas.height / rect.height);
     handleLabTap(vx, vy);
-  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'dustRacingApp' || state === 'hyperSwimApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp') {
+  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'dustRacingApp' || state === 'hyperSwimApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp') {
     // The DOM overlay sits on top of (and outside) the canvas while an
     // instrument/the chess app/the beat bot/the organ/mini golf/the
     // blackbook/Gator Grooves/Vinyl Snake/Bayou Break Station/Gator Jam
@@ -17525,6 +17759,11 @@ function update(dt) {
       state = 'play';
       if (activeLabDoor) { pushOffDoor(maps[player.map], activeLabDoor); activeLabDoor = null; }
     }
+  } else if (state === 'shopBackLocked') {
+    if (interactPressed || buyPressed) {
+      state = 'play';
+      if (activeShopBackDoor) { pushOffDoor(maps[player.map], activeShopBackDoor); activeShopBackDoor = null; }
+    }
   } else if (state === 'lab') {
     if (menuMove) {
       labIndex = Math.max(0, Math.min(LAB_OPTIONS.length - 1, labIndex + menuMove));
@@ -17655,6 +17894,15 @@ function update(dt) {
     // buyPressed is still consumed here too so the on-screen [X] touch
     // button works while Swamp Cave Summer is open.
     if (buyPressed) closeSwampCaveApp();
+  } else if (state === 'vocalChopBoothApp') {
+    // Same reasoning as 'labApp'/'chessApp'/'beatBotApp'/'organApp'/
+    // 'minigolfApp'/'blackbookApp'/'crocSwampApp'/'vinylSnakeApp'/
+    // 'bayouBreakApp'/'gatorJamSlamApp'/'swampCaveApp' just above: the DOM
+    // overlay (see createVocalChopBoothOverlay()) owns input while the
+    // Vocal Chop Booth is loaded -- its own close button and [Esc] handle
+    // closing it directly. buyPressed is still consumed here too so the
+    // on-screen [X] touch button works while the Vocal Chop Booth is open.
+    if (buyPressed) closeVocalChopBoothApp();
   } else if (state === 'vtDirtApp') {
     // Same reasoning as 'labApp'/'chessApp'/'beatBotApp'/'organApp'/
     // 'minigolfApp'/'blackbookApp'/'crocSwampApp'/'vinylSnakeApp'/
@@ -18702,7 +18950,7 @@ function render(time) {
     drawSplash();
     return;
   }
-  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'dustRacingApp' || state === 'hyperSwimApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp') {
+  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'dustRacingApp' || state === 'hyperSwimApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp') {
     // Same reasoning as the labApp overlay: a DOM element (the <video>,
     // see createCharacterIntroOverlay(), the chess <iframe>, see
     // createChessOverlay(), the beat bot <iframe>, see
@@ -18846,6 +19094,7 @@ function render(time) {
   if (state === 'danceParty') drawDanceCascade();
   if (state === 'portal') drawPortalPopup();
   if (state === 'labLocked') drawLabLockedPopup();
+  if (state === 'shopBackLocked') drawShopBackLockedPopup();
   if (state === 'lab') drawLabPopup(time);
   if (state === 'hotkeys') drawHotkeysPopup();
   if (state === 'crate') drawCrate();
@@ -19000,6 +19249,7 @@ function drawTiles(map, time, camX = 0, camY = 0) {
         case 'R': drawRecordingDesk(px, py, tx, ty, map.recordingDesk); break;
         case 'F': drawCarnivalProp(px, py, tx, ty); break;
         case 'Z': drawFilingCabinet(px, py, ty); break;
+        case 'B': drawShopBackDoor(px, py, tx, ty, time, map); break;
         case 'J': {
           ctx.fillStyle = '#1c140f';
           ctx.fillRect(px + 3, py - 1, TILE - 6, TILE + 1);
@@ -19152,6 +19402,88 @@ function drawLabDoor(px, py, tx, ty, time) {
       ctx.stroke();
     }
     ctx.fillStyle = '#241a30'.replace('#241a30', '#241f16');
+    ctx.fillRect(px + 6, py + TILE - 20, TILE - 12, 14);
+    // padlock
+    ctx.strokeStyle = '#8a7a50';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(cx, py + TILE - 16, 4, Math.PI, 0);
+    ctx.stroke();
+    ctx.fillStyle = '#8a7a50';
+    ctx.fillRect(cx - 5, py + TILE - 16, 10, 8);
+  }
+  ctx.restore();
+}
+
+// A shop's own locked "back room" door (see makeShop()'s backDoorTile opt /
+// SHOP_BACK_ROOMS / checkShopBackDoor()). Same taller-than-a-tile archway
+// treatment and two-state (locked/unlocked) approach as drawLabDoor() above,
+// just recolored to TRUTH LAB's own neon pink/cyan/purple palette (matching
+// its wall paintings) instead of the lab's gold/green, so it reads as a
+// distinct door, not a reskin of the same one.
+function drawShopBackDoor(px, py, tx, ty, time, map) {
+  const t = time || 0;
+  const cx = px + TILE / 2, cy = py + TILE / 2;
+  const unlocked = completedWorlds.has(map.world);
+  const pulse = 0.5 + 0.5 * Math.sin(t * 2.4 + tx * 3 + ty);
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(px - 6, py - TILE - 4, TILE + 12, TILE * 2 + 8);
+  ctx.clip();
+
+  if (unlocked) {
+    // outer glow -- neon pink/cyan, matching TRUTH LAB's own wall art
+    const grd = ctx.createRadialGradient(cx, cy, 2, cx, cy, TILE * 1.05);
+    grd.addColorStop(0, `rgba(255,47,160,${0.55 + pulse * 0.3})`);
+    grd.addColorStop(0.55, 'rgba(47,216,255,0.4)');
+    grd.addColorStop(1, 'rgba(10,6,14,0)');
+    ctx.fillStyle = grd;
+    ctx.fillRect(px - 6, py - TILE - 4, TILE + 12, TILE * 2 + 8);
+
+    // archway frame
+    ctx.fillStyle = '#18121e';
+    ctx.fillRect(px + 1, py - TILE + 4, TILE - 2, TILE * 2 - 4);
+    ctx.fillStyle = '#a855f7';
+    ctx.fillRect(px + 1, py - TILE + 4, TILE - 2, 3);
+    ctx.fillRect(px + 1, py + TILE - 7, TILE - 2, 3);
+    ctx.fillStyle = '#241a30';
+    ctx.fillRect(px + 4, py - TILE + 9, TILE - 8, TILE * 2 - 16);
+
+    // swirling core, pink/cyan instead of the lab's gold/green
+    ctx.fillStyle = 'rgba(20,10,24,0.9)';
+    ctx.beginPath();
+    ctx.ellipse(cx, py + TILE - 12, 10, 16, 0, 0, Math.PI * 2);
+    ctx.fill();
+    for (let i = 0; i < 3; i++) {
+      const a = t * 1.6 + i * (Math.PI * 2 / 3);
+      ctx.fillStyle = i % 2 === 0 ? '#ff2fa0' : '#2fd8ff';
+      ctx.beginPath();
+      ctx.ellipse(cx + Math.cos(a) * 4, py + TILE - 12 + Math.sin(a) * 9, 3, 6, a, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // a little mic icon instead of the lab's musical note -- marks this one
+    // as a vocal booth, not an instrument bay
+    ctx.fillStyle = Math.floor(t * 2.4) % 2 ? '#f4ecd8' : '#ff2fa0';
+    ctx.font = 'bold 14px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('\u2669', cx, py - TILE + 22);
+  } else {
+    // locked: same flat, cold, boarded-up look as drawLabDoor()'s locked
+    // state -- deliberately undramatic
+    ctx.fillStyle = '#1a1712';
+    ctx.fillRect(px + 1, py - TILE + 4, TILE - 2, TILE * 2 - 4);
+    ctx.strokeStyle = '#3a3428';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 3; i++) {
+      const by = py - TILE + 10 + i * 16;
+      ctx.beginPath();
+      ctx.moveTo(px + 3, by);
+      ctx.lineTo(px + TILE - 3, by + 6);
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#241f16';
     ctx.fillRect(px + 6, py + TILE - 20, TILE - 12, 14);
     // padlock
     ctx.strokeStyle = '#8a7a50';
@@ -25135,7 +25467,44 @@ function drawLabLockedPopup() {
   ctx.fillText('Press [E] or tap screen to return', VIEW_W / 2, boxY + boxH - 16);
 }
 
-// One-time announcement shown right after the record-found card, the
+// Shown when the player walks into a shop's own "back room" door (see
+// makeShop()'s backDoorTile opt / SHOP_BACK_ROOMS / checkShopBackDoor())
+// before that shop's world has been fully swept. Same look/shape as
+// drawLabLockedPopup() just above, with title/body text pulled from
+// SHOP_BACK_ROOMS so any future shop's back door reads correctly here too.
+function drawShopBackLockedPopup() {
+  const cfg = SHOP_BACK_ROOMS[player.map] || { title: 'LOCKED', locked: "This door's not opening yet." };
+
+  ctx.fillStyle = 'rgba(8,6,12,0.6)';
+  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
+  const boxW = VIEW_W - 160, boxX = 80;
+  const bodyFont = '19px monospace', lineH = 24;
+  ctx.font = bodyFont;
+  const lines = wrapLinesCentered(cfg.locked, boxW - 48);
+  const boxH = Math.max(160, 66 + lines.length * lineH + 40);
+  const boxY = (VIEW_H - boxH) / 2;
+
+  ctx.fillStyle = 'rgba(10,8,14,0.94)';
+  ctx.fillRect(boxX, boxY, boxW, boxH);
+  ctx.strokeStyle = '#8a7a50';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(boxX + 2, boxY + 2, boxW - 4, boxH - 4);
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#e0b040';
+  ctx.font = 'bold 22px monospace';
+  ctx.fillText(cfg.title, VIEW_W / 2, boxY + 36);
+
+  ctx.fillStyle = '#f4ecd8';
+  ctx.font = bodyFont;
+  const startY = boxY + 66;
+  lines.forEach((l, i) => ctx.fillText(l, VIEW_W / 2, startY + i * lineH));
+
+  ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#e0b040' : '#f4ecd8';
+  ctx.font = 'bold 18px monospace';
+  ctx.fillText('Press [E] or tap screen to return', VIEW_W / 2, boxY + boxH - 16);
+} the
 // instant that pickup completes the town set and unlocks Rico's Beat Lab
 // (see the 'record'/'labUnlock' state handling in the input loop). Just a
 // scale-to-fit splash plus a blinking continue prompt -- the art itself
