@@ -10627,11 +10627,28 @@ const shops = {
   swampfood: makeShop('swampfood', {
     world: 'swamp',
     floor: '#4a5a3a', plank: '#3a482e', wallColor: '#241e14',
+    // Framed art on both side walls now -- the original left-wall pair
+    // plus a matching pair on the right (x=13), same earthy swamp-greens/
+    // gold palette so the new frames read as part of the same set.
     paintings: {
       '0,3': { base: '#6a8a4a', a: '#3f8f4f', b: '#d8c060' },
       '0,6': { base: '#8f9a3f', a: '#5f9a7a', b: '#3f8f4f' },
+      '13,3': { base: '#d8c060', a: '#6a8a4a', b: '#3f8f4f' },
+      '13,6': { base: '#3f8f4f', a: '#8f9a3f', b: '#d8c060' },
     },
     gearTiles: [[3, 4], [10, 4], [3, 7], [10, 7]],
+    // A small waiting-area couch on the open floor at row 5 -- clear of
+    // the gearTiles above/below (row 4/7) and the minigame cabinets on
+    // row 6 -- for customers hanging back with a pet while OPHELIA rings
+    // them up. Same centered "3-wide couch across the middle of the room"
+    // placement TRUTH LAB uses.
+    couchTiles: [[5, 5], [6, 5], [7, 5]],
+    couchPillow: { x: 6, y: 5 },
+    // Two armchairs filling the otherwise-empty crate spots on the right
+    // side of the room (this shop only uses two of its six default crate
+    // spots, so (12,4)/(12,6) were standing empty) -- mirrors the crates
+    // at (1,4)/(1,6) on the left.
+    armchairTiles: [[12, 4], [12, 6]],
     // OPHELIA -- keeper of SWAMP FOOD. A die-hard Taylor Swift fan and lover
     // of every creature that walks, hops, slithers, or scuttles through the
     // shop door. Her bearded dragon Lucy rides her shoulder everywhere she
@@ -10728,19 +10745,22 @@ const shops = {
     // the counter table (row 3) instead of bunched into one or two rows --
     // each sits two tiles in from a side wall, clear of the corner crates
     // (1,4)/(1,6)/(12,4)/(12,6), ES-K at (10,5), and the door (6,9), with
-    // plenty of walking room between all four.
+    // plenty of walking room between all four. Rico's Mini DAW sits at
+    // (9,4) rather than dead-on above ES-K's (10,5), so its cabinet/post
+    // sign doesn't overlap his head.
     //
     // Bayou Boogie cabinet, upper-left at (3,4) -- clear of the counter
     // table above and the (1,4) crate to its left. Real from-scratch
     // canvas mini-game (plus Three.js remake), not a bundled standalone
     // app -- see MINIGAME_ACTIONS.bayouboogie/createBayouBoogieModeSelect().
     //
-    // Rico's Mini DAW cabinet, upper-right at (10,4) -- mirrors Bayou
-    // Boogie across the room, clear of the counter table above and the
-    // (12,4) crate to its right. Full standalone web app, same
-    // "full-screen DOM overlay with an <iframe>" pattern as Vinyl
-    // Snake/Bayou Break Station/Rico1200 above -- see
-    // MINIGAME_ACTIONS.ricodaw/openRicoDawApp().
+    // Rico's Mini DAW cabinet, upper-right at (9,4) -- nudged one tile
+    // left of ES-K's column (10,5) so the cabinet's post/sign no longer
+    // draws straight through his head; still clear of the counter table
+    // above, the (12,4) crate off to the right, and Bayou Boogie at
+    // (3,4). Full standalone web app, same "full-screen DOM overlay with
+    // an <iframe>" pattern as Vinyl Snake/Bayou Break Station/Rico1200
+    // above -- see MINIGAME_ACTIONS.ricodaw/openRicoDawApp().
     //
     // Vinyl Snake cabinet, lower-left at (3,8) -- clear of the (1,6) crate
     // and well off to the side of the door (6,9). Full standalone web app,
@@ -10759,7 +10779,7 @@ const shops = {
     minigames: [
       { id: 'vinylsnake', tx: 3, ty: 8, label: 'PLAY VINYL SNAKE' },
       { id: 'bayouboogie', tx: 3, ty: 4, label: 'PLAY BAYOU BOOGIE' },
-      { id: 'ricodaw', tx: 10, ty: 4, label: "PLAY RICO'S MINI DAW" },
+      { id: 'ricodaw', tx: 9, ty: 4, label: "PLAY RICO'S MINI DAW" },
       { id: 'waveforms', tx: 10, ty: 8, label: 'SEE THE WAVEFORMS' },
     ],
   }),
@@ -10769,12 +10789,43 @@ const shops = {
   // Chorus Stab register as a *swamp* record even though it's now found
   // indoors. `buntingFlags`/`carnivalProps` borrow the same festive-fairground
   // dressing as the circus interior back in town, just re-colored for a
-  // swampy boardwalk fun park instead of a big top.
+  // swampy boardwalk fun park instead of a big top. Also decorated with a
+  // little hangout corner -- bright framed wall art on the side walls, a
+  // wall-mounted TV with a couch facing it (the room's "video game
+  // console" nook), plus a couple of loose armchairs -- same
+  // paintings/tvTile/couchTiles/armchairTiles options TRUTH LAB and Green
+  // Door Studio use, just re-colored in JFP's candy-carnival palette.
   johnnysfunpark: makeShop('johnnysfunpark', {
     world: 'swamp',
     floor: '#8a6a2e', plank: '#6a4e20', wallColor: '#2a1c10',
     buntingFlags: true,
     carnivalProps: [[2, 7], [11, 7]],
+    // Colorful framed artwork on the side walls (left: x=0, right: x=13),
+    // clear of the top wall's bunting run (row 0) so the two decor layers
+    // never overlap. Bright carnival palette -- reds, yellows, cyans,
+    // greens, purple -- to match the fun park's playful exterior.
+    paintings: {
+      '0,3': { base: '#ffd23c', a: '#e04858', b: '#2fd8ff' },
+      '0,6': { base: '#2fd8ff', a: '#39ff8f', b: '#ffd23c' },
+      '13,3': { base: '#e04858', a: '#2fd8ff', b: '#39ff8f' },
+      '13,6': { base: '#39ff8f', a: '#e04858', b: '#a855f7' },
+    },
+    // Big wall-mounted TV at (10,2) -- mirrors Johnny at (6,2) the same
+    // way TRUTH LAB flanks TRUTH with its record player/TV, clear of the
+    // counter table (row 3, x4-9 -- the table doesn't reach column 10).
+    tvTile: [10, 2],
+    // Couch on the open floor at (9,4)-(11,4), facing back up toward the
+    // TV, with a throw pillow in the middle seat -- this is the room's
+    // "video game console" hangout corner. Clear of the (12,4) crate one
+    // tile over and the table above.
+    couchTiles: [[9, 4], [10, 4], [11, 4]],
+    couchPillow: { x: 10, y: 4 },
+    // A couple of loose armchairs for extra seating around the room --
+    // one on the open floor across from the crates at (3,4), one filling
+    // the otherwise-empty default crate spot at (12,6) (this shop only
+    // uses three of its six crate spots, so that corner was standing
+    // empty).
+    armchairTiles: [[3, 4], [12, 6]],
     // JOHNNY -- big, playful, and permanently up for whatever's next. He
     // lives here at the fun park and runs every bit of boardwalk chaos
     // (Digger, Johnny Slides, Dust Racing, the pool out back) as its
