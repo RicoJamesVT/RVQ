@@ -9082,6 +9082,13 @@ mrkbhImg.src = 'assets/mrkbh.png';
 const johnnyImg = new Image();
 johnnyImg.src = 'assets/johnny.png';
 
+// IAN -- the keeper of BURLINGTON RECORDS out in the swamp: the shop's
+// owner, curly brown hair, easygoing beard, grey tee, blue jeans, sneakers.
+// Drawn as a shop keeper (see keeperImgs.IAN below), not a roaming npc, so
+// he doesn't need an entry in SHOP_NPC_IMAGES.
+const ianImg = new Image();
+ianImg.src = 'assets/ian.png';
+
 // ---------------------------------------------------------------- maps
 const SOLID = new Set(['#', 'w', 'f', '~', 'W', 'T', 'C', 'c', 'K', 'J', 'S', 'A', 'N', 'F', 'R', 'V', 'Z', 'U', 'X']);
 
@@ -10463,12 +10470,23 @@ const shops = {
       '0,6': { base: '#8f9a3f', a: '#5f9a7a', b: '#3f8f4f' },
     },
     gearTiles: [[3, 4], [10, 4], [3, 7], [10, 7]],
-    keeper: { name: 'MOSSY', shirt: '#5a7a3a', skin: '#7a5334',
+    // OPHELIA -- keeper of SWAMP FOOD. A die-hard Taylor Swift fan and lover
+    // of every creature that walks, hops, slithers, or scuttles through the
+    // shop door. Her bearded dragon Lucy rides her shoulder everywhere she
+    // goes, and the shop dog Evie is never far from her side -- both are
+    // baked right into her portrait (assets/keepers/ophelia.png), so no
+    // separate npc/pet sprite is needed. `shirt`/`skin` only matter for the
+    // procedural fallback sprite (drawn until that PNG finishes loading, or
+    // if it's ever missing), same as every other keeper here.
+    keeper: { name: 'OPHELIA', shirt: '#a8177a', skin: '#e8b48c',
       lines: [
-        'Welcome to Swamp Food — feed, chow, and fly bait, all sourced right out back.',
-        'Gator chow, frog flies, turtle pellets. If it lives in this swamp, we\'ve got its dinner.',
+        'Welcome to Swamp Food! That\'s Lucy on my shoulder, and Evie\'s the good girl by my feet — say hi!',
+        'If it\'s got scales, feathers, fur, or fins, I\'ve got something in stock for it. Gator chow, frog flies, turtle pellets, you name it.',
+        'Lucy\'s been riding my shoulder since she was the size of my thumb. Now look at her, big ol\' swamp queen.',
+        'Evie greets every single customer like it\'s the best day of her life. Genuinely don\'t know how she keeps that energy up.',
+        'I had this place playing nothing but Taylor on loop for a solid month once. The frogs out back still hum "Love Story," I swear.',
         'Careful with the crates — last customer opened one and a snapping turtle opened it right back.',
-        'Everything in stock, nothing on the shelves. This place runs on vibes and inventory in boxes.',
+        'Every animal deserves somebody in their corner. Out here in the swamp, that\'s kind of my whole job.',
       ] },
     // Two crates in here, both junk on purpose -- Swamp Food is a supply
     // shop, not a record spot, so neither one hides any of the swamp's
@@ -10503,20 +10521,21 @@ const shops = {
     ],
   }),
   // BURLINGTON RECORDS -- the swamp's third building: a proper record shop
-  // that set up out here off the boardwalk. `world: 'swamp'` again for
-  // consistency with GUT HUT/SWAMP FOOD above -- it's what makes
-  // Honeysuckle Lead register as a *swamp* record even though it's now
-  // found indoors. `recordShop: true` gets it the same crate-digger's-dream
-  // interior treatment (wall-mounted vinyl, bins, turntable booth, disco
-  // ball) as Pure Pop Records back in town -- see drawPurePopInterior().
+  // that set up out here off the boardwalk, owned and run by Ian.
+  // `world: 'swamp'` again for consistency with GUT HUT/SWAMP FOOD above --
+  // it's what makes Honeysuckle Lead register as a *swamp* record even
+  // though it's now found indoors. `recordShop: true` gets it the same
+  // crate-digger's-dream interior treatment (wall-mounted vinyl, bins,
+  // turntable booth, disco ball) as Pure Pop Records back in town -- see
+  // drawPurePopInterior().
   burlington: makeShop('burlington', {
     world: 'swamp',
     floor: '#3a2e4a', plank: '#2c2238', wallColor: '#1c1526',
     recordShop: true,
-    keeper: { name: 'REEDA', shirt: '#7a5aa0', skin: '#8a6a48',
+    keeper: { name: 'IAN', shirt: '#5a5a54', skin: '#e8b48c',
       lines: [
         'Welcome to Burlington Records — yeah, out here in the swamp. Rent\'s cheaper, and the frogs don\'t complain about the volume.',
-        'Grew up crate-digging up in Burlington proper. Followed the boardwalk out here and never left.',
+        'Name\'s Ian. This is my shop. Grew up crate-digging up in Burlington proper and followed the boardwalk out here to open my own place.',
         'Honeysuckle Lead came through in a water-damaged box of 45s. Sound\'s still clean, somehow.',
         'Might be filed in one of these crates. Might not. My filing system is mostly "eventually".',
       ],
@@ -24514,14 +24533,14 @@ function drawDeliSeatingArea() {
 }
 
 // ---------------------------------------------------------------- keeper
-const KEEPER_HAIR = { DEE: '#5a2e1c', ROSIE: '#c8c0b0', ZEKE: '#241a12', JADE: '#141014', TONY: '#2a2018', LANNY: '#3a1a5c', MITCH: '#5a3a1c', BIGDOG: '#3a2a1c', EDNA: '#a8a8a8' };
+const KEEPER_HAIR = { DEE: '#5a2e1c', ROSIE: '#c8c0b0', ZEKE: '#241a12', JADE: '#141014', TONY: '#2a2018', LANNY: '#3a1a5c', MITCH: '#5a3a1c', BIGDOG: '#3a2a1c', EDNA: '#a8a8a8', OPHELIA: '#8a5a2e' };
 
 // Optional per-keeper artwork. Drop a PNG at assets/keepers/<name>.png (any
 // size — it's scaled to KEEPER_SPR_H, feet anchored at the same floor line
 // the procedural sprite uses) and it's picked up automatically. Until a file
 // exists (or while it's still loading), drawKeeper falls back to the shaded
 // procedural sprite below, so nothing ever renders blank.
-const KEEPER_NAMES = ['SK1', 'DEE', 'ROSIE', 'ZEKE', 'JADE', 'TONY', 'LANNY', 'MITCH', 'BIGDOG', 'EDNA'];
+const KEEPER_NAMES = ['SK1', 'DEE', 'ROSIE', 'ZEKE', 'JADE', 'TONY', 'LANNY', 'MITCH', 'BIGDOG', 'EDNA', 'OPHELIA'];
 // Matches the 80px height used for Green Door Studio's image-based npcs
 // (truth.png, zach.png, kanga.png — see SHOP_NPC_IMAGES/drawShopImageNpcs'
 // `n.spriteH || 80` default), so every keeper — current and future — reads
@@ -24549,6 +24568,10 @@ keeperImgs.MRKBH = mrkbhImg;
 // is declared up with the other pre-drawn characters and just registered
 // here so drawKeeper() picks it up by name.
 keeperImgs.JOHNNY = johnnyImg;
+// BURLINGTON RECORDS' keeper, IAN -- same idea as MRKBH/JOHNNY above: the
+// art is declared up with the other pre-drawn characters and just
+// registered here so drawKeeper() picks it up by name.
+keeperImgs.IAN = ianImg;
 
 function drawAnt(cx, cy, s) {
   // A white ant silhouette (the Anthill Collective mark), drawn on SK1's hat.
