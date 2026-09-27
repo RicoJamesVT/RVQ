@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Vocal Chop Booth</title>
+<style>
+  :root{
+    --pink:#ff2fa0; --green:#39ff8f; --blue:#2fd8ff; --gold:#f0c33e;
+    --bg0:#08060c; --bg1:#100c16; --bg2:#191420;
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{
+    margin:0; padding:0; width:100%; height:100%;
+    background:radial-gradient(ellipse at 50% 0%, var(--bg2), var(--bg0) 75%);
+    color:#f4ecd8; font-family:'Courier New',monospace;
+    overflow-y:auto; overflow-x:hidden;
+    -webkit-user-select:none; user-select:none;
+  }
+  .wrap{ min-height:100%; display:flex; flex-direction:column; align-items:center; padding:14px 12px 28px; gap:14px; }
+  .booth-title{
+    text-align:center; font-weight:bold; letter-spacing:1px;
+    font-size:15px; color:var(--gold); text-shadow:0 0 8px rgba(240,195,62,0.5);
+    margin-top:4px;
+  }
+  .booth-sub{ text-align:center; font-size:11px; color:#c9bfd8; max-width:560px; line-height:1.5; }
+
+  .panel{
+    width:100%; max-width:560px; background:rgba(20,16,26,0.55);
+    border:1.5px solid rgba(244,236,216,0.15); border-radius:12px;
+    padding:12px; display:flex; flex-direction:column; gap:10px;
+  }
+  .panel-head{
+    display:flex; align-items:center; justify-content:space-between;
+    font-size:12px; font-weight:bold; letter-spacing:0.5px;
+  }
+  .dot{ display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; vertical-align:1px; }
+
+  .pad-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+  .pad{
+    aspect-ratio:1/1; border-radius:10px; border:1.5px solid rgba(244,236,216,0.25);
+    display:flex; align-items:center; justify-content:center; flex-direction:column;
+    font-size:11px; font-weight:bold; cursor:pointer; color:#f4ecd8;
+    background:rgba(0,0,0,0.25); transition:transform 0.05s, box-shadow 0.15s; gap:2px;
+  }
+  .pad small{ font-weight:normal; opacity:0.7; font-size:9px; }
+  .pad.active{ transform:scale(0.94); }
+  .pad.locked{ opacity:0.35; cursor:default; }
+  .pad.looping{ box-shadow:0 0 0 2px #fff inset; }
+
+  .choir .pad{ border-color:rgba(255,47,160,0.45); }
+  .choir .pad.flash{ background:rgba(255,47,160,0.55); box-shadow:0 0 16px rgba(255,47,160,0.7); }
+  .frog .pad{ border-color:rgba(57,255,143,0.45); }
+  .frog .pad.flash{ background:rgba(57,255,143,0.45); box-shadow:0 0 16px rgba(57,255,143,0.6); }
+  .voice .pad{ border-color:rgba(47,216,255,0.45); }
+  .voice .pad.flash{ background:rgba(47,216,255,0.45); box-shadow:0 0 16px rgba(47,216,255,0.6); }
+
+  .loop-toggle{
+    font-size:10px; padding:4px 10px; border-radius:6px; cursor:pointer;
+    border:1.5px solid rgba(244,236,216,0.35); background:rgba(0,0,0,0.25); color:#c9bfd8;
+  }
+  .loop-toggle.on{ background:#f0c33e; color:#181418; border-color:#f0c33e; }
+
+  .rec-row{ display:flex; align-items:center; gap:12px; }
+  .rec-btn{
+    flex:0 0 auto; width:64px; height:64px; border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #ff5c5c, #a01414);
+    border:2px solid #f4ecd8; display:flex; align-items:center; justify-content:center;
+    font-size:10px; font-weight:bold; color:#f4ecd8; cursor:pointer; text-align:center;
+    box-shadow:0 0 0 rgba(255,47,60,0); transition:box-shadow 0.2s;
+  }
+  .rec-btn.recording{ box-shadow:0 0 22px rgba(255,60,60,0.85); animation:pulse 1s infinite; }
+  @keyframes pulse{ 0%,100%{ transform:scale(1);} 50%{ transform:scale(1.06);} }
+  .rec-status{ font-size:11px; color:#c9bfd8; line-height:1.5; flex:1 1 auto; }
+  .rec-bar{ width:100%; height:6px; border-radius:4px; background:rgba(255,255,255,0.08); overflow:hidden; margin-top:4px; }
+  .rec-bar-fill{ height:100%; width:0%; background:linear-gradient(90deg,var(--pink),var(--gold)); transition:width 0.05s linear; }
+
+  .mini-btn{
+    font-size:10px; padding:6px 10px; border-radius:6px; cursor:pointer;
+    border:1.5px solid rgba(244,236,216,0.35); background:rgba(0,0,0,0.25); color:#f4ecd8;
+  }
+  .mini-btn:active{ background:rgba(244,236,216,0.15); }
+
+  .vol-row{ display:flex; align-items:center; gap:8px; font-size:10px; color:#c9bfd8; }
+  .vol-row input[type=range]{ flex:1 1 auto; }
+
+  .msg{
+    max-width:560px; text-align:center; font-size:11px; color:#e0a030;
+    background:rgba(0,0,0,0.3); border:1px solid rgba(224,160,48,0.4);
+    border-radius:8px; padding:8px 12px; display:none;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="booth-title">THA TRUTH'S VOCAL CHOP BOOTH</div>
+  <div class="booth-sub">Chop the swamp's own chants, then hit RECORD to lay down four seconds of your own voice — chopped into pads the instant you stop. Tap pads to trigger, hold LOOP to make one repeat. Layer 'em however you want.</div>
+
+  <div id="permMsg" class="msg"></div>
+
+  <div class="panel choir">
+    <div class="panel-head">
+      <span><span class="dot" style="background:var(--pink);"></span>MOSS HALLELUJAH (CHOIR)</span>
+      <span id="choirLoopBtn" class="loop-toggle">LOOP: OFF</span>
+    </div>
+    <div class="pad-grid" id="choirPads"></div>
+  </div>
+
+  <div class="panel frog">
+    <div class="panel-head">
+      <span><span class="dot" style="background:var(--green);"></span>FROG CHORUS STAB</span>
+      <span id="frogLoopBtn" class="loop-toggle">LOOP: OFF</span>
+    </div>
+    <div class="pad-grid" id="frogPads"></div>
+  </div>
+
+  <div class="panel voice">
+    <div class="panel-head">
+      <span><span class="dot" style="background:var(--blue);"></span>YOUR VOICE</span>
+      <span id="voiceLoopBtn" class="loop-toggle">LOOP: OFF</span>
+    </div>
+    <div class="rec-row">
+      <div id="recBtn" class="rec-btn">REC<br>4s</div>
+      <div style="flex:1 1 auto;">
+        <div id="recStatus" class="rec-status">Tap to record 4 seconds, then it's chopped into the pads below.</div>
+        <div class="rec-bar"><div id="recBarFill" class="rec-bar-fill"></div></div>
+      </div>
+      <div id="reRecBtn" class="mini-btn" style="display:none;">CLEAR</div>
+    </div>
+    <div class="pad-grid" id="voicePads"></div>
+  </div>
+
+  <div class="panel">
+    <div class="vol-row">
+      <span style="width:64px;">CHANTS</span>
+      <input id="chantVol" type="range" min="0" max="100" value="70">
+    </div>
+    <div class="vol-row">
+      <span style="width:64px;">VOICE</span>
+      <input id="voiceVol" type="range" min="0" max="100" value="85">
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+// Entire booth is wrapped defensively -- a failure in here should never
+// leave the player stuck looking at a broken page with no way back (the
+// outer game overlay's own "BACK TO THE BACK ROOM" button always works
+// regardless of what happens inside this iframe).
+try {
+
+let actx = null;
+function getCtx() {
+  if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+  if (actx.state === 'suspended') actx.resume().catch(() => {});
+  return actx;
+}
+// Unlock audio on first touch/click anywhere, same pattern as the main
+// game's intro video autoplay fallback -- browsers require a user gesture
+// before audio can start.
+document.addEventListener('pointerdown', () => { try { getCtx(); } catch (e) {} }, { once: true });
+
+const chantVolEl = document.getElementById('chantVol');
+const voiceVolEl = document.getElementById('voiceVol');
+function chantGain() { return (parseInt(chantVolEl.value, 10) || 0) / 100; }
+function voiceGain() { return (parseInt(voiceVolEl.value, 10) || 0) / 100; }
+
+// ---------------------------------------------------------------- pad flash
+function flashPad(el) {
+  el.classList.add('flash');
+  setTimeout(() => el.classList.remove('flash'), 160);
+}
+
+// ---------------------------------------------------------------- synth chants
+// No external audio assets exist for these yet, so both swamp chants are
+// synthesized live with the Web Audio API -- four short "hits" per chant,
+// each its own pad, in keeping with the game's fully-offline/no-network
+// asset policy (see the intro video comment at the top of game.js).
+
+// Moss Hallelujah -- warm choir-pad stack, one chord per pad, slow swell.
+const CHOIR_CHORDS = [
+  [261.63, 329.63, 392.00],      // C major
+  [293.66, 349.23, 440.00],      // D minor-ish
+  [220.00, 261.63, 329.63],      // A minor
+  [246.94, 311.13, 392.00],      // Bb-ish cluster
+];
+function playChoirHit(chordIdx, loop, stopToken) {
+  const ctx = getCtx();
+  const now = ctx.currentTime;
+  const master = ctx.createGain();
+  master.gain.value = 0;
+  master.connect(ctx.destination);
+  const dur = loop ? 1.6 : 1.9;
+  master.gain.setValueAtTime(0, now);
+  master.gain.linearRampToValueAtTime(0.5 * chantGain(), now + 0.25);
+  master.gain.linearRampToValueAtTime(0, now + dur);
+  const oscs = [];
+  CHOIR_CHORDS[chordIdx % CHOIR_CHORDS.length].forEach((freq, i) => {
+    const o = ctx.createOscillator();
+    o.type = 'sine';
+    o.frequency.value = freq;
+    const lfo = ctx.createOscillator();
+    lfo.frequency.value = 4.5 + i * 0.3;
+    const lfoGain = ctx.createGain();
+    lfoGain.gain.value = 2.2;
+    lfo.connect(lfoGain).connect(o.frequency);
+    const g = ctx.createGain();
+    g.gain.value = 0.5;
+    o.connect(g).connect(master);
+    o.start(now); lfo.start(now);
+    o.stop(now + dur + 0.05); lfo.stop(now + dur + 0.05);
+    oscs.push(o, lfo);
+  });
+  if (loop) {
+    const next = setTimeout(() => {
+      if (stopToken.stopped) return;
+      playChoirHit(chordIdx, true, stopToken);
+    }, dur * 1000 * 0.75);
+    stopToken.timers.push(next);
+  }
+}
+
+// Frog Chorus Stab -- quick filtered-noise "ribbit" bursts, pitch varies per pad.
+let noiseBufferCache = null;
+function getNoiseBuffer(ctx) {
+  if (noiseBufferCache) return noiseBufferCache;
+  const buf = ctx.createBuffer(1, ctx.sampleRate * 0.4, ctx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+  noiseBufferCache = buf;
+  return buf;
+}
+const FROG_PITCHES = [520, 640, 420, 760];
+function playFrogHit(padIdx, loop, stopToken) {
+  const ctx = getCtx();
+  const now = ctx.currentTime;
+  const src = ctx.createBufferSource();
+  src.buffer = getNoiseBuffer(ctx);
+  const bp = ctx.createBiquadFilter();
+  bp.type = 'bandpass';
+  bp.frequency.setValueAtTime(FROG_PITCHES[padIdx % FROG_PITCHES.length], now);
+  bp.frequency.exponentialRampToValueAtTime(FROG_PITCHES[padIdx % FROG_PITCHES.length] * 0.5, now + 0.18);
+  bp.Q.value = 6;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.9 * chantGain(), now);
+  g.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+  src.connect(bp).connect(g).connect(ctx.destination);
+  src.start(now); src.stop(now + 0.22);
+  if (loop) {
+    const next = setTimeout(() => {
+      if (stopToken.stopped) return;
+      playFrogHit(padIdx, true, stopToken);
+    }, 380);
+    stopToken.timers.push(next);
+  }
+}
+
+// ---------------------------------------------------------------- generic pad bank (loop-toggle + tap/stop)
+function makeBank(containerEl, loopBtnEl, count, playFn, cssClassPrefix) {
+  const pads = [];
+  let loopMode = false;
+  let activeLoop = null; // { padIdx, token }
+
+  function stopActiveLoop() {
+    if (activeLoop) {
+      activeLoop.token.stopped = true;
+      activeLoop.token.timers.forEach(t => clearTimeout(t));
+      pads[activeLoop.padIdx].el.classList.remove('looping');
+      activeLoop = null;
+    }
+  }
+
+  loopBtnEl.addEventListener('click', () => {
+    loopMode = !loopMode;
+    loopBtnEl.textContent = 'LOOP: ' + (loopMode ? 'ON' : 'OFF');
+    loopBtnEl.classList.toggle('on', loopMode);
+    if (!loopMode) stopActiveLoop();
+  });
+
+  for (let i = 0; i < count; i++) {
+    const el = document.createElement('div');
+    el.className = 'pad locked';
+    el.innerHTML = 'PAD ' + (i + 1) + (cssClassPrefix === 'voice' ? '<br><small>record first</small>' : '');
+    containerEl.appendChild(el);
+    const pad = { el, enabled: cssClassPrefix !== 'voice' };
+    pads.push(pad);
+    if (pad.enabled) el.classList.remove('locked');
+
+    el.addEventListener('pointerdown', () => {
+      if (!pad.enabled) return;
+      el.classList.add('active');
+      flashPad(el);
+      if (loopMode) {
+        if (activeLoop && activeLoop.padIdx === i) {
+          stopActiveLoop();
+          return;
+        }
+        stopActiveLoop();
+        const token = { stopped: false, timers: [] };
+        activeLoop = { padIdx: i, token };
+        el.classList.add('looping');
+        playFn(i, true, token);
+      } else {
+        playFn(i, false, { stopped: false, timers: [] });
+      }
+    });
+    el.addEventListener('pointerup', () => el.classList.remove('active'));
+    el.addEventListener('pointerleave', () => el.classList.remove('active'));
+  }
+  return { pads, stopActiveLoop, setEnabled: (i, on) => { pads[i].enabled = on; pads[i].el.classList.toggle('locked', !on); } };
+}
+
+const choirBank = makeBank(document.getElementById('choirPads'), document.getElementById('choirLoopBtn'), 4,
+  (idx, loop, token) => playChoirHit(idx, loop, token), 'choir');
+const frogBank = makeBank(document.getElementById('frogPads'), document.getElementById('frogLoopBtn'), 4,
+  (idx, loop, token) => playFrogHit(idx, loop, token), 'frog');
+
+// ---------------------------------------------------------------- voice recording + chopping
+let voiceBuffer = null; // decoded AudioBuffer of the player's own 4s take
+const voicePadsEl = document.getElementById('voicePads');
+const voiceLoopBtn = document.getElementById('voiceLoopBtn');
+function playVoiceSlice(idx, loop, token) {
+  if (!voiceBuffer) return;
+  const ctx = getCtx();
+  const sliceDur = voiceBuffer.duration / 4;
+  const offset = sliceDur * idx;
+  const src = ctx.createBufferSource();
+  src.buffer = voiceBuffer;
+  const g = ctx.createGain();
+  g.gain.value = voiceGain();
+  src.connect(g).connect(ctx.destination);
+  src.start(0, offset, sliceDur);
+  if (loop) {
+    const next = setTimeout(() => {
+      if (token.stopped) return;
+      playVoiceSlice(idx, true, token);
+    }, sliceDur * 1000);
+    token.timers.push(next);
+  }
+}
+const voiceBank = makeBank(voicePadsEl, voiceLoopBtn, 4, playVoiceSlice, 'voice');
+// voice pads start locked (created disabled inside makeBank via cssClassPrefix==='voice')
+
+const recBtn = document.getElementById('recBtn');
+const reRecBtn = document.getElementById('reRecBtn');
+const recStatus = document.getElementById('recStatus');
+const recBarFill = document.getElementById('recBarFill');
+const permMsg = document.getElementById('permMsg');
+
+function showPermMsg(text) {
+  permMsg.textContent = text;
+  permMsg.style.display = 'block';
+}
+
+let mediaStream = null;
+let recorder = null;
+let recording = false;
+
+async function startRecording() {
+  if (recording) return;
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || typeof MediaRecorder === 'undefined') {
+    showPermMsg('Recording isn\'t supported in this browser -- you can still chop the swamp chants above.');
+    return;
+  }
+  try {
+    getCtx();
+    if (!mediaStream) {
+      mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    }
+  } catch (err) {
+    showPermMsg('Mic access was blocked -- allow microphone access to record your own voice. The swamp chants above still work without it.');
+    return;
+  }
+  permMsg.style.display = 'none';
+  recording = true;
+  recBtn.classList.add('recording');
+  recBtn.innerHTML = 'STOP';
+  recStatus.textContent = 'Recording... freestyle it.';
+  choirBank.stopActiveLoop(); // don't let a loop bleed onto the fresh take's silence
+
+  const chunks = [];
+  let mimeType = '';
+  ['audio/webm', 'audio/mp4', 'audio/ogg'].some(t => {
+    if (window.MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t)) { mimeType = t; return true; }
+    return false;
+  });
+  try {
+    recorder = mimeType ? new MediaRecorder(mediaStream, { mimeType }) : new MediaRecorder(mediaStream);
+  } catch (e) {
+    recorder = new MediaRecorder(mediaStream);
+  }
+  recorder.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+  recorder.onstop = async () => {
+    recBtn.classList.remove('recording');
+    recBtn.innerHTML = 'REC<br>4s';
+    recording = false;
+    recBarFill.style.width = '0%';
+    if (!chunks.length) {
+      recStatus.textContent = 'Didn\'t catch anything -- tap REC to try again.';
+      return;
+    }
+    recStatus.textContent = 'Chopping it up...';
+    try {
+      const blob = new Blob(chunks, { type: chunks[0].type || 'audio/webm' });
+      const arrBuf = await blob.arrayBuffer();
+      const ctx = getCtx();
+      const decoded = await new Promise((resolve, reject) => {
+        // decodeAudioData supports both promise and callback signatures across browsers
+        const maybePromise = ctx.decodeAudioData(arrBuf, resolve, reject);
+        if (maybePromise && typeof maybePromise.then === 'function') maybePromise.then(resolve, reject);
+      });
+      voiceBuffer = decoded;
+      for (let i = 0; i < 4; i++) voiceBank.setEnabled(i, true);
+      voicePadsEl.querySelectorAll('.pad').forEach((el, i) => { el.innerHTML = 'PAD ' + (i + 1); });
+      reRecBtn.style.display = 'inline-block';
+      recStatus.textContent = 'Chopped! Tap the pads below to trigger your own voice.';
+    } catch (err) {
+      recStatus.textContent = 'Couldn\'t process that take -- tap REC to try again.';
+    }
+  };
+  recorder.start();
+
+  const totalMs = 4000;
+  const startTime = performance.now();
+  const tick = () => {
+    if (!recording) return;
+    const pct = Math.min(100, ((performance.now() - startTime) / totalMs) * 100);
+    recBarFill.style.width = pct + '%';
+    if (pct < 100) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+  setTimeout(() => { if (recording && recorder && recorder.state === 'recording') recorder.stop(); }, totalMs);
+}
+
+function stopRecordingEarly() {
+  if (recording && recorder && recorder.state === 'recording') recorder.stop();
+}
+
+recBtn.addEventListener('click', () => {
+  if (recording) stopRecordingEarly();
+  else startRecording();
+});
+
+reRecBtn.addEventListener('click', () => {
+  voiceBuffer = null;
+  voiceBank.stopActiveLoop();
+  for (let i = 0; i < 4; i++) voiceBank.setEnabled(i, false);
+  voicePadsEl.querySelectorAll('.pad').forEach((el, i) => { el.innerHTML = 'PAD ' + (i + 1) + '<br><small>record first</small>'; });
+  reRecBtn.style.display = 'none';
+  recStatus.textContent = 'Tap to record 4 seconds, then it\'s chopped into the pads below.';
+});
+
+// Release the mic stream when the booth is torn down (iframe navigated to
+// about:blank by closeVocalChopBoothApp()) so the browser's mic indicator
+// doesn't stay lit after the player leaves.
+window.addEventListener('pagehide', () => {
+  try { if (mediaStream) mediaStream.getTracks().forEach(t => t.stop()); } catch (e) {}
+});
+
+} catch (err) {
+  // If anything above throws, fail visibly but harmlessly rather than
+  // leaving a blank black screen -- the outer game's close button still
+  // works regardless.
+  document.body.innerHTML = '<div style="color:#f4ecd8;font-family:monospace;padding:40px;text-align:center;">'
+    + 'The booth hit a snag loading. Tap "BACK TO THE BACK ROOM" above and try again.</div>';
+  if (typeof console !== 'undefined' && console.error) console.error('Vocal Chop Booth failed to load:', err);
+}
+})();
+</script>
+</body>
+</html>
