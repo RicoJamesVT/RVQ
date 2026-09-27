@@ -1,0 +1,118 @@
+:root{--bg:#05080c;--panel:#0e171d;--line:#33434d;--text:#f5f7f9;--accent:#bfff32;--purple:#a735ff;--pink:#ff5f87}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;width:100%;height:100%;min-height:100%;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+body{overflow:hidden;overscroll-behavior:none;touch-action:none}
+.app{position:fixed;inset:0;width:100%;height:100dvh;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);overflow:hidden}
+
+/* ---------- Layout shell ----------
+   The canvas is a fixed 1280x720 (16:9) world. Rather than stretching it to
+   fill whatever shape the screen happens to be (which is what caused the
+   "squished" portrait look), we give it its own grid area ("stage") sized
+   in JS to always contain a true 16:9 box, and give the controls their own
+   dedicated areas so they never overlap gameplay and always have real room
+   to be big and well spaced.
+   Portrait: stage on top, controls in a band underneath.
+   Landscape: stage in the middle, controls in side columns. */
+.game-shell{
+  position:relative;width:100%;height:100%;background:#05070a;
+  display:grid;grid-template-columns:1fr;grid-template-rows:1fr;grid-template-areas:"stage";
+}
+/* game.js measures the viewport and overwrites the grid tracks with exact
+   pixel sizes on load, resize and rotation (see layout()). Only the first
+   paint uses the values above. */
+
+.stage-zone{grid-area:stage;position:relative;display:flex;align-items:center;justify-content:center;min-width:0;min-height:0;overflow:hidden;background:#05070a}
+.stage-wrap{position:relative;background:#05070a;overflow:hidden;outline:1px solid #1c2830;box-shadow:0 20px 60px #000a;container-type:size;container-name:stage}
+canvas{position:absolute;inset:0;display:block;width:100%;height:100%;image-rendering:pixelated;background:#081014}
+
+.title-screen{position:absolute;inset:0;z-index:20;background:#030508;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:clamp(14px,4cqh,38px);gap:10px;overflow:hidden}
+.title-screen img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;object-position:center center;image-rendering:auto}
+.title-actions{position:relative;z-index:2;display:flex;gap:10px;flex-wrap:nowrap;justify-content:center;margin-top:auto;padding-bottom:clamp(8px,2cqh,22px)}
+.title-actions button,.game-over button{min-width:clamp(104px,28cqw,180px);border:2px solid #63717b;border-radius:8px;background:#111a20ee;padding:clamp(7px,2.4cqh,12px) clamp(10px,3cqw,20px);font-weight:900;letter-spacing:.08em;cursor:pointer;box-shadow:0 5px 0 #030507;color:var(--text);font-size:clamp(11px,2.4cqw,16px);touch-action:manipulation}
+.title-actions .primary,.game-over .primary{border-color:var(--accent);background:#2b3a16ee;color:#eaffc5}
+.title-actions button:active,.game-over button:active{transform:translateY(3px);box-shadow:0 2px 0 #030507}
+.title-tip{position:relative;z-index:2;margin:0;background:#05090dcc;border:1px solid #52616a;border-radius:999px;padding:6px 14px;font-size:clamp(9px,2cqw,13px);text-align:center;max-width:min(760px,92cqw)}
+.tip-touch{display:none}
+.touch .tip-touch{display:inline}
+.touch .tip-keys{display:none}
+
+.pause-badge{cursor:pointer;position:absolute;z-index:12;left:50%;top:42%;transform:translate(-50%,-50%);background:#070b0ee8;border:2px solid var(--accent);padding:12px 18px;border-radius:10px;font-weight:900;letter-spacing:.08em;font-size:clamp(13px,3cqw,18px)}
+.game-over{position:absolute;inset:0;z-index:15;background:linear-gradient(#030508cc,#05080cf2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:20px}
+.ko{font:900 clamp(38px,16cqh,130px)/.8 monospace;color:var(--accent);text-shadow:7px 7px 0 #4a126f}
+.over-line{font:900 clamp(15px,4cqh,28px) monospace}
+.final-stats{font:800 clamp(12px,3cqh,18px) monospace;color:#cbd6db}
+.game-over button{margin-top:8px}
+.hidden{display:none!important}
+
+/* ---------- Controls ----------
+   Touch controls live in their own grid areas OUTSIDE the stage, so they can
+   never cover gameplay. On keyboard/mouse devices they're removed entirely and
+   the stage gets the whole window. Buttons are sized from the space each zone
+   is given (container query units) and kept >= 44px tall/wide for thumbs. */
+body:not(.touch) .pad-zone,body:not(.touch) .action-zone,body:not(.touch) .pause-btn,body:not(.touch) .rotate-hint{display:none!important}
+.pad-zone,.action-zone{position:relative;display:flex;align-items:center;justify-content:center;padding:8px;min-width:0;min-height:0;overflow:hidden;container-type:size}
+.pad-zone{grid-area:pad}
+.action-zone{grid-area:action}
+[data-mode=bottom] .pad-zone{justify-content:flex-start;padding-left:max(8px,2vw)}
+[data-mode=bottom] .action-zone{justify-content:flex-end;padding-right:max(8px,2vw)}
+
+.control{
+  border:2px solid #56636b;background:linear-gradient(#26333c,#121a20);
+  border-radius:16px;box-shadow:0 5px 0 #050709,0 10px 20px #0007;
+  touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;
+  font-weight:900;letter-spacing:.02em;cursor:pointer;color:var(--text);font-family:inherit;
+  display:flex;align-items:center;justify-content:center;line-height:1;text-align:center;
+  min-width:0;min-height:0;overflow:hidden;white-space:nowrap;padding:2px
+}
+.control:active,.control.pressed{transform:translateY(4px);box-shadow:0 1px 0 #050709;filter:brightness(1.15)}
+
+/* D-pad: inverted-T arrow cluster, 3 columns x 2 rows */
+.dpad{
+  display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);gap:6px;
+  width:min(100cqw,150cqh,240px);aspect-ratio:3/2;
+  filter:drop-shadow(0 8px 14px #0009);container-type:inline-size
+}
+.dpad .control{width:100%;height:100%;border-radius:16px;font-size:clamp(16px,11cqw,28px)}
+.dpad .up{grid-column:2;grid-row:1}
+.dpad .left{grid-column:1;grid-row:2}
+.dpad .down{grid-column:2;grid-row:2}
+.dpad .right{grid-column:3;grid-row:2}
+
+/* Action buttons. Bottom band: 3x2. Side column: 2x3 (most-used attacks at the bottom, under the thumb). */
+.action-pad{display:grid;gap:8px 6px;container-type:inline-size}
+[data-mode=bottom] .action-pad,.action-pad{
+  grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);
+  grid-template-areas:"punch kick cane" "jump dash special";
+  width:min(100cqw,calc(100cqh*3/2.2),440px);aspect-ratio:3/2.2
+}
+[data-mode=side] .action-pad{
+  grid-template-columns:repeat(2,1fr);grid-template-rows:repeat(3,1fr);
+  grid-template-areas:"jump dash" "cane special" "punch kick";
+  width:min(100cqw,calc(100cqh*2/3.2),200px);aspect-ratio:2/3.2
+}
+.action-pad .control{width:100%;height:100%;border-radius:14px;font-size:clamp(9px,6.4cqw,15px);letter-spacing:0}
+[data-mode=side] .action-pad .control{font-size:clamp(9px,8.2cqw,15px)}
+.action-pad .punch{grid-area:punch;border-color:#ffb347}
+.action-pad .kick{grid-area:kick;border-color:#ff6b9d}
+.action-pad .cane{grid-area:cane;border-color:#8dc3ff}
+.action-pad .jump{grid-area:jump;border-color:#6e7dff}
+.action-pad .dash{grid-area:dash;border-color:#ff9d43}
+.action-pad .special{grid-area:special;border-color:var(--accent);color:#dfffab;font-size:clamp(8px,5.2cqw,12px)}
+[data-mode=side] .action-pad .special{font-size:clamp(8px,6.6cqw,12px)}
+
+/* Pause button: lives outside the stage (side column top, or under the stage) */
+.pause-btn{
+  position:absolute;z-index:6;width:46px;height:46px;border-radius:50%;
+  top:var(--pause-top,12px);left:var(--pause-left,12px);right:var(--pause-right,auto);
+  border:2px solid #56636b;background:linear-gradient(#26333c,#121a20);color:var(--text);
+  font:900 14px/1 system-ui,sans-serif;letter-spacing:-.05em;box-shadow:0 4px 0 #050709;cursor:pointer;
+  touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;padding:0
+}
+.pause-btn:active{transform:translateY(3px);box-shadow:0 1px 0 #050709}
+.rotate-hint{position:absolute;z-index:4;left:0;right:0;text-align:center;font-size:12px;letter-spacing:.06em;color:#7f909a;pointer-events:none}
+
+.how-panel{position:fixed;z-index:30;left:50%;top:50%;transform:translate(-50%,-50%);width:min(820px,92vw);max-height:82dvh;overflow:auto;border:1px solid #3b4a54;background:#0e151bf5;padding:16px 18px;border-radius:12px;display:flex;gap:14px;flex-wrap:wrap;font-size:clamp(12px,1.6vmin,14px);line-height:1.4;box-shadow:0 18px 60px #000c}
+
+/* Input reliability: never let a gesture scroll/drag the page. */
+.control{position:relative;isolation:isolate}
+.control:focus-visible,.pause-btn:focus-visible{outline:3px solid #fff;outline-offset:2px}
