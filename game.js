@@ -9677,7 +9677,10 @@ function makeSwamp() {
   g[BURL_DOOR_Y][BURL_DOOR_X] = 'D';
   buildings.push({
     x: BURL_X, y: BURL_Y, w: BURL_W, h: BURL_H, name: 'BURLINGTON RECORDS',
-    wall: '#4a3a5e', roof: '#241c30', doorX: BURL_DOOR_X,
+    // Dark hunter-green storefront with a black-framed glass front, matching
+    // the real shop's exterior (see drawBurlingtonRecordsDecor below for the
+    // window signage, neon OPEN sign, and entrance flower boxes).
+    wall: '#3c4a37', roof: '#1a2418', doorX: BURL_DOOR_X,
   });
 
   // JOHNNY'S FUN PARK -- fourth swamp building: a little boardwalk fun
@@ -21129,6 +21132,9 @@ function drawBuildings(map) {
     const isHenrys = b.name === "Henry's Diner";
     const isComedyClub = b.name === 'VT COMEDY CLUB';
     const isDeli = b.name === 'Kountry Kart Deli';
+    const isBurlington = b.name === 'BURLINGTON RECORDS';
+    const isSwampFood = b.name === 'SWAMP FOOD';
+    const isJohnnysFunPark = b.name === "JOHNNY'S FUN PARK";
 
     // wall/roof shade colors: each building's wall/roof color never changes,
     // so compute these once per building and cache them on the building
@@ -21196,7 +21202,7 @@ function drawBuildings(map) {
     ctx.fillStyle = 'rgba(0,0,0,0.3)';
     ctx.fillRect(px, py + TILE + 8, w, 3);
 
-    if (!isDeli) {
+    if (!isDeli && !isBurlington) {
       for (let i = 0; i < b.w; i++) {
         if (b.x + i === b.doorX) continue;
         if (i === 0 || i === b.w - 1) continue;
@@ -21316,6 +21322,23 @@ function drawBuildings(map) {
       ctx.fillRect(doorXi + 3, doorY + 4, doorW - 6, doorH * 0.6);
       ctx.fillStyle = '#e0c060';
       ctx.fillRect(dx + TILE - 12, py + h - 16, 3, 3);
+    } else if (isBurlington) {
+      // Black-framed glass door, matching the reference storefront's dark
+      // aluminum-and-glass entrance (drawBurlingtonRecordsDecor below draws
+      // the matching glass windows either side of it).
+      const doorXi = dx + 3, doorY = py + h - TILE + 2, doorW = TILE - 6, doorH = TILE - 2;
+      ctx.fillStyle = '#0c0a08';
+      ctx.fillRect(doorXi - 2, doorY - 3, doorW + 4, doorH + 3);
+      ctx.fillStyle = '#1a1a1c';                           // dark metal frame
+      ctx.fillRect(doorXi, doorY, doorW, doorH);
+      ctx.fillStyle = 'rgba(20,26,28,0.85)';               // glass pane
+      ctx.fillRect(doorXi + 3, doorY + 2, doorW - 6, doorH - 4);
+      ctx.fillStyle = 'rgba(180,210,220,0.18)';            // glass glint
+      ctx.fillRect(doorXi + 4, doorY + 3, 4, doorH - 8);
+      ctx.fillStyle = '#0c0a08';                           // center mullion
+      ctx.fillRect(doorXi + doorW / 2 - 1, doorY, 2, doorH);
+      ctx.fillStyle = '#8a8478';                           // push bar handle
+      ctx.fillRect(doorXi + doorW - 8, doorY + 5, 3, doorH - 10);
     } else {
       // Standard door for other buildings: outline, frame, shaded panels, handle
       const doorXi = dx + 4, doorY = py + h - TILE + 2, doorW = TILE - 8, doorH = TILE - 2;
@@ -21343,6 +21366,7 @@ function drawBuildings(map) {
     if (isJuniors) drawJuniorsDecor(px, py, w, h);
     if (isHenrys) drawHenrysDecor(px, py, w, h);
     if (isComedyClub) drawComedyClubDecor(px, py, w, h);
+    if (isBurlington) drawBurlingtonRecordsDecor(px, py, w, h, dx);
     // "3rd Thursdays" flyer on the outside wall of Pure Pop Records
     if (isThrift) drawThursPoster(px + 6, py + 40);
 
@@ -21378,7 +21402,112 @@ function drawBuildings(map) {
       lines.forEach((line, i) => {
         ctx.fillText(line, px + w / 2, sy + lineH * (i + 1) - 3);
       });
-    } else if (!isNectars) {
+    } else if (isSwampFood) {
+      // Weathered wooden plank sign, roped up over the doorway -- reads as
+      // a hand-built swamp-shack sign rather than the standard dark plate
+      // every other building gets, so SWAMP FOOD stands apart from GUT HUT/
+      // JOHNNY'S FUN PARK/TRUTH LAB next door.
+      const maxTextW = w + 26;
+      let fsize = 15;
+      ctx.font = 'bold ' + fsize + 'px monospace';
+      while (fsize > 10 && ctx.measureText(b.name).width > maxTextW) {
+        fsize--;
+        ctx.font = 'bold ' + fsize + 'px monospace';
+      }
+      const textW = ctx.measureText(b.name).width;
+      const sw = textW + 26, sh = fsize + 18;
+      const sx = px + (w - sw) / 2, sy = py + 6;
+
+      // two ropes hanging the plank from the roofline
+      ctx.strokeStyle = '#4a3820';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(sx + 7, py - 1); ctx.lineTo(sx + 7, sy);
+      ctx.moveTo(sx + sw - 7, py - 1); ctx.lineTo(sx + sw - 7, sy);
+      ctx.stroke();
+
+      // drop shadow + weathered wood plank body
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.fillRect(sx + 2, sy + 3, sw, sh);
+      ctx.fillStyle = '#5c3f24';
+      ctx.fillRect(sx, sy, sw, sh);
+      ctx.fillStyle = '#7a5730';
+      ctx.fillRect(sx, sy, sw, 3);
+      ctx.fillStyle = '#2e2010';
+      ctx.fillRect(sx, sy + sh - 3, sw, 3);
+
+      // plank grain + a couple of visible nail heads at the rope points
+      ctx.strokeStyle = 'rgba(0,0,0,0.18)';
+      ctx.lineWidth = 1;
+      for (let gx = sx + 10; gx < sx + sw - 4; gx += 11) {
+        ctx.beginPath(); ctx.moveTo(gx, sy + 2); ctx.lineTo(gx, sy + sh - 2); ctx.stroke();
+      }
+      ctx.fillStyle = '#2a1c10';
+      ctx.beginPath(); ctx.arc(sx + 7, sy + 4, 1.6, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(sx + sw - 7, sy + 4, 1.6, 0, Math.PI * 2); ctx.fill();
+
+      // slightly tilted hand-painted lettering
+      ctx.textAlign = 'center';
+      ctx.save();
+      ctx.translate(px + w / 2, sy + sh / 2 + fsize * 0.36);
+      ctx.rotate(-0.025);
+      ctx.fillStyle = '#e8d8a8';
+      ctx.fillText(b.name, 0, 0);
+      ctx.restore();
+    } else if (isJohnnysFunPark) {
+      // Carnival-marquee sign: candy-striped border, gold panel, and a ring
+      // of alternating "bulb" lights -- a boardwalk fun-park look instead
+      // of the standard dark plate every other building gets.
+      const maxTextW = w + 30;
+      let fsize = 15;
+      ctx.font = 'bold ' + fsize + 'px monospace';
+      while (fsize > 10 && ctx.measureText(b.name).width > maxTextW) {
+        fsize--;
+        ctx.font = 'bold ' + fsize + 'px monospace';
+      }
+      const textW = ctx.measureText(b.name).width;
+      const sw = textW + 26, sh = fsize + 20;
+      const sx = px + (w - sw) / 2, sy = py + 2;
+
+      // red/white candy-striped border
+      ctx.fillStyle = '#c81e2e';
+      ctx.fillRect(sx - 4, sy - 4, sw + 8, sh + 8);
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(sx - 4, sy - 4, sw + 8, sh + 8);
+      ctx.clip();
+      ctx.fillStyle = '#f4ecd8';
+      for (let i = -sh; i < sw + sh; i += 10) {
+        ctx.beginPath();
+        ctx.moveTo(sx - 4 + i, sy - 4);
+        ctx.lineTo(sx - 4 + i + 5, sy - 4);
+        ctx.lineTo(sx - 4 + i + 5 - (sh + 8), sy + sh + 4);
+        ctx.lineTo(sx - 4 + i - (sh + 8), sy + sh + 4);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.restore();
+
+      // gold marquee panel
+      ctx.fillStyle = '#e0b040';
+      ctx.fillRect(sx, sy, sw, sh);
+      ctx.fillStyle = 'rgba(255,255,255,0.25)';
+      ctx.fillRect(sx, sy, sw, 3);
+
+      // alternating bulb lights ringing the panel
+      const bulbLit = Math.floor(performance.now() / 300) % 2 === 0;
+      for (let bx = sx + 4; bx < sx + sw - 2; bx += 9) {
+        const idx = Math.round((bx - sx) / 9);
+        const lit = (idx % 2 === 0) === bulbLit;
+        ctx.fillStyle = lit ? '#fff6c0' : '#8a6a20';
+        ctx.beginPath(); ctx.arc(bx, sy, 1.8, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(bx, sy + sh, 1.8, 0, Math.PI * 2); ctx.fill();
+      }
+
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#2a1810';
+      ctx.fillText(b.name, px + w / 2, sy + sh / 2 + fsize * 0.36);
+    } else if (!isNectars && !isBurlington) {
       const maxTextW = w + 26;
       let fsize = 17;
       ctx.font = 'bold ' + fsize + 'px monospace';
@@ -21872,6 +22001,122 @@ function drawDeliDecor(px, py, w, h, doorPx) {
   ctx.beginPath(); ctx.arc(doorL + doorW + 8, kickTop + 8, 3, 0, Math.PI * 2); ctx.fill();
 
   ctx.restore();
+}
+
+// BURLINGTON RECORDS: floor-to-ceiling black-framed glass storefront with
+// hand-lettered genre signs in the windows, a purple neon "OPEN" sign by the
+// door, brick-red trim peeking above the glass line, and a flower box at the
+// entrance -- styled after the real shop's storefront (dark green paint over
+// brick, ROCK/JAZZ, HIP-HOP/REGGAE and SOUL window signs, purple neon OPEN).
+function drawBurlingtonRecordsDecor(px, py, w, h, doorPx) {
+  ctx.save();
+
+  const top = py + 38;        // just below the roof/eave trim
+  const bottom = py + h - 8;  // just above the foundation shading
+  const glassH = bottom - top;
+  const left = px + 4, right = px + w - 4;
+
+  const BLACK = '#0c0a08', CREAM = '#f4ecd8', PURPLE = '#9a4fd8';
+
+  // exposed brick sliver above the glass line, under the roof eave --
+  // echoes the real building's brick upper story peeking over the dark paint
+  ctx.fillStyle = '#7a4a3a';
+  ctx.fillRect(px + 2, py + 40 - 8, w - 4, 8);
+  for (let bx = 0; bx < w - 4; bx += 10) {
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.fillRect(px + 2 + bx, py + 40 - 8, 1, 8);
+  }
+
+  // black recess behind the glazing so the panes read as inset
+  ctx.fillStyle = BLACK;
+  ctx.fillRect(left - 2, top - 2, (right - left) + 4, glassH + 4);
+
+  // door bay in the middle; a glass window bay on either side of it
+  const doorW = TILE - 6, doorL = doorPx + 3;
+  const leftX = left, leftW = doorL - 3 - left;
+  const rightX = doorL + doorW + 3, rightW = right - rightX;
+
+  function glassPane(gx, gw) {
+    if (gw <= 0) return;
+    ctx.fillStyle = 'rgba(30,42,44,0.88)';
+    ctx.fillRect(gx, top, gw, glassH);
+    ctx.fillStyle = 'rgba(180,210,220,0.14)';           // glare streak
+    ctx.fillRect(gx + gw * 0.15, top + 2, Math.max(3, gw * 0.12), glassH - 4);
+    ctx.strokeStyle = '#1a1a1c';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(gx + 1, top + 1, gw - 2, glassH - 2);
+  }
+  glassPane(leftX, leftW);
+  glassPane(rightX, rightW);
+
+  // small dark plate with bold white lettering, sized to fit inside a
+  // window bay -- same look for each of the three genre signs
+  function windowSign(cx, cy, lines, maxW) {
+    let fsize = 10;
+    ctx.font = 'bold ' + fsize + 'px monospace';
+    let lineW = Math.max(...lines.map((l) => ctx.measureText(l).width));
+    while (fsize > 6 && lineW > maxW) {
+      fsize--;
+      ctx.font = 'bold ' + fsize + 'px monospace';
+      lineW = Math.max(...lines.map((l) => ctx.measureText(l).width));
+    }
+    const lineH = fsize + 3;
+    const sw = lineW + 8, sh = lineH * lines.length + 4;
+    ctx.fillStyle = BLACK;
+    ctx.fillRect(cx - sw / 2, cy - sh / 2, sw, sh);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = CREAM;
+    lines.forEach((line, i) => {
+      ctx.fillText(line, cx, cy - sh / 2 + lineH * (i + 1) - 3);
+    });
+  }
+  // "ROCK / JAZZ" high in the left window, "HIP-HOP / REGGAE" high in the
+  // right window -- same stacked two-line plates as the reference photo
+  windowSign(leftX + leftW / 2, top + 10, ['ROCK', 'JAZZ'], leftW - 6);
+  windowSign(rightX + rightW / 2, top + 10, ['HIP-HOP', 'REGGAE'], rightW - 6);
+  // "RECORDS" lettering visible through the glass above the door, and
+  // "SOUL" tucked in the lower corner of the right window
+  windowSign(px + w / 2, top + glassH - 12, ['RECORDS'], (right - left) - 10);
+  windowSign(rightX + rightW - 16, top + glassH - 12, ['SOUL'], 36);
+
+  // vertical purple neon "OPEN" sign mounted beside the door, glowing
+  // against the dark glass -- cheap offset-fillText glow, same trick used
+  // for Henry's neon sign rather than an expensive shadowBlur every frame
+  const neonX = doorL - 10, neonY = top + glassH / 2;
+  ctx.save();
+  ctx.translate(neonX, neonY);
+  ctx.rotate(-Math.PI / 2);
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 11px monospace';
+  ctx.fillStyle = 'rgba(154,79,216,0.35)';
+  for (const [ox, oy] of NEON_GLOW_OFFSETS) ctx.fillText('OPEN', ox, oy);
+  ctx.fillStyle = PURPLE;
+  ctx.fillText('OPEN', 0, 0);
+  ctx.fillStyle = '#e8d4fa';
+  ctx.fillText('OPEN', 0, 0);
+  ctx.restore();
+  ctx.restore();
+
+  // flower box at the base by the entrance, with a scatter of pink/red
+  // blooms -- matches the potted flowers out front of the real shop
+  const boxX = doorL - 14, boxY = py + h - 6, boxW = 22, boxH = 7;
+  ctx.fillStyle = '#141414';
+  ctx.fillRect(boxX, boxY, boxW, boxH);
+  ctx.fillStyle = '#3a3a3e';
+  ctx.fillRect(boxX, boxY, boxW, 2);
+  const blooms = [
+    [3, -3, '#d81f6e'], [8, -6, '#e0468a'], [13, -3, '#c81858'],
+    [17, -6, '#e0468a'], [6, -8, '#f06aa8'], [15, -9, '#d81f6e'],
+  ];
+  blooms.forEach(([bx, by, col]) => {
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.arc(boxX + bx, boxY + by, 2, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.fillStyle = '#3f8f4a';
+  ctx.fillRect(boxX + 1, boxY - 4, 2, 4);
+  ctx.fillRect(boxX + boxW - 4, boxY - 5, 2, 5);
 }
 
 function drawPlantPot(x, y) {
