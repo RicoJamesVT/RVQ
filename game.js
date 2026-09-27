@@ -688,14 +688,22 @@ const WORLD_DEFS = {
     // syncopated kick, an octave-down triangle-wave bass (rounder, muddier
     // than town's square bass), a soft sine horn pad instead of a sawtooth
     // stab, a lower/more haunting vocal chop, and a mellow triangle-wave
-    // lead instead of town's brighter square lead.
+    // lead instead of town's brighter square lead. IMPORTANT: horn/vox/lead
+    // note sets below are their own melodic shapes, not town's notes
+    // transposed down -- town's lead is a V-shaped dip-then-rise arc
+    // (76,74,72,69,72,74,76,79) built on an A-minor triad, so swamp instead
+    // uses an undulating, wavelike riff with a flat-6 blue note (Bb) over a
+    // quartal (fourths-based, non-triadic) horn stack and vox chords built
+    // in thirds/fourths rather than town's stepwise whole-tone motion --
+    // different contour AND different harmonic color, so it can't just be
+    // heard as "town's melody, lower."
     beat: {
       bpm: 78,
       kickSteps: [0, 6, 9], snareSteps: [4, 12], hatOpenStep: 10,
       bassWave: 'triangle', bassPattern: [[0,38,3],[4,36,1],[7,41,2],[10,38,1],[12,33,3]],
-      hornWave: 'sine',     hornSteps: [3, 10], hornNotes: [50, 53, 57],
-      voxWave: 'triangle',  voxSteps: [0, 8], voxNotesEven: [62, 60], voxNotesOdd: [65, 63],
-      leadWave: 'triangle', leadNotes: [69, 67, 64, 62, 64, 67, 69, 72],
+      hornWave: 'sine',     hornSteps: [3, 10], hornNotes: [55, 60, 62],
+      voxWave: 'sine',      voxSteps: [0, 8], voxNotesEven: [58, 61], voxNotesOdd: [63, 65],
+      leadWave: 'triangle', leadNotes: [62, 65, 67, 65, 62, 58, 62, 65],
     },
   },
   // ADD MORE WORLDS HERE, e.g.:
