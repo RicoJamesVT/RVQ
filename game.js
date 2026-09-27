@@ -10078,6 +10078,7 @@ function makeShop(id, opts) {
     circusInterior: opts.circusInterior || false,
     recordShop: opts.recordShop || false,
     plantShop: opts.plantShop || false,
+    soulShack: opts.soulShack || false,
     recordingDesk: opts.recordingDesk
       ? { x: opts.recordingDesk[0], y: opts.recordingDesk[1], sign: opts.recordingDeskSign || 'SKYLAB' }
       : null,
@@ -11050,6 +11051,12 @@ const shops = {
   soulshack: makeShop('soulshack', {
     world: 'swamp',
     floor: '#2a1a38', plank: '#1e1428', wallColor: '#150c1e',
+    // Bespoke interior dressing -- see drawSoulShackInterior() below, same
+    // one-flag-per-shop pattern as plantShop/drawHeyBudInterior(). Adds a
+    // pair of woven tapestries over the back wall, glowing crystal clusters
+    // flanking the door, a smoking incense burner and tarot spread laid out
+    // on the counter, and a scatter of drifting mystic sparkles overhead.
+    soulShack: true,
     // Framed paintings along the back wall, standing in for hung tapestries
     // and crystal-grid art -- deep violets/golds to read as "mystic shop"
     // rather than any other swamp interior.
@@ -19321,6 +19328,7 @@ function render(time) {
   if (map.comedyClub) drawComedyClubInterior(time);
   if (map.circusInterior) drawChurchCircusInterior(time);
   if (map.plantShop) drawHeyBudInterior(time);
+  if (map.soulShack) drawSoulShackInterior(time);
   if (map.recordShop) drawPurePopInterior(time);
   if (map.poolParty) drawJohnnysPoolInterior(time);
   if (map.keeper) drawKeeper(map.keeper);
@@ -24540,6 +24548,169 @@ function drawHeyBudInterior(time) {
   const posterW = 76, posterH = 72;
   const posterX = (6 * TILE + TILE / 2) - posterW / 2;
   drawHeyBudRollerPoster(posterX, 6, posterW, posterH);
+}
+
+// ------------------------------------------------------------------
+// THE SOUL SHACK interior: a pair of woven tapestries hung over the back
+// wall, glowing crystal clusters flanking the doorway, a smoking incense
+// burner and a laid-out tarot spread on the counter, and a scatter of
+// drifting mystic sparkles overhead -- turns MRKBH's otherwise-plain
+// paintings-and-gear room into a proper curio shop. Called from render()
+// whenever map.soulShack is set (see the `soulshack` shop def above), same
+// one-function-per-shop pattern as drawHeyBudInterior()/drawPurePopInterior().
+// ------------------------------------------------------------------
+function drawSoulShackInterior(time) {
+  // --- hanging tapestries draped from the rafters, between/behind the two
+  // framed paintings on the back wall (paintings sit at cols 2 and 9,
+  // row 0) -- deep violet fabric with a woven gold sunburst and a
+  // tasseled fringe, swaying gently on their own independent phase ---
+  [[5 * TILE + 16, 0.4], [8 * TILE + 16, 1.6]].forEach(([tx, seed]) => {
+    const sway = Math.sin(time * 0.8 + seed) * 1.5;
+    const w = 22, h = 46;
+    ctx.save();
+    ctx.translate(tx + sway, 0);
+    const grad = ctx.createLinearGradient(0, 0, 0, h);
+    grad.addColorStop(0, '#4a1e6e');
+    grad.addColorStop(1, '#2a1040');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.moveTo(-w / 2, 0); ctx.lineTo(w / 2, 0);
+    ctx.lineTo(w / 2 - 3, h); ctx.lineTo(-w / 2 + 3, h);
+    ctx.closePath(); ctx.fill();
+    // gold sunburst emblem woven into the fabric
+    ctx.strokeStyle = 'rgba(240,195,62,0.8)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(0, h * 0.4, 6, 0, Math.PI * 2); ctx.stroke();
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(a) * 7, h * 0.4 + Math.sin(a) * 7);
+      ctx.lineTo(Math.cos(a) * 11, h * 0.4 + Math.sin(a) * 11);
+      ctx.stroke();
+    }
+    // tasseled fringe along the bottom edge
+    ctx.strokeStyle = '#f0c33e';
+    for (let i = -w / 2 + 4; i <= w / 2 - 4; i += 5) {
+      ctx.beginPath(); ctx.moveTo(i, h); ctx.lineTo(i, h + 6); ctx.stroke();
+    }
+    ctx.restore();
+  });
+
+  // --- crystal clusters flanking the doorway, standing in for the big
+  // potted plants other shops use to dress their entrance -- amethyst on
+  // the left, citrine-gold on the right ---
+  drawCrystalCluster(4 * TILE, 8 * TILE + 8, 'rgba(168,85,247,ALPHA)',
+    ['#a855f7', '#c98cf9', '#7a2fd8'], time, 0);
+  drawCrystalCluster(9 * TILE, 8 * TILE + 8, 'rgba(240,195,62,ALPHA)',
+    ['#f0c33e', '#f7dd8c', '#c99a1a'], time, 1);
+
+  // --- incense burner and a laid-out tarot spread, both on the near end
+  // of the counter table (table spans row 3, cols 4-9) ---
+  drawTarotSpread(4 * TILE + 10, 3 * TILE - 6);
+  drawIncenseBurner(8 * TILE + 6, 3 * TILE - 2, time);
+
+  // --- a scatter of small floating sparkles drifting lazily through the
+  // upper half of the room, reading as ambient "mystic charge" rather
+  // than any one prop ---
+  for (let i = 0; i < 10; i++) {
+    const sx = (i * 71 + 40) % (13 * TILE);
+    const sy = TILE + ((i * 53) % (4 * TILE));
+    const flicker = 0.3 + 0.3 * Math.sin(time * 2 + i * 1.7);
+    ctx.fillStyle = `rgba(200,160,255,${flicker.toFixed(2)})`;
+    ctx.beginPath();
+    ctx.arc(sx, sy + Math.sin(time * 0.6 + i) * 4, 1.4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+// A small cluster of jagged crystal shards on a dark wooden base, with a
+// soft pulsing halo behind it (via the shared getGlowSprite() cache --
+// glowColor must contain the literal 'ALPHA' placeholder, same contract as
+// every other glow in the file). shardColors is [glow-tint, light-facet,
+// dark-facet]. Used by drawSoulShackInterior() above to flank the doorway.
+function drawCrystalCluster(bx, by, glowColor, shardColors, time, seed) {
+  const glow = getGlowSprite(26, glowColor);
+  ctx.save();
+  ctx.globalAlpha = 0.7 + 0.2 * Math.sin(time * 1.3 + seed);
+  ctx.drawImage(glow, bx - 26, by - 46, 52, 52);
+  ctx.restore();
+
+  ctx.fillStyle = '#3a2a20';
+  ctx.beginPath(); ctx.ellipse(bx, by, 14, 5, 0, 0, Math.PI * 2); ctx.fill();
+
+  const shards = [{ dx: -6, h: 26, w: 6 }, { dx: 2, h: 34, w: 7 }, { dx: 9, h: 20, w: 5 }];
+  shards.forEach((s) => {
+    const topX = bx + s.dx, topY = by - s.h;
+    ctx.fillStyle = shardColors[2];
+    ctx.beginPath();
+    ctx.moveTo(topX, topY);
+    ctx.lineTo(bx + s.dx - s.w / 2, by - 4);
+    ctx.lineTo(bx + s.dx + s.w / 2, by - 4);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = shardColors[1];
+    ctx.beginPath();
+    ctx.moveTo(topX, topY);
+    ctx.lineTo(bx + s.dx - s.w / 4, by - 4);
+    ctx.lineTo(bx + s.dx, by - 4);
+    ctx.closePath(); ctx.fill();
+  });
+}
+
+// A tiny clay dish with a lit incense stick, trailing a wavy curl of smoke
+// that drifts upward and fades out over its length. Used by
+// drawSoulShackInterior() above.
+function drawIncenseBurner(x, y, time) {
+  ctx.fillStyle = '#5a3d2a';
+  ctx.beginPath(); ctx.ellipse(x, y, 8, 3, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#c9a876';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(x, y - 1); ctx.lineTo(x + 3, y - 22); ctx.stroke();
+  ctx.fillStyle = '#ff6a3a';
+  ctx.beginPath(); ctx.arc(x + 3, y - 22, 1.5, 0, Math.PI * 2); ctx.fill();
+  let sx = x + 3, sy = y - 22;
+  for (let i = 0; i < 16; i++) {
+    const nsy = sy - 2.4;
+    const nsx = sx + Math.sin(time * 1.5 + i * 0.6) * 2.4;
+    ctx.strokeStyle = `rgba(220,210,230,${(0.32 * (1 - i / 16)).toFixed(2)})`;
+    ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(nsx, nsy); ctx.stroke();
+    sx = nsx; sy = nsy;
+  }
+}
+
+// Three small tarot cards fanned out face-up, each with a simple gold
+// glyph (moon/star/sun) on a dark card face. Used by
+// drawSoulShackInterior() above.
+function drawTarotSpread(x, y) {
+  const cardW = 12, cardH = 18;
+  const symbols = ['moon', 'star', 'sun'];
+  symbols.forEach((sym, i) => {
+    const cx = x + i * (cardW + 3);
+    ctx.save();
+    ctx.translate(cx, y);
+    ctx.rotate((i - 1) * 0.08);
+    ctx.fillStyle = '#241830';
+    ctx.fillRect(-cardW / 2, -cardH / 2, cardW, cardH);
+    ctx.strokeStyle = '#f0c33e';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(-cardW / 2 + 1, -cardH / 2 + 1, cardW - 2, cardH - 2);
+    ctx.fillStyle = '#f0c33e';
+    if (sym === 'star') {
+      ctx.beginPath();
+      for (let k = 0; k < 5; k++) {
+        const a = -Math.PI / 2 + (k * 2 * Math.PI) / 5;
+        const px = Math.cos(a) * 3, py = -1 + Math.sin(a) * 3;
+        k === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+      }
+      ctx.closePath(); ctx.fill();
+    } else {
+      ctx.beginPath(); ctx.arc(0, -1, 3, 0, Math.PI * 2); ctx.fill();
+      if (sym === 'moon') {
+        ctx.fillStyle = '#241830';
+        ctx.beginPath(); ctx.arc(1.5, -2, 2.6, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    ctx.restore();
+  });
 }
 
 // ------------------------------------------------------------------
