@@ -659,13 +659,13 @@ const WORLD_DEFS = {
       leadWave: 'square',   leadNotes: [76, 74, 72, 69, 72, 74, 76, 79],
     },
   },
-  // The swamp — a template overworld, not yet connected to any other map.
-  // `locked: true` keeps it out of player-facing lists (currently just the
-  // Crate's world tabs) while it's still under construction. Flip it off
-  // once a real portal into it exists and it's ready for players to find.
+  // The swamp — LEVEL 2. Was a template overworld kept out of player-facing
+  // lists (`locked: true`) while under construction; now connected to town
+  // via the real portal at the top of the Main Map (see the 'Q' tile in
+  // makeOverworld()/makeSwamp() and checkSwampPortal()), so it's unlocked
+  // and shows up as its own Crate tab / LEVEL 2 intro card.
   swamp: {
     name: 'Bayou Crossing',
-    locked: true,
     records: {
       moss: { title: 'Strum Low', artist: 'Boss Bass', year: '1981',
               sample: 'Bassline', layer: 'bass', color: '#3f8f4f', pad: 'BAS',
@@ -8933,6 +8933,13 @@ splashImg.src = 'assets/splash.png';
 const level1IntroImg = new Image();
 level1IntroImg.src = 'assets/level1_intro_splash.png';
 
+// Full-art "LEVEL 2" card shown by drawLevelIntro() the moment the player
+// walks through the swamp portal at the top of the Main Map -- same
+// same-origin local-asset pattern as level1IntroImg above, so it plays
+// identically online or offline with no extra fetch/network handling.
+const level2IntroImg = new Image();
+level2IntroImg.src = 'assets/level2_intro_splash.png';
+
 // "KANGA'S WAX NINJA" key-art splash shown by drawVinylNinjaSplash() the
 // moment the player steps up to the samurai sword out in the swamp, before
 // Vinyl Ninja's own DOM/iframe overlay opens. Same same-origin local-asset
@@ -9237,13 +9244,15 @@ function makeOverworld() {
   for (let x = 1; x < W-1; x++) { g[9][x] = 'r'; }
   for (let y = 1; y < H-1; y++) { g[y][19] = 'r'; }
 
-  // Placeholder portal doors on the east, north & south edges of the map.
-  // They sit right on Main Street (row 9) / the vertical cross-street
-  // (column 19), so all three read as a natural continuation of a road.
-  // None lead anywhere yet — walking into one pops the "more lands coming"
-  // splash (see checkPortal()/drawPortalPopup()).
+  // Portal doors on the east, north & south edges of the map. They sit
+  // right on Main Street (row 9) / the vertical cross-street (column 19),
+  // so all three read as a natural continuation of a road. The east and
+  // south ones are still placeholders — walking into one pops the "more
+  // lands coming" splash (see checkPortal()/drawPortalPopup()). The north
+  // one is the real, working portal into THE SWAMP (LEVEL 2) — see the 'Q'
+  // tile handling in checkSwampPortal()/drawSwampPortalDoor().
   g[9][W - 1] = 'P';
-  g[0][19] = 'P';
+  g[0][19] = 'Q';
   g[H - 1][19] = 'P';
   // Rico's Lab door — the west end of Main Street, a stone's throw from
   // Green Door Studio. Locked until every record in town has been found;
@@ -9768,6 +9777,14 @@ function makeSwamp() {
     if (g[dy + 1] && g[dy + 1][dx] === '#') g[dy + 1][dx] = '.';
   }
 
+  // Return portal back to the Burlington (town) map -- sits on the west
+  // edge, right on the boardwalk trunk (row 12) so it's immediately
+  // reachable the moment the player arrives from town. Same 'Q' tile
+  // character as the working portal at the top of town's Main Map; see
+  // checkSwampPortal()/drawSwampPortalDoor() for how it's handled/drawn.
+  const RETURN_PORTAL_X = 0, RETURN_PORTAL_Y = 12;
+  g[RETURN_PORTAL_Y][RETURN_PORTAL_X] = 'Q';
+
   // crates: five hidden records + a few junk ones. Mud Kick (swampdrum)
   // used to sit out here on the boardwalk spur -- it's been moved inside
   // GUT HUT (see the `guthut` shop below), so the swamp still has exactly
@@ -9825,6 +9842,7 @@ function makeSwamp() {
     jfpPoolDoor: { x: JPOOL_DOOR_X, y: JPOOL_DOOR_Y },
     truthLabDoor: { x: TL_DOOR_X, y: TL_DOOR_Y },
     soulShackDoor: { x: SOUL_DOOR_X, y: SOUL_DOOR_Y },
+    returnPortal: { x: RETURN_PORTAL_X, y: RETURN_PORTAL_Y },
     palette: {
       groundA: '#6a5a35', groundB: '#5c723a', groundDot: '#6d8a46',
       water: '#2c4330', waterHi: '#3d5a3e',
@@ -11890,6 +11908,7 @@ function movePlayer(dt) {
   }
 
   checkPortal(map);
+  checkSwampPortal(map);
   checkLabDoor(map);
   checkShopBackDoor(map);
 }
@@ -11903,6 +11922,36 @@ function checkPortal(map) {
   if (map.grid[ty] && map.grid[ty][tx] === 'P') {
     activePortal = { x: tx, y: ty };
     state = 'portal';
+  }
+}
+
+// The real, working portal between town and THE SWAMP (LEVEL 2) -- a 'Q'
+// tile on both ends. Walking onto it in town shows the full-screen "LEVEL 2"
+// splash (showLevelIntro(), same treatment Level 1 gets on a fresh game)
+// before dropping the player into the swamp, just off the return portal on
+// its west edge. Walking onto it in the swamp sends the player straight
+// back to town, right below the north portal -- no splash needed for the
+// return trip, same as every other door-to-door transition in the game.
+// Both directions are fully local/offline: showLevelIntro() only swaps in
+// level2IntroImg (already loaded as a same-origin local asset) and flips
+// `state`, no network involved.
+function checkSwampPortal(map) {
+  const tx = Math.floor(player.x / TILE), ty = Math.floor(player.y / TILE);
+  if (!(map.grid[ty] && map.grid[ty][tx] === 'Q')) return;
+  if (map.id === 'town') {
+    showLevelIntro('swamp', () => {
+      const rp = maps.swamp.returnPortal;
+      player.map = 'swamp';
+      player.x = (rp.x + 1.5) * TILE; // one tile east of the return portal, off the 'Q' tile
+      player.y = (rp.y + 0.5) * TILE;
+      state = 'play';
+      saveGame(); // silent autosave checkpoint, same as every ordinary door transition
+    });
+  } else if (map.id === 'swamp') {
+    player.map = 'town';
+    player.x = 19.5 * TILE;
+    player.y = 1.6 * TILE; // one tile south of the town portal, same push-off-the-door offset every other transition uses
+    saveGame();
   }
 }
 
@@ -19400,6 +19449,7 @@ function drawTiles(map, time, camX = 0, camY = 0) {
         case '#': drawTree(px, py, map); break;
         case 'P': drawPortalDoor(px, py, tx, ty, time); break;
         case 'L': drawLabDoor(px, py, tx, ty, time); break;
+        case 'Q': drawSwampPortalDoor(px, py, tx, ty, time); break;
         case '~': {
           const p = map.palette;
           ctx.fillStyle = p ? p.water : '#3060b0';
@@ -19561,6 +19611,65 @@ function drawPortalDoor(px, py, tx, ty, time) {
   ctx.font = 'bold 14px monospace';
   ctx.textAlign = 'center';
   ctx.fillText('?', cx, py - TILE + 22);
+  ctx.restore();
+}
+
+// The real, working portal between town and THE SWAMP (LEVEL 2). Same
+// taller-than-a-tile archway treatment as drawPortalDoor()/drawLabDoor(),
+// but dressed in swampy green/moss tones instead of the placeholder's cold
+// purple or the lab's gold, so it reads as its own distinct "open" door at
+// a glance rather than one more "?" placeholder -- reinforced further by
+// the pointer arrows drawTownDecorations() draws leading up to it (see
+// drawSwampPortalArrows()). Used for the 'Q' tile on both ends: the town
+// portal at the top of the Main Map and the return portal on the swamp's
+// west edge.
+function drawSwampPortalDoor(px, py, tx, ty, time) {
+  const t = time || 0;
+  const cx = px + TILE / 2, cy = py + TILE / 2;
+  const pulse = 0.5 + 0.5 * Math.sin(t * 2.2 + tx * 3 + ty);
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(px - 6, py - TILE - 4, TILE + 12, TILE * 2 + 8);
+  ctx.clip();
+
+  // outer glow -- swampy green, warm and inviting rather than eerie
+  const grd = ctx.createRadialGradient(cx, cy, 2, cx, cy, TILE * 1.05);
+  grd.addColorStop(0, `rgba(160,224,120,${0.6 + pulse * 0.3})`);
+  grd.addColorStop(0.55, 'rgba(80,150,90,0.48)');
+  grd.addColorStop(1, 'rgba(10,24,14,0)');
+  ctx.fillStyle = grd;
+  ctx.fillRect(px - 6, py - TILE - 4, TILE + 12, TILE * 2 + 8);
+
+  // mossy wood archway frame
+  ctx.fillStyle = '#20301c';
+  ctx.fillRect(px + 1, py - TILE + 4, TILE - 2, TILE * 2 - 4);
+  ctx.fillStyle = '#4a7c3c';
+  ctx.fillRect(px + 1, py - TILE + 4, TILE - 2, 3);
+  ctx.fillRect(px + 1, py + TILE - 7, TILE - 2, 3);
+  ctx.fillStyle = '#2f4a26';
+  ctx.fillRect(px + 4, py - TILE + 9, TILE - 8, TILE * 2 - 16);
+
+  // swirling portal core, green/gold instead of purple or gold/green
+  ctx.fillStyle = 'rgba(10,26,12,0.9)';
+  ctx.beginPath();
+  ctx.ellipse(cx, py + TILE - 12, 10, 16, 0, 0, Math.PI * 2);
+  ctx.fill();
+  for (let i = 0; i < 3; i++) {
+    const a = t * 1.6 + i * (Math.PI * 2 / 3);
+    ctx.fillStyle = i % 2 === 0 ? '#a8e078' : '#5f9a4a';
+    ctx.beginPath();
+    ctx.ellipse(cx + Math.cos(a) * 4, py + TILE - 12 + Math.sin(a) * 9, 3, 6, a, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // a vinyl-record glyph instead of the placeholder's "?" -- marks this one
+  // as an actual, working door into a musical world, same idea as the lab
+  // door's music note
+  ctx.fillStyle = Math.floor(t * 2.2) % 2 ? '#f4ecd8' : '#a8e078';
+  ctx.font = 'bold 14px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('\u25CF', cx, py - TILE + 22);
   ctx.restore();
 }
 
@@ -21744,6 +21853,7 @@ function drawPlantPot(x, y) {
 
 // ---------------------------------------------------------------- town decorations
 function drawTownDecorations(time) {
+  drawSwampPortalArrows(time);
   drawLabCarpet(time);
   drawGreenDoorArtArea();
   drawWallPainter(time);
@@ -21762,6 +21872,45 @@ function drawTownDecorations(time) {
   drawStadium();
   drawIceCreamVan();
   drawNewsstands();
+}
+
+// A single pulsing up-arrow, drawn centered on world-space point (px, py).
+// Used by drawSwampPortalArrows() below to flag the new swamp portal.
+function drawSwampPortalArrow(px, py, time) {
+  const t = time || 0;
+  const bob = Math.sin(t * 3 + px * 0.01) * 3;
+  const cy = py + bob;
+  ctx.save();
+  ctx.globalAlpha = 0.75 + 0.25 * Math.sin(t * 3 + px * 0.01);
+  ctx.fillStyle = '#a8e078';
+  ctx.strokeStyle = '#2f4a26';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(px, cy - 12);
+  ctx.lineTo(px - 11, cy + 6);
+  ctx.lineTo(px - 5, cy + 6);
+  ctx.lineTo(px - 5, cy + 16);
+  ctx.lineTo(px + 5, cy + 16);
+  ctx.lineTo(px + 5, cy + 6);
+  ctx.lineTo(px + 11, cy + 6);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+}
+
+// Two pulsing arrow markers planted along the vertical cross-street
+// (column 19), pointing straight up toward the new swamp portal at the top
+// of the Main Map (row 0) -- so a level 2 that just opened up is obvious
+// even to a player who never wanders that far north on their own. Purely
+// cosmetic decoration, same as the rest of drawTownDecorations() -- no
+// interact logic of their own.
+function drawSwampPortalArrows(time) {
+  // Rows 2 and 4 -- just south of the portal (row 0) and well clear of the
+  // church, which sits a little further south at rows 6-8 on this same
+  // column (CHURCH_X/Y/W/H in makeOverworld).
+  drawSwampPortalArrow(19 * TILE + TILE / 2, 2 * TILE, time);
+  drawSwampPortalArrow(19 * TILE + TILE / 2, 4 * TILE, time);
 }
 
 // Little curbside newspaper boxes scattered around town. Purely a sprite;
@@ -26899,15 +27048,17 @@ function drawRetroTitle(text, cx, cy, size) {
 function drawLevelIntro(time) {
   const num = levelNumberFor(levelIntroWorldId);
 
-  // Level 1 gets the full-art Burlington card; every other world (should
-  // one ever route through showLevelIntro() too) falls back to the plain
+  // Level 1 gets the full-art Burlington card, Level 2 gets the full-art
+  // Swamp card; every other world (should one ever route through
+  // showLevelIntro() without a matching image) falls back to the plain
   // carved-text card below.
-  if (num === 1 && level1IntroImg.complete && level1IntroImg.naturalWidth) {
-    const iw = level1IntroImg.naturalWidth, ih = level1IntroImg.naturalHeight;
+  const fullArtImg = num === 1 ? level1IntroImg : num === 2 ? level2IntroImg : null;
+  if (fullArtImg && fullArtImg.complete && fullArtImg.naturalWidth) {
+    const iw = fullArtImg.naturalWidth, ih = fullArtImg.naturalHeight;
     const scale = Math.max(VIEW_W / iw, VIEW_H / ih);
     const dw = iw * scale, dh = ih * scale;
     const dx = (VIEW_W - dw) / 2, dy = (VIEW_H - dh) / 2;
-    ctx.drawImage(level1IntroImg, dx, dy, dw, dh);
+    ctx.drawImage(fullArtImg, dx, dy, dw, dh);
 
     ctx.fillStyle = 'rgba(8,6,12,0.55)';
     ctx.fillRect(0, VIEW_H - 40, VIEW_W, 40);
