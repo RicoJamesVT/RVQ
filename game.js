@@ -21507,6 +21507,41 @@ function drawBuildings(map) {
       ctx.textAlign = 'center';
       ctx.fillStyle = '#2a1810';
       ctx.fillText(b.name, px + w / 2, sy + sh / 2 + fsize * 0.36);
+    } else if (isBurlington) {
+      // Standalone marquee above the storefront, distinct from every sign
+      // drawBurlingtonRecordsDecor puts in the windows/by the door: those
+      // are black plates with flat cream lettering (ROCK/JAZZ, HIP-HOP/
+      // REGGAE, RECORDS, SOUL) or the small purple OPEN tube, so this one
+      // uses a warm glowing amber neon instead -- same cheap offset-glow
+      // trick as Henry's sign -- so BURLINGTON RECORDS reads first, above
+      // all of it, at a glance.
+      const maxTextW = w + 30;
+      let fsize = 15;
+      ctx.font = 'bold ' + fsize + 'px monospace';
+      while (fsize > 10 && ctx.measureText(b.name).width > maxTextW) {
+        fsize--;
+        ctx.font = 'bold ' + fsize + 'px monospace';
+      }
+      const textW = ctx.measureText(b.name).width;
+      const sw = textW + 22, sh = fsize + 15;
+      const sx = px + (w - sw) / 2, sy = py + 3;
+
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.fillRect(sx + 2, sy + 3, sw, sh);
+      ctx.fillStyle = '#120e0a';
+      ctx.fillRect(sx, sy, sw, sh);
+      ctx.strokeStyle = '#e0a030';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(sx + 1, sy + 1, sw - 2, sh - 2);
+
+      const tx2 = px + w / 2, ty2 = sy + sh / 2 + fsize * 0.36;
+      ctx.textAlign = 'center';
+      ctx.fillStyle = 'rgba(224,160,48,0.35)';
+      for (const [ox, oy] of NEON_GLOW_OFFSETS) ctx.fillText(b.name, tx2 + ox, ty2 + oy);
+      ctx.fillStyle = '#e0a030';
+      ctx.fillText(b.name, tx2, ty2);
+      ctx.fillStyle = '#fff3d4';
+      ctx.fillText(b.name, tx2, ty2);
     } else if (!isNectars && !isBurlington) {
       const maxTextW = w + 26;
       let fsize = 17;
