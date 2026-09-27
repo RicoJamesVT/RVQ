@@ -10160,6 +10160,10 @@ function makeJohnnysPool() {
   // tile (row 9) untouched.
   for (let y = 1; y <= 6; y++)
     for (let x = 1; x <= 12; x++) map.grid[y][x] = '~';
+  // Pool party flag -- draws floating partiers out on the water plus a
+  // stereo system on the deck (see drawJohnnysPoolInterior()) so the pool
+  // reads as a full-blown party instead of sitting empty.
+  map.poolParty = true;
   return map;
 }
 
@@ -19318,6 +19322,7 @@ function render(time) {
   if (map.circusInterior) drawChurchCircusInterior(time);
   if (map.plantShop) drawHeyBudInterior(time);
   if (map.recordShop) drawPurePopInterior(time);
+  if (map.poolParty) drawJohnnysPoolInterior(time);
   if (map.keeper) drawKeeper(map.keeper);
   drawShopImageNpcs(map);
   drawGraffitiTags(); // [R] sprayed tags -- world-space, so it rides the camera/zoom above
@@ -24535,6 +24540,104 @@ function drawHeyBudInterior(time) {
   const posterW = 76, posterH = 72;
   const posterX = (6 * TILE + TILE / 2) - posterW / 2;
   drawHeyBudRollerPoster(posterX, 6, posterW, posterH);
+}
+
+// ------------------------------------------------------------------
+// JOHNNY'S POOL interior: a handful of partiers floating out on the water
+// on inner tubes, plus a portable stereo stack parked on the deck pumping
+// out an animated equalizer -- turns PADDLES' otherwise-empty pool into a
+// full-on pool party. Called from render() whenever map.poolParty is set
+// (see makeJohnnysPool() above), same one-function-per-shop pattern as
+// drawHeyBudInterior()/drawPurePopInterior().
+// ------------------------------------------------------------------
+function drawJohnnysPoolInterior(time) {
+  // --- floating partiers, bobbing gently on inner tubes out in the water
+  // (rows 1-6 are all pool -- see makeJohnnysPool()'s carve-out) ---
+  const floaters = [
+    { x: 3.4, y: 2.3, tube: '#e0562e', skin: '#8a6a48', suit: '#2255c0', seed: 0.2 },
+    { x: 7.6, y: 1.8, tube: '#3aa0c8', skin: '#c89a72', suit: '#e0a030', seed: 1.6 },
+    { x: 10.2, y: 3.6, tube: '#e0b030', skin: '#7a5030', suit: '#4a8a4a', seed: 2.8 },
+    { x: 5.0, y: 4.8, tube: '#c04070', skin: '#e0a878', suit: '#153038', seed: 3.9 },
+    { x: 9.0, y: 5.4, tube: '#4a8a4a', skin: '#8a5a34', suit: '#c0403a', seed: 0.9 },
+  ];
+  floaters.forEach((f) => {
+    const bob = Math.sin(time * 1.6 + f.seed) * 2;
+    const px = f.x * TILE, py = f.y * TILE + bob;
+    // ripple shadow under the tube
+    ctx.fillStyle = 'rgba(0,0,0,0.15)';
+    ctx.beginPath(); ctx.ellipse(px, py + 10, 15, 5, 0, 0, Math.PI * 2); ctx.fill();
+    // inner tube (donut), drawn as a ring by layering a hollow center on top
+    ctx.fillStyle = f.tube;
+    ctx.beginPath(); ctx.ellipse(px, py, 15, 10, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.beginPath(); ctx.ellipse(px, py, 9, 5.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = f.tube;
+    ctx.globalAlpha = 0.85;
+    ctx.beginPath(); ctx.ellipse(px, py, 7, 4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1;
+    // torso/swimsuit peeking up out of the tube's center
+    ctx.fillStyle = f.suit;
+    ctx.fillRect(px - 4, py - 2, 8, 5);
+    // arms draped out over the tube's rim on either side
+    ctx.fillStyle = f.skin;
+    ctx.beginPath(); ctx.ellipse(px - 12, py - 1, 3, 2, 0.3, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(px + 12, py - 1, 3, 2, -0.3, 0, Math.PI * 2); ctx.fill();
+    // head tipped back, soaking up the sun, plus a little pair of shades
+    ctx.fillStyle = f.skin;
+    ctx.beginPath(); ctx.arc(px, py - 8, 5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(px - 4, py - 9, 8, 2);
+  });
+
+  // --- portable stereo system parked on the deck, cranking the party --
+  // deck tile ~(2,7), clear of PADDLES (9,8), the HYPER SWIM cabinet
+  // (10,7), and the door/exit tile (6,9).
+  const sx = 2 * TILE + 16, sy = 7 * TILE + 28;
+  drawPoolStereo(sx, sy, time);
+
+  // --- a few musical notes drifting up off the stereo, tying the deck and
+  // the pool together as one big party ---
+  ctx.fillStyle = '#fff2b8';
+  ctx.font = '10px sans-serif';
+  [[sx - 4, 0.3], [sx + 10, 1.7], [sx + 2, 3.1]].forEach(([nx, seed]) => {
+    const t = (time * 0.6 + seed) % 3;
+    ctx.globalAlpha = Math.max(0, 1 - t / 3);
+    ctx.fillText('\u266A', nx, sy - 30 - t * 14);
+  });
+  ctx.globalAlpha = 1;
+}
+
+// Squat two-speaker stereo stack with a glowing center receiver and an
+// animated equalizer display between the speakers -- reads as a boombox/PA
+// rig blasting a pool party. Non-shop-specific drawing helper, only called
+// from drawJohnnysPoolInterior() above.
+function drawPoolStereo(px, py, time) {
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx.beginPath(); ctx.ellipse(px, py + 14, 22, 6, 0, 0, Math.PI * 2); ctx.fill();
+  // left speaker cabinet
+  ctx.fillStyle = '#2a2a2e';
+  ctx.fillRect(px - 22, py - 20, 16, 34);
+  ctx.fillStyle = '#141416';
+  ctx.beginPath(); ctx.arc(px - 14, py - 10, 6, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(px - 14, py + 4, 4, 0, Math.PI * 2); ctx.fill();
+  // right speaker cabinet
+  ctx.fillStyle = '#2a2a2e';
+  ctx.fillRect(px + 6, py - 20, 16, 34);
+  ctx.fillStyle = '#141416';
+  ctx.beginPath(); ctx.arc(px + 14, py - 10, 6, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(px + 14, py + 4, 4, 0, Math.PI * 2); ctx.fill();
+  // center receiver unit with animated equalizer bars
+  ctx.fillStyle = '#1c1c20';
+  ctx.fillRect(px - 6, py - 12, 12, 20);
+  ctx.fillStyle = '#3aa0c8';
+  for (let i = 0; i < 4; i++) {
+    const h = 3 + Math.abs(Math.sin(time * 6 + i * 1.3)) * 7;
+    ctx.fillRect(px - 5 + i * 3, py + 6 - h, 2, h);
+  }
+  // stubby antenna
+  ctx.strokeStyle = '#8a8a90';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(px, py - 12); ctx.lineTo(px + 4, py - 22); ctx.stroke();
 }
 
 // ------------------------------------------------------------------
