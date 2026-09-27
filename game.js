@@ -9705,7 +9705,10 @@ function makeSwamp() {
   // it reads as its own little building on the map even though inside it
   // functions as a pool/deck room, not a shop. doorX/doorY are exported
   // below (jfpPoolDoor) for the transition wiring outside this function.
-  const JPOOL_X = 36, JPOOL_Y = 21, JPOOL_W = 6, JPOOL_H = 4;
+  // Footprint trimmed down from the original 6x4 -- it doesn't need to be
+  // that big -- which opens up ground to its east/south, inside the same
+  // clearing, for the patio + barbecue area (see drawJohnnysPoolPatio()).
+  const JPOOL_X = 36, JPOOL_Y = 21, JPOOL_W = 4, JPOOL_H = 3;
   const JPOOL_DOOR_X = JPOOL_X + Math.floor(JPOOL_W / 2);
   const JPOOL_DOOR_Y = JPOOL_Y + JPOOL_H - 1;
   for (let y = JPOOL_Y; y < JPOOL_Y + JPOOL_H; y++)
@@ -9713,7 +9716,11 @@ function makeSwamp() {
   g[JPOOL_DOOR_Y][JPOOL_DOOR_X] = 'D';
   buildings.push({
     x: JPOOL_X, y: JPOOL_Y, w: JPOOL_W, h: JPOOL_H, name: "JOHNNY'S POOL",
-    wall: '#2a8a9a', roof: '#155a66', doorX: JPOOL_DOOR_X,
+    // Bright tropical teal-and-white cabana colors instead of the old plain
+    // teal box, so it reads as a tourist swim spot (see the striped-cabana
+    // decor added in drawBuildings()/drawJohnnysPoolDecor() below) rather
+    // than just another shopfront.
+    wall: '#2ec4d6', roof: '#0e6470', doorX: JPOOL_DOOR_X,
   });
 
   // TRUTH LAB -- fifth swamp building and the swamp's final stop: Tha
@@ -20069,6 +20076,77 @@ function drawSwampDecorations(time, map, camX, camY) {
   drawBaseballStadium();
   // TRUTH LAB's pool, deck & garden -- see drawTruthLabPoolGarden().
   drawTruthLabPoolGarden(time);
+  // JOHNNY'S POOL's patio + barbecue area -- see drawJohnnysPoolPatio().
+  drawJohnnysPoolPatio(time);
+}
+
+// JOHNNY'S POOL patio + barbecue area -- purely cosmetic dressing on the
+// open ground east of the (now smaller) JOHNNY'S POOL building, same
+// "fixed-position sprite painted straight onto already-walkable ground, no
+// grid changes, nothing to walk into" approach as drawTruthLabPoolGarden()/
+// drawSwampJuiceCart() above. Sits in tiles 40-43, rows 20-24 -- ground that
+// only opened up once JOHNNY'S POOL's footprint was trimmed down from its
+// old 6x4 size, inside the same JFP_CLEAR_* clearing from makeSwamp().
+function drawJohnnysPoolPatio(time) {
+  const dx = 40 * TILE, dy = 20 * TILE, dw = 4 * TILE, dh = 5 * TILE;
+
+  // wood deck platform, same plank-and-grain look as TRUTH LAB's deck
+  ctx.fillStyle = '#4a3520';
+  ctx.fillRect(dx, dy, dw, dh);
+  ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+  ctx.lineWidth = 1;
+  for (let px = dx + 8; px < dx + dw; px += 8) {
+    ctx.beginPath(); ctx.moveTo(px, dy); ctx.lineTo(px, dy + dh); ctx.stroke();
+  }
+  ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+  for (let py = dy + 6; py < dy + dh; py += 12) {
+    ctx.beginPath(); ctx.moveTo(dx, py); ctx.lineTo(dx + dw, py); ctx.stroke();
+  }
+  ctx.strokeStyle = '#2a1c10';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(dx + 1.5, dy + 1.5, dw - 3, dh - 3);
+
+  // charcoal barbecue grill in the near corner, with a little rising smoke
+  const bx = dx + 12, by = dy + dh - 16;
+  ctx.fillStyle = '#2a2a2c';
+  ctx.beginPath(); ctx.ellipse(bx, by + 4, 12, 5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#3a3a3e';
+  ctx.beginPath(); ctx.ellipse(bx, by, 12, 6, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#1c1c1e';
+  ctx.beginPath(); ctx.ellipse(bx, by - 1, 9, 4, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#1a1a1c';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(bx - 10, by + 2); ctx.lineTo(bx - 13, by + 16); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(bx + 10, by + 2); ctx.lineTo(bx + 13, by + 16); ctx.stroke();
+  const smokeBob = Math.sin(time * 1.4) * 3;
+  ctx.fillStyle = 'rgba(220,220,220,0.25)';
+  ctx.beginPath(); ctx.arc(bx + smokeBob, by - 14, 4, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(bx - smokeBob * 0.6, by - 22, 5, 0, Math.PI * 2); ctx.fill();
+
+  // patio table with a striped umbrella, and two chairs
+  const tx = dx + dw - 34, ty = dy + dh - 30;
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx.beginPath(); ctx.ellipse(tx, ty + 14, 20, 8, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#5a3d22';
+  ctx.fillRect(tx - 2, ty - 4, 4, 18);
+  ctx.fillStyle = '#c88a4a';
+  ctx.beginPath(); ctx.ellipse(tx, ty, 16, 8, 0, 0, Math.PI * 2); ctx.fill();
+  // umbrella canopy, alternating red/cream wedges
+  ctx.save();
+  ctx.translate(tx, ty - 26);
+  for (let seg = 0; seg < 8; seg++) {
+    ctx.fillStyle = seg % 2 === 0 ? '#c8241e' : '#f4ecd8';
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.arc(0, 0, 18, (seg / 8) * Math.PI * 2, ((seg + 1) / 8) * Math.PI * 2);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
+  ctx.fillStyle = '#5a3d22';
+  ctx.fillRect(tx - 1, ty - 26, 2, 22);
+  drawTruthLabLoungeChair(tx - 30, ty + 10);
+  drawTruthLabLoungeChair(tx + 14, ty + 10);
 }
 
 // TRUTH LAB pool, deck & garden -- purely cosmetic dressing for the ground
@@ -21135,6 +21213,7 @@ function drawBuildings(map) {
     const isBurlington = b.name === 'BURLINGTON RECORDS';
     const isSwampFood = b.name === 'SWAMP FOOD';
     const isJohnnysFunPark = b.name === "JOHNNY'S FUN PARK";
+    const isJohnnysPool = b.name === "JOHNNY'S POOL";
 
     // wall/roof shade colors: each building's wall/roof color never changes,
     // so compute these once per building and cache them on the building
@@ -21202,7 +21281,7 @@ function drawBuildings(map) {
     ctx.fillStyle = 'rgba(0,0,0,0.3)';
     ctx.fillRect(px, py + TILE + 8, w, 3);
 
-    if (!isDeli && !isBurlington) {
+    if (!isDeli && !isBurlington && !isJohnnysPool) {
       for (let i = 0; i < b.w; i++) {
         if (b.x + i === b.doorX) continue;
         if (i === 0 || i === b.w - 1) continue;
@@ -21339,6 +21418,25 @@ function drawBuildings(map) {
       ctx.fillRect(doorXi + doorW / 2 - 1, doorY, 2, doorH);
       ctx.fillStyle = '#8a8478';                           // push bar handle
       ctx.fillRect(doorXi + doorW - 8, doorY + 5, 3, doorH - 10);
+    } else if (isJohnnysPool) {
+      // Beach-hut plank door with a round porthole window, matching the
+      // tiki/cabana look drawJohnnysPoolDecor() puts on the rest of the
+      // exterior -- reads as a tourist swim shack door, not a plain shop.
+      const doorXi = dx + 4, doorY = py + h - TILE + 2, doorW = TILE - 8, doorH = TILE - 2;
+      ctx.fillStyle = '#0e4a52';
+      ctx.fillRect(doorXi - 2, doorY - 3, doorW + 4, doorH + 3);
+      ctx.fillStyle = '#c88a4a';                           // light beach-wood plank
+      ctx.fillRect(doorXi, doorY, doorW, doorH);
+      ctx.strokeStyle = 'rgba(0,0,0,0.18)';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(doorXi + doorW / 2, doorY); ctx.lineTo(doorXi + doorW / 2, doorY + doorH); ctx.stroke();
+      ctx.fillStyle = '#1a5a66';                           // round porthole window
+      ctx.beginPath(); ctx.arc(doorXi + doorW / 2, doorY + doorH * 0.4, 6, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#e8d8a8';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(doorXi + doorW / 2, doorY + doorH * 0.4, 6, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = '#e0c060';
+      ctx.fillRect(dx + TILE - 12, py + h - 16, 3, 3);
     } else {
       // Standard door for other buildings: outline, frame, shaded panels, handle
       const doorXi = dx + 4, doorY = py + h - TILE + 2, doorW = TILE - 8, doorH = TILE - 2;
@@ -21367,6 +21465,7 @@ function drawBuildings(map) {
     if (isHenrys) drawHenrysDecor(px, py, w, h);
     if (isComedyClub) drawComedyClubDecor(px, py, w, h);
     if (isBurlington) drawBurlingtonRecordsDecor(px, py, w, h, dx);
+    if (isJohnnysPool) drawJohnnysPoolDecor(px, py, w, h, dx);
     // "3rd Thursdays" flyer on the outside wall of Pure Pop Records
     if (isThrift) drawThursPoster(px + 6, py + 40);
 
@@ -21542,6 +21641,46 @@ function drawBuildings(map) {
       ctx.fillText(b.name, tx2, ty2);
       ctx.fillStyle = '#fff3d4';
       ctx.fillText(b.name, tx2, ty2);
+    } else if (isJohnnysPool) {
+      // Life-ring-and-rope sign instead of the standard dark plate: a round
+      // red/white ring buoy with the name lettered across a wooden plaque
+      // hung underneath it, so JOHNNY'S POOL reads as the beach/tourist-swim
+      // spot the rest of drawJohnnysPoolDecor() sets up.
+      const maxTextW = w + 30;
+      let fsize = 13;
+      ctx.font = 'bold ' + fsize + 'px monospace';
+      while (fsize > 9 && ctx.measureText(b.name).width > maxTextW) {
+        fsize--;
+        ctx.font = 'bold ' + fsize + 'px monospace';
+      }
+      const textW = ctx.measureText(b.name).width;
+      const sw = textW + 20, sh = fsize + 12;
+      const sx = px + (w - sw) / 2, sy = py + 22;
+
+      const ringCx = px + w / 2, ringCy = py + 10, ringR = 9;
+      ctx.strokeStyle = '#e8d8a8';                          // rope loop
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(ringCx, ringCy + ringR); ctx.lineTo(ringCx, sy); ctx.stroke();
+      for (let seg = 0; seg < 8; seg++) {                   // red/white ring segments
+        ctx.fillStyle = seg % 2 === 0 ? '#c8241e' : '#f4ecd8';
+        ctx.beginPath();
+        ctx.arc(ringCx, ringCy, ringR, (seg / 8) * Math.PI * 2, ((seg + 1) / 8) * Math.PI * 2);
+        ctx.arc(ringCx, ringCy, ringR - 4, ((seg + 1) / 8) * Math.PI * 2, (seg / 8) * Math.PI * 2, true);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.fillStyle = '#155a66';
+      ctx.beginPath(); ctx.arc(ringCx, ringCy, ringR - 4, 0, Math.PI * 2); ctx.fill();
+
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.fillRect(sx + 2, sy + 2, sw, sh);
+      ctx.fillStyle = '#c88a4a';
+      ctx.fillRect(sx, sy, sw, sh);
+      ctx.fillStyle = '#8a5a30';
+      ctx.fillRect(sx, sy + sh - 3, sw, 3);
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#1a2418';
+      ctx.fillText(b.name, px + w / 2, sy + sh / 2 + fsize * 0.36);
     } else if (!isNectars && !isBurlington) {
       const maxTextW = w + 26;
       let fsize = 17;
@@ -22152,6 +22291,71 @@ function drawBurlingtonRecordsDecor(px, py, w, h, doorPx) {
   ctx.fillStyle = '#3f8f4a';
   ctx.fillRect(boxX + 1, boxY - 4, 2, 4);
   ctx.fillRect(boxX + boxW - 4, boxY - 5, 2, 5);
+}
+
+// JOHNNY'S POOL exterior dressing -- gives the shrunk-down building a
+// tourist-swim-spot look instead of the old plain teal box: candy-striped
+// cabana awning over the door, a couple of lit tiki torches flanking the
+// entrance, and potted palms in the corners (reusing drawTruthLabPottedPalm,
+// the same potted-palm prop TRUTH LAB's pool deck uses). Called from
+// drawBuildings() right after the wall/roof/door for this building are
+// drawn, same "isX -> drawXDecor()" pattern as drawBurlingtonRecordsDecor.
+function drawJohnnysPoolDecor(px, py, w, h, doorPx) {
+  ctx.save();
+
+  // candy-striped cabana awning, angled out over the doorway
+  const awnY = py + h - TILE - 4, awnH = 12;
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(doorPx - 4, awnY + awnH);
+  ctx.lineTo(doorPx - 2, awnY);
+  ctx.lineTo(doorPx + TILE + 2, awnY);
+  ctx.lineTo(doorPx + TILE + 4, awnY + awnH);
+  ctx.closePath();
+  ctx.clip();
+  ctx.fillStyle = '#f4ecd8';
+  ctx.fillRect(doorPx - 4, awnY, TILE + 10, awnH + 4);
+  for (let i = 0, sx = doorPx - 8; sx < doorPx + TILE + 8; i++, sx += 7) {
+    if (i % 2 === 0) {
+      ctx.fillStyle = '#c8241e';
+      ctx.fillRect(sx, awnY, 7, awnH + 4);
+    }
+  }
+  ctx.restore();
+  // scalloped shadow edge under the awning
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx.fillRect(doorPx - 3, awnY + awnH, TILE + 6, 2);
+
+  // two lit tiki torches flanking the door
+  drawJohnnysPoolTikiTorch(doorPx - 12, py + h - 4);
+  drawJohnnysPoolTikiTorch(doorPx + TILE + 8, py + h - 4);
+
+  // potted palms tucked in the building's own corners
+  drawTruthLabPottedPalm(px - 6, py + h - 6);
+  drawTruthLabPottedPalm(px + w - 10, py + h - 6);
+
+  ctx.restore();
+}
+
+// Small lit tiki torch -- bamboo pole, thatched cap, and a flickering
+// flame -- planted beside JOHNNY'S POOL's door (see drawJohnnysPoolDecor()).
+function drawJohnnysPoolTikiTorch(x, y) {
+  ctx.fillStyle = '#6a4a28';
+  ctx.fillRect(x - 1, y - 22, 3, 22);
+  ctx.fillStyle = '#8a6a3a';
+  ctx.beginPath();
+  ctx.moveTo(x - 6, y - 20);
+  ctx.lineTo(x + 6, y - 20);
+  ctx.lineTo(x, y - 30);
+  ctx.closePath();
+  ctx.fill();
+  const flick = Math.floor(performance.now() / 150) % 2;
+  ctx.fillStyle = flick ? '#f0a030' : '#e0862a';
+  ctx.beginPath();
+  ctx.moveTo(x, y - 40);
+  ctx.quadraticCurveTo(x + 4, y - 33, x, y - 30);
+  ctx.quadraticCurveTo(x - 4, y - 33, x, y - 40);
+  ctx.fill();
 }
 
 function drawPlantPot(x, y) {
