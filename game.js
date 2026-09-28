@@ -706,6 +706,24 @@ const WORLD_DEFS = {
       leadWave: 'triangle', leadNotes: [62, 65, 67, 65, 62, 58, 62, 65],
     },
   },
+  // The skatepark -- LEVEL 3. Map is built (see makeSkatepark()) but the
+  // player can't get there yet, so it stays `locked: true` and out of the
+  // Crate tabs. No records/beat yet -- worldDef() falls back to town's beat
+  // if the player ever stands here. Fill these in and drop `locked` when the
+  // level opens up.
+  skatepark: {
+    name: 'Skatepark',
+    locked: true,
+    // First record of the level, hidden in A_DOG SKATE SHOP (see the
+    // `adogskateshop` shop below / ADOG_CLEAR_* in makeSkatepark()). More
+    // get added here as the rest of the level fills in.
+    records: {
+      grip: { title: 'Concrete Wax', artist: 'A-Dog & The Bearings', year: '1994',
+              sample: 'Drum Loop', layer: 'drums', color: '#d94f2b', pad: 'DRM',
+              flavor: 'Recorded on a boombox propped on the coping. You can hear wheels on concrete under every bar.' },
+    },
+    padOrder: ['grip'],
+  },
   // ADD MORE WORLDS HERE, e.g.:
   // subway: {
   //   name: 'The Subway',
@@ -852,6 +870,20 @@ const STREISAND_JUNK = [
     reply: 'Somebody never got around to opening this one. Keep digging.' },
   { line: 'A duets record — half the tracklist trading verses with singers who are, frankly, out of their depth.',
     reply: 'Not it. But respect to whoever kept this in this kind of shape.' },
+];
+
+// A_DOG SKATE SHOP's three themed dig crates -- same 1:1 pairing via
+// c.skateShopSeed as NECTARS_JUNK/HENRYS_JUNK/TRUTHLAB_JUNK/STREISAND_JUNK/
+// SOUL_SHACK_JUNK above. Every crate here is raw, dope hip hop vinyl A-DOG
+// keeps stacked behind the counter -- never one of the collectibles, but
+// exactly the kind of heat you'd expect to dig up in a shop like this.
+const SKATE_SHOP_JUNK = [
+  { line: 'A stack of dusty boom-bap 12-inches, sleeves worn soft from years of crate digging -- A-DOG swears half of these never made it past a thousand pressings.',
+    reply: 'Straight heat. Just not the one you\'re chasing tonight.' },
+  { line: 'A run of independent skate-video soundtrack tapes, dubbed by hand -- the kind of deep-cut beats that only ever showed up under a kickflip montage.',
+    reply: 'Certified. Still not it, though -- keep digging.' },
+  { line: 'A milk crate of scratched-up battle-DJ breaks, corners chewed up from a hundred backyard sessions on somebody\'s back-porch turntables.',
+    reply: 'Pure fire, but none of these are the record you\'re looking for.' },
 ];
 
 // THE SOUL SHACK's two themed dig crates -- same 1:1 pairing via
@@ -1030,6 +1062,16 @@ function exitMinigame() {
 // hitbox pick up every entry in a map's `minigames` list automatically -- no
 // per-game wiring needed anywhere else.
 const MINIGAME_ACTIONS = {
+  // "LEARN ABOUT ANDY" sign -- A_DOG SKATE SHOP's tribute plaque (see the
+  // `adogskateshop` shop's `minigames` list below). Unlike every other
+  // entry in this object, this doesn't open an in-game overlay -- it opens
+  // the real Friends For A_Dog Foundation website in a new tab. Wrapped in
+  // try/catch the same way the intro-video code at the top of this file
+  // guards window/DOM calls, so a blocked popup never breaks the game.
+  adogfoundation: () => {
+    try { window.open('https://www.friendsforadog.org/', '_blank', 'noopener,noreferrer'); }
+    catch (e) { /* popup blocked or window unavailable -- fail silently */ }
+  },
   // Darts, Beat Match, Crate Digging, Whack-a-Pigeon, and Beat Jam each have
   // two renderers: the original canvas version and a Three.js remake. These
   // route through createModeSelectMenu(), which now goes straight to the 3D
@@ -9245,8 +9287,18 @@ ianImg.src = 'assets/ian.png';
 const krishnaImg = new Image();
 krishnaImg.src = 'assets/krishna.png';
 
+// A-DOG -- the keeper of A_DOG SKATE SHOP out in the skatepark: a tribute
+// to Andy "A-Dog" Williams (1975-2013), the Burlington, VT DJ, master
+// turntablist and skateboarder whose genre-blurring scratch mixing and
+// relentless positivity made him a cornerstone of the local scene -- the
+// real Andy "A_Dog" Williams Skate Park in Burlington is this level's
+// namesake. Drawn as a shop keeper (see keeperImgs['A-DOG'] below), not a
+// roaming npc, so he doesn't need an entry in SHOP_NPC_IMAGES.
+const adogImg = new Image();
+adogImg.src = 'assets/adog.png';
+
 // ---------------------------------------------------------------- maps
-const SOLID = new Set(['#', 'w', 'f', '~', 'W', 'T', 'C', 'c', 'K', 'J', 'S', 'A', 'N', 'F', 'R', 'V', 'Z', 'U', 'X']);
+const SOLID = new Set(['#', 'w', 'f', '~', 'W', 'T', 'C', 'c', 'K', 'J', 'S', 'A', 'N', 'F', 'R', 'V', 'Z', 'U', 'X', 'm']);
 
 function blankGrid(w, h, fill) {
   return Array.from({ length: h }, () => Array(w).fill(fill));
@@ -10201,6 +10253,144 @@ function makeJohnnysPool() {
   // reads as a full-blown party instead of sitting empty.
   map.poolParty = true;
   return map;
+}
+
+// LEVEL 3 -- THE SKATEPARK. Half waterfront, half skatepark, modeled on the
+// Burlington waterfront park: a lake across the top of the map with a wide
+// promenade running along the shore (and a couple of piers poking out into
+// the water), and below it an oval concrete skatepark ringed by a curving
+// walkway and grass -- a big peanut-shaped snake-run bowl in the middle,
+// smaller bowls on the left, and ledges/rails/stairs on the right. Named
+// after the real Andy "A_Dog" Williams Skate Park in Burlington, VT -- see
+// A_DOG SKATE SHOP (the shop def in `shops` below) for the tribute to the
+// man himself.
+//
+// NOT CONNECTED TO ANYTHING YET (same as the swamp was while under
+// construction): no `transitions` entry and no portal on the swamp side
+// leads here, and WORLD_DEFS.skatepark is `locked: true`, so the player
+// can't reach it and it stays out of the Crate. To open it up later, add a
+// 'Q' tile on the swamp, wire it to this map's `returnPortal`/`spawn`, and
+// drop `locked` from WORLD_DEFS.skatepark once it has records.
+//
+// Legend (new tiles; the rest are the shared ones):
+//   '~' lake water (solid)        'f' waterfront railing (solid)
+//   'b' pier boardwalk (walkable) 'p' promenade / walkway paving (walkable)
+//   'k' skatepark concrete plaza  'o' bowl floor (walkable, drawn as a dish)
+//   'm' ledge / stair block (solid)  'y' grind rail on concrete (walkable)
+//   '.' grass                     '#' tree (solid)
+function makeSkatepark() {
+  const W = 52, H = 36;
+  const g = blankGrid(W, H, '.');
+  const rng = mulberry32(31337031);
+  const inE = (x, y, cx, cy, rx, ry) => (((x + 0.5 - cx) / rx) ** 2 + ((y + 0.5 - cy) / ry) ** 2) <= 1;
+
+  // --- lake (rows 0-7), waterfront railing (row 8), promenade (rows 9-11)
+  for (let y = 0; y <= 7; y++) for (let x = 0; x < W; x++) g[y][x] = '~';
+  for (let x = 0; x < W; x++) g[8][x] = 'f';
+  for (let y = 9; y <= 11; y++) for (let x = 0; x < W; x++) g[y][x] = 'p';
+  // two piers reaching out into the lake; each punches through the railing
+  const PIERS = [[10, 3], [38, 1]]; // [left column, top row] -- 3 tiles wide
+  for (const [px0, top] of PIERS)
+    for (let y = top; y <= 8; y++) for (let x = px0; x < px0 + 3; x++) g[y][x] = 'b';
+
+  // --- skatepark plaza, ringed by a curving walkway (the path in the photo)
+  const CX = 26, CY = 23;
+  for (let y = 12; y < H - 1; y++)
+    for (let x = 1; x < W - 1; x++) {
+      if (inE(x, y, CX, CY, 24.5, 11.5) && !inE(x, y, CX, CY, 22.5, 10)) g[y][x] = 'p';
+      if (y >= 14 && inE(x, y, CX, CY, 21, 9)) g[y][x] = 'k';
+    }
+
+  // --- park features (only ever painted over plaza concrete)
+  const onK = (x, y) => g[y] && g[y][x] === 'k';
+  const paint = (test, ch) => {
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++)
+      if (onK(x, y) && test(x, y)) g[y][x] = ch;
+  };
+  // big peanut-shaped snake-run bowl, dead center
+  paint((x, y) => inE(x, y, 23.5, 20.5, 5.5, 3) || inE(x, y, 29, 24, 6, 3.5) || inE(x, y, 26.5, 22.5, 3, 2.5), 'o');
+  // smaller bowls on the left: a kidney bowl and a round pod
+  paint((x, y) => inE(x, y, 10.5, 25.5, 3.5, 2), 'o');
+  paint((x, y) => inE(x, y, 17.5, 29, 1.7, 1.7), 'o');
+  // right side: stepped stair set, manual-pad ledges, grind rails
+  const setRun = (row, x0, x1, ch) => { for (let x = x0; x <= x1; x++) if (onK(x, row)) g[row][x] = ch; };
+  setRun(24, 39, 42, 'm'); setRun(25, 39, 41, 'm'); setRun(26, 39, 40, 'm');
+  setRun(17, 31, 36, 'm'); setRun(28, 30, 35, 'm'); setRun(18, 14, 18, 'm');
+  setRun(22, 33, 38, 'y'); setRun(20, 36, 38, 'y'); setRun(26, 12, 16, 'y');
+
+  // --- trees: scattered over the grass corners, never touching a path/plaza
+  const near = (x, y, set) => {
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      const r = g[y + dy] && g[y + dy][x + dx];
+      if (r && set.includes(r)) return true;
+    }
+    return false;
+  };
+  for (let y = 12; y < H - 1; y++)
+    for (let x = 1; x < W - 1; x++)
+      if (g[y][x] === '.' && !near(x, y, ['p', 'k', 'o', 'm', 'y', 'f']) && rng() < 0.28) g[y][x] = '#';
+  // border: tree line down both sides and along the bottom
+  for (let y = 12; y < H; y++) { g[y][0] = '#'; g[y][W - 1] = '#'; }
+  for (let x = 0; x < W; x++) g[H - 1][x] = '#';
+
+  // --- A_DOG SKATE SHOP -- the skatepark's first building: a hip hop
+  // skate shop tucked into the grass off the west side of the plaza ring.
+  // Its door lands right on the promenade walkway (see ADOG_DOOR_X/Y
+  // below), so stepping outside drops the player straight onto a clear
+  // path. Same solid-walls-plus-one-door construction as GUT HUT/SWAMP
+  // FOOD/etc. in makeSwamp() -- written out by hand here since the
+  // skatepark isn't on the shared overworld building() helper either.
+  // Carved AFTER the tree sprinkle above so its footprint always wins
+  // over any tree that happened to land there.
+  const buildings = [];
+  const ADOG_X = 2, ADOG_Y = 13, ADOG_W = 6, ADOG_H = 5;
+  const ADOG_DOOR_X = ADOG_X + Math.floor(ADOG_W / 2), ADOG_DOOR_Y = ADOG_Y + ADOG_H - 1;
+  for (let y = ADOG_Y; y < ADOG_Y + ADOG_H; y++)
+    for (let x = ADOG_X; x < ADOG_X + ADOG_W; x++) g[y][x] = 'w';
+  g[ADOG_DOOR_Y][ADOG_DOOR_X] = 'D';
+  buildings.push({
+    x: ADOG_X, y: ADOG_Y, w: ADOG_W, h: ADOG_H, name: 'A_DOG SKATE SHOP',
+    wall: '#232228', roof: '#d94f2b', doorX: ADOG_DOOR_X,
+  });
+
+  // --- a few outdoor dig spots scattered around the promenade/plaza ring,
+  // same "sit right on a guaranteed-clear path tile" placement swamp's
+  // boardwalk crates use. All junk for now (no more of the level's
+  // records have been placed outdoors yet) -- more can turn real once the
+  // rest of the level fills in.
+  const crates = {};
+  const outdoorCrateDefs = [
+    [15, 10, { junkSeed: 0 }],
+    [45, 10, { junkSeed: 1 }],
+    [24, 12, { junkSeed: 2 }],
+    [9, 14, { junkSeed: 3 }],
+    [46, 17, { junkSeed: 4 }],
+  ];
+  for (const [cx, cy, d] of outdoorCrateDefs) { g[cy][cx] = 'c'; crates[key(cx, cy)] = d; }
+
+  // return portal (west end of the promenade) -- not wired to anything yet
+  const RETURN_PORTAL_X = 0, RETURN_PORTAL_Y = 10;
+  g[RETURN_PORTAL_Y][RETURN_PORTAL_X] = 'Q';
+
+  const waterTiles = [];
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (g[y][x] === '~') waterTiles.push({ x, y });
+
+  return {
+    id: 'skatepark', world: 'skatepark', w: W, h: H, grid: g, outside: true,
+    buildings, doors: {}, crates, npcs: [], riverTiles: waterTiles,
+    skatepark: true,
+    adogSkateShopDoor: { x: ADOG_DOOR_X, y: ADOG_DOOR_Y },
+    returnPortal: { x: RETURN_PORTAL_X, y: RETURN_PORTAL_Y },
+    spawn: { x: 3.5, y: 10.5 }, // tile coords, on the promenade just inside the portal
+    palette: {
+      groundA: '#6f9450', groundB: '#5f8446', groundDot: '#8fb060',
+      water: '#2f6a96', waterHi: '#5a9cc6',
+      trunk: '#5a3a20', leafDark: '#3f7a30', leafMid: '#5a9a3a', leafLight: '#86b84a',
+    },
+    // Waterfront life: bikes and dog-walkers along the promenade, fish in
+    // the lake. No gators/snakes/frogs out here.
+    ambient: { bikeRows: [9], walkerRow: 10, dogRow: 11 },
+  };
 }
 
 const { map: town, doors } = makeOverworld();
@@ -11177,6 +11367,75 @@ const shops = {
       { id: 'drumpatterndoc', tx: 12, ty: 6, label: 'READ THE DRUM PATTERN DOC' },
     ],
   }),
+  // A_DOG SKATE SHOP -- the skatepark's first building: a hip hop skate
+  // shop just off the promenade, run by A-DOG himself. `world: 'skatepark'`
+  // is the important bit -- it's what makes currentWorldId()/recKey() treat
+  // Concrete Wax as a *skatepark* record. Same graffiti-studio treatment as
+  // GUT HUT (graffitiWalls/cypherVibe/artTable/muralWall/paintings), just
+  // re-themed with boards, grip tape and spray cans instead of swamp colors.
+  adogskateshop: makeShop('adogskateshop', {
+    world: 'skatepark',
+    floor: '#3a3a40', plank: '#2c2c32', wallColor: '#1c1c22',
+    paintFloor: true,
+    confettiColors: ['#d94f2b', '#e0b83a', '#3a7ab0', '#e8e4dc'],
+    artTable: true,
+    // tagged canvases along the back wall, skate-shop colors
+    paintings: {
+      '0,2': { base: '#d94f2b', a: '#e0b83a', b: '#e8e4dc' },
+      '0,4': { base: '#3a7ab0', a: '#d94f2b', b: '#e0b83a' },
+      '0,6': { base: '#e0b83a', a: '#3a7ab0', b: '#d94f2b' },
+    },
+    muralWall: true,
+    graffitiWalls: true,
+    cypherVibe: true,
+    micStand: [7, 5],
+    // boombox / snapback / spray cans / kicked-off sneaker -- see
+    // drawHipHopGear() -- scattered around the floor between the racks.
+    gearTiles: [[3, 3], [8, 3], [4, 7], [10, 7]],
+    // a couple of decks set up in the back corner, same "shop keeper's own
+    // little DJ booth" touch GUT HUT has.
+    recordPlayerTiles: [[10, 2], [12, 2]],
+    // TRAV -- skater and G FAM emcee, posted up in the middle of the shop
+    // floor. Same character/sprite as his spot in Kountry Kart Deli, just a
+    // second appearance -- a skate shop's about the most natural place in
+    // town for him to be hanging out.
+    npcs: [
+      { id: 'trav', tx: 6, ty: 6, name: 'TRAV', sprite: 'trav',
+        lines: [
+          'Trav. Figured I\'d post up here instead of the deli for once -- this is basically my second living room.',
+          'A-Dog\'s the reason half of G FAM even picked up a board in the first place. Dude\'s a legend around here.',
+          'Skate deck in one hand, sixteen bars in the other -- I don\'t really put either one down.',
+          'You want a verse while you shop? Say less. I\'m always ready to spit.',
+          'Check them crates while you\'re in here. A-Dog\'s got heat stacked up you wouldn\'t believe.',
+        ] },
+    ],
+    // Portrait art (see adogImg/keeperImgs['A-DOG']) takes over rendering
+    // once it loads; shirt/skin below are just the fallback shading shown
+    // before then, picked to roughly match the artwork (dark hoodie, warm
+    // brown skin tone) rather than mattering much on their own.
+    keeper: { name: 'A-DOG', shirt: '#2a2c32', skin: '#a06a3e',
+      lines: [
+        'Yo, welcome in. Boards on the wall, wax on the counter, beats always running -- that\'s the whole vibe here.',
+        'Name\'s A-Dog. DJ first, but I never could put the board down either -- cut my teeth right out there on this concrete.',
+        'I\'ll scratch a little of everything through these speakers -- punk, funk, soul, hip hop. Genres don\'t mean much once the needle drops.',
+        'This whole park\'s got my name on it. Burlington gave me a lot over the years -- figured the least I could do was give something back.',
+        'Stay positive, keep digging, keep pushing. That\'s about the only advice worth giving out.',
+        'Dig through them crates if you want. Never know what you\'ll turn up.',
+      ],
+      foundLine: 'Concrete Wax? Man, that tape\'s a piece of history -- put it on, crank it up, and go skate.' },
+    // Four crates: the skatepark's first record (Concrete Wax) plus three
+    // dope-hip-hop-but-not-it junk crates (see SKATE_SHOP_JUNK above).
+    crates: [ { record: 'grip' }, { skateShopSeed: 0 }, { skateShopSeed: 1 }, { skateShopSeed: 2 } ],
+    // "LEARN ABOUT ANDY" sign -- a tribute plaque near the back wall
+    // artwork (3,6), clear of the table (row 3), micStand (7,5), gearTiles
+    // (3,3)/(8,3)/(4,7)/(10,7), Trav (6,6), the crates (1,4)/(1,6)/(12,4)/
+    // (12,6), and the door (6,9). Interacting opens the real Friends For
+    // A_Dog Foundation website in a new tab -- see
+    // MINIGAME_ACTIONS.adogfoundation above.
+    minigames: [
+      { id: 'adogfoundation', tx: 3, ty: 6, label: 'LEARN ABOUT ANDY' },
+    ],
+  }),
 };
 
 // door wiring: town door tile -> shop spawn; shop exit tile -> town spawn
@@ -11186,6 +11445,13 @@ for (const [id, d] of Object.entries(doors)) {
   transitions[id + ':' + key(6, 9)] = { map: 'town', x: d.doorX + 0.5, y: d.doorY + 1.6 };
 }
 const swamp = makeSwamp();
+const skatepark = makeSkatepark(); // LEVEL 3 -- built but not reachable yet (no transitions/portal lead here)
+// A_DOG SKATE SHOP door wiring -- same pattern as GUT HUT/etc. in
+// makeSwamp() above. This just connects the shop door to its own room; it
+// has nothing to do with reaching LEVEL 3 itself, which still has no
+// portal wired to it anywhere (see the comment on makeSkatepark()).
+transitions['skatepark:' + key(skatepark.adogSkateShopDoor.x, skatepark.adogSkateShopDoor.y)] = { map: 'adogskateshop', x: 6.5, y: 7.5 };
+transitions['adogskateshop:' + key(6, 9)] = { map: 'skatepark', x: skatepark.adogSkateShopDoor.x + 0.5, y: skatepark.adogSkateShopDoor.y + 1.6 };
 // GUT HUT door wiring -- same pattern as the loop above, written out by
 // hand since the swamp isn't on the shared `doors` map (it's not connected
 // to town yet, see the comment on WORLD_DEFS.swamp).
@@ -11219,7 +11485,7 @@ transitions['truthlabback:' + key(6, 9)] = { map: 'truthlab', x: 9.5, y: 1.6 };
 // THE SOUL SHACK door wiring -- same pattern as GUT HUT above.
 transitions['swamp:' + key(swamp.soulShackDoor.x, swamp.soulShackDoor.y)] = { map: 'soulshack', x: 6.5, y: 7.5 };
 transitions['soulshack:' + key(6, 9)] = { map: 'swamp', x: swamp.soulShackDoor.x + 0.5, y: swamp.soulShackDoor.y + 1.6 };
-const maps = { town, ...shops, swamp };
+const maps = { town, ...shops, swamp, skatepark };
 
 // Reshuffles, within EACH location that has one, which of that location's
 // own crates holds its collectible record and which hold junk. A record's
@@ -12203,6 +12469,10 @@ function doInteract() {
     } else if (c.soulShackSeed !== undefined) {
       const ssj = SOUL_SHACK_JUNK[c.soulShackSeed % SOUL_SHACK_JUNK.length];
       dialog = { name: 'CRATE', lines: [ssj.line, ssj.reply], i: 0 };
+      state = 'dialog';
+    } else if (c.skateShopSeed !== undefined) {
+      const ksj = SKATE_SHOP_JUNK[c.skateShopSeed % SKATE_SHOP_JUNK.length];
+      dialog = { name: 'CRATE', lines: [ksj.line, ksj.reply], i: 0 };
       state = 'dialog';
     } else {
       dialog = { name: 'CRATE', lines: [JUNK[c.junkSeed % JUNK.length], 'Keep digging...'], i: 0 };
@@ -19391,6 +19661,7 @@ function render(time) {
   if (map.outside) {
     drawBuildings(map);
     if (map.swamp) drawSwampDecorations(time, map, camX, camY);
+    else if (map.skatepark) drawSkateparkDecorations(time, map, camX, camY);
     else drawTownDecorations(time);
     drawAmbient();
   }
@@ -19641,6 +19912,65 @@ function drawTiles(map, time, camX = 0, camY = 0) {
           ctx.fillRect(px + 8, py + 16, TILE - 16, 4);
           ctx.fillStyle = 'rgba(255,255,255,0.25)';
           ctx.fillRect(px + 9, py + 5, 3, 3);
+          break;
+        }
+        case 'k': drawSkateConcrete(px, py, tx, ty); break;
+        case 'y': {
+          // grind rail: plaza concrete with a steel rail + posts on top
+          drawSkateConcrete(px, py, tx, ty);
+          ctx.fillStyle = 'rgba(0,0,0,0.22)';
+          ctx.fillRect(px, py + 19, TILE, 3);
+          ctx.fillStyle = '#5a5e66';
+          ctx.fillRect(px + 3, py + 15, 3, 6);
+          ctx.fillRect(px + TILE - 6, py + 15, 3, 6);
+          ctx.fillStyle = '#c8ccd4';
+          ctx.fillRect(px, py + 12, TILE, 3);
+          ctx.fillStyle = '#eef0f4';
+          ctx.fillRect(px, py + 12, TILE, 1);
+          break;
+        }
+        case 'p': {
+          // promenade paving: warm pavers in a running-bond pattern
+          ctx.fillStyle = (h % 5 === 0) ? '#c2bcae' : '#cbc5b7';
+          ctx.fillRect(px, py, TILE, TILE);
+          ctx.fillStyle = 'rgba(0,0,0,0.09)';
+          ctx.fillRect(px, py + 15, TILE, 1);
+          ctx.fillRect(px, py + 31, TILE, 1);
+          const bx = (ty % 2 === 0) ? 10 : 22;
+          ctx.fillRect(px + bx, py, 1, 15);
+          ctx.fillRect(px + ((bx + 16) % 32), py + 16, 1, 15);
+          break;
+        }
+        case 'o': {
+          // bowl floor: a shallow dish -- darker toward the middle, with a
+          // light coping lip on any side that borders the plaza
+          const gr = map.grid;
+          const isO = (x, y) => gr[y] && gr[y][x] === 'o';
+          let n = 0;
+          for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && isO(tx + dx, ty + dy)) n++;
+          ctx.fillStyle = n >= 8 ? '#8e8c88' : n >= 6 ? '#9a9894' : '#a8a6a1';
+          ctx.fillRect(px, py, TILE, TILE);
+          ctx.fillStyle = 'rgba(0,0,0,0.10)';
+          ctx.fillRect(px, py + TILE - 3, TILE, 3);
+          ctx.fillStyle = '#e6e4de';
+          if (!isO(tx, ty - 1)) ctx.fillRect(px, py, TILE, 3);
+          if (!isO(tx - 1, ty)) ctx.fillRect(px, py, 3, TILE);
+          if (!isO(tx + 1, ty)) ctx.fillRect(px + TILE - 3, py, 3, TILE);
+          if (!isO(tx, ty + 1)) ctx.fillRect(px, py + TILE - 3, TILE, 3);
+          break;
+        }
+        case 'm': {
+          // ledge / stair block: concrete with a top face, a shaded front
+          // face and a worn painted curb edge
+          drawSkateConcrete(px, py, tx, ty);
+          ctx.fillStyle = '#7e7c78';
+          ctx.fillRect(px, py + 14, TILE, TILE - 14);
+          ctx.fillStyle = '#d6d4ce';
+          ctx.fillRect(px, py + 2, TILE, 12);
+          ctx.fillStyle = '#e0b83a';
+          ctx.fillRect(px, py + 2, TILE, 2);
+          ctx.fillStyle = 'rgba(0,0,0,0.18)';
+          ctx.fillRect(px, py + TILE - 3, TILE, 3);
           break;
         }
         case 'E': {
@@ -20077,6 +20407,68 @@ function drawTree(px, py, map) {
   ctx.fillRect(px + 10, py + 4, 8, 6);
   ctx.fillStyle = 'rgba(0,0,0,0.15)';
   ctx.fillRect(px + 4, py + 18, 24, 4);
+}
+
+// Plaza concrete for the skatepark: a flat grey slab with expansion joints
+// every few tiles and the occasional chip/scuff so it isn't a flat fill.
+function drawSkateConcrete(px, py, tx, ty) {
+  const h = hash2(tx, ty);
+  ctx.fillStyle = (h % 6 === 0) ? '#aeaca7' : (h % 3 === 0) ? '#b6b4af' : '#bbb9b4';
+  ctx.fillRect(px, py, TILE, TILE);
+  ctx.fillStyle = 'rgba(0,0,0,0.10)';
+  if (tx % 4 === 0) ctx.fillRect(px, py, 1, TILE);
+  if (ty % 4 === 0) ctx.fillRect(px, py, TILE, 1);
+  if (h % 9 === 0) {
+    ctx.fillStyle = 'rgba(255,255,255,0.18)';
+    ctx.fillRect(px + (h % 20), py + ((h >> 4) % 22), 6, 2);
+  }
+}
+
+// Waterfront + skatepark dressing: sailboats bobbing in the lake and
+// lamp posts / benches along the promenade. Called from render only when
+// the current map has `skatepark: true`. Purely visual -- nothing here
+// touches the grid or collision.
+function drawSkateparkDecorations(time, map, camX, camY) {
+  // sailboats out on the lake (tile coords, kept clear of the two piers)
+  const boats = [[5, 4, '#e8e4dc'], [17, 5, '#d8483a'], [25, 2, '#e8e4dc'], [31, 5, '#3a6ab0'], [46, 5, '#e8e4dc']];
+  for (const [bx, by, sail] of boats) {
+    const px = bx * TILE + TILE / 2, py = by * TILE + TILE / 2 + Math.sin(time * 1.6 + bx) * 2;
+    if (px < camX - 40 || px > camX + VIEW_W + 40 || py < camY - 60 || py > camY + VIEW_H + 40) continue;
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.beginPath(); ctx.ellipse(px, py + 9, 13, 3, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#2a2a30';
+    ctx.fillRect(px - 12, py + 2, 24, 6);
+    ctx.fillRect(px - 9, py + 8, 18, 2);
+    ctx.fillStyle = '#5a4a3a';
+    ctx.fillRect(px - 1, py - 20, 2, 22);
+    ctx.fillStyle = sail;
+    ctx.beginPath(); ctx.moveTo(px + 2, py - 19); ctx.lineTo(px + 12, py); ctx.lineTo(px + 2, py); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = shadeColor(sail, -25);
+    ctx.beginPath(); ctx.moveTo(px - 2, py - 15); ctx.lineTo(px - 10, py); ctx.lineTo(px - 2, py); ctx.closePath(); ctx.fill();
+  }
+  // lamp posts along the top edge of the promenade + benches on its bottom edge
+  for (let tx = 4; tx < map.w; tx += 8) {
+    const px = tx * TILE + TILE / 2, py = 9 * TILE;
+    if (px < camX - 20 || px > camX + VIEW_W + 20) continue;
+    ctx.fillStyle = '#2a2c32';
+    ctx.fillRect(px - 2, py - 6, 4, 26);
+    ctx.fillStyle = '#f4e8b0';
+    ctx.fillRect(px - 4, py - 12, 8, 7);
+    ctx.fillStyle = '#2a2c32';
+    ctx.fillRect(px - 5, py - 14, 10, 3);
+  }
+  for (let tx = 8; tx < map.w - 4; tx += 12) {
+    const px = tx * TILE, py = 11 * TILE + 8;
+    if (px < camX - 60 || px > camX + VIEW_W + 60) continue;
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.fillRect(px + 2, py + 16, 40, 4);
+    ctx.fillStyle = '#4a3220';
+    ctx.fillRect(px, py + 4, 44, 4);
+    ctx.fillRect(px, py + 10, 44, 4);
+    ctx.fillStyle = '#2a2c32';
+    ctx.fillRect(px + 3, py + 12, 3, 6);
+    ctx.fillRect(px + 38, py + 12, 3, 6);
+  }
 }
 
 // Scatter lily pads + cattails over the swamp's water. Called from render
@@ -26195,6 +26587,10 @@ keeperImgs.JOHNNY = johnnyImg;
 // art is declared up with the other pre-drawn characters and just
 // registered here so drawKeeper() picks it up by name.
 keeperImgs.IAN = ianImg;
+// A_DOG SKATE SHOP's keeper, A-DOG -- same idea as MRKBH/JOHNNY/IAN above:
+// the art is declared up with the other pre-drawn characters and just
+// registered here so drawKeeper() picks it up by name.
+keeperImgs['A-DOG'] = adogImg;
 
 function drawAnt(cx, cy, s) {
   // A white ant silhouette (the Anthill Collective mark), drawn on SK1's hat.
