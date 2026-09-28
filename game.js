@@ -9381,17 +9381,18 @@ function makeOverworld() {
     // dogRow moved off 23 -> 6: the new stadium footprint (rows 17-23) now
     // sits on top of the old dog lane.
     ambient: { bikeRows: [9], walkerRow: 12, dogRow: 6 },
-    // Autumn palette -- it's fall in Vermont, so Burlington's grass goes a
-    // little dry/golden and every tree on the Main Map turns from summer
-    // green to reds/oranges/yellows. Same palette shape as the swamp's
+    // Autumn palette -- it's fall in Vermont, so Burlington's grass gets just
+    // a touch of dry/golden warmth and the trees on the Main Map stay mostly
+    // green with only a hint of turning color (a light touch of early fall,
+    // not the full reds/oranges/yellows). Same palette shape as the swamp's
     // (groundA/groundB/groundDot for the ground fill + speckle, water/
     // waterHi for the river, trunk/leafDark/leafMid/leafLight for every
     // tree drawn via drawTree()) -- see drawTiles()/drawTree() for how
     // each field is read, with a green fallback if a map has no palette.
     palette: {
-      groundA: '#8a7a3a', groundB: '#7c6c30', groundDot: '#c9762c',
+      groundA: '#6f8a4a', groundB: '#5f7c3f', groundDot: '#a9903a',
       water: '#2f5a86', waterHi: '#4878aa',
-      trunk: '#5a3a20', leafDark: '#8a3a18', leafMid: '#c9642a', leafLight: '#e8a838',
+      trunk: '#5a3a20', leafDark: '#4a7a2e', leafMid: '#7a9a3a', leafLight: '#c9a838',
     },
     // A soccer ball sitting out on the Vermont Green FC pitch, inside the
     // stadium bowl carved out above (STADIUM_X/Y/W/H) -- tx/ty (19, 19) is
