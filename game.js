@@ -9236,6 +9236,15 @@ johnnyImg.src = 'assets/johnny.png';
 const ianImg = new Image();
 ianImg.src = 'assets/ian.png';
 
+// KRISHNA -- spiritual guide and master musician (guitar, keys, vocals),
+// one third of the trio SOLO LEXICON alongside Rico & Tha Truth. Always
+// making music around THE TRUTH LAB and beyond. Black backwards cap, long
+// curly brown hair, black-and-white flannel, blue jeans, black Chucks, and
+// his black electric guitar slung across his chest. Drawn as a shop npc
+// (see SHOP_NPC_IMAGES below), posted up on the open floor inside TRUTH LAB.
+const krishnaImg = new Image();
+krishnaImg.src = 'assets/krishna.png';
+
 // ---------------------------------------------------------------- maps
 const SOLID = new Set(['#', 'w', 'f', '~', 'W', 'T', 'C', 'c', 'K', 'J', 'S', 'A', 'N', 'F', 'R', 'V', 'Z', 'U', 'X']);
 
@@ -10991,6 +11000,25 @@ const shops = {
         'Big TV, the record player, that couch -- this room\'s built for hanging out, not for rushing through.',
         'Sweep every last record out of this swamp and I\'ll open up the back room. Got a booth back there -- that\'s where the real work happens.',
       ] },
+    // KRISHNA -- spiritual guide, master musician, and Solo Lexicon's
+    // third member (with Rico & Tha Truth). Posted up on the open floor at
+    // (9,4): clear of the counter table (row 3), the TV (10,2), the back
+    // door (9,0), the corner crates (12,4)/(12,6), the pinball table (6,4),
+    // the Bayou Break Station cabinet (10,6), the couch (5,6)-(7,6), and
+    // the door (6,9), with walking room on every side. Same "full pre-drawn
+    // image, feet anchored to the floor line" treatment as ES-K/Trav/etc
+    // -- see SHOP_NPC_IMAGES/drawShopImageNpcs.
+    npcs: [
+      { id: 'krishna', tx: 9, ty: 4, name: 'KRISHNA', sprite: 'krishna',
+        lines: [
+          'Peace, my friend. Krishna. Welcome to the lab -- pull up a piece of floor and let the sound find you.',
+          'Guitar, keys, voice... it all comes from the same place. I just get out of the way and let the tune walk through.',
+          'Me, Rico and Tha Truth -- that\'s Solo Lexicon. Three different souls, one long conversation in music.',
+          'I\'m always making tunes somewhere around here. The lab, the boardwalk, out past the reeds -- the swamp\'s got a rhythm if you slow down enough to hear it.',
+          'Every record you dig is a little prayer somebody pressed into wax. Treat them kindly and they\'ll speak to you.',
+          'Breathe. Listen. Then play. That\'s the whole secret, and it never stops being enough.',
+        ] },
+    ],
     // Four crates, all quality DJ BP hip hop -- see TRUTHLAB_JUNK above.
     crates: [ { truthLabSeed: 0 }, { truthLabSeed: 1 }, { truthLabSeed: 2 }, { truthLabSeed: 3 } ],
     // Bayou Break Station -- a dirty little swamp synth + chopped-break
@@ -26260,7 +26288,7 @@ function drawKeeper(k) {
 // anchored to the tile's floor line — no procedural fallback, since there's
 // no simple shape that stands in for this art; it just waits for the image
 // to finish loading.
-const SHOP_NPC_IMAGES = { kanga: kangaImg, truth: truthImg, bill: billImg, rza: rzaImg, gza: gzaImg, zach: zachImg, humble: humbleImg, hicks: hicksImg, mavstar: mavstarImg, boxguts: boxgutsImg, trav: travImg, esk: esKImg };
+const SHOP_NPC_IMAGES = { kanga: kangaImg, truth: truthImg, bill: billImg, rza: rzaImg, gza: gzaImg, zach: zachImg, humble: humbleImg, hicks: hicksImg, mavstar: mavstarImg, boxguts: boxgutsImg, trav: travImg, esk: esKImg, krishna: krishnaImg };
 
 function drawShopImageNpcs(map) {
   if (!map.npcs) return;
