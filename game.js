@@ -10064,6 +10064,9 @@ function makeShop(id, opts) {
   // e.g. TRUTH LAB's centerpiece. Single tile, non-shop-specific, so any
   // room can opt in via opts.recordPlayerTile: [x, y].
   if (opts.recordPlayerTile) { g[opts.recordPlayerTile[1]][opts.recordPlayerTile[0]] = 'U'; }
+  // Same prop, but several at once -- e.g. a pair of decks flanking a DJ
+  // (GUT HUT's Kanga booth). opts.recordPlayerTiles is a list of [x, y].
+  (opts.recordPlayerTiles || []).forEach(([rx, ry]) => { g[ry][rx] = 'U'; });
   // A big wall-mounted TV — e.g. TRUTH LAB's lounge centerpiece. Single
   // tile, non-shop-specific, so any room can opt in via opts.tvTile: [x, y].
   if (opts.tvTile) { g[opts.tvTile[1]][opts.tvTile[0]] = 'X'; }
@@ -10663,6 +10666,25 @@ const shops = {
     // Four crates: the swamp's Mud Kick 45 (moved in here from the
     // boardwalk spur, see makeSwamp()) plus three junk crates.
     crates: [ { record: 'swampdrum' }, { junkSeed: 0 }, { junkSeed: 1 }, { junkSeed: 2 } ],
+    // Kanga's booth -- a pair of turntables in the open top-right of the
+    // room (row 2, clear of the table at row 3, the crate at (12,4), and
+    // the Blackbook cabinet's sign at (10,5)) with Kanga standing between
+    // them, rockin out. He's also still in Green Door Studio; this is the
+    // same character/sprite, just a second appearance. `dance: true` makes
+    // drawShopImageNpcs() bounce and sway him to the beat.
+    recordPlayerTiles: [[10, 2], [12, 2]],
+    npcs: [
+      { id: 'kanga', tx: 11, ty: 2, name: 'KANGA', sprite: 'kanga', dance: true,
+        lines: [
+          'Yo — Kanga, live from the Gut Hut! Boxguts gave me the corner and two decks. Best seat in the swamp.',
+          'Bayou bass hits different through these walls. The whole hut vibrates when I drop the needle right.',
+          'Green Door by day, Gut Hut by night — I get around. Wherever there are two turntables, I\'m there.',
+          () => collected.has(recKey('swamp', 'swampdrum'))
+            ? 'Mud Kick 45?! You dug that out of Boxguts\' crates? Bring it here, I\'ll cut it up right.'
+            : null,
+          'Cutting, scratching, backspinning — swamp style. Don\'t mind me, keep digging.',
+        ] },
+    ],
     // Rico's Blackbook -- BOXGUTS' own handstyle library/practice book,
     // left open on the floor clear of the table, crates, mic stand, and
     // gear. Full standalone web app, same as chess/beatbot/organ/mini golf
@@ -26301,7 +26323,35 @@ function drawShopImageNpcs(map) {
     const kw = Math.round(kh * img.naturalWidth / img.naturalHeight);
     ctx.fillStyle = 'rgba(0,0,0,0.25)';
     ctx.fillRect(px + 16 - kw * 0.3, py + 27, kw * 0.6, 4);
-    ctx.drawImage(img, Math.round(px + 16 - kw / 2), Math.round(py + 30 - kh), kw, kh);
+    if (n.dance) {
+      // Rockin out on the decks: a quick head-bob bounce on the beat plus a
+      // gentle sway, pivoting about the feet so he stays planted. Purely
+      // visual -- only npcs flagged `dance: true` do this.
+      const t = performance.now() / 1000;
+      const beat = t * 7.5 + n.tx;
+      const bounce = Math.abs(Math.sin(beat)) * 3;
+      const sway = Math.sin(beat * 0.5) * 0.05;
+      const footX = px + 16, footY = py + 30;
+      ctx.save();
+      ctx.translate(footX, footY - bounce);
+      ctx.rotate(sway);
+      ctx.drawImage(img, Math.round(-kw / 2), -kh, kw, kh);
+      ctx.restore();
+      // little floating music notes drifting up off the booth
+      ctx.fillStyle = 'rgba(255, 210, 60, 0.85)';
+      ctx.font = 'bold 12px monospace';
+      ctx.textAlign = 'center';
+      for (let i = 0; i < 2; i++) {
+        const ph = (t * 0.6 + i * 0.5) % 1;
+        const nx = footX + (i === 0 ? -kw * 0.45 : kw * 0.45) + Math.sin(ph * 6 + i) * 4;
+        const ny = footY - kh * 0.6 - ph * 22;
+        ctx.globalAlpha = 1 - ph;
+        ctx.fillText(i === 0 ? '\u266A' : '\u266B', nx, ny);
+      }
+      ctx.globalAlpha = 1;
+    } else {
+      ctx.drawImage(img, Math.round(px + 16 - kw / 2), Math.round(py + 30 - kh), kw, kh);
+    }
   }
 }
 
