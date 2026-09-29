@@ -715,14 +715,18 @@ const WORLD_DEFS = {
     name: 'Skatepark',
     locked: true,
     // First record of the level, hidden in A_DOG SKATE SHOP (see the
-    // `adogskateshop` shop below / ADOG_CLEAR_* in makeSkatepark()). More
-    // get added here as the rest of the level fills in.
+    // `adogskateshop` shop below / ADOG_CLEAR_* in makeSkatepark()). The
+    // second, Nitro Pour, is hidden in FOAM BREWERS (see the `foambrewers`
+    // shop below). More get added here as the rest of the level fills in.
     records: {
       grip: { title: 'Concrete Wax', artist: 'A-Dog & The Bearings', year: '1994',
               sample: 'Drum Loop', layer: 'drums', color: '#d94f2b', pad: 'DRM',
               flavor: 'Recorded on a boombox propped on the coping. You can hear wheels on concrete under every bar.' },
+      foam: { title: 'Nitro Pour', artist: 'Fattie B & The Head Brewers', year: '1999',
+              sample: 'Bassline', layer: 'bass', color: '#e8a317', pad: 'BAS',
+              flavor: 'Pressed for one tap-takeover night and never again. The low end pours thick and creamy, like the stout it\'s named after.' },
     },
-    padOrder: ['grip'],
+    padOrder: ['grip', 'foam'],
   },
   // ADD MORE WORLDS HERE, e.g.:
   // subway: {
@@ -884,6 +888,19 @@ const SKATE_SHOP_JUNK = [
     reply: 'Certified. Still not it, though -- keep digging.' },
   { line: 'A milk crate of scratched-up battle-DJ breaks, corners chewed up from a hundred backyard sessions on somebody\'s back-porch turntables.',
     reply: 'Pure fire, but none of these are the record you\'re looking for.' },
+];
+
+// FOAM BREWERS' three themed dig crates -- same 1:1 pairing via
+// c.foamSeed as SKATE_SHOP_JUNK/SOUL_SHACK_JUNK/etc. above. Fattie B stocks
+// these with the strangest, most lovingly local wax in Vermont -- never one
+// of the collectibles, just eccentric homegrown tunes.
+const FOAM_JUNK = [
+  { line: 'A milk crate of hand-numbered 7-inches from bands nobody outside Chittenden County has heard of -- \"Creemee Meltdown\" by The Frost Heaves rides on top, sleeve still smelling like woodsmoke.',
+    reply: 'Fattie B has spun every one of these at least twice. Not the record you\'re after, though.' },
+  { line: 'Cassette-only releases in hand-drawn sleeves: a polka-punk quartet called Mud Season Mutants, an accordion-and-808 duo, and a full-length recorded entirely inside a covered bridge.',
+    reply: 'Gloriously weird. Still not the one -- keep digging.' },
+  { line: 'A stack of split EPs, half recorded in a garage, half in a sugarhouse. The labels are scribbled over with titles like \"Sap Run\" and \"Kombucha Blues.\"',
+    reply: 'Pure local heat. Just not what you came for tonight.' },
 ];
 
 // THE SOUL SHACK's two themed dig crates -- same 1:1 pairing via
@@ -9297,6 +9314,14 @@ krishnaImg.src = 'assets/krishna.png';
 const adogImg = new Image();
 adogImg.src = 'assets/adog.png';
 
+// FATTIE B -- the keeper of FOAM BREWERS out in the skatepark: a legend of
+// the local DJ scene for decades, the ultimate party rocker and record
+// selector, up on the decks rocking the room. Drawn as a shop keeper (see
+// keeperImgs['FATTIE B'] below, with `dance: true` on his keeper def), not
+// a roaming npc, so he doesn't need an entry in SHOP_NPC_IMAGES.
+const fattiebImg = new Image();
+fattiebImg.src = 'assets/fattieb.png';
+
 // ---------------------------------------------------------------- maps
 const SOLID = new Set(['#', 'w', 'f', '~', 'W', 'T', 'C', 'c', 'K', 'J', 'S', 'A', 'N', 'F', 'R', 'V', 'Z', 'U', 'X', 'm']);
 
@@ -10124,6 +10149,10 @@ function makeShop(id, opts) {
   // tile, non-shop-specific, so any room can opt in via opts.tvTile: [x, y].
   if (opts.tvTile) { g[opts.tvTile[1]][opts.tvTile[0]] = 'X'; }
   (opts.gearTiles || []).forEach(([gx, gy]) => { g[gy][gx] = 'G'; });
+  // Solid blocks drawn as plain wall tiles that a shop's own interior
+  // painter dresses up (e.g. FOAM BREWERS' speaker stacks) -- keeps the
+  // player from walking through a prop that isn't a tile type of its own.
+  (opts.blockTiles || []).forEach(([bx, by]) => { g[by][bx] = 'W'; });
   // Two-tile-wide recording desk (studio monitors + gear), with a hanging
   // neon sign above it — e.g. Zach's "SKYLAB" workstation in Green Door
   // Studio. opts.recordingDesk is [x, y] for the LEFT tile; the desk always
@@ -10166,6 +10195,7 @@ function makeShop(id, opts) {
     recordShop: opts.recordShop || false,
     plantShop: opts.plantShop || false,
     soulShack: opts.soulShack || false,
+    foamBrewers: opts.foamBrewers || false,
     recordingDesk: opts.recordingDesk
       ? { x: opts.recordingDesk[0], y: opts.recordingDesk[1], sign: opts.recordingDeskSign || 'SKYLAB' }
       : null,
@@ -10354,6 +10384,22 @@ function makeSkatepark() {
     wall: '#232228', roof: '#d94f2b', doorX: ADOG_DOOR_X,
   });
 
+  // --- FOAM BREWERS -- the skatepark's second building: a hip Vermont
+  // microbrewery tucked into the grass in the northeast corner, mirroring
+  // A_DOG SKATE SHOP over on the west side. Its door (bottom row, third
+  // tile in) drops the player onto open grass just below the building.
+  // Carved AFTER the tree sprinkle so its footprint always wins over any
+  // tree that landed there.
+  const FOAM_X = 45, FOAM_Y = 12, FOAM_W = 6, FOAM_H = 5;
+  const FOAM_DOOR_X = FOAM_X + Math.floor(FOAM_W / 2), FOAM_DOOR_Y = FOAM_Y + FOAM_H - 1;
+  for (let y = FOAM_Y; y < FOAM_Y + FOAM_H; y++)
+    for (let x = FOAM_X; x < FOAM_X + FOAM_W; x++) g[y][x] = 'w';
+  g[FOAM_DOOR_Y][FOAM_DOOR_X] = 'D';
+  buildings.push({
+    x: FOAM_X, y: FOAM_Y, w: FOAM_W, h: FOAM_H, name: 'FOAM BREWERS',
+    wall: '#4a2f1c', roof: '#e0a030', doorX: FOAM_DOOR_X,
+  });
+
   // --- a few outdoor dig spots scattered around the promenade/plaza ring,
   // same "sit right on a guaranteed-clear path tile" placement swamp's
   // boardwalk crates use. All junk for now (no more of the level's
@@ -10381,6 +10427,8 @@ function makeSkatepark() {
     buildings, doors: {}, crates, npcs: [], riverTiles: waterTiles,
     skatepark: true,
     adogSkateShopDoor: { x: ADOG_DOOR_X, y: ADOG_DOOR_Y },
+    foamBrewersDoor: { x: FOAM_DOOR_X, y: FOAM_DOOR_Y },
+    foamBrewers: { x: FOAM_X, y: FOAM_Y, w: FOAM_W, h: FOAM_H, doorX: FOAM_DOOR_X, doorY: FOAM_DOOR_Y },
     returnPortal: { x: RETURN_PORTAL_X, y: RETURN_PORTAL_Y },
     spawn: { x: 3.5, y: 10.5 }, // tile coords, on the promenade just inside the portal
     palette: {
@@ -11437,6 +11485,39 @@ const shops = {
       { id: 'adogfoundation', tx: 3, ty: 6, label: 'LEARN ABOUT ANDY' },
     ],
   }),
+  // FOAM BREWERS -- the skatepark's second building: a cool, hip Vermont
+  // microbrewery slinging the freshest micro-brews, with live music always
+  // on and a big soft spot for the local scene. Run by FATTIE B, a decades-
+  // deep legend of the local DJ scene, who's up on the decks rocking the
+  // party (`dance: true` gives him the same head-bob/sway the DJ npcs get,
+  // see drawKeeper()). `world: 'skatepark'` makes Nitro Pour a *skatepark*
+  // record. The decks (5,2)/(7,2) flank him; the two speaker stacks
+  // (4,1)-(4,2)/(8,1)-(8,2) are solid wall tiles dressed up by
+  // drawFoamBrewersInterior(); the counter (row 3) is the bar/booth front.
+  foambrewers: makeShop('foambrewers', {
+    world: 'skatepark',
+    floor: '#6a4426', plank: '#553719', wallColor: '#2e2016',
+    foamBrewers: true,
+    recordPlayerTiles: [[5, 2], [7, 2]],
+    // speaker stacks flanking the booth (drawn in drawFoamBrewersInterior())
+    blockTiles: [[4, 1], [4, 2], [8, 1], [8, 2]],
+    // two barrel high-tops out on the dance floor, clear of the crates
+    // (1,4)/(1,6)/(12,4)/(12,6), the counter (row 3), and the door (6,9)
+    extraTables: [[3, 7], [10, 7]],
+    keeper: { name: 'FATTIE B', shirt: '#f4f4f8', skin: '#e0a070', dance: true,
+      lines: [
+        'WHAT UP, WHAT UP! Welcome to FOAM. Fresh pours up front, fresh wax right here. Every night\'s a good night in this room.',
+        'Fattie B. Been rockin\' parties in this state for decades -- since before some of these bands had a name. I quit counting years a long time ago.',
+        'Those tanks behind me? That\'s where the magic happens. Micro-brews, brewed right here, fresh as it gets. If the foam ain\'t thick, it ain\'t Vermont.',
+        'Live music, always. Local bands, local beats, local heads. This scene raised me, so the doors stay open for it.',
+        'My job\'s simple: read the room, pick the right record, drop it at the right moment. The crowd tells you what they need. The needle does the rest.',
+        'Four crates of local heat over there. Weirdest wax in the county. Dig in -- one of \'em\'s got something special.',
+      ],
+      foundLine: 'Nitro Pour?! You pulled that out of my crates? Man, that one still gets the whole room moving. Take it, and go rock somebody\'s party.' },
+    // Four crates: the skatepark's second record (Nitro Pour) plus three
+    // eccentric-local-tunes junk crates (see FOAM_JUNK above).
+    crates: [ { record: 'foam' }, { foamSeed: 0 }, { foamSeed: 1 }, { foamSeed: 2 } ],
+  }),
 };
 
 // door wiring: town door tile -> shop spawn; shop exit tile -> town spawn
@@ -11453,6 +11534,9 @@ const skatepark = makeSkatepark(); // LEVEL 3 -- built but not reachable yet (no
 // portal wired to it anywhere (see the comment on makeSkatepark()).
 transitions['skatepark:' + key(skatepark.adogSkateShopDoor.x, skatepark.adogSkateShopDoor.y)] = { map: 'adogskateshop', x: 6.5, y: 7.5 };
 transitions['adogskateshop:' + key(6, 9)] = { map: 'skatepark', x: skatepark.adogSkateShopDoor.x + 0.5, y: skatepark.adogSkateShopDoor.y + 1.6 };
+// FOAM BREWERS door wiring -- same pattern as A_DOG SKATE SHOP just above.
+transitions['skatepark:' + key(skatepark.foamBrewersDoor.x, skatepark.foamBrewersDoor.y)] = { map: 'foambrewers', x: 6.5, y: 7.5 };
+transitions['foambrewers:' + key(6, 9)] = { map: 'skatepark', x: skatepark.foamBrewersDoor.x + 0.5, y: skatepark.foamBrewersDoor.y + 1.6 };
 // GUT HUT door wiring -- same pattern as the loop above, written out by
 // hand since the swamp isn't on the shared `doors` map (it's not connected
 // to town yet, see the comment on WORLD_DEFS.swamp).
@@ -12481,6 +12565,10 @@ function doInteract() {
     } else if (c.skateShopSeed !== undefined) {
       const ksj = SKATE_SHOP_JUNK[c.skateShopSeed % SKATE_SHOP_JUNK.length];
       dialog = { name: 'CRATE', lines: [ksj.line, ksj.reply], i: 0 };
+      state = 'dialog';
+    } else if (c.foamSeed !== undefined) {
+      const fj = FOAM_JUNK[c.foamSeed % FOAM_JUNK.length];
+      dialog = { name: 'CRATE', lines: [fj.line, fj.reply], i: 0 };
       state = 'dialog';
     } else {
       dialog = { name: 'CRATE', lines: [JUNK[c.junkSeed % JUNK.length], 'Keep digging...'], i: 0 };
@@ -19681,6 +19769,7 @@ function render(time) {
   if (map.circusInterior) drawChurchCircusInterior(time);
   if (map.plantShop) drawHeyBudInterior(time);
   if (map.soulShack) drawSoulShackInterior(time);
+  if (map.foamBrewers) drawFoamBrewersInterior(time);
   if (map.recordShop) drawPurePopInterior(time);
   if (map.poolParty) drawJohnnysPoolInterior(time);
   if (map.keeper) drawKeeper(map.keeper);
@@ -20477,6 +20566,7 @@ function drawSkateparkDecorations(time, map, camX, camY) {
     ctx.fillRect(px + 3, py + 12, 3, 6);
     ctx.fillRect(px + 38, py + 12, 3, 6);
   }
+  if (map.foamBrewers) drawFoamBrewersExterior(time, map);
 }
 
 // Scatter lily pads + cattails over the swamp's water. Called from render
@@ -25570,6 +25660,367 @@ function drawSoulShackInterior(time) {
   }
 }
 
+// ------------------------------------------------------------------
+// FOAM BREWERS interior: a working microbrewery with a party going on --
+// stainless fermentation tanks along the back wall, a chalkboard tap list
+// and a glowing neon mug sign, speaker stacks flanking Fattie B's decks
+// (woofers thump on the beat), tap handles / a beer flight / pints along
+// the bar, barrel high-tops out on the floor, Edison-bulb string lights
+// across the ceiling, and colored light pools + sweeping beams from the
+// booth over the dance floor. Called from render() whenever map.foamBrewers
+// is set (see the `foambrewers` shop def above), same one-function-per-shop
+// pattern as drawSoulShackInterior()/drawHeyBudInterior().
+// ------------------------------------------------------------------
+function drawFoamBrewersInterior(time) {
+  const RW = 14 * TILE, RH = 10 * TILE;
+  const beat = time * 7.5;
+
+  // --- dim the floor a touch so the party lights pop
+  ctx.fillStyle = 'rgba(24,10,34,0.20)';
+  ctx.fillRect(TILE, TILE, RW - 2 * TILE, RH - 2 * TILE);
+
+  // --- back wall dressing: fermentation tanks, tap-list chalkboard, neon
+  drawFoamTank(30, 4, 28, 60, time, 0);
+  drawFoamTank(62, 4, 28, 60, time, 1.3);
+  drawFoamChalkboard(94, 6);
+  drawFoamSpeaker(4 * TILE + 1, TILE + 2, beat);
+  drawFoamSpeaker(8 * TILE + 1, TILE + 2, beat + 1.1);
+  drawFoamNeon(292, 6, time);
+  drawFoamTank(344, 4, 28, 60, time, 2.6);
+  drawFoamTank(376, 4, 28, 60, time, 3.9);
+
+  // --- the bar (counter table spans row 3, cols 4-9): pints, a beer
+  // flight in front of Fattie B, and a chrome tap tower at the right end
+  drawFoamPint(4 * TILE + 16, 3 * TILE + 9);
+  drawFoamFlight(6 * TILE + 16, 3 * TILE + 10);
+  drawFoamPint(8 * TILE + 16, 3 * TILE + 9);
+  drawFoamTapTower(9 * TILE + 4, 3 * TILE + 2);
+
+  // --- barrel high-top tables out on the dance floor
+  [[3, 7], [10, 7]].forEach(([tx, ty]) => {
+    const bx = tx * TILE + 16, by = ty * TILE + 20;
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.beginPath(); ctx.ellipse(bx, by + 8, 13, 4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#1c140f';
+    ctx.fillRect(bx - 12, by - 12, 24, 22);
+    ctx.fillStyle = '#7a4a25';
+    ctx.fillRect(bx - 11, by - 11, 22, 20);
+    ctx.fillStyle = '#5a3418';
+    ctx.fillRect(bx - 11, by - 11, 5, 20);
+    ctx.fillStyle = '#2a1c10';
+    ctx.fillRect(bx - 11, by - 6, 22, 2);
+    ctx.fillRect(bx - 11, by + 3, 22, 2);
+    ctx.fillStyle = '#a06a38';
+    ctx.beginPath(); ctx.ellipse(bx, by - 11, 12, 4, 0, 0, Math.PI * 2); ctx.fill();
+    drawFoamPint(bx + 2, by - 10);
+  });
+
+  // --- string lights across the ceiling
+  const nSeg = 4, segW = RW / nSeg;
+  ctx.strokeStyle = '#1a120c';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let i = 0; i < nSeg; i++) {
+    const x0 = i * segW;
+    ctx.moveTo(x0, 3);
+    ctx.quadraticCurveTo(x0 + segW / 2, 17, x0 + segW, 3);
+  }
+  ctx.stroke();
+  const bulbCols = ['255,210,120', '255,140,180', '140,225,255', '190,255,140'];
+  for (let i = 0; i < nSeg; i++) {
+    for (let j = 1; j <= 7; j++) {
+      const u = j / 8;
+      const bx = i * segW + u * segW;
+      const by = 3 + 28 * u * (1 - u) + 2;
+      const tw = 0.65 + 0.35 * Math.sin(time * 3 + i * 2 + j * 1.3);
+      const rgb = bulbCols[(i + j) % bulbCols.length];
+      ctx.fillStyle = `rgba(${rgb},${(0.16 * tw).toFixed(3)})`;
+      ctx.beginPath(); ctx.arc(bx, by, 5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = `rgba(${rgb},${(0.6 + 0.4 * tw).toFixed(3)})`;
+      ctx.beginPath(); ctx.arc(bx, by, 1.8, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  // --- party lights over the dance floor: colored pools drifting around
+  // plus a few beams fanning out from the DJ booth, all clipped to the
+  // room's floor and blended additively
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(TILE, TILE, RW - 2 * TILE, RH - 2 * TILE);
+  ctx.clip();
+  ctx.globalCompositeOperation = 'lighter';
+  const pools = [['255,60,140', 0.0], ['60,200,255', 2.1], ['255,190,50', 4.2], ['120,255,90', 5.5]];
+  pools.forEach(([rgb, ph], i) => {
+    const cx = 7 * TILE + Math.sin(time * 0.9 + ph) * 3.2 * TILE;
+    const cy = 6 * TILE + Math.cos(time * 0.7 + ph * 1.3) * 1.4 * TILE;
+    const r = 2.1 * TILE;
+    const gr = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+    const a = 0.20 + 0.08 * Math.sin(beat + i);
+    gr.addColorStop(0, `rgba(${rgb},${a.toFixed(3)})`);
+    gr.addColorStop(1, `rgba(${rgb},0)`);
+    ctx.fillStyle = gr;
+    ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+  });
+  const ox = 6 * TILE + 16, oy = 2 * TILE;
+  const beams = ['255,80,160', '80,210,255', '255,200,70', '150,255,110'];
+  beams.forEach((rgb, i) => {
+    const ang = Math.PI / 2 + Math.sin(time * 0.8 + i * 1.6) * 0.85;
+    const len = 190, spread = 0.07;
+    ctx.fillStyle = `rgba(${rgb},0.11)`;
+    ctx.beginPath();
+    ctx.moveTo(ox, oy);
+    ctx.lineTo(ox + Math.cos(ang - spread) * len, oy + Math.sin(ang - spread) * len);
+    ctx.lineTo(ox + Math.cos(ang + spread) * len, oy + Math.sin(ang + spread) * len);
+    ctx.closePath();
+    ctx.fill();
+  });
+  ctx.restore();
+
+  // --- music notes drifting up off the speakers
+  ctx.fillStyle = 'rgba(255, 210, 60, 0.85)';
+  ctx.font = 'bold 11px monospace';
+  ctx.textAlign = 'center';
+  for (let i = 0; i < 4; i++) {
+    const ph = (time * 0.5 + i * 0.27) % 1;
+    const nx = (i % 2 === 0 ? 4 * TILE + 16 : 8 * TILE + 16) + Math.sin(ph * 6 + i) * 6;
+    const ny = 3 * TILE - 4 - ph * 30;
+    ctx.globalAlpha = Math.max(0, 1 - ph);
+    ctx.fillText(i % 2 === 0 ? '\u266A' : '\u266B', nx, ny);
+  }
+  ctx.globalAlpha = 1;
+}
+
+// A stainless-steel fermentation tank: domed top, banded barrel, conical
+// bottom on little legs, and a glowing amber sight glass whose level
+// slowly rises and falls. Used by drawFoamBrewersInterior().
+function drawFoamTank(x, top, w, h, time, seed) {
+  const cx = x + w / 2;
+  const bodyTop = top + 9, bodyBot = top + h - 14;
+  const path = (inset) => {
+    ctx.beginPath();
+    ctx.ellipse(cx, bodyTop, w / 2 - inset, 8 - inset, 0, Math.PI, 0);
+    ctx.lineTo(x + w - inset, bodyBot);
+    ctx.lineTo(cx + 3, top + h - inset);
+    ctx.lineTo(cx - 3, top + h - inset);
+    ctx.lineTo(x + inset, bodyBot);
+    ctx.closePath();
+  };
+  ctx.fillStyle = '#4a525a';
+  ctx.fillRect(x + 3, top + h - 6, 3, 8);
+  ctx.fillRect(x + w - 6, top + h - 6, 3, 8);
+  ctx.fillStyle = '#1c140f';
+  path(-1); ctx.fill();
+  const gr = ctx.createLinearGradient(x, 0, x + w, 0);
+  gr.addColorStop(0, '#7f8c98'); gr.addColorStop(0.35, '#e6edf2');
+  gr.addColorStop(0.7, '#b3bec8'); gr.addColorStop(1, '#66727e');
+  ctx.fillStyle = gr;
+  path(0); ctx.fill();
+  ctx.fillStyle = 'rgba(0,0,0,0.18)';
+  ctx.fillRect(x, bodyTop + 10, w, 2);
+  ctx.fillRect(x, bodyBot - 6, w, 2);
+  // top valve
+  ctx.fillStyle = '#4a525a';
+  ctx.fillRect(cx - 2, top - 1, 4, 4);
+  // sight glass with a slowly moving amber level
+  const gh = bodyBot - bodyTop - 14, gy = bodyTop + 6;
+  ctx.fillStyle = '#2a1a0c';
+  ctx.fillRect(cx - 3, gy, 6, gh);
+  const level = 0.55 + 0.12 * Math.sin(time * 0.7 + seed);
+  ctx.fillStyle = '#e8a317';
+  ctx.fillRect(cx - 2, gy + gh * (1 - level), 4, gh * level);
+  ctx.fillStyle = '#fff2c8';
+  ctx.fillRect(cx - 2, gy + gh * (1 - level), 4, 2);
+}
+
+// The chalkboard tap list hung on the back wall.
+function drawFoamChalkboard(x, y) {
+  ctx.fillStyle = '#1c140f';
+  ctx.fillRect(x - 1, y - 1, 34, 42);
+  ctx.fillStyle = '#5a3d20';
+  ctx.fillRect(x, y, 32, 40);
+  ctx.fillStyle = '#1e2a24';
+  ctx.fillRect(x + 2, y + 2, 28, 36);
+  ctx.textAlign = 'left';
+  ctx.font = 'bold 7px monospace';
+  ctx.fillStyle = '#f4efe0';
+  ctx.fillText('TAPS', x + 6, y + 10);
+  ctx.font = 'bold 6px monospace';
+  const rows = [['IPA', '#e8a317'], ['STOUT', '#5a3418'], ['SOUR', '#d94f6a'], ['PILS', '#e8d66a']];
+  rows.forEach(([name, col], i) => {
+    ctx.fillStyle = col;
+    ctx.fillRect(x + 5, y + 14 + i * 6, 3, 3);
+    ctx.fillStyle = '#f4efe0';
+    ctx.fillText(name, x + 11, y + 17 + i * 6);
+  });
+}
+
+// A big PA speaker stack (two tiles tall) with a tweeter and a woofer
+// that thumps on the beat.
+function drawFoamSpeaker(x, y, beat) {
+  const w = 30, h = 2 * TILE - 4;
+  ctx.fillStyle = '#0e0c10';
+  ctx.fillRect(x - 1, y - 1, w + 2, h + 2);
+  ctx.fillStyle = '#25202a';
+  ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = 'rgba(255,255,255,0.06)';
+  ctx.fillRect(x, y, w, 2);
+  const cx = x + w / 2;
+  ctx.fillStyle = '#0e0c10';
+  ctx.beginPath(); ctx.arc(cx, y + 12, 5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#4a4452';
+  ctx.beginPath(); ctx.arc(cx, y + 12, 2.5, 0, Math.PI * 2); ctx.fill();
+  const pulse = Math.max(0, Math.sin(beat)) * 1.6;
+  ctx.fillStyle = '#0e0c10';
+  ctx.beginPath(); ctx.arc(cx, y + 38, 11 + pulse, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#3a3440';
+  ctx.beginPath(); ctx.arc(cx, y + 38, 7 + pulse * 0.6, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#6b6472';
+  ctx.beginPath(); ctx.arc(cx, y + 38, 2.5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#e8a317';
+  ctx.fillRect(x + w - 6, y + h - 6, 3, 3);
+}
+
+// Neon mug + FOAM lettering, flickering softly on the back wall.
+function drawFoamNeon(x, y, time) {
+  const flick = 0.88 + 0.12 * Math.sin(time * 9) * Math.sin(time * 2.3);
+  ctx.fillStyle = '#120b08';
+  ctx.fillRect(x, y, 46, 40);
+  ctx.strokeStyle = '#3a2a1c';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x + 0.5, y + 0.5, 45, 39);
+  const glow = getGlowSprite(30, 'rgba(255,170,40,ALPHA)');
+  ctx.save();
+  ctx.globalAlpha = 0.5 * flick;
+  ctx.drawImage(glow, x + 23 - 30, y + 20 - 30, 60, 60);
+  ctx.restore();
+  // mug: foam cap, glass body, handle
+  ctx.fillStyle = '#ffe9b0';
+  ctx.fillRect(x + 14, y + 5, 16, 5);
+  ctx.fillRect(x + 12, y + 7, 4, 4);
+  ctx.fillRect(x + 28, y + 7, 4, 4);
+  ctx.fillStyle = `rgba(255,170,40,${(0.85 * flick).toFixed(2)})`;
+  ctx.fillRect(x + 14, y + 10, 16, 13);
+  ctx.strokeStyle = `rgba(255,190,80,${(0.9 * flick).toFixed(2)})`;
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x + 31, y + 12, 5, 8);
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 12px monospace';
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = 'rgba(255,140,30,0.35)';
+  ctx.strokeText('FOAM', x + 23, y + 35);
+  ctx.fillStyle = `rgba(255,224,160,${flick.toFixed(2)})`;
+  ctx.fillText('FOAM', x + 23, y + 35);
+}
+
+// A full pint with a foamy head, sitting with its base at (cx, baseY).
+function drawFoamPint(cx, baseY) {
+  ctx.fillStyle = '#e8a317';
+  ctx.fillRect(cx - 3, baseY - 9, 7, 9);
+  ctx.fillStyle = 'rgba(255,255,255,0.35)';
+  ctx.fillRect(cx - 3, baseY - 9, 2, 9);
+  ctx.fillStyle = '#fff6e0';
+  ctx.fillRect(cx - 4, baseY - 12, 9, 4);
+}
+
+// A wooden beer-flight paddle with four little tasters.
+function drawFoamFlight(cx, baseY) {
+  ctx.fillStyle = '#3a2410';
+  ctx.fillRect(cx - 14, baseY - 2, 28, 5);
+  const cols = ['#e8a317', '#5a3418', '#d94f6a', '#e8d66a'];
+  cols.forEach((c, i) => {
+    const gx = cx - 12 + i * 7;
+    ctx.fillStyle = c;
+    ctx.fillRect(gx, baseY - 8, 5, 6);
+    ctx.fillStyle = '#fff6e0';
+    ctx.fillRect(gx, baseY - 10, 5, 2);
+  });
+}
+
+// A chrome tap tower with three colored handles.
+function drawFoamTapTower(x, y) {
+  ctx.fillStyle = '#1c140f';
+  ctx.fillRect(x - 1, y - 12, 26, 8);
+  ctx.fillStyle = '#c8ccd4';
+  ctx.fillRect(x, y - 11, 24, 6);
+  ctx.fillStyle = '#8a929c';
+  ctx.fillRect(x, y - 7, 24, 2);
+  const handles = ['#d94f2b', '#e8a317', '#3a7ab0'];
+  handles.forEach((c, i) => {
+    const hx = x + 3 + i * 8;
+    ctx.fillStyle = '#1c140f';
+    ctx.fillRect(hx - 1, y - 26, 6, 16);
+    ctx.fillStyle = c;
+    ctx.fillRect(hx, y - 25, 4, 14);
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.fillRect(hx, y - 25, 1, 14);
+  });
+}
+
+// FOAM BREWERS' front: string lights swagged under the roofline, a warm
+// amber glow pooling at the door (pulsing with the party inside), a couple
+// of notes drifting out, and an A-frame chalkboard sign out front. Called
+// from drawSkateparkDecorations() whenever the map has `foamBrewers`.
+function drawFoamBrewersExterior(time, map) {
+  const f = map.foamBrewers;
+  const px = f.x * TILE, py = f.y * TILE;
+  const ly = py + TILE + 14;
+  ctx.strokeStyle = '#1a120c';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let i = 0; i < f.w; i++) {
+    const x0 = px + i * TILE;
+    ctx.moveTo(x0, ly);
+    ctx.quadraticCurveTo(x0 + TILE / 2, ly + 9, x0 + TILE, ly);
+  }
+  ctx.stroke();
+  const cols = ['255,210,120', '255,140,180', '140,225,255', '190,255,140'];
+  for (let i = 0; i < f.w; i++) {
+    for (let j = 1; j <= 2; j++) {
+      const u = j / 3;
+      const bx = px + i * TILE + u * TILE;
+      const by = ly + 18 * u * (1 - u);
+      const tw = 0.65 + 0.35 * Math.sin(time * 3 + i * 2 + j * 1.7);
+      const rgb = cols[(i * 2 + j) % cols.length];
+      ctx.fillStyle = `rgba(${rgb},${(0.18 * tw).toFixed(3)})`;
+      ctx.beginPath(); ctx.arc(bx, by + 1, 5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = `rgba(${rgb},${(0.65 + 0.35 * tw).toFixed(3)})`;
+      ctx.beginPath(); ctx.arc(bx, by + 1, 1.8, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  // door glow
+  const dx = f.doorX * TILE + TILE / 2, dy = (f.doorY + 1) * TILE;
+  const glow = getGlowSprite(46, 'rgba(255,170,40,ALPHA)');
+  ctx.save();
+  ctx.globalAlpha = 0.35 + 0.12 * Math.sin(time * 7.5);
+  ctx.drawImage(glow, dx - 46, dy - 60, 92, 92);
+  ctx.restore();
+  // notes drifting out the door
+  ctx.fillStyle = 'rgba(255, 210, 60, 0.85)';
+  ctx.font = 'bold 11px monospace';
+  ctx.textAlign = 'center';
+  for (let i = 0; i < 2; i++) {
+    const ph = (time * 0.45 + i * 0.5) % 1;
+    ctx.globalAlpha = Math.max(0, 1 - ph);
+    ctx.fillText(i === 0 ? '\u266A' : '\u266B', dx + (i === 0 ? -8 : 8) + Math.sin(ph * 6 + i) * 4, dy - 6 - ph * 26);
+  }
+  ctx.globalAlpha = 1;
+  // A-frame chalkboard out front, on the grass beside the door
+  const sx = (f.doorX + 1) * TILE + 5, sy = (f.doorY + 1) * TILE + 4;
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.fillRect(sx - 1, sy + 24, 24, 3);
+  ctx.fillStyle = '#3a2410';
+  ctx.fillRect(sx, sy + 20, 3, 6);
+  ctx.fillRect(sx + 17, sy + 20, 3, 6);
+  ctx.fillStyle = '#5a3d20';
+  ctx.fillRect(sx - 1, sy - 1, 22, 24);
+  ctx.fillStyle = '#1e2a24';
+  ctx.fillRect(sx + 1, sy + 1, 18, 20);
+  ctx.font = 'bold 6px monospace';
+  ctx.fillStyle = '#f4efe0';
+  ctx.fillText('LIVE', sx + 10, sy + 9);
+  ctx.fillText('MUSIC', sx + 10, sy + 16);
+}
+
 // A small cluster of jagged crystal shards on a dark wooden base, with a
 // soft pulsing halo behind it (via the shared getGlowSprite() cache --
 // glowColor must contain the literal 'ALPHA' placeholder, same contract as
@@ -26599,6 +27050,8 @@ keeperImgs.IAN = ianImg;
 // the art is declared up with the other pre-drawn characters and just
 // registered here so drawKeeper() picks it up by name.
 keeperImgs['A-DOG'] = adogImg;
+// FOAM BREWERS' keeper, FATTIE B -- same idea as A-DOG above.
+keeperImgs['FATTIE B'] = fattiebImg;
 
 function drawAnt(cx, cy, s) {
   // A white ant silhouette (the Anthill Collective mark), drawn on SK1's hat.
@@ -26657,6 +27110,33 @@ function drawKeeper(k) {
   if (img && img.complete && img.naturalWidth) {
     const kh = KEEPER_SPR_H;
     const kw = Math.round(kh * img.naturalWidth / img.naturalHeight);
+    if (k.dance) {
+      // DJs who are rockin out (FATTIE B): head-bob bounce + gentle sway on
+      // the beat, pivoting about the feet so he stays planted behind the
+      // decks -- same motion as `dance: true` shop npcs in
+      // drawShopImageNpcs(). Purely visual.
+      const t = performance.now() / 1000;
+      const beat = t * 7.5 + k.x;
+      const bounce = Math.abs(Math.sin(beat)) * 3;
+      const sway = Math.sin(beat * 0.5) * 0.05;
+      ctx.save();
+      ctx.translate(px + 16, py + 30 - bounce);
+      ctx.rotate(sway);
+      ctx.drawImage(img, Math.round(-kw / 2), -kh, kw, kh);
+      ctx.restore();
+      ctx.fillStyle = 'rgba(255, 210, 60, 0.85)';
+      ctx.font = 'bold 12px monospace';
+      ctx.textAlign = 'center';
+      for (let i = 0; i < 2; i++) {
+        const ph = (t * 0.6 + i * 0.5) % 1;
+        const nx = px + 16 + (i === 0 ? -kw * 0.7 : kw * 0.7) + Math.sin(ph * 6 + i) * 4;
+        const ny = py + 30 - kh * 0.6 - ph * 22;
+        ctx.globalAlpha = 1 - ph;
+        ctx.fillText(i === 0 ? '\u266A' : '\u266B', nx, ny);
+      }
+      ctx.globalAlpha = 1;
+      return;
+    }
     ctx.drawImage(img, Math.round(px + 16 - kw / 2), Math.round(py + 30 - kh), kw, kh);
     if (k.petUntil && performance.now() < k.petUntil) drawPetHearts(px + 16, py + 30 - kh, k.petUntil - performance.now());
     return;
