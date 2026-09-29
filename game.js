@@ -717,7 +717,9 @@ const WORLD_DEFS = {
     // First record of the level, hidden in A_DOG SKATE SHOP (see the
     // `adogskateshop` shop below / ADOG_CLEAR_* in makeSkatepark()). The
     // second, Nitro Pour, is hidden in FOAM BREWERS (see the `foambrewers`
-    // shop below). More get added here as the rest of the level fills in.
+    // shop below). The third, Loud & Clear, is hidden in SPEAKING VOLUMES
+    // (see the `speakingvolumes` shop below). More get added here as the
+    // rest of the level fills in.
     records: {
       grip: { title: 'Concrete Wax', artist: 'A-Dog & The Bearings', year: '1994',
               sample: 'Drum Loop', layer: 'drums', color: '#d94f2b', pad: 'DRM',
@@ -725,8 +727,11 @@ const WORLD_DEFS = {
       foam: { title: 'Nitro Pour', artist: 'Fattie B & The Head Brewers', year: '1999',
               sample: 'Bassline', layer: 'bass', color: '#e8a317', pad: 'BAS',
               flavor: 'Pressed for one tap-takeover night and never again. The low end pours thick and creamy, like the stout it\'s named after.' },
+      vol: { title: 'Loud & Clear', artist: 'The Basement Amps', year: '1979',
+             sample: 'Lead Melody', layer: 'lead', color: '#c23a3a', pad: 'LD',
+             flavor: 'One fuzzed-out guitar riff pressed in a run of a hundred. The amp was cranked past ten and you can hear the whole room shake.' },
     },
-    padOrder: ['grip', 'foam'],
+    padOrder: ['grip', 'foam', 'vol'],
   },
   // ADD MORE WORLDS HERE, e.g.:
   // subway: {
@@ -901,6 +906,21 @@ const FOAM_JUNK = [
     reply: 'Gloriously weird. Still not the one -- keep digging.' },
   { line: 'A stack of split EPs, half recorded in a garage, half in a sugarhouse. The labels are scribbled over with titles like \"Sap Run\" and \"Kombucha Blues.\"',
     reply: 'Pure local heat. Just not what you came for tonight.' },
+];
+
+// SPEAKING VOLUMES' four themed dig crates -- same 1:1 pairing via
+// c.svSeed as SKATE_SHOP_JUNK/FOAM_JUNK/etc. Julian stocks the usual record
+// store mix: punk 7-inches, used soul/funk, local demos and zines, and the
+// dollar bin -- never one of the collectibles.
+const SPEAKING_VOLUMES_JUNK = [
+  { line: 'A milk crate of hardcore and punk 7-inches, every sleeve rubber-stamped with a price in Julian\'s handwriting -- covers photocopied at the library, staples still holding.',
+    reply: 'Loud, fast, and over in ninety seconds. Not the record you\'re digging for, though.' },
+  { line: 'Used soul and funk LPs, sleeves worn white at the edges from decades of flipping -- somebody\'s whole Sunday-morning collection ended up in this crate.',
+    reply: 'Gorgeous stuff. Still not the one -- keep digging.' },
+  { line: 'A bin of local demo cassettes and hand-stapled zines, each one a band that played a basement show exactly once.',
+    reply: 'The local scene at its most honest. Not what you came for, though.' },
+  { line: 'The dollar bin: warped soundtracks, a Christmas polka record, and three copies of the same easy-listening album.',
+    reply: 'Somebody\'s bargain, but not yours. Keep digging.' },
 ];
 
 // THE SOUL SHACK's two themed dig crates -- same 1:1 pairing via
@@ -9322,6 +9342,13 @@ adogImg.src = 'assets/adog.png';
 const fattiebImg = new Image();
 fattiebImg.src = 'assets/fattieb.png';
 
+// JULIAN -- the keeper of SPEAKING VOLUMES out in the skatepark: the record
+// store's owner, and a member of the local band Rough Francis. Drawn as a
+// shop keeper (see keeperImgs.JULIAN below), not a roaming npc, so he
+// doesn't need an entry in SHOP_NPC_IMAGES.
+const julianImg = new Image();
+julianImg.src = 'assets/julian.png';
+
 // ---------------------------------------------------------------- maps
 const SOLID = new Set(['#', 'w', 'f', '~', 'W', 'T', 'C', 'c', 'K', 'J', 'S', 'A', 'N', 'F', 'R', 'V', 'Z', 'U', 'X', 'm']);
 
@@ -10196,6 +10223,7 @@ function makeShop(id, opts) {
     plantShop: opts.plantShop || false,
     soulShack: opts.soulShack || false,
     foamBrewers: opts.foamBrewers || false,
+    speakingVolumes: opts.speakingVolumes || false,
     recordingDesk: opts.recordingDesk
       ? { x: opts.recordingDesk[0], y: opts.recordingDesk[1], sign: opts.recordingDeskSign || 'SKYLAB' }
       : null,
@@ -10400,6 +10428,24 @@ function makeSkatepark() {
     wall: '#4a2f1c', roof: '#e0a030', doorX: FOAM_DOOR_X,
   });
 
+  // --- SPEAKING VOLUMES -- the skatepark's third building: a record store
+  // in the southwest corner of the grass, owned by Julian. Same solid-walls-
+  // plus-one-door construction as the two above. Carved AFTER the tree
+  // sprinkle so its footprint wins over any tree, and the row of grass just
+  // below the door is cleared of trees so the player never spawns boxed in
+  // when stepping back outside (rows below it are the tree border).
+  const SV_X = 1, SV_Y = 29, SV_W = 6, SV_H = 5;
+  const SV_DOOR_X = SV_X + Math.floor(SV_W / 2), SV_DOOR_Y = SV_Y + SV_H - 1;
+  for (let y = SV_Y; y < SV_Y + SV_H; y++)
+    for (let x = SV_X; x < SV_X + SV_W; x++) g[y][x] = 'w';
+  g[SV_DOOR_Y][SV_DOOR_X] = 'D';
+  for (let x = SV_X + 2; x <= SV_X + SV_W; x++)
+    if (g[SV_DOOR_Y + 1][x] === '#') g[SV_DOOR_Y + 1][x] = '.';
+  buildings.push({
+    x: SV_X, y: SV_Y, w: SV_W, h: SV_H, name: 'SPEAKING VOLUMES',
+    wall: '#2a1e2c', roof: '#c23a3a', doorX: SV_DOOR_X,
+  });
+
   // --- a few outdoor dig spots scattered around the promenade/plaza ring,
   // same "sit right on a guaranteed-clear path tile" placement swamp's
   // boardwalk crates use. All junk for now (no more of the level's
@@ -10429,6 +10475,10 @@ function makeSkatepark() {
     adogSkateShopDoor: { x: ADOG_DOOR_X, y: ADOG_DOOR_Y },
     foamBrewersDoor: { x: FOAM_DOOR_X, y: FOAM_DOOR_Y },
     foamBrewers: { x: FOAM_X, y: FOAM_Y, w: FOAM_W, h: FOAM_H, doorX: FOAM_DOOR_X, doorY: FOAM_DOOR_Y },
+    speakingVolumesDoor: { x: SV_DOOR_X, y: SV_DOOR_Y },
+    // NOT named `speakingVolumes` on purpose: that key is the interior-shop
+    // flag checked by render(), and this outdoor map must not trip it.
+    svExterior: { x: SV_X, y: SV_Y, w: SV_W, h: SV_H, doorX: SV_DOOR_X, doorY: SV_DOOR_Y },
     returnPortal: { x: RETURN_PORTAL_X, y: RETURN_PORTAL_Y },
     spawn: { x: 3.5, y: 10.5 }, // tile coords, on the promenade just inside the portal
     palette: {
@@ -11518,6 +11568,35 @@ const shops = {
     // eccentric-local-tunes junk crates (see FOAM_JUNK above).
     crates: [ { record: 'foam' }, { foamSeed: 0 }, { foamSeed: 1 }, { foamSeed: 2 } ],
   }),
+  // SPEAKING VOLUMES -- the skatepark's third building: a proper independent
+  // record store, owned and run by Julian, who also plays in the local band
+  // Rough Francis. `world: 'skatepark'` makes Loud & Clear a *skatepark*
+  // record. `speakingVolumes: true` gets the custom interior in
+  // drawSpeakingVolumesInterior() (two-piece back-wall sign, gig-flyer
+  // corkboard, cassette wall, vinyl shelves with genre tabs, new-arrivals
+  // bin, turntable + register on the counter, loose stacks, neon OPEN).
+  // Five dig crates on the default spots (1,4)/(1,6)/(12,4)/(12,6)/(2,8):
+  // Loud & Clear plus four junk crates -- shuffleRecordCrates() moves the
+  // real one around each new game. Everything drawn is clear of those
+  // crates, the counter (row 3), and the door (6,9).
+  speakingvolumes: makeShop('speakingvolumes', {
+    world: 'skatepark',
+    floor: '#4a3a3c', plank: '#3a2c2e', wallColor: '#1f1620',
+    speakingVolumes: true,
+    keeper: { name: 'JULIAN', shirt: '#2aa198', skin: '#a5603a',
+      lines: [
+        'Welcome to Speaking Volumes. New arrivals up front, used bins in the back -- and if the music\'s too quiet in here, that\'s on you. Turn it up.',
+        'Name\'s Julian. This is my shop. I\'ve been buying, selling and hoarding wax for longer than I like to admit.',
+        'When I\'m not behind this counter I\'m up on a stage with Rough Francis -- local band. Loud guitars, louder drums. Catch a flyer off that corkboard and come to a show.',
+        'Punk, soul, funk, hip hop -- doesn\'t matter what it is. If it moves you, it belongs on a shelf in here.',
+        'Five crates in the shop. Some of it\'s heat, some of it\'s a learning experience. One of \'em\'s got what you\'re after.',
+        'Support your local scene: buy a record, catch a show, tell a friend. That\'s the whole business plan.',
+      ],
+      foundLine: 'Loud & Clear! Somebody\'s been sitting on that one for years. Take it -- and crank it all the way up.' },
+    // Five crates: the skatepark's third record (Loud & Clear) plus four
+    // junk crates (see SPEAKING_VOLUMES_JUNK above).
+    crates: [ { record: 'vol' }, { svSeed: 0 }, { svSeed: 1 }, { svSeed: 2 }, { svSeed: 3 } ],
+  }),
 };
 
 // door wiring: town door tile -> shop spawn; shop exit tile -> town spawn
@@ -11537,6 +11616,9 @@ transitions['adogskateshop:' + key(6, 9)] = { map: 'skatepark', x: skatepark.ado
 // FOAM BREWERS door wiring -- same pattern as A_DOG SKATE SHOP just above.
 transitions['skatepark:' + key(skatepark.foamBrewersDoor.x, skatepark.foamBrewersDoor.y)] = { map: 'foambrewers', x: 6.5, y: 7.5 };
 transitions['foambrewers:' + key(6, 9)] = { map: 'skatepark', x: skatepark.foamBrewersDoor.x + 0.5, y: skatepark.foamBrewersDoor.y + 1.6 };
+// SPEAKING VOLUMES door wiring -- same pattern as FOAM BREWERS just above.
+transitions['skatepark:' + key(skatepark.speakingVolumesDoor.x, skatepark.speakingVolumesDoor.y)] = { map: 'speakingvolumes', x: 6.5, y: 7.5 };
+transitions['speakingvolumes:' + key(6, 9)] = { map: 'skatepark', x: skatepark.speakingVolumesDoor.x + 0.5, y: skatepark.speakingVolumesDoor.y + 1.6 };
 // GUT HUT door wiring -- same pattern as the loop above, written out by
 // hand since the swamp isn't on the shared `doors` map (it's not connected
 // to town yet, see the comment on WORLD_DEFS.swamp).
@@ -12569,6 +12651,10 @@ function doInteract() {
     } else if (c.foamSeed !== undefined) {
       const fj = FOAM_JUNK[c.foamSeed % FOAM_JUNK.length];
       dialog = { name: 'CRATE', lines: [fj.line, fj.reply], i: 0 };
+      state = 'dialog';
+    } else if (c.svSeed !== undefined) {
+      const svj = SPEAKING_VOLUMES_JUNK[c.svSeed % SPEAKING_VOLUMES_JUNK.length];
+      dialog = { name: 'CRATE', lines: [svj.line, svj.reply], i: 0 };
       state = 'dialog';
     } else {
       dialog = { name: 'CRATE', lines: [JUNK[c.junkSeed % JUNK.length], 'Keep digging...'], i: 0 };
@@ -19770,6 +19856,7 @@ function render(time) {
   if (map.plantShop) drawHeyBudInterior(time);
   if (map.soulShack) drawSoulShackInterior(time);
   if (map.foamBrewers) drawFoamBrewersInterior(time);
+  if (map.speakingVolumes) drawSpeakingVolumesInterior(time);
   if (map.recordShop) drawPurePopInterior(time);
   if (map.poolParty) drawJohnnysPoolInterior(time);
   if (map.keeper) drawKeeper(map.keeper);
@@ -20567,6 +20654,7 @@ function drawSkateparkDecorations(time, map, camX, camY) {
     ctx.fillRect(px + 38, py + 12, 3, 6);
   }
   if (map.foamBrewers) drawFoamBrewersExterior(time, map);
+  if (map.svExterior) drawSpeakingVolumesExterior(time, map);
 }
 
 // Scatter lily pads + cattails over the swamp's water. Called from render
@@ -21739,6 +21827,47 @@ function drawCarnivalProp(px, py, tx, ty) {
   }
 }
 
+// SPEAKING VOLUMES' big storefront sign: the real Speaking Volumes badge
+// (green hex badge, gold ring-pattern face, radio tower, "Vinyl - Hi Fi -
+// Repairs", Burlington / Vermont). Loaded from assets/speaking_volumes_sign.png.
+// The sign is pre-scaled ONCE into an offscreen canvas (smooth, 2x for the
+// canvas's own scaling) along with a soft silhouette shadow, so drawBuildings
+// only does two cheap drawImage calls per frame. Until the PNG has loaded
+// (or if it is missing) drawBuildings falls back to the plain plate sign.
+const svSignImg = new Image();
+svSignImg.src = 'assets/speaking_volumes_sign.png';
+let svSignCache = null;
+function getSpeakingVolumesSign(dw, dh) {
+  if (!svSignImg.complete || !svSignImg.naturalWidth) return null;
+  if (svSignCache && svSignCache.dw === dw && svSignCache.dh === dh) return svSignCache;
+  const img = document.createElement('canvas');
+  img.width = dw * 2; img.height = dh * 2;
+  const ic = img.getContext('2d');
+  ic.imageSmoothingEnabled = true;
+  ic.imageSmoothingQuality = 'high';
+  // step down in halves so the fine lettering stays crisp
+  let cur = svSignImg, cw = svSignImg.naturalWidth, ch = svSignImg.naturalHeight;
+  while (cw / 2 > img.width) {
+    const t = document.createElement('canvas');
+    t.width = Math.round(cw / 2); t.height = Math.round(ch / 2);
+    const tc = t.getContext('2d');
+    tc.imageSmoothingEnabled = true; tc.imageSmoothingQuality = 'high';
+    tc.drawImage(cur, 0, 0, t.width, t.height);
+    cur = t; cw = t.width; ch = t.height;
+  }
+  ic.drawImage(cur, 0, 0, img.width, img.height);
+  // shadow = the same badge silhouette, flooded black
+  const shadow = document.createElement('canvas');
+  shadow.width = img.width; shadow.height = img.height;
+  const sc = shadow.getContext('2d');
+  sc.drawImage(img, 0, 0);
+  sc.globalCompositeOperation = 'source-in';
+  sc.fillStyle = '#000';
+  sc.fillRect(0, 0, shadow.width, shadow.height);
+  svSignCache = { dw, dh, img, shadow };
+  return svSignCache;
+}
+
 // ---------------------------------------------------------------- buildings
 function drawBuildings(map) {
   for (const b of map.buildings) {
@@ -21755,6 +21884,8 @@ function drawBuildings(map) {
     const isSwampFood = b.name === 'SWAMP FOOD';
     const isJohnnysFunPark = b.name === "JOHNNY'S FUN PARK";
     const isJohnnysPool = b.name === "JOHNNY'S POOL";
+    const isFoamBrewersSign = b.name === 'FOAM BREWERS';
+    const isSpeakingVolumesSign = b.name === 'SPEAKING VOLUMES';
 
     // wall/roof shade colors: each building's wall/roof color never changes,
     // so compute these once per building and cache them on the building
@@ -22222,6 +22353,123 @@ function drawBuildings(map) {
       ctx.textAlign = 'center';
       ctx.fillStyle = '#1a2418';
       ctx.fillText(b.name, px + w / 2, sy + sh / 2 + fsize * 0.36);
+    } else if (isFoamBrewersSign) {
+      // Matches the real Foam Brewers entrance sign: a dark, matte-black
+      // steel plate with a domed top and a little bump on the upper right,
+      // rusty copper cursive script cut out and standing off the metal,
+      // Edison bulbs strung along the top, and two small black spotlights
+      // aimed up at the lettering from the lower corners.
+      const sw = Math.min(w - 6, 176), sh = 40;
+      const sx = px + (w - sw) / 2, sy = py + 4;
+      const sr = sx + sw, sb = sy + sh;
+      const tw = performance.now() / 1000;
+
+      // drop shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.fillRect(sx + 3, sy + 6, sw, sh - 2);
+
+      // plate silhouette: flat bottom, rounded shoulders, domed top, bump
+      const plate = () => {
+        ctx.beginPath();
+        ctx.moveTo(sx, sb);
+        ctx.lineTo(sx, sy + 16);
+        ctx.quadraticCurveTo(sx, sy + 8, sx + 12, sy + 8);
+        ctx.lineTo(sx + sw * 0.52, sy + 8);
+        ctx.quadraticCurveTo(sx + sw * 0.56, sy + 8, sx + sw * 0.58, sy + 3);
+        ctx.quadraticCurveTo(sx + sw * 0.62, sy - 2, sx + sw * 0.68, sy);
+        ctx.quadraticCurveTo(sx + sw * 0.74, sy + 2, sx + sw * 0.74, sy + 8);
+        ctx.lineTo(sr - 12, sy + 8);
+        ctx.quadraticCurveTo(sr, sy + 8, sr, sy + 16);
+        ctx.lineTo(sr, sb);
+        ctx.closePath();
+      };
+      plate();
+      ctx.fillStyle = '#26221f';
+      ctx.fill();
+      ctx.strokeStyle = '#0e0b09';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      // faint lit edge along the top, like the sign catching the bulbs
+      ctx.save();
+      plate();
+      ctx.clip();
+      ctx.fillStyle = 'rgba(255,190,110,0.10)';
+      ctx.fillRect(sx, sy - 2, sw, 14);
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.fillRect(sx, sb - 8, sw, 8);
+      ctx.restore();
+
+      // string of Edison bulbs draped along the top of the plate
+      const bulbs = [0.10, 0.28, 0.46, 0.64, 0.82, 0.94];
+      ctx.strokeStyle = '#0e0b09';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(sx + 4, sy + 9);
+      bulbs.forEach((u, i) => {
+        const bx = sx + sw * u;
+        const by = sy + (u > 0.58 && u < 0.76 ? 3 : 9) + 5;
+        ctx.quadraticCurveTo(bx - 8, by - 3, bx, by - 3);
+      });
+      ctx.stroke();
+      bulbs.forEach((u, i) => {
+        const bx = sx + sw * u;
+        const by = sy + (u > 0.58 && u < 0.76 ? 3 : 9) + 6;
+        const tk = 0.75 + 0.25 * Math.sin(tw * 2.6 + i * 1.9);
+        ctx.fillStyle = 'rgba(255,200,110,' + (0.16 * tk).toFixed(3) + ')';
+        ctx.beginPath(); ctx.arc(bx, by, 6, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#3a2f26';
+        ctx.fillRect(bx - 1, by - 5, 2, 3);
+        ctx.fillStyle = 'rgba(255,226,160,' + (0.7 + 0.3 * tk).toFixed(3) + ')';
+        ctx.beginPath(); ctx.ellipse(bx, by, 1.8, 2.6, 0, 0, Math.PI * 2); ctx.fill();
+      });
+
+      // little black spotlights at the lower corners, angled up at the text
+      const spot = (cx, dir) => {
+        ctx.fillStyle = '#0e0b09';
+        ctx.fillRect(cx - 4, sb - 10, 8, 6);
+        ctx.fillRect(cx + dir * 4, sb - 12, 4, 8);
+        ctx.fillStyle = 'rgba(255,210,140,0.85)';
+        ctx.fillRect(cx + dir * 5, sb - 10, 2, 4);
+      };
+      spot(sx + 12, 1);
+      spot(sr - 12, -1);
+
+      // rusty cursive cut-out lettering
+      const label = 'Foam Brewers';
+      const maxTextW = sw - 24;
+      let fsize = 22;
+      const face = (n) => 'italic bold ' + n + 'px "Brush Script MT", "Segoe Script", "Lucida Handwriting", cursive';
+      ctx.font = face(fsize);
+      while (fsize > 12 && ctx.measureText(label).width > maxTextW) {
+        fsize--;
+        ctx.font = face(fsize);
+      }
+      const tx2 = px + w / 2, ty2 = sy + 8 + (sb - sy - 8) / 2 + fsize * 0.30;
+      ctx.textAlign = 'center';
+      ctx.fillStyle = 'rgba(255,150,60,0.22)';           // soft warm halo
+      for (const [ox, oy] of NEON_GLOW_OFFSETS) ctx.fillText(label, tx2 + ox, ty2 + oy);
+      ctx.fillStyle = '#0e0b09';                         // standoff shadow
+      ctx.fillText(label, tx2 + 1.5, ty2 + 1.5);
+      ctx.fillStyle = '#a4501f';                         // dark rust body
+      ctx.fillText(label, tx2, ty2);
+      ctx.fillStyle = '#d0752e';                         // lit copper face
+      ctx.fillText(label, tx2, ty2 - 0.8);
+      ctx.fillStyle = 'rgba(255,205,140,0.35)';          // highlight where the bulbs hit
+      ctx.fillText(label, tx2 - 0.4, ty2 - 1.6);
+    } else if (isSpeakingVolumesSign && getSpeakingVolumesSign(Math.min(w - 24, 168), Math.round(Math.min(w - 24, 168) * 328 / 560))) {
+      // The real Speaking Volumes badge, big and centered on the storefront,
+      // overlapping the roof band and the wall below it (the record emblem
+      // over the door is drawn lower down -- see drawSpeakingVolumesExterior).
+      const sw = Math.min(w - 24, 168), sh = Math.round(sw * 328 / 560);
+      const spr = getSpeakingVolumesSign(sw, sh);
+      const sx = px + (w - sw) / 2, sy = py + 3;
+      ctx.save();
+      ctx.imageSmoothingEnabled = true;
+      ctx.globalAlpha = 0.32;
+      ctx.drawImage(spr.shadow, sx + 2, sy + 4, sw, sh);
+      ctx.globalAlpha = 1;
+      ctx.drawImage(spr.img, sx, sy, sw, sh);
+      ctx.restore();
     } else if (!isNectars && !isBurlington) {
       const maxTextW = w + 26;
       let fsize = 17;
@@ -26021,6 +26269,195 @@ function drawFoamBrewersExterior(time, map) {
   ctx.fillText('MUSIC', sx + 10, sy + 16);
 }
 
+// SPEAKING VOLUMES' interior: an independent record store with a punk
+// streak. Back wall reads "SPEAKING [Julian] VOLUMES" (two plaques flanking
+// the keeper), a corkboard of gig flyers (one for Rough Francis) and a
+// cassette wall, a neon OPEN sign, genre-tabbed vinyl shelves, a
+// new-arrivals bin, a turntable + register + tip jar on the counter, and
+// loose stacks on the floor. Called from render() whenever
+// map.speakingVolumes is set (shop map only -- the outdoor skatepark map
+// uses `svExterior` instead so it never trips this).
+function drawSpeakingVolumesInterior(time) {
+  ctx.save();
+  ctx.textBaseline = 'alphabetic';
+  ctx.textAlign = 'center';
+
+  // two-piece sign either side of the keeper's head (keeper is tile 6,2)
+  const plaque = (cx, label) => {
+    const w = 84, h = 22, x = cx - w / 2, y = 6;
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillRect(x + 2, y + 3, w, h);
+    ctx.fillStyle = '#140f12';
+    ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = '#c23a3a';
+    ctx.fillRect(x, y + h - 3, w, 3);
+    ctx.fillStyle = '#f4ecd8';
+    ctx.font = 'bold 14px monospace';
+    ctx.fillText(label, cx, y + 15);
+  };
+  plaque(4 * TILE + 2, 'SPEAKING');
+  plaque(9 * TILE, 'VOLUMES');
+
+  // neon OPEN sign, with an occasional flicker
+  const flick = Math.sin(time * 23) > 0.96 ? 0.35 : 1;
+  ctx.globalAlpha = 0.85 * flick;
+  ctx.strokeStyle = '#ff4a5a';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(352, 8, 44, 18);
+  ctx.fillStyle = '#ff7a86';
+  ctx.font = 'bold 11px monospace';
+  ctx.fillText('OPEN', 374, 21);
+  ctx.globalAlpha = 1;
+
+  // corkboard of gig flyers, upper-left
+  ctx.fillStyle = '#3a2410';
+  ctx.fillRect(38, 36, 64, 46);
+  ctx.fillStyle = '#b07a48';
+  ctx.fillRect(40, 38, 60, 42);
+  const flyers = [['#e8e4dc', 44, 42, 14, 16], ['#e0b83a', 60, 44, 12, 14], ['#3a7ab0', 44, 60, 14, 14], ['#d94f9a', 86, 42, 11, 16]];
+  flyers.forEach(([c, fx, fy, fw, fh]) => {
+    ctx.fillStyle = c; ctx.fillRect(fx, fy, fw, fh);
+    ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(fx + 2, fy + 3, fw - 4, 2);
+    ctx.fillRect(fx + 2, fy + 7, fw - 6, 2);
+  });
+  // the Rough Francis show flyer, front and center
+  ctx.fillStyle = '#0e0c10';
+  ctx.fillRect(66, 56, 26, 22);
+  ctx.fillStyle = '#c23a3a';
+  ctx.fillRect(66, 56, 26, 3);
+  ctx.fillStyle = '#f4ecd8';
+  ctx.font = 'bold 5px monospace';
+  ctx.fillText('ROUGH', 79, 67);
+  ctx.fillText('FRANCIS', 79, 74);
+  // pushpins
+  ctx.fillStyle = '#e04a4a';
+  [[50, 42], [66, 44], [79, 57], [91, 43]].forEach(([px, py]) => {
+    ctx.beginPath(); ctx.arc(px, py, 1.3, 0, Math.PI * 2); ctx.fill();
+  });
+  // headphones hanging on a hook under the board (the listening station)
+  ctx.strokeStyle = '#1c1c20';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(70, 100, 8, Math.PI, 0); ctx.stroke();
+  ctx.fillStyle = '#c23a3a';
+  ctx.fillRect(60, 99, 5, 8);
+  ctx.fillRect(75, 99, 5, 8);
+
+  // cassette wall, upper-right
+  ctx.fillStyle = '#2a1c14';
+  ctx.fillRect(338, 36, 66, 48);
+  const tapeCols = ['#c0392b', '#2980b9', '#27ae60', '#e0a030', '#8e44ad', '#e8e4dc'];
+  for (let r = 0; r < 3; r++) {
+    ctx.fillStyle = '#4a3018';
+    ctx.fillRect(340, 36 + r * 16 + 14, 62, 2);
+    for (let i = 0; i < 7; i++) {
+      ctx.fillStyle = tapeCols[(r * 3 + i) % tapeCols.length];
+      ctx.fillRect(342 + i * 9, 39 + r * 16, 8, 11);
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.fillRect(344 + i * 9, 41 + r * 16, 4, 3);
+    }
+  }
+
+  // genre-tabbed browsing shelves flanking the counter, clear of the crates
+  // at columns 1 and 12
+  drawRecordShelfUnit(2 * TILE, 4 * TILE + 22, 3 * TILE + 8, 2 * TILE - 16, 3);
+  drawRecordShelfUnit(9 * TILE - 8, 4 * TILE + 22, 3 * TILE + 8, 2 * TILE - 16, 11);
+  const tab = (x, label, color) => {
+    ctx.fillStyle = color;
+    ctx.fillRect(x, 4 * TILE + 12, 34, 10);
+    ctx.fillStyle = '#140f12';
+    ctx.font = 'bold 6px monospace';
+    ctx.fillText(label, x + 17, 4 * TILE + 20);
+  };
+  tab(2 * TILE + 8, 'PUNK', '#e0b83a');
+  tab(2 * TILE + 52, 'SOUL', '#d94f9a');
+  tab(9 * TILE + 0, 'FUNK', '#3aa0a0');
+  tab(9 * TILE + 44, 'HIP HOP', '#e07a3a');
+
+  // turntable, register and tip jar on the counter (table is row 3)
+  drawTurntableDeck(4 * TILE + 12, 2 * TILE + 18, 0.85, time, 0.7);
+  ctx.fillStyle = '#2c2a30';
+  ctx.fillRect(7 * TILE + 10, 2 * TILE + 26, 28, 16);
+  ctx.fillStyle = '#7ad07a';
+  ctx.fillRect(7 * TILE + 13, 2 * TILE + 22, 14, 6);
+  ctx.fillStyle = '#c8c8cc';
+  ctx.fillRect(7 * TILE + 10, 2 * TILE + 38, 28, 4);
+  ctx.fillStyle = 'rgba(200,220,240,0.35)';
+  ctx.fillRect(8 * TILE + 14, 2 * TILE + 24, 12, 18);
+  ctx.strokeStyle = '#9a9aa0';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(8 * TILE + 14, 2 * TILE + 24, 12, 18);
+  ctx.fillStyle = '#e0b040';
+  ctx.fillRect(8 * TILE + 16, 2 * TILE + 36, 8, 4);
+
+  // new-arrivals bin in the open floor corner (the sixth default crate
+  // spot at 11,8 is unused, so this sits clear of all five real crates)
+  drawRecordBin(10 * TILE + 10, 8 * TILE - 4, 4);
+  ctx.fillStyle = '#c23a3a';
+  ctx.fillRect(10 * TILE + 8, 8 * TILE - 24, 50, 10);
+  ctx.fillStyle = '#f4ecd8';
+  ctx.font = 'bold 6px monospace';
+  ctx.fillText('NEW ARRIVALS', 10 * TILE + 33, 8 * TILE - 16);
+
+  // loose stacks of vinyl scattered across the floor
+  drawLeaningVinylStack(5 * TILE + 30, 5 * TILE + 10, 5, 0);
+  drawLeaningVinylStack(7 * TILE + 6, 5 * TILE + 18, 4, 2);
+  drawLeaningVinylStack(6 * TILE + 16, 7 * TILE + 26, 3, 1);
+  ctx.restore();
+}
+
+// SPEAKING VOLUMES' front: a vinyl-record emblem over the door, a neon OPEN
+// in the glass, warm light spilling out, a few notes drifting from the
+// speakers, and a sandwich board out front. Called from
+// drawSkateparkDecorations() whenever the map has `svExterior`.
+function drawSpeakingVolumesExterior(time, map) {
+  const f = map.svExterior;
+  const px = f.x * TILE, py = f.y * TILE;
+  // record emblem over the doorway (sits just under the big badge sign,
+  // right above the door)
+  const cx = f.doorX * TILE + TILE / 2, cy = py + 112;
+  ctx.fillStyle = '#0c0c0e';
+  ctx.beginPath(); ctx.arc(cx, cy, 15, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.14)';
+  ctx.lineWidth = 1;
+  for (let i = 1; i <= 3; i++) { ctx.beginPath(); ctx.arc(cx, cy, 4 + i * 3, 0, Math.PI * 2); ctx.stroke(); }
+  ctx.fillStyle = '#c23a3a';
+  ctx.beginPath(); ctx.arc(cx, cy, 5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#0c0c0e';
+  ctx.beginPath(); ctx.arc(cx, cy, 1.4, 0, Math.PI * 2); ctx.fill();
+  // door glow
+  const dx = f.doorX * TILE + TILE / 2, dy = (f.doorY + 1) * TILE;
+  const glow = getGlowSprite(46, 'rgba(255,90,90,ALPHA)');
+  ctx.save();
+  ctx.globalAlpha = 0.3 + 0.1 * Math.sin(time * 4);
+  ctx.drawImage(glow, dx - 46, dy - 60, 92, 92);
+  ctx.restore();
+  // notes drifting out
+  ctx.fillStyle = 'rgba(255, 210, 60, 0.85)';
+  ctx.font = 'bold 11px monospace';
+  ctx.textAlign = 'center';
+  for (let i = 0; i < 2; i++) {
+    const ph = (time * 0.45 + i * 0.5) % 1;
+    ctx.globalAlpha = Math.max(0, 1 - ph);
+    ctx.fillText(i === 0 ? '\u266A' : '\u266B', dx + (i === 0 ? -8 : 8) + Math.sin(ph * 6 + i) * 4, dy - 6 - ph * 26);
+  }
+  ctx.globalAlpha = 1;
+  // sandwich board on the grass left of the door
+  const sx = (f.doorX - 1) * TILE + 3, sy = (f.doorY + 1) * TILE + 4;
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.fillRect(sx - 1, sy + 24, 24, 3);
+  ctx.fillStyle = '#3a2410';
+  ctx.fillRect(sx, sy + 20, 3, 6);
+  ctx.fillRect(sx + 17, sy + 20, 3, 6);
+  ctx.fillStyle = '#5a3d20';
+  ctx.fillRect(sx - 1, sy - 1, 22, 24);
+  ctx.fillStyle = '#1e1a22';
+  ctx.fillRect(sx + 1, sy + 1, 18, 20);
+  ctx.font = 'bold 6px monospace';
+  ctx.fillStyle = '#f4efe0';
+  ctx.fillText('VINYL', sx + 10, sy + 9);
+  ctx.fillText('& TAPES', sx + 10, sy + 16);
+}
+
 // A small cluster of jagged crystal shards on a dark wooden base, with a
 // soft pulsing halo behind it (via the shared getGlowSprite() cache --
 // glowColor must contain the literal 'ALPHA' placeholder, same contract as
@@ -27052,6 +27489,8 @@ keeperImgs.IAN = ianImg;
 keeperImgs['A-DOG'] = adogImg;
 // FOAM BREWERS' keeper, FATTIE B -- same idea as A-DOG above.
 keeperImgs['FATTIE B'] = fattiebImg;
+// SPEAKING VOLUMES' keeper, JULIAN -- same idea as A-DOG/FATTIE B above.
+keeperImgs.JULIAN = julianImg;
 
 function drawAnt(cx, cy, s) {
   // A white ant silhouette (the Anthill Collective mark), drawn on SK1's hat.
