@@ -10213,7 +10213,7 @@ function makeShop(id, opts) {
 // become open water, and rows 7-8 (the strip right in front of the door)
 // stay dry as a wooden deck. `noCounterTable` skips the usual shop counter
 // since this room isn't a shop, and the keeper is pushed down onto the deck
-// (row 7) instead of makeShop's default row-2 spot, so PADDLES reads as
+// (row 7) instead of makeShop's default row-2 spot, so LINUS reads as
 // standing poolside rather than floating in the pool. The pool itself is
 // just the ordinary '~' water tile (solid, same as swamp/river water)
 // filled in here. THE POOL -- the swim-free-fish arcade game -- now sits
@@ -10224,18 +10224,19 @@ function makeJohnnysPool() {
     world: 'swamp',
     floor: '#8a6a3a', plank: '#6a4e26', wallColor: '#153038',
     noCounterTable: true,
-    keeper: { x: 9, y: 8, name: 'PADDLES', shirt: '#e0562e', skin: '#8a6a48',
+    keeper: { x: 9, y: 8, name: 'LINUS', shirt: '#c9a06a', skin: '#c9a06a',
       lines: [
-        'Deck\'s dry, pool\'s wet — that\'s the whole job description out here.',
-        'Johnny had this thing trucked in plank by plank. Don\'t ask how it doesn\'t leak. It just doesn\'t.',
-        'No diving, no cannonballs near the ladder, and no, the gators are not invited.',
-        'That swim game finally showed up — right on the edge of the deck. Mind the splash zone.',
+        'Woof. (Deck\'s dry, pool\'s wet. That\'s the whole job description out here.)',
+        'LINUS is the neighborhood Swamp Dog. Tan coat, green bandana, zero cannonballs tolerated.',
+        'Johnny had this pool trucked in plank by plank. Linus doesn\'t ask how it doesn\'t leak. Linus just supervises.',
+        '*Linus tilts his head at the gators across the fence.* Nope. Still not invited.',
+        'That swim game finally showed up right on the edge of the deck. Mind the splash zone. Boof.',
       ] },
     crates: [],
     // HYPER SWIM '96 DELUXE -- a cabinet set up right on the edge
     // of the deck, tx/ty (10, 7): the front-most dry row (7), right where
     // the wood meets the water, so it reads as sitting poolside rather
-    // than out on the open deck. Clear of PADDLES
+    // than out on the open deck. Clear of LINUS
     // (9, 8), and the door/exit tile (6, 9) below. Full standalone web
     // app, not a canvas mini-game -- see MINIGAME_ACTIONS.hyperswim/
     // openHyperSwimApp()/createHyperSwimOverlay().
@@ -11113,7 +11114,7 @@ const shops = {
         'I live right here, believe it or not. Never saw the point of going home when home is a boardwalk full of games.',
         'Built this whole place myself. Well -- me and whoever I could talk into carrying lumber.',
         'Dig through them crates if you want. I stock the fun park the same way I run it: mostly by accident.',
-        'Got a pool and a deck out back too. My cousin PADDLES keeps an eye on it -- somebody\'s gotta be the responsible one.',
+        'Got a pool and a deck out back too. Ol\' LINUS, the neighborhood Swamp Dog, keeps an eye on it. Best lifeguard I ever hired. Pay is mostly belly rubs.',
         'Ski cap in the swamp, I know, I know. A guy\'s gotta stay ready. You never know when adventure\'s gonna show up.',
         'Digger, Johnny Slides, Dust Racing -- pick your poison. I named one after myself, in case that wasn\'t obvious.',
       ],
@@ -12429,6 +12430,13 @@ function doInteract() {
     const k = target.data;
     const shopRecord = Object.values(maps[player.map].crates).find(c => c.record)?.record;
     const lines = shopRecord && collected.has(recKey(currentWorldId(), shopRecord)) ? [k.foundLine] : resolveLines(k.lines);
+    // Always give good Ol' Linus a pet: every time the player walks up to
+    // him he gets petted (hearts float over his head, see drawKeeper()) and
+    // the last line of the chat is the pet itself.
+    if (k.name === 'LINUS') {
+      k.petUntil = performance.now() + 3000;
+      lines.push('*You give Linus a good pet.* He leans right into it. Best boy in the swamp.');
+    }
     dialog = { name: k.name, lines, i: 0 };
     state = 'dialog';
   } else if (target.type === 'crate') {
@@ -25655,7 +25663,7 @@ function drawTarotSpread(x, y) {
 // ------------------------------------------------------------------
 // JOHNNY'S POOL interior: a handful of partiers floating out on the water
 // on inner tubes, plus a portable stereo stack parked on the deck pumping
-// out an animated equalizer -- turns PADDLES' otherwise-empty pool into a
+// out an animated equalizer -- turns LINUS' otherwise-empty pool into a
 // full-on pool party. Called from render() whenever map.poolParty is set
 // (see makeJohnnysPool() above), same one-function-per-shop pattern as
 // drawHeyBudInterior()/drawPurePopInterior().
@@ -25700,7 +25708,7 @@ function drawJohnnysPoolInterior(time) {
   });
 
   // --- portable stereo system parked on the deck, cranking the party --
-  // deck tile ~(2,7), clear of PADDLES (9,8), the HYPER SWIM cabinet
+  // deck tile ~(2,7), clear of LINUS (9,8), the HYPER SWIM cabinet
   // (10,7), and the door/exit tile (6,9).
   const sx = 2 * TILE + 16, sy = 7 * TILE + 28;
   drawPoolStereo(sx, sy, time);
@@ -26555,7 +26563,7 @@ const KEEPER_HAIR = { DEE: '#5a2e1c', ROSIE: '#c8c0b0', ZEKE: '#241a12', JADE: '
 // the procedural sprite uses) and it's picked up automatically. Until a file
 // exists (or while it's still loading), drawKeeper falls back to the shaded
 // procedural sprite below, so nothing ever renders blank.
-const KEEPER_NAMES = ['SK1', 'DEE', 'ROSIE', 'ZEKE', 'JADE', 'TONY', 'LANNY', 'MITCH', 'BIGDOG', 'EDNA', 'OPHELIA'];
+const KEEPER_NAMES = ['SK1', 'DEE', 'ROSIE', 'ZEKE', 'JADE', 'TONY', 'LANNY', 'MITCH', 'BIGDOG', 'EDNA', 'OPHELIA', 'LINUS'];
 // Matches the 80px height used for Green Door Studio's image-based npcs
 // (truth.png, zach.png, kanga.png — see SHOP_NPC_IMAGES/drawShopImageNpcs'
 // `n.spriteH || 80` default), so every keeper — current and future — reads
@@ -26618,6 +26626,26 @@ function drawAnt(cx, cy, s) {
   ctx.stroke();
 }
 
+// Little hearts that float up over a keeper's head after the player pets
+// them (currently just LINUS). msLeft counts down from 3000.
+function drawPetHearts(cx, topY, msLeft) {
+  const t = 3000 - msLeft;
+  ctx.save();
+  ctx.fillStyle = '#ff5a7a';
+  for (let i = 0; i < 3; i++) {
+    const tt = t - i * 250;
+    if (tt < 0 || tt > 1800) continue;
+    const hx = cx + (i - 1) * 9 + Math.sin(tt / 220 + i) * 2;
+    const hy = topY + 6 - tt * 0.02;
+    ctx.globalAlpha = 1 - tt / 1800;
+    const H = ['.X.X.', 'XXXXX', 'XXXXX', '.XXX.', '..X..'];
+    for (let r = 0; r < H.length; r++)
+      for (let c = 0; c < H[r].length; c++)
+        if (H[r][c] === 'X') ctx.fillRect(Math.round(hx - 6 + c * 2.4), Math.round(hy + r * 2.4), 3, 3);
+  }
+  ctx.restore();
+}
+
 function drawKeeper(k) {
   const px = k.x * TILE, py = k.y * TILE;
 
@@ -26630,6 +26658,7 @@ function drawKeeper(k) {
     const kh = KEEPER_SPR_H;
     const kw = Math.round(kh * img.naturalWidth / img.naturalHeight);
     ctx.drawImage(img, Math.round(px + 16 - kw / 2), Math.round(py + 30 - kh), kw, kh);
+    if (k.petUntil && performance.now() < k.petUntil) drawPetHearts(px + 16, py + 30 - kh, k.petUntil - performance.now());
     return;
   }
 
@@ -26939,6 +26968,7 @@ function drawHUD() {
     const target = facingTarget();
     if (target) {
       const label = target.type === 'crate' ? '[E] DIG CRATE'
+                  : (target.type === 'keeper' && target.data && target.data.name === 'LINUS') ? '[E] PET LINUS'
                   : (target.type === 'keeper' || target.type === 'npc' || target.type === 'filingCabinets') ? '[E] TALK'
                   : target.type === 'newspaper' ? '[E] READ'
                   : target.type === 'cart' ? `[X] ${target.data.label}`
