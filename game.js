@@ -9641,9 +9641,9 @@ function makeSwamp() {
 
   // boardwalk trunk + vertical spurs (the walkable paths through the water).
   // Widened from 1 tile to 3 tiles across so the paths read as roomier to
-  // walk down, and so a crate placed on the path (see crateDefs below)
+  // walk down, and so anything placed on the path
   // never fully blocks it -- there's always a clear tile beside it to route
-  // around. The extra rows/columns only matter out over open water; where
+  // around. (Crates no longer sit on the trunk; see crateDefs below.) The extra rows/columns only matter out over open water; where
   // they cross a building clearing below, the clearing carve (further down)
   // overwrites them with plain walkable ground anyway, and the tree
   // sprinkle after that only touches '.' tiles, never 'b', so none of this
@@ -9941,29 +9941,35 @@ function makeSwamp() {
   // outdoor crate here is now junk.
   const crates = {};
   const crateDefs = [
-    [20, 12, { record: 'moss' }],
-    [30, 12, { junkSeed: 7 }],
-    [38, 12, { junkSeed: 1 }],
-    [6, 12,  { junkSeed: 2 }],
-    // three extra dig spots, same "sit right on the boardwalk trunk"
-    // placement as the crates above -- row 12 is guaranteed clear across
-    // the full map width regardless of how the mud islands happened to
-    // carve, so these are reachable no matter what.
-    [17, 12, { junkSeed: 4 }],
-    [24, 12, { junkSeed: 5 }],
-    [41, 12, { junkSeed: 8 }],
+    // Scattered across the whole map rather than lined up along the
+    // boardwalk trunk (row 12). Every spot below is plain walkable mud that
+    // is connected to the boardwalk network, sits clear of every building,
+    // door, newsstand, mini-game prop and painted decoration (billboards,
+    // juice cart, TRUTH LAB garden/deck, JOHNNY'S patio, ballpark), and
+    // never seals off a tile or pinches a path -- checked with a flood fill
+    // from the return portal against the deterministic swamp layout (same
+    // seed as the `rng` above). The x=8 / x=34 spur crates at the bottom of
+    // this group are the three that were already off the trunk.
+    //
+    // north-west / north
+    [28, 22, { record: 'moss' }],
+    [10, 4,  { junkSeed: 3 }],
+    [6, 2,   { junkSeed: 2 }],
+    [16, 2,  { junkSeed: 4 }],
+    [18, 9,  { streisandSeed: 0 }],
+    // north-east / east
+    [38, 10, { junkSeed: 7 }],
+    [42, 10, { junkSeed: 1 }],
+    [41, 14, { streisandSeed: 3 }],
+    // south / south-east (incl. the little southern island)
+    [20, 21, { junkSeed: 5 }],
+    [27, 25, { streisandSeed: 1 }],
+    [34, 22, { streisandSeed: 2 }],
+    [38, 25, { junkSeed: 8 }],
+    // the three that already sat off the trunk, on the spurs / mud
     [8, 9,   { record: 'choir' }],
     [10, 21, { junkSeed: 0 }],
     [34, 17, { junkSeed: 6 }],
-    [14, 12, { junkSeed: 3 }],
-    // four more boardwalk-trunk dig spots -- same "row 12 is guaranteed
-    // clear across the full map width" placement as the junk crates above,
-    // filled with an all-Streisand pool (see STREISAND_JUNK) instead of the
-    // usual JUNK grab-bag.
-    [3, 12,  { streisandSeed: 0 }],
-    [11, 12, { streisandSeed: 1 }],
-    [28, 12, { streisandSeed: 2 }],
-    [35, 12, { streisandSeed: 3 }],
   ];
   for (const [x, y, d] of crateDefs) { g[y][x] = 'c'; crates[key(x, y)] = d; }
   // Tracked so shuffleRecordCrates() can rotate which of these boardwalk
@@ -10018,7 +10024,7 @@ function makeSwamp() {
     // A dirt bike left out on the open mud, southwest of the boardwalk
     // trunk -- tx/ty (14, 21) sits in a clear patch of ground well clear of
     // TRUTH LAB's clearing/door, the x=8 boardwalk spur, every crate
-    // (20,12)/(30,12)/(38,12)/(6,12)/(8,9)/(10,21)/(34,17)/(14,12), and
+    // every crate in `crateDefs` above, and
     // every newsstand (9,2)/(16,10)/(18,15)/(37,15)/(25,22) -- verified
     // against the deterministic swamp layout (same seed as the `rng`
     // above), same "checked against the fixed layout" approach the
