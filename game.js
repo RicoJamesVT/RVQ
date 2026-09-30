@@ -1451,6 +1451,16 @@ const MINIGAME_ACTIONS = {
   // audio, no external assets and no network calls -- so it works with no
   // connection). See openHyperSwimApp()/createHyperSwimOverlay() below.
   hyperswim: () => openHyperSwimApp(),
+  // Linus Tug Of War -- a tap/mash-to-pull tug-of-war mini game (Linus vs.
+  // Johnny, rounds get tougher) set up on the deck of JOHNNY'S POOL right
+  // alongside Hyper Swim (see makeJohnnysPool()'s `minigames` list). Same
+  // "full standalone web app, not a canvas mini-game" shape as chess/beatbot/
+  // organ/mini golf/blackbook/Gator Grooves/.../Hyper Swim above (own DOM/
+  // iframe overlay, bundled locally -- its own canvas renderer, its sprites
+  // inlined as data URIs, no external assets, fonts, or network calls -- so
+  // it works with no connection). See openLinusTugApp()/
+  // createLinusTugOverlay() below.
+  linustug: () => openLinusTugApp(),
   // Syrup Roads -- a maple-syrup-themed Frogger-style road-crossing arcade
   // cabinet tucked inside HEY BUD (see the `wax` shop's `minigames` list),
   // right alongside the Claw Machine. Same "full standalone web app, not a
@@ -8745,6 +8755,7 @@ window.addEventListener('keydown', (e) => {
     if (k === 'escape' && state === 'vtDirtApp') { closeVtDirtApp(); }
     if (k === 'escape' && state === 'penaltyKingsApp') { closePenaltyKingsApp(); }
     if (k === 'escape' && state === 'hyperSwimApp') { closeHyperSwimApp(); }
+    if (k === 'escape' && state === 'linusTugApp') { closeLinusTugApp(); }
     if (k === 'escape' && state === 'vinylNinjaApp') { closeVinylNinjaApp(); }
     if (k === 'escape' && state === 'digDashApp') { closeDigDashApp(); }
     if (k === 'escape' && state === 'digOnApp') { closeDigOnApp(); }
@@ -10295,6 +10306,7 @@ function makeJohnnysPool() {
         'Johnny had this pool trucked in plank by plank. Linus doesn\'t ask how it doesn\'t leak. Linus just supervises.',
         '*Linus tilts his head at the gators across the fence.* Nope. Still not invited.',
         'That swim game finally showed up right on the edge of the deck. Mind the splash zone. Boof.',
+        '*Linus drops a rope at your feet and wags.* Tug of war. He plays to win, and Johnny cheats. Boof.',
       ] },
     crates: [],
     // HYPER SWIM '96 DELUXE -- a cabinet set up right on the edge
@@ -10304,8 +10316,16 @@ function makeJohnnysPool() {
     // (9, 8), and the door/exit tile (6, 9) below. Full standalone web
     // app, not a canvas mini-game -- see MINIGAME_ACTIONS.hyperswim/
     // openHyperSwimApp()/createHyperSwimOverlay().
+    //
+    // LINUS TUG OF WAR -- second deck cabinet, tx/ty (4, 7): same dry
+    // front-most row as Hyper Swim, on the other side of the deck. Clear of
+    // the portable stereo (~tile 2), the spawn tile just inside the door
+    // (6, 7), the door/exit tile (6, 9), Hyper Swim (10, 7), and LINUS
+    // (9, 8). Same full standalone web app shape -- see
+    // MINIGAME_ACTIONS.linustug/openLinusTugApp()/createLinusTugOverlay().
     minigames: [
       { id: 'hyperswim', tx: 10, ty: 7, label: 'PLAY HYPER SWIM' },
+      { id: 'linustug', tx: 4, ty: 7, label: 'PLAY LINUS TUG OF WAR' },
     ],
   });
   // Carve the pool: every interior tile in rows 1-6 becomes water, leaving
@@ -11694,7 +11714,7 @@ const player = {
   tempItem: null, tempItemTimer: 0,
 };
 const collected = new Set();
-let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | danceParty | portal | fifa | minigame | hotkeys | crate | photo | lab | labLocked | shopBackLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | qsdBalanceApp | vinylSnakeApp | waveformApp | bayouBreakApp | freqAltarApp | drumPatternDocApp | gatorJamSlamApp | swampCaveApp | vocalChopBoothApp | vtDirtApp | penaltyKingsApp | digDashApp | digOnApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | diggerApp | hyperSwimApp | connectFourApp | syrupRoadsApp | clawMachineApp | kangaidenVideo | kangaidenSplash | kangaidenApp | hiphopLibraryApp | truthKnocksVideo | truthKnocksSplash | truthKnocksApp | johnnySlidesVideo | johnnySlidesSplash | johnnySlidesApp | dustRacingApp
+let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | danceParty | portal | fifa | minigame | hotkeys | crate | photo | lab | labLocked | shopBackLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | qsdBalanceApp | vinylSnakeApp | waveformApp | bayouBreakApp | freqAltarApp | drumPatternDocApp | gatorJamSlamApp | swampCaveApp | vocalChopBoothApp | vtDirtApp | penaltyKingsApp | digDashApp | digOnApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | diggerApp | hyperSwimApp | linusTugApp | connectFourApp | syrupRoadsApp | clawMachineApp | kangaidenVideo | kangaidenSplash | kangaidenApp | hiphopLibraryApp | truthKnocksVideo | truthKnocksSplash | truthKnocksApp | johnnySlidesVideo | johnnySlidesSplash | johnnySlidesApp | dustRacingApp
 // State to snap back to when the [H] hotkeys popup is closed -- currently
 // always 'play' since that's the only state H can be opened from, but kept
 // as its own var in case another state wants to offer the popup later.
@@ -12389,7 +12409,7 @@ const music = {
 // enter/exit call sites, so it can't drift out of sync no matter which
 // of the several ways the player backs out of the lab popup (keyboard
 // [X], on-screen [X] button, closing the instrument iframe, etc.).
-const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'qsdBalanceApp', 'vinylSnakeApp', 'waveformApp', 'bayouBreakApp', 'freqAltarApp', 'drumPatternDocApp', 'gatorJamSlamApp', 'swampCaveApp', 'vocalChopBoothApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'digOnApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'johnnySlidesApp', 'dustRacingApp', 'hyperSwimApp', 'connectFourApp', 'syrupRoadsApp', 'clawMachineApp', 'kangaidenVideo', 'kangaidenApp', 'hiphopLibraryApp', 'danceParty', 'truthKnocksVideo', 'truthKnocksApp', 'johnnySlidesVideo']);
+const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'qsdBalanceApp', 'vinylSnakeApp', 'waveformApp', 'bayouBreakApp', 'freqAltarApp', 'drumPatternDocApp', 'gatorJamSlamApp', 'swampCaveApp', 'vocalChopBoothApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'digOnApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'johnnySlidesApp', 'dustRacingApp', 'hyperSwimApp', 'linusTugApp', 'connectFourApp', 'syrupRoadsApp', 'clawMachineApp', 'kangaidenVideo', 'kangaidenApp', 'hiphopLibraryApp', 'danceParty', 'truthKnocksVideo', 'truthKnocksApp', 'johnnySlidesVideo']);
 function syncMusicDuck() {
   const minigameDucked = state === 'minigame' && activeMinigame && activeMinigame.musicDucked;
   music.duck(DUCKED_STATES.has(state) || !!minigameDucked);
@@ -14536,6 +14556,137 @@ function closeHyperSwimApp(fromPopState) {
     history.back();
   } else {
     hyperSwimHistoryPushed = false;
+  }
+}
+
+// ---------------------------------------------------------------- Linus Tug Of War overlay
+// LINUS TUG OF WAR -- a tap/mash-to-pull tug-of-war mini game (Linus vs.
+// Johnny, each cleared round makes Johnny stronger) set up on the deck of
+// JOHNNY'S POOL, right next to Hyper Swim (see MINIGAME_ACTIONS.linustug and
+// makeJohnnysPool()'s `minigames` list) -- launches a full standalone web
+// app, not a from-scratch canvas mini-game, same "full-screen DOM overlay
+// with an <iframe>" trick as Hyper Swim/chess/the beat bot/etc. above. Kept
+// as its own overlay since it's a totally separate cabinet with its own sign
+// and hitbox.
+//
+// Linus Tug Of War ships as a bundled, self-contained page (its own canvas
+// renderer, both sprites embedded as base64 data URIs, no external assets,
+// no Google Fonts stylesheet -- the title/HUD type just falls back to the
+// local Trebuchet/Impact/sans-serif stack -- and no network calls at all) at
+// instruments/linus-tug-of-war/index.html -- the exact same local-file
+// pattern HYPERSWIM_APP_URL/.../CLAW_MACHINE_APP_URL use. Being a
+// same-origin local asset rather than a live remote site means it loads and
+// plays the same with or without a connection, so there's no online/offline
+// branching needed here either. Its best round is kept in the page's own
+// localStorage (try/catch-wrapped there), so that works offline too.
+const LINUS_TUG_APP_URL = 'instruments/linus-tug-of-war/index.html';
+let linusTugOverlayEl = null, linusTugOverlayFrame = null;
+let linusTugReturnState = 'play';
+let linusTugHistoryPushed = false; // mirrors labHistoryPushed/.../hyperSwimHistoryPushed -- see openLinusTugApp()/closeLinusTugApp()
+
+function createLinusTugOverlay() {
+  const style = document.createElement('style');
+  style.textContent = `
+    #ricoLinusTugApp {
+      position: fixed; inset: 0; z-index: 1000;
+      background: #000;
+      display: none; flex-direction: column;
+    }
+    #ricoLinusTugApp.open { display: flex; }
+    #ricoLinusTugApp .rlt-bar {
+      flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 10px 14px;
+      background: linear-gradient(#3a4a1c, #1a2208);
+      border-bottom: 2px solid #d8432b;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    }
+    #ricoLinusTugApp .rlt-title {
+      color: #fff1cf; font: bold 14px monospace; letter-spacing: 0.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #ricoLinusTugApp .rlt-close {
+      flex: 0 0 auto; cursor: pointer;
+      background: rgba(216,67,43,0.25);
+      border: 1.5px solid rgba(255,120,90,0.85);
+      color: #fff1cf; border-radius: 8px;
+      padding: 7px 16px; font: bold 13px monospace;
+      -webkit-user-select: none; user-select: none;
+    }
+    #ricoLinusTugApp .rlt-close:active { background: rgba(216,67,43,0.5); }
+    #ricoLinusTugApp iframe {
+      flex: 1 1 auto; width: 100%; border: 0; background: #8fd0e8;
+    }
+  `;
+  document.head.appendChild(style);
+
+  linusTugOverlayEl = document.createElement('div');
+  linusTugOverlayEl.id = 'ricoLinusTugApp';
+
+  const bar = document.createElement('div');
+  bar.className = 'rlt-bar';
+  const title = document.createElement('div');
+  title.className = 'rlt-title';
+  title.textContent = 'LINUS TUG OF WAR';
+  const closeBtn = document.createElement('div');
+  closeBtn.className = 'rlt-close';
+  closeBtn.textContent = '\u2190 BACK TO THE POOL DECK';
+  bindTap(closeBtn, closeLinusTugApp);
+  bar.appendChild(title);
+  bar.appendChild(closeBtn);
+
+  linusTugOverlayFrame = document.createElement('iframe');
+  linusTugOverlayFrame.setAttribute('allow', 'autoplay');
+  // Hand keyboard focus to the game as soon as it loads, so Space/A/Left
+  // work right away on desktop without an extra click. (Ignored for the
+  // about:blank load fired on close.)
+  linusTugOverlayFrame.addEventListener('load', () => {
+    if (!linusTugOverlayEl.classList.contains('open')) return;
+    try { linusTugOverlayFrame.contentWindow.focus(); } catch (e) { /* a click will focus it */ }
+  });
+
+  linusTugOverlayEl.appendChild(bar);
+  linusTugOverlayEl.appendChild(linusTugOverlayFrame);
+  document.body.appendChild(linusTugOverlayEl);
+
+  // [Esc] pressed while the iframe itself has keyboard focus never reaches
+  // this page's keydown handler, so the page posts a message instead.
+  window.addEventListener('message', (e) => {
+    if (!linusTugOverlayFrame || e.source !== linusTugOverlayFrame.contentWindow) return;
+    if (e.data && e.data.ricoLinusTug === 'close' && state === 'linusTugApp') closeLinusTugApp();
+  });
+}
+createLinusTugOverlay();
+
+// Opens the Linus Tug Of War overlay and switches state to 'linusTugApp'.
+// Called from MINIGAME_ACTIONS.linustug (E on the sign on the deck, or
+// tapping it), same entry points every other mini-game uses.
+function openLinusTugApp() {
+  linusTugReturnState = state;
+  linusTugOverlayFrame.src = LINUS_TUG_APP_URL;
+  linusTugOverlayEl.classList.add('open');
+  state = 'linusTugApp';
+  // Same throwaway-history-entry trick as openInstrument()/openChessApp()/
+  // etc. above, so the browser/OS back gesture closes the Linus Tug Of War
+  // overlay instead of leaving the game entirely.
+  history.pushState({ ricoLinusTugApp: true }, '');
+  linusTugHistoryPushed = true;
+}
+
+// Tears the iframe back down and returns to ordinary gameplay on the pool
+// deck. fromPopState mirrors closeHyperSwimApp()'s parameter -- true when
+// triggered by the browser's back button (whose history entry is already
+// consumed), so we must not call history.back() again in that case.
+function closeLinusTugApp(fromPopState) {
+  if (state !== 'linusTugApp') return; // already closed (e.g. Esc message racing the close button)
+  linusTugOverlayEl.classList.remove('open');
+  linusTugOverlayFrame.src = 'about:blank';
+  reclaimGameFocus(linusTugOverlayFrame);
+  state = linusTugReturnState;
+  if (!fromPopState && linusTugHistoryPushed) {
+    linusTugHistoryPushed = false;
+    history.back();
+  } else {
+    linusTugHistoryPushed = false;
   }
 }
 
@@ -18271,6 +18422,8 @@ window.addEventListener('popstate', () => {
     closePenaltyKingsApp(true);
   } else if (state === 'hyperSwimApp') {
     closeHyperSwimApp(true);
+  } else if (state === 'linusTugApp') {
+    closeLinusTugApp(true);
   } else if (state === 'vinylNinjaApp') {
     closeVinylNinjaApp(true);
   } else if (state === 'digDashApp') {
@@ -18316,7 +18469,7 @@ canvas.addEventListener('pointerdown', (e) => {
     const vx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const vy = (e.clientY - rect.top) * (canvas.height / rect.height);
     handleLabTap(vx, vy);
-  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'dustRacingApp' || state === 'hyperSwimApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp') {
+  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'dustRacingApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp') {
     // The DOM overlay sits on top of (and outside) the canvas while an
     // instrument/the chess app/the beat bot/the organ/mini golf/the
     // blackbook/Gator Grooves/Vinyl Snake/Bayou Break Station/Gator Jam
@@ -18857,6 +19010,13 @@ function update(dt) {
     // closing it directly. buyPressed is still consumed here too so the
     // on-screen [X] touch button works while Hyper Swim is open.
     if (buyPressed) closeHyperSwimApp();
+  } else if (state === 'linusTugApp') {
+    // Same reasoning as 'hyperSwimApp' just above: the DOM overlay (see
+    // createLinusTugOverlay()) owns input while Linus Tug Of War is loaded
+    // -- its own close button and [Esc] handle closing it directly.
+    // buyPressed is still consumed here too so the on-screen [X] touch
+    // button works while Linus Tug Of War is open.
+    if (buyPressed) closeLinusTugApp();
   } else if (state === 'connectFourApp') {
     // Same reasoning as 'labApp'/'chessApp'/.../'hyperSwimApp' just above: the
     // DOM overlay (see createConnectFourOverlay()) owns input while
@@ -19782,7 +19942,7 @@ function render(time) {
     drawSplash();
     return;
   }
-  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'dustRacingApp' || state === 'hyperSwimApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp') {
+  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'dustRacingApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp') {
     // Same reasoning as the labApp overlay: a DOM element (the <video>,
     // see createCharacterIntroOverlay(), the chess <iframe>, see
     // createChessOverlay(), the beat bot <iframe>, see
