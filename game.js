@@ -718,8 +718,9 @@ const WORLD_DEFS = {
     // `adogskateshop` shop below / ADOG_CLEAR_* in makeSkatepark()). The
     // second, Nitro Pour, is hidden in FOAM BREWERS (see the `foambrewers`
     // shop below). The third, Loud & Clear, is hidden in SPEAKING VOLUMES
-    // (see the `speakingvolumes` shop below). More get added here as the
-    // rest of the level fills in.
+    // (see the `speakingvolumes` shop below). The fourth, Halftone Dub, is
+    // hidden in CB PRINTS (see the `cbprints` shop below). More get added
+    // here as the rest of the level fills in.
     records: {
       grip: { title: 'Concrete Wax', artist: 'A-Dog & The Bearings', year: '1994',
               sample: 'Drum Loop', layer: 'drums', color: '#d94f2b', pad: 'DRM',
@@ -730,8 +731,13 @@ const WORLD_DEFS = {
       vol: { title: 'Loud & Clear', artist: 'The Basement Amps', year: '1979',
              sample: 'Lead Melody', layer: 'lead', color: '#c23a3a', pad: 'LD',
              flavor: 'One fuzzed-out guitar riff pressed in a run of a hundred. The amp was cranked past ten and you can hear the whole room shake.' },
+      // Fourth record of the level, hidden in one of CB PRINTS' two crates
+      // (hip hop / reggae -- see the `cbprints` shop below).
+      print: { title: 'Halftone Dub', artist: 'Pressure Point Sound', year: '1998',
+               sample: 'Horn Stab', layer: 'horns', color: '#1fa8c9', pad: 'HRN',
+               flavor: 'A hip hop-meets-reggae 12-inch pressed to go with one run of gig posters. The horns skank over a deep dub bassline, and the sleeve still smells faintly of ink.' },
     },
-    padOrder: ['grip', 'foam', 'vol'],
+    padOrder: ['grip', 'foam', 'vol', 'print'],
   },
   // ADD MORE WORLDS HERE, e.g.:
   // subway: {
@@ -922,6 +928,30 @@ const SPEAKING_VOLUMES_JUNK = [
   { line: 'The dollar bin: warped soundtracks, a Christmas polka record, and three copies of the same easy-listening album.',
     reply: 'Somebody\'s bargain, but not yours. Keep digging.' },
 ];
+
+// CB PRINTS' two dig crates -- one hip hop, one reggae. Which crate holds
+// Halftone Dub is shuffled each new game (shuffleRecordCrates()), so the
+// junk crate's genre is picked by WHICH SIDE of the shop it sits on (left
+// crate = hip hop, right crate = reggae) -- see the c.cbSeed branch in
+// doInteract(). Never one of the collectibles, just heat.
+const CB_PRINTS_JUNK = {
+  hiphop: [
+    { line: "A crate of boom-bap 12-inches, sleeves stamped with ink thumbprints -- Bonta pulls a poster for half the crews on these labels.",
+      reply: "Straight heat. Just not the record you're chasing." },
+    { line: "Instrumental LPs and battle-break records, every corner chewed soft from backyard cyphers and basement sessions.",
+      reply: "Dusty, deep, and dope. Still not it -- keep digging." },
+    { line: "Promo-only white labels and demo 12-inches from crews who printed their own shirts before they pressed a single record.",
+      reply: "Real local history. Not what you came for, though." },
+  ],
+  reggae: [
+    { line: "Roots and dub 7-inches in plain paper sleeves, bass so heavy the crate hums if you knock on it.",
+      reply: "One love. Just not the one you're digging for." },
+    { line: "A stack of sound-system dubplates and rocksteady LPs, red-gold-and-green stickers peeling off every cover.",
+      reply: "Sweet, sweet wax. Keep digging -- it's not in here." },
+    { line: "Lovers rock compilations and studio one reissues, sleeves soft and warm like they've been sitting in the sun.",
+      reply: "Gorgeous, but not the record you're after." },
+  ],
+};
 
 // THE SOUL SHACK's two themed dig crates -- same 1:1 pairing via
 // c.soulShackSeed as NECTARS_JUNK/HENRYS_JUNK/TRUTHLAB_JUNK/STREISAND_JUNK
@@ -9360,6 +9390,14 @@ fattiebImg.src = 'assets/fattieb.png';
 const julianImg = new Image();
 julianImg.src = 'assets/julian.png';
 
+// BONTA -- the keeper of CB PRINTS out in the skatepark: owner of the shop
+// and the master screen printer in the area. Always backs the hip hop
+// scene -- connecting artists and printing merch for crews, emcees, DJs
+// and skaters. Drawn as a shop keeper (see keeperImgs.BONTA below), not a
+// roaming npc, so he doesn't need an entry in SHOP_NPC_IMAGES.
+const bontaImg = new Image();
+bontaImg.src = 'assets/bonta.png';
+
 // ---------------------------------------------------------------- maps
 const SOLID = new Set(['#', 'w', 'f', '~', 'W', 'T', 'C', 'c', 'K', 'J', 'S', 'A', 'N', 'F', 'R', 'V', 'Z', 'U', 'X', 'm']);
 
@@ -10241,6 +10279,7 @@ function makeShop(id, opts) {
     soulShack: opts.soulShack || false,
     foamBrewers: opts.foamBrewers || false,
     speakingVolumes: opts.speakingVolumes || false,
+    cbPrints: opts.cbPrints || false,
     recordingDesk: opts.recordingDesk
       ? { x: opts.recordingDesk[0], y: opts.recordingDesk[1], sign: opts.recordingDeskSign || 'SKYLAB' }
       : null,
@@ -10472,6 +10511,27 @@ function makeSkatepark() {
     wall: '#2a1e2c', roof: '#c23a3a', doorX: SV_DOOR_X,
   });
 
+  // --- CB PRINTS -- the skatepark's fourth building: a small independent
+  // screen printing shop in the southeast corner of the grass, mirroring
+  // SPEAKING VOLUMES in the southwest corner. A little shorter (6x4) than
+  // the other three so its door row leaves a cleared strip of grass below
+  // it above the tree border. Carved AFTER the tree sprinkle so its
+  // footprint wins over any tree, and the strip of grass below/beside the
+  // door is cleared so the player never spawns boxed in and can always
+  // walk back out to the open grass west of it.
+  const CBP_X = 45, CBP_Y = 30, CBP_W = 6, CBP_H = 4;
+  const CBP_DOOR_X = CBP_X + Math.floor(CBP_W / 2), CBP_DOOR_Y = CBP_Y + CBP_H - 1;
+  for (let y = CBP_Y; y < CBP_Y + CBP_H; y++)
+    for (let x = CBP_X; x < CBP_X + CBP_W; x++) g[y][x] = 'w';
+  g[CBP_DOOR_Y][CBP_DOOR_X] = 'D';
+  for (let x = CBP_X - 2; x <= CBP_X + CBP_W - 2; x++)
+    if (g[CBP_DOOR_Y + 1][x] === '#') g[CBP_DOOR_Y + 1][x] = '.';
+  if (g[CBP_DOOR_Y][CBP_X - 1] === '#') g[CBP_DOOR_Y][CBP_X - 1] = '.';
+  buildings.push({
+    x: CBP_X, y: CBP_Y, w: CBP_W, h: CBP_H, name: 'CB PRINTS',
+    wall: '#23262e', roof: '#ec008c', doorX: CBP_DOOR_X,
+  });
+
   // --- a few outdoor dig spots scattered around the promenade/plaza ring,
   // same "sit right on a guaranteed-clear path tile" placement swamp's
   // boardwalk crates use. All junk for now (no more of the level's
@@ -10505,6 +10565,10 @@ function makeSkatepark() {
     // NOT named `speakingVolumes` on purpose: that key is the interior-shop
     // flag checked by render(), and this outdoor map must not trip it.
     svExterior: { x: SV_X, y: SV_Y, w: SV_W, h: SV_H, doorX: SV_DOOR_X, doorY: SV_DOOR_Y },
+    cbPrintsDoor: { x: CBP_DOOR_X, y: CBP_DOOR_Y },
+    // NOT named `cbPrints` on purpose (same reason as svExterior above):
+    // that key is the interior-shop flag checked by render().
+    cbExterior: { x: CBP_X, y: CBP_Y, w: CBP_W, h: CBP_H, doorX: CBP_DOOR_X, doorY: CBP_DOOR_Y },
     returnPortal: { x: RETURN_PORTAL_X, y: RETURN_PORTAL_Y },
     spawn: { x: 3.5, y: 10.5 }, // tile coords, on the promenade just inside the portal
     palette: {
@@ -11623,6 +11687,42 @@ const shops = {
     // junk crates (see SPEAKING_VOLUMES_JUNK above).
     crates: [ { record: 'vol' }, { svSeed: 0 }, { svSeed: 1 }, { svSeed: 2 }, { svSeed: 3 } ],
   }),
+  // CB PRINTS -- the skatepark's fourth building: a small, artsy independent
+  // screen printing shop owned and run by BONTA, the master screen printer
+  // in the area, who always backs the hip hop scene -- connecting artists
+  // and printing merch. `world: 'skatepark'` makes Halftone Dub a
+  // *skatepark* record. `cbPrints: true` gets the custom interior in
+  // drawCBPrintsInterior() (misregistered CMYK sign, gig-poster wall, tee
+  // rail, four-color carousel press, print drying rack, ink tins, boombox,
+  // screens and ink buckets). Two dig crates, one each side of the shop --
+  // hip hop on the left, reggae on the right -- at (1,5)/(12,5): Halftone
+  // Dub plus one junk crate; shuffleRecordCrates() moves the real one
+  // around each new game. blockTiles (3,6)/(4,6) = the press and (9,6)/
+  // (10,6) = the drying rack: solid wall tiles dressed up by the painter.
+  // Everything is clear of the crates, the counter (row 3) and the door.
+  cbprints: makeShop('cbprints', {
+    world: 'skatepark',
+    floor: '#46434d', plank: '#383540', wallColor: '#1b1a22',
+    cbPrints: true,
+    paintFloor: true,
+    confettiColors: ['#00aeef', '#ec008c', '#ffd400', '#1a1a1a'],
+    blockTiles: [[3, 6], [4, 6], [9, 6], [10, 6]],
+    crateSpots: [[1, 5], [12, 5]],
+    keeper: { name: 'BONTA', shirt: '#2a2c32', skin: '#c88a5c',
+      lines: [
+        "Welcome to CB Prints. Mind the ink -- it gets on everything, and I do mean everything.",
+        "Name's Bonta. Screen printer. Half the shirts, posters and totes in this scene came through this room at some point.",
+        "Hip hop's been good to me. Emcees, DJs, skaters, crews -- they all need merch, and they all need somebody who knows the right artist. I make the intro, then I pull the squeegee.",
+        "One color at a time, one pull at a time. Every print in here is done by hand. Nothing rushed, nothing on a conveyor belt.",
+        "Two crates in here -- hip hop on the left, reggae on the right. Boom-bap and dub: same heartbeat, different island. One of 'em's got what you're after.",
+        "Got a crew name and an idea? Bring the art, or I'll hook you up with somebody who'll draw it. That's how most of this scene got its merch.",
+      ],
+      foundLine: "Halftone Dub -- out of MY crate? I pressed the poster run for that release party years back. Take it, go make some noise, and come back for a tee." },
+    // Two crates: the skatepark's fourth record (Halftone Dub) plus one
+    // junk crate (see CB_PRINTS_JUNK above -- genre picked by which side
+    // of the shop the junk crate ends up on).
+    crates: [ { record: 'print' }, { cbSeed: 0 } ],
+  }),
 };
 
 // door wiring: town door tile -> shop spawn; shop exit tile -> town spawn
@@ -11645,6 +11745,9 @@ transitions['foambrewers:' + key(6, 9)] = { map: 'skatepark', x: skatepark.foamB
 // SPEAKING VOLUMES door wiring -- same pattern as FOAM BREWERS just above.
 transitions['skatepark:' + key(skatepark.speakingVolumesDoor.x, skatepark.speakingVolumesDoor.y)] = { map: 'speakingvolumes', x: 6.5, y: 7.5 };
 transitions['speakingvolumes:' + key(6, 9)] = { map: 'skatepark', x: skatepark.speakingVolumesDoor.x + 0.5, y: skatepark.speakingVolumesDoor.y + 1.6 };
+// CB PRINTS door wiring -- same pattern as SPEAKING VOLUMES just above.
+transitions['skatepark:' + key(skatepark.cbPrintsDoor.x, skatepark.cbPrintsDoor.y)] = { map: 'cbprints', x: 6.5, y: 7.5 };
+transitions['cbprints:' + key(6, 9)] = { map: 'skatepark', x: skatepark.cbPrintsDoor.x + 0.5, y: skatepark.cbPrintsDoor.y + 1.6 };
 // GUT HUT door wiring -- same pattern as the loop above, written out by
 // hand since the swamp isn't on the shared `doors` map (it's not connected
 // to town yet, see the comment on WORLD_DEFS.swamp).
@@ -12681,6 +12784,12 @@ function doInteract() {
     } else if (c.svSeed !== undefined) {
       const svj = SPEAKING_VOLUMES_JUNK[c.svSeed % SPEAKING_VOLUMES_JUNK.length];
       dialog = { name: 'CRATE', lines: [svj.line, svj.reply], i: 0 };
+      state = 'dialog';
+    } else if (c.cbSeed !== undefined) {
+      // CB PRINTS: left-hand crate (x < 7) is hip hop, right-hand is reggae
+      const cbList = CB_PRINTS_JUNK[target.tx < 7 ? 'hiphop' : 'reggae'];
+      const cbj = cbList[Math.floor(Math.random() * cbList.length)];
+      dialog = { name: 'CRATE', lines: [cbj.line, cbj.reply], i: 0 };
       state = 'dialog';
     } else {
       dialog = { name: 'CRATE', lines: [JUNK[c.junkSeed % JUNK.length], 'Keep digging...'], i: 0 };
@@ -20023,6 +20132,7 @@ function render(time) {
   if (map.soulShack) drawSoulShackInterior(time);
   if (map.foamBrewers) drawFoamBrewersInterior(time);
   if (map.speakingVolumes) drawSpeakingVolumesInterior(time);
+  if (map.cbPrints) drawCBPrintsInterior(time);
   if (map.recordShop) drawPurePopInterior(time);
   if (map.poolParty) drawJohnnysPoolInterior(time);
   if (map.keeper) drawKeeper(map.keeper);
@@ -20821,6 +20931,7 @@ function drawSkateparkDecorations(time, map, camX, camY) {
   }
   if (map.foamBrewers) drawFoamBrewersExterior(time, map);
   if (map.svExterior) drawSpeakingVolumesExterior(time, map);
+  if (map.cbExterior) drawCBPrintsExterior(time, map);
 }
 
 // Scatter lily pads + cattails over the swamp's water. Called from render
@@ -22052,6 +22163,7 @@ function drawBuildings(map) {
     const isJohnnysPool = b.name === "JOHNNY'S POOL";
     const isFoamBrewersSign = b.name === 'FOAM BREWERS';
     const isSpeakingVolumesSign = b.name === 'SPEAKING VOLUMES';
+    const isCBPrintsSign = b.name === 'CB PRINTS';
 
     // wall/roof shade colors: each building's wall/roof color never changes,
     // so compute these once per building and cache them on the building
@@ -22622,6 +22734,37 @@ function drawBuildings(map) {
       ctx.fillText(label, tx2, ty2 - 0.8);
       ctx.fillStyle = 'rgba(255,205,140,0.35)';          // highlight where the bulbs hit
       ctx.fillText(label, tx2 - 0.4, ty2 - 1.6);
+    } else if (isCBPrintsSign) {
+      // CB PRINTS' storefront sign: a cream paper-stock plate with a CMYK
+      // color-bar strip along the bottom, and the name "mis-registered" the
+      // way a bad four-color print comes off the press -- cyan, magenta and
+      // yellow ghosts slightly offset behind a black top layer.
+      const sw = Math.min(w - 12, 172), sh = 30;
+      const sx = px + (w - sw) / 2, sy = py + 4;
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.fillRect(sx + 2, sy + 3, sw, sh);
+      ctx.fillStyle = '#120f14';
+      ctx.fillRect(sx - 2, sy - 2, sw + 4, sh + 4);
+      ctx.fillStyle = '#f2ead6';
+      ctx.fillRect(sx, sy, sw, sh);
+      const barW = sw / 4;
+      ['#00aeef', '#ec008c', '#ffd400', '#16141a'].forEach((c, i) => {
+        ctx.fillStyle = c;
+        ctx.fillRect(sx + i * barW, sy + sh - 5, barW, 5);
+      });
+      const cbLabel = 'CB PRINTS';
+      let cbSize = 20;
+      ctx.font = 'bold ' + cbSize + 'px monospace';
+      while (cbSize > 11 && ctx.measureText(cbLabel).width > sw - 16) {
+        cbSize--;
+        ctx.font = 'bold ' + cbSize + 'px monospace';
+      }
+      const cbx = px + w / 2, cby = sy + 2 + (sh - 7) / 2 + cbSize * 0.36;
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#ffd400'; ctx.fillText(cbLabel, cbx, cby + 2);
+      ctx.fillStyle = '#00aeef'; ctx.fillText(cbLabel, cbx - 2, cby + 1);
+      ctx.fillStyle = '#ec008c'; ctx.fillText(cbLabel, cbx + 2, cby - 1);
+      ctx.fillStyle = '#16141a'; ctx.fillText(cbLabel, cbx, cby);
     } else if (isSpeakingVolumesSign && getSpeakingVolumesSign(Math.min(w - 24, 168), Math.round(Math.min(w - 24, 168) * 328 / 560))) {
       // The real Speaking Volumes badge, big and centered on the storefront,
       // overlapping the roof band and the wall below it (the record emblem
@@ -26624,6 +26767,346 @@ function drawSpeakingVolumesExterior(time, map) {
   ctx.fillText('& TAPES', sx + 10, sy + 16);
 }
 
+// CB PRINTS' interior: a small, artsy independent screen printing shop.
+// Misregistered CMYK "CB" / "PRINTS" plaques flank the keeper, a wall of
+// hand-pulled gig posters up on the left, a rail of printed tees on the
+// right, a neon OPEN sign, and on the counter a stack of folded tees, ink
+// tins with a squeegee, and a boombox (Bonta always has hip hop running).
+// On the floor: a four-color carousel press and a print drying rack (the
+// solid blockTiles at (3,6)/(4,6) and (9,6)/(10,6)), stacked silkscreen
+// frames and ink buckets against the side walls, and plaques over the two
+// crates -- HIP HOP (left) and REGGAE (right). Called from render()
+// whenever map.cbPrints is set (shop map only -- the outdoor skatepark map
+// uses `cbExterior` instead so it never trips this).
+function drawCBPrintsInterior(time) {
+  ctx.save();
+  ctx.textBaseline = 'alphabetic';
+  ctx.textAlign = 'center';
+  const C = '#00aeef', M = '#ec008c', Y = '#ffd400', K = '#16141a', PAPER = '#f2ead6';
+
+  // misregistered CMYK lettering on a cream paper plaque
+  const plaque = (cx, label) => {
+    const w = 84, h = 22, x = cx - w / 2, y = 6;
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillRect(x + 2, y + 3, w, h);
+    ctx.fillStyle = PAPER;
+    ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = C; ctx.fillRect(x, y + h - 3, w / 3, 3);
+    ctx.fillStyle = M; ctx.fillRect(x + w / 3, y + h - 3, w / 3, 3);
+    ctx.fillStyle = Y; ctx.fillRect(x + 2 * w / 3, y + h - 3, w / 3, 3);
+    ctx.font = 'bold 14px monospace';
+    ctx.fillStyle = Y; ctx.fillText(label, cx, y + 16);
+    ctx.fillStyle = C; ctx.fillText(label, cx - 1.5, y + 15);
+    ctx.fillStyle = M; ctx.fillText(label, cx + 1.5, y + 14);
+    ctx.fillStyle = K; ctx.fillText(label, cx, y + 15);
+  };
+  plaque(4 * TILE + 2, 'CB');
+  plaque(9 * TILE, 'PRINTS');
+
+  // neon OPEN sign, with an occasional flicker
+  const flick = Math.sin(time * 23) > 0.96 ? 0.35 : 1;
+  ctx.globalAlpha = 0.9 * flick;
+  ctx.strokeStyle = '#ff2aa8';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(358, 8, 44, 18);
+  ctx.fillStyle = '#ff6ac8';
+  ctx.font = 'bold 11px monospace';
+  ctx.fillText('OPEN', 380, 21);
+  ctx.globalAlpha = 1;
+
+  // wall of hand-pulled gig posters, upper-left
+  const poster = (x, y, w, h, bg, c1, c2, variant) => {
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillRect(x + 2, y + 2, w, h);
+    ctx.fillStyle = bg;
+    ctx.fillRect(x, y, w, h);
+    if (variant === 0) {            // big sun over bars
+      ctx.fillStyle = c1;
+      ctx.beginPath(); ctx.arc(x + w / 2, y + h * 0.4, w * 0.3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = c2;
+      for (let i = 0; i < 3; i++) ctx.fillRect(x + 3, y + h * 0.72 + i * 3, w - 6, 2);
+    } else if (variant === 1) {     // bold triangle
+      ctx.fillStyle = c1;
+      ctx.beginPath(); ctx.moveTo(x + w / 2, y + 4); ctx.lineTo(x + w - 3, y + h * 0.7); ctx.lineTo(x + 3, y + h * 0.7); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = c2;
+      ctx.fillRect(x + 3, y + h - 6, w - 6, 3);
+    } else {                        // halftone dots
+      ctx.fillStyle = c1;
+      for (let r = 0; r < 4; r++) for (let c = 0; c < 3; c++) {
+        ctx.beginPath(); ctx.arc(x + 5 + c * 5, y + 5 + r * 5, 1.2 + r * 0.45, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.fillStyle = c2;
+      ctx.fillRect(x + 3, y + h - 6, w - 6, 3);
+    }
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';        // tape
+    ctx.fillRect(x + w / 2 - 3, y - 2, 6, 4);
+  };
+  poster(40, 40, 22, 30, PAPER, M, K, 0);
+  poster(66, 38, 20, 28, Y, K, C, 1);
+  poster(90, 42, 22, 30, '#1f3a5a', Y, M, 2);
+  poster(54, 74, 20, 22, C, PAPER, K, 0);
+  poster(80, 76, 20, 20, M, Y, K, 1);
+
+  // tee rail, upper-right: a steel bar with four printed tees on hangers
+  ctx.fillStyle = '#9a9aa2';
+  ctx.fillRect(330, 38, 82, 3);
+  ctx.fillStyle = '#6a6a72';
+  ctx.fillRect(330, 38, 3, 6); ctx.fillRect(409, 38, 3, 6);
+  const tee = (x, y, col, ink, shape) => {
+    ctx.fillStyle = '#9a9aa2';
+    ctx.fillRect(x + 8, y - 3, 2, 4);
+    ctx.fillStyle = col;
+    ctx.fillRect(x, y + 4, 18, 18);                    // body
+    ctx.fillRect(x - 5, y + 2, 7, 9);                  // sleeves
+    ctx.fillRect(x + 16, y + 2, 7, 9);
+    ctx.fillStyle = 'rgba(0,0,0,0.22)';
+    ctx.fillRect(x + 6, y + 2, 6, 3);                  // neck
+    ctx.fillStyle = 'rgba(0,0,0,0.15)';
+    ctx.fillRect(x, y + 19, 18, 3);
+    ctx.fillStyle = ink;
+    if (shape === 0) { ctx.beginPath(); ctx.arc(x + 9, y + 12, 4, 0, Math.PI * 2); ctx.fill(); }
+    else if (shape === 1) { ctx.fillRect(x + 4, y + 8, 10, 3); ctx.fillRect(x + 4, y + 13, 10, 3); }
+    else { ctx.beginPath(); ctx.moveTo(x + 9, y + 7); ctx.lineTo(x + 14, y + 16); ctx.lineTo(x + 4, y + 16); ctx.closePath(); ctx.fill(); }
+  };
+  tee(338, 44, '#1e1e24', M, 0);
+  tee(362, 44, '#f2ead6', C, 1);
+  tee(386, 44, '#2a2c32', Y, 2);
+
+  // counter (table is row 3): folded tees left of Bonta, ink tins + squeegee
+  // right of him, and a boombox at the far end
+  const tees = [['#1e1e24', M], ['#f2ead6', C], ['#2a4a7a', Y], ['#c22c6c', PAPER]];
+  tees.forEach(([col, ink], i) => {
+    const ty = 2 * TILE + 38 - i * 5;
+    ctx.fillStyle = col;
+    ctx.fillRect(4 * TILE + 8, ty, 28, 5);
+    ctx.fillStyle = ink;
+    ctx.fillRect(4 * TILE + 14, ty + 1, 8, 2);
+  });
+  [[C, 0], [M, 1], [Y, 2]].forEach(([col, i]) => {
+    const tx = 7 * TILE + 12 + i * 12, ty = 2 * TILE + 28;
+    ctx.fillStyle = '#b8b8c0';
+    ctx.fillRect(tx, ty, 10, 11);
+    ctx.fillStyle = col;
+    ctx.fillRect(tx - 1, ty - 2, 12, 4);
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.fillRect(tx + 7, ty + 2, 3, 9);
+  });
+  // squeegee propped against the tins
+  ctx.fillStyle = '#7a5a34';
+  ctx.fillRect(7 * TILE + 46, 2 * TILE + 12, 4, 26);
+  ctx.fillStyle = '#c8c8d0';
+  ctx.fillRect(7 * TILE + 41, 2 * TILE + 34, 14, 3);
+  // boombox
+  ctx.fillStyle = '#1c1c22';
+  ctx.fillRect(9 * TILE + 2, 2 * TILE + 24, 40, 20);
+  ctx.fillStyle = '#2e2e38';
+  ctx.fillRect(9 * TILE + 4, 2 * TILE + 26, 36, 16);
+  const pulse = 0.5 + 0.5 * Math.sin(time * 7.5);
+  [[9 * TILE + 13, 2 * TILE + 34], [9 * TILE + 31, 2 * TILE + 34]].forEach(([cx, cy], i) => {
+    ctx.fillStyle = '#0a0a0e';
+    ctx.beginPath(); ctx.arc(cx, cy, 6.5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#3a3a46';
+    ctx.beginPath(); ctx.arc(cx, cy, 2.6 + pulse * (i ? 0.6 : 1), 0, Math.PI * 2); ctx.fill();
+  });
+  ctx.fillStyle = Y;
+  ctx.fillRect(9 * TILE + 19, 2 * TILE + 28, 6, 3);
+  ctx.strokeStyle = '#9a9aa2';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(9 * TILE + 38, 2 * TILE + 24); ctx.lineTo(9 * TILE + 46, 2 * TILE + 10); ctx.stroke();
+
+  // plaques over the two crates: HIP HOP (left), REGGAE (right)
+  const cratePlaque = (cx, label, bars) => {
+    const w = 46, h = 12, x = cx - w / 2, y = 4 * TILE + 14;
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillRect(x + 1, y + 2, w, h);
+    ctx.fillStyle = PAPER;
+    ctx.fillRect(x, y, w, h);
+    const bw = w / bars.length;
+    bars.forEach((c, i) => { ctx.fillStyle = c; ctx.fillRect(x + i * bw, y + h - 3, bw, 3); });
+    ctx.fillStyle = K;
+    ctx.font = 'bold 7px monospace';
+    ctx.fillText(label, cx, y + 7);
+  };
+  cratePlaque(1 * TILE + 16, 'HIP HOP', [M, Y, C]);
+  cratePlaque(12 * TILE + 16, 'REGGAE', ['#d22a2a', '#f2c200', '#1f9a3a']);
+
+  // --- the carousel press on tiles (3,6)+(4,6): four screens on a rotating arm
+  ctx.fillStyle = '#46434d';
+  ctx.fillRect(3 * TILE, 6 * TILE, 2 * TILE, TILE);        // cover the wall-tile texture
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.beginPath(); ctx.ellipse(4 * TILE, 7 * TILE - 2, 34, 6, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#23242a';
+  ctx.fillRect(3 * TILE + 2, 6 * TILE + 14, 2 * TILE - 4, 14);   // base platform
+  ctx.fillStyle = '#3a3d48';
+  ctx.fillRect(3 * TILE + 2, 6 * TILE + 14, 2 * TILE - 4, 3);
+  // printed shirts on the platens (little colored rectangles)
+  [[3 * TILE + 8, C], [3 * TILE + 26, M], [3 * TILE + 44, Y]].forEach(([x, col]) => {
+    ctx.fillStyle = col; ctx.fillRect(x, 6 * TILE + 19, 12, 6);
+  });
+  // center post and the rotating arms (they drift a little, like mid-print)
+  const sw2 = Math.sin(time * 0.9) * 2;
+  ctx.fillStyle = '#9a9aa2';
+  ctx.fillRect(4 * TILE - 3, 6 * TILE - 26, 6, 44);
+  ctx.fillStyle = '#6a6a72';
+  ctx.fillRect(4 * TILE - 3, 6 * TILE - 26, 2, 44);
+  ctx.fillStyle = '#b8b8c0';
+  ctx.fillRect(3 * TILE + 4, 6 * TILE - 14 + sw2, 2 * TILE - 8, 3);
+  const screenFrame = (x, y, w, h, col) => {
+    ctx.fillStyle = col;
+    ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = 'rgba(235,240,245,0.75)';              // mesh
+    ctx.fillRect(x + 2, y + 2, w - 4, h - 4);
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.fillRect(x + 3, y + 4, w - 6, 2);
+  };
+  screenFrame(3 * TILE - 2, 6 * TILE - 22 + sw2, 22, 16, C);
+  screenFrame(5 * TILE - 20, 6 * TILE - 22 + sw2, 22, 16, M);
+  screenFrame(4 * TILE - 10, 6 * TILE - 38, 20, 13, Y);
+  // squeegee handle on the front screen
+  ctx.fillStyle = '#7a5a34';
+  ctx.fillRect(4 * TILE + 12, 6 * TILE - 44, 3, 16);
+
+  // --- the print drying rack on tiles (9,6)+(10,6)
+  ctx.fillStyle = '#46434d';
+  ctx.fillRect(9 * TILE, 6 * TILE, 2 * TILE, TILE);
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.beginPath(); ctx.ellipse(10 * TILE, 7 * TILE - 2, 34, 6, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#7a5535';
+  ctx.fillRect(9 * TILE + 1, 6 * TILE - 34, 4, 62);          // posts
+  ctx.fillRect(11 * TILE - 5, 6 * TILE - 34, 4, 62);
+  const sheets = [[C, M, Y], [M, Y, PAPER], [Y, C, M]];
+  for (let r = 0; r < 3; r++) {
+    const sy = 6 * TILE - 26 + r * 20;
+    ctx.fillStyle = '#5a3d22';
+    ctx.fillRect(9 * TILE + 1, sy + 14, 2 * TILE - 2, 3);   // shelf board
+    for (let i = 0; i < 3; i++) {
+      const sx = 9 * TILE + 7 + i * 17;
+      ctx.fillStyle = sheets[r][i];
+      ctx.fillRect(sx, sy, 14, 14);
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.fillRect(sx + 3, sy + 4, 8, 2);
+      ctx.fillRect(sx + 3, sy + 8, 6, 2);
+    }
+  }
+  // clothespins along the top
+  ctx.fillStyle = '#d8c090';
+  for (let i = 0; i < 4; i++) ctx.fillRect(9 * TILE + 8 + i * 15, 6 * TILE - 35, 3, 5);
+
+  // --- stacked silkscreen frames leaning on the left wall (clear of the
+  // crate at (1,5) and the press)
+  for (let i = 0; i < 4; i++) {
+    const x = 1 * TILE + 4 + i * 3, y = 7 * TILE + 2 - i * 2;
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.fillRect(x + 2, y + 3, 22, 40);
+    ctx.fillStyle = ['#8a6a44', '#9a9aa2', '#7a5535', '#b8b8c0'][i];
+    ctx.fillRect(x, y, 22, 40);
+    ctx.fillStyle = 'rgba(235,240,245,0.7)';
+    ctx.fillRect(x + 2, y + 2, 18, 36);
+  }
+  ctx.fillStyle = M;
+  ctx.fillRect(1 * TILE + 13, 7 * TILE + 8, 9, 9);          // a ghost of a print on the front screen
+  ctx.fillStyle = C;
+  ctx.fillRect(1 * TILE + 16, 7 * TILE + 13, 7, 7);
+
+  // --- ink buckets against the right wall (clear of the crate at (12,5))
+  [[C, 0], [M, 1], [Y, 2]].forEach(([col, i]) => {
+    const bx = 12 * TILE + 2 + i * 9 - (i === 2 ? 0 : 0), by = 7 * TILE + 14 + (i % 2) * 10;
+    ctx.fillStyle = 'rgba(0,0,0,0.22)';
+    ctx.beginPath(); ctx.ellipse(bx + 7, by + 18, 9, 3, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#b8b8c0';
+    ctx.fillRect(bx, by, 14, 17);
+    ctx.fillStyle = col;
+    ctx.fillRect(bx - 1, by - 2, 16, 5);
+    ctx.fillRect(bx + 3, by + 3, 3, 6);                      // drip
+    ctx.fillStyle = 'rgba(0,0,0,0.22)';
+    ctx.fillRect(bx + 10, by + 3, 4, 14);
+  });
+  ctx.restore();
+}
+
+// CB PRINTS' front: a registration-target emblem over the door (the
+// crosshair-in-a-circle printers line up four colors with), a CMYK test
+// strip across the wall, a couple of pasted-up gig posters and a hanging
+// printed tee, a magenta glow and notes drifting out of the door, and a
+// sandwich board out front. Called from drawSkateparkDecorations()
+// whenever the map has `cbExterior`.
+function drawCBPrintsExterior(time, map) {
+  const f = map.cbExterior;
+  const px = f.x * TILE, py = f.y * TILE;
+  const C = '#00aeef', M = '#ec008c', Y = '#ffd400', K = '#16141a', PAPER = '#f2ead6';
+  // CMYK test strip under the sign
+  ['#00aeef', '#ec008c', '#ffd400', '#16141a', '#f2ead6'].forEach((c, i) => {
+    ctx.fillStyle = c;
+    ctx.fillRect(px + 12 + i * 34, py + 38, 32, 6);
+  });
+  // registration target over the doorway
+  const cx = f.doorX * TILE + TILE / 2, cy = py + 70;
+  ctx.fillStyle = PAPER;
+  ctx.beginPath(); ctx.arc(cx, cy, 13, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = K;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(cx, cy, 9, 0, Math.PI * 2); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(cx - 14, cy); ctx.lineTo(cx + 14, cy);
+  ctx.moveTo(cx, cy - 14); ctx.lineTo(cx, cy + 14);
+  ctx.stroke();
+  ctx.fillStyle = M;
+  ctx.beginPath(); ctx.arc(cx, cy, 3.5, 0, Math.PI * 2); ctx.fill();
+  // pasted-up posters on the wall left of the door
+  const paste = (x, y, w, h, bg, ink) => {
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillRect(x + 1, y + 2, w, h);
+    ctx.fillStyle = bg; ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = ink;
+    ctx.beginPath(); ctx.arc(x + w / 2, y + h * 0.4, w * 0.28, 0, Math.PI * 2); ctx.fill();
+    ctx.fillRect(x + 3, y + h - 6, w - 6, 2);
+  };
+  paste(px + 12, py + 52, 20, 26, PAPER, M);
+  paste(px + 38, py + 58, 20, 26, Y, K);
+  // a printed tee hanging on the right of the door
+  const tx = px + 140, ty = py + 52;
+  ctx.fillStyle = '#9a9aa2';
+  ctx.fillRect(tx + 8, ty - 3, 2, 4);
+  ctx.fillStyle = '#1e1e24';
+  ctx.fillRect(tx, ty + 4, 18, 18);
+  ctx.fillRect(tx - 5, ty + 2, 7, 9);
+  ctx.fillRect(tx + 16, ty + 2, 7, 9);
+  ctx.fillStyle = C;
+  ctx.beginPath(); ctx.arc(tx + 9, ty + 13, 4.5, 0, Math.PI * 2); ctx.fill();
+  // door glow
+  const dx = f.doorX * TILE + TILE / 2, dy = (f.doorY + 1) * TILE;
+  const glow = getGlowSprite(46, 'rgba(255,60,170,ALPHA)');
+  ctx.save();
+  ctx.globalAlpha = 0.3 + 0.1 * Math.sin(time * 4);
+  ctx.drawImage(glow, dx - 46, dy - 60, 92, 92);
+  ctx.restore();
+  // notes drifting out (there's always a beat on in here)
+  ctx.fillStyle = 'rgba(255, 210, 60, 0.85)';
+  ctx.font = 'bold 11px monospace';
+  ctx.textAlign = 'center';
+  for (let i = 0; i < 2; i++) {
+    const ph = (time * 0.45 + i * 0.5) % 1;
+    ctx.globalAlpha = Math.max(0, 1 - ph);
+    ctx.fillText(i === 0 ? '\u266A' : '\u266B', dx + (i === 0 ? -8 : 8) + Math.sin(ph * 6 + i) * 4, dy - 6 - ph * 26);
+  }
+  ctx.globalAlpha = 1;
+  // sandwich board on the grass left of the door
+  const sx = (f.doorX - 1) * TILE + 3, sy = (f.doorY + 1) * TILE + 4;
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.fillRect(sx - 1, sy + 24, 24, 3);
+  ctx.fillStyle = '#3a2410';
+  ctx.fillRect(sx, sy + 20, 3, 6);
+  ctx.fillRect(sx + 17, sy + 20, 3, 6);
+  ctx.fillStyle = '#5a3d20';
+  ctx.fillRect(sx - 1, sy - 1, 22, 24);
+  ctx.fillStyle = '#1e1a22';
+  ctx.fillRect(sx + 1, sy + 1, 18, 20);
+  ctx.font = 'bold 6px monospace';
+  ctx.fillStyle = '#f4efe0';
+  ctx.fillText('TEES &', sx + 10, sy + 9);
+  ctx.fillText('POSTERS', sx + 10, sy + 16);
+}
+
 // A small cluster of jagged crystal shards on a dark wooden base, with a
 // soft pulsing halo behind it (via the shared getGlowSprite() cache --
 // glowColor must contain the literal 'ALPHA' placeholder, same contract as
@@ -27657,6 +28140,8 @@ keeperImgs['A-DOG'] = adogImg;
 keeperImgs['FATTIE B'] = fattiebImg;
 // SPEAKING VOLUMES' keeper, JULIAN -- same idea as A-DOG/FATTIE B above.
 keeperImgs.JULIAN = julianImg;
+// CB PRINTS' keeper, BONTA -- same idea as JULIAN above.
+keeperImgs.BONTA = bontaImg;
 
 function drawAnt(cx, cy, s) {
   // A white ant silhouette (the Anthill Collective mark), drawn on SK1's hat.
