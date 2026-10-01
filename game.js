@@ -11031,6 +11031,7 @@ function makeShop(id, opts) {
     foamBrewers: opts.foamBrewers || false,
     speakingVolumes: opts.speakingVolumes || false,
     cbPrints: opts.cbPrints || false,
+    villageScoop: opts.villageScoop || false,
     recordingDesk: opts.recordingDesk
       ? { x: opts.recordingDesk[0], y: opts.recordingDesk[1], sign: opts.recordingDeskSign || 'SKYLAB' }
       : null,
@@ -11928,6 +11929,11 @@ const shops = {
   villagescoop: makeShop('villagescoop', {
     world: 'swamp',
     floor: '#f3dce6', plank: '#e2bfd0', wallColor: '#7a3a5a',
+    // Hip hop ice cream parlor interior -- see drawVillageScoopInterior().
+    // The two blockTiles are the corner speaker stacks it paints (solid,
+    // like FOAM BREWERS' speaker stacks), clear of the crates/door/counter.
+    villageScoop: true,
+    blockTiles: [[1, 1], [12, 1]],
     keeper: { name: 'QUEEN B', shirt: '#c9a24a', skin: '#c8783a', dance: true,
       lines: [
         'Welcome to Village Scoop, sugar! Walk-up, drive-thru, or swamp-boat-thru — I serve every kind of customer.',
@@ -20959,6 +20965,7 @@ function render(time) {
   if (map.foamBrewers) drawFoamBrewersInterior(time);
   if (map.speakingVolumes) drawSpeakingVolumesInterior(time);
   if (map.cbPrints) drawCBPrintsInterior(time);
+  if (map.villageScoop) drawVillageScoopInterior(time);
   if (map.recordShop) drawPurePopInterior(time);
   if (map.poolParty) drawJohnnysPoolInterior(time);
   if (map.keeper) drawKeeper(map.keeper);
@@ -27103,6 +27110,357 @@ function drawSoulShackInterior(time) {
     ctx.arc(sx, sy + Math.sin(time * 0.6 + i) * 4, 1.4, 0, Math.PI * 2);
     ctx.fill();
   }
+}
+
+// ------------------------------------------------------------------
+// VILLAGE SCOOP interior: a hip hop ice cream parlor. Pink-and-mint
+// checkerboard floor with a giant vinyl-record rug and scattered sprinkles,
+// a pulsing neon cone sign over Queen B's window, graffiti tags and gold
+// record plaques along the back wall, a flavor chalkboard, sneakers
+// tossed over a wire, thumping speaker stacks in the corners, and a
+// counter dressed with a boombox, sundaes, a cone rack and a tip jar.
+// Called from render() whenever map.villageScoop is set (see the
+// `villagescoop` shop def above), same one-function-per-shop pattern as
+// drawSoulShackInterior()/drawFoamBrewersInterior().
+// ------------------------------------------------------------------
+function drawVillageScoopInterior(time) {
+  const map = maps.villagescoop;
+  const RW = 14 * TILE, RH = 10 * TILE;
+  const beat = time * 7.5;
+  const pulse = Math.max(0, Math.sin(beat));
+
+  // --- checkerboard floor: mint squares over the pink planks, floor tiles
+  // only so the counter, crates and door are never painted over ---
+  for (let ty = 1; ty < 9; ty++) {
+    for (let tx = 1; tx < 13; tx++) {
+      if (map.grid[ty][tx] !== '=') continue;
+      const px = tx * TILE, py = ty * TILE;
+      if ((tx + ty) % 2 === 0) {
+        ctx.fillStyle = 'rgba(120,225,200,0.30)';
+        ctx.fillRect(px, py, TILE, TILE);
+      } else {
+        ctx.fillStyle = 'rgba(255,255,255,0.22)';
+        ctx.fillRect(px, py, TILE, TILE);
+      }
+      // sprinkles dropped on the floor
+      const h = hash2(tx, ty);
+      if (h % 3 === 0) {
+        const cols = ['#ff4f9a', '#ffd23f', '#2ecfcf', '#8a4ab0', '#ffffff'];
+        for (let i = 0; i < 2; i++) {
+          ctx.fillStyle = cols[(h >>> (i * 3)) % cols.length];
+          const sx = px + 4 + ((h >>> (i + 2)) % 22), sy = py + 4 + ((h >>> (i + 5)) % 22);
+          ctx.save();
+          ctx.translate(sx, sy);
+          ctx.rotate(((h >>> i) % 8) * 0.4);
+          ctx.fillRect(-2, -0.5, 4, 1.5);
+          ctx.restore();
+        }
+      }
+    }
+  }
+
+  // --- giant vinyl-record rug in the middle of the open floor, with a
+  // pink "cone" label and a slow-turning highlight sweep ---
+  {
+    const rx = 7 * TILE, ry = 6 * TILE + 8, rr = 46;
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.beginPath(); ctx.ellipse(rx, ry + 3, rr, rr * 0.62 + 2, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#17121c';
+    ctx.beginPath(); ctx.ellipse(rx, ry, rr, rr * 0.62, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+    ctx.lineWidth = 1;
+    [0.88, 0.76, 0.64, 0.52].forEach((k) => {
+      ctx.beginPath(); ctx.ellipse(rx, ry, rr * k, rr * k * 0.62, 0, 0, Math.PI * 2); ctx.stroke();
+    });
+    const ang = time * 0.7;
+    ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.ellipse(rx, ry, rr * 0.82, rr * 0.82 * 0.62, 0, ang, ang + 0.7); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(rx, ry, rr * 0.82, rr * 0.82 * 0.62, 0, ang + Math.PI, ang + Math.PI + 0.7); ctx.stroke();
+    ctx.fillStyle = '#ff4f9a';
+    ctx.beginPath(); ctx.ellipse(rx, ry, rr * 0.3, rr * 0.3 * 0.62, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ffd23f';
+    ctx.beginPath(); ctx.arc(rx, ry - 3, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(rx - 4, ry - 1); ctx.lineTo(rx + 4, ry - 1); ctx.lineTo(rx, ry + 8);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#17121c';
+    ctx.beginPath(); ctx.arc(rx, ry, 1.2, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // --- back wall: graffiti tags, gold record plaques, flavor board ---
+  drawScoopGraffiti(2 * TILE - 2, 4, 'FRESH', '#ffd23f', '#ff4f9a');
+  drawScoopGoldRecord(4 * TILE + 6, 12, 10, time, 0);
+  drawScoopFlavorBoard(3 * TILE + 8, 18);
+  drawScoopGoldRecord(8 * TILE + 26, 12, 10, time, 1.4);
+  drawScoopGraffiti(9 * TILE + 8, 4, 'SCOOP', '#2ecfcf', '#ffd23f');
+  drawScoopGoldRecord(11 * TILE + 8, 12, 9, time, 2.6);
+
+  // --- neon cone sign glowing over Queen B's window (keeper at 6,2) ---
+  drawScoopNeon(6 * TILE + 16, 6, time);
+
+  // --- sneakers tossed over a power wire strung across the wall ---
+  ctx.strokeStyle = '#1a120c';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(TILE, 3);
+  ctx.quadraticCurveTo(7 * TILE, 15, 13 * TILE, 3);
+  ctx.stroke();
+  drawScoopSneakers(5 * TILE + 4, 15, time, 0.3, '#ff4f9a');
+  drawScoopSneakers(10 * TILE + 2, 14, time, 1.7, '#2ecfcf');
+
+  // --- speaker stacks in the back corners (solid blockTiles at 1,1/12,1);
+  // woofers thump on the beat ---
+  drawScoopSpeaker(1 * TILE, 0, beat);
+  drawScoopSpeaker(12 * TILE, 0, beat + 1.1);
+
+  // --- the counter (table spans row 3, cols 4-9): boombox, tip jar,
+  // cone rack, sundaes ---
+  drawScoopBoombox(4 * TILE + 2, 3 * TILE + 8, beat);
+  drawScoopTipJar(5 * TILE + 14, 3 * TILE + 9);
+  drawScoopConeRack(7 * TILE + 8, 3 * TILE + 9);
+  drawScoopSundae(8 * TILE + 16, 3 * TILE + 9, '#ff8fb8');
+  drawScoopSundae(9 * TILE + 8, 3 * TILE + 9, '#8be0c8');
+
+  // --- pink/cyan neon spill on the floor, pulsing with the beat ---
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(TILE, TILE, RW - 2 * TILE, RH - 2 * TILE);
+  ctx.clip();
+  ctx.globalCompositeOperation = 'lighter';
+  const pools = [['255,79,154', 0.0], ['46,207,207', 2.4], ['255,210,63', 4.6]];
+  pools.forEach(([rgb, ph]) => {
+    const cx = 7 * TILE + Math.sin(time * 0.8 + ph) * 3.4 * TILE;
+    const cy = 6 * TILE + Math.cos(time * 0.6 + ph * 1.3) * 1.5 * TILE;
+    const glow = getGlowSprite(64, `rgba(${rgb},ALPHA)`);
+    ctx.globalAlpha = 0.22 + 0.10 * pulse;
+    ctx.drawImage(glow, cx - 64, cy - 64, 128, 128);
+  });
+  ctx.restore();
+  ctx.globalAlpha = 1;
+}
+
+// Tilted spray-paint tag on the back wall: chunky outlined letters over a
+// color block, with a drip or two.
+function drawScoopGraffiti(x, y, word, c1, c2) {
+  const w = word.length * 9 + 8;
+  ctx.save();
+  ctx.translate(x, y + 12);
+  ctx.rotate(-0.06);
+  ctx.fillStyle = c2;
+  ctx.beginPath();
+  ctx.moveTo(-2, 2); ctx.lineTo(w * 0.6, -4); ctx.lineTo(w + 2, 0);
+  ctx.lineTo(w, 20); ctx.lineTo(w * 0.4, 22); ctx.lineTo(-3, 18);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = 'rgba(10,8,6,0.6)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.textAlign = 'left';
+  ctx.font = 'bold 11px monospace';
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = '#120a14';
+  ctx.strokeText(word, 4, 16);
+  ctx.fillStyle = c1;
+  ctx.fillText(word, 4, 16);
+  ctx.strokeStyle = c1;
+  ctx.lineWidth = 1;
+  [8, w - 10].forEach((dx, i) => {
+    ctx.beginPath(); ctx.moveTo(dx, 22); ctx.lineTo(dx, 27 + i * 3); ctx.stroke();
+  });
+  ctx.restore();
+}
+
+// A gold record plaque, small and glinting.
+function drawScoopGoldRecord(cx, cy, r, time, seed) {
+  ctx.fillStyle = '#120a14';
+  ctx.fillRect(cx - r - 2, cy - r - 2, r * 2 + 4, r * 2 + 4);
+  ctx.fillStyle = '#6a3a5a';
+  ctx.fillRect(cx - r - 1, cy - r - 1, r * 2 + 2, r * 2 + 2);
+  ctx.fillStyle = '#e8b830';
+  ctx.beginPath(); ctx.arc(cx, cy, r - 1, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = 'rgba(120,80,10,0.55)';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.arc(cx, cy, r * 0.65, 0, Math.PI * 2); ctx.stroke();
+  ctx.fillStyle = '#ff4f9a';
+  ctx.beginPath(); ctx.arc(cx, cy, r * 0.28, 0, Math.PI * 2); ctx.fill();
+  const glint = 0.25 + 0.25 * Math.sin(time * 2 + seed);
+  ctx.fillStyle = `rgba(255,255,255,${glint.toFixed(2)})`;
+  ctx.fillRect(cx - r + 3, cy - r + 3, 3, 3);
+}
+
+// Chalkboard flavor menu, with a colored scoop dot per flavor.
+function drawScoopFlavorBoard(x, y) {
+  ctx.fillStyle = '#1c140f';
+  ctx.fillRect(x - 1, y - 1, 52, 40);
+  ctx.fillStyle = '#5a3d20';
+  ctx.fillRect(x, y, 50, 38);
+  ctx.fillStyle = '#1e2a24';
+  ctx.fillRect(x + 2, y + 2, 46, 34);
+  ctx.textAlign = 'left';
+  ctx.font = 'bold 7px monospace';
+  ctx.fillStyle = '#f4efe0';
+  ctx.fillText('FLAVORS', x + 8, y + 10);
+  ctx.font = 'bold 6px monospace';
+  const rows = [['MINT CHIP', '#7be0b0'], ['GATOR GOLD', '#e8b830'], ['FROG FUDGE', '#8a5a3a']];
+  rows.forEach(([name, col], i) => {
+    ctx.fillStyle = col;
+    ctx.beginPath(); ctx.arc(x + 7, y + 17 + i * 7, 2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#f4efe0';
+    ctx.fillText(name, x + 12, y + 19 + i * 7);
+  });
+}
+
+// Neon ice cream cone sign with a flickering glow.
+function drawScoopNeon(cx, y, time) {
+  const flick = 0.88 + 0.12 * Math.sin(time * 9) * Math.sin(time * 2.3);
+  const glow = getGlowSprite(34, 'rgba(255,79,154,ALPHA)');
+  ctx.save();
+  ctx.globalAlpha = 0.6 * flick;
+  ctx.drawImage(glow, cx - 34, y + 14 - 34, 68, 68);
+  ctx.restore();
+  ctx.fillStyle = '#120b12';
+  ctx.fillRect(cx - 20, y, 40, 30);
+  ctx.strokeStyle = '#3a1a30';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(cx - 19.5, y + 0.5, 39, 29);
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = `rgba(255,190,80,${flick.toFixed(2)})`;
+  ctx.beginPath();
+  ctx.moveTo(cx - 6, y + 14); ctx.lineTo(cx, y + 27); ctx.lineTo(cx + 6, y + 14);
+  ctx.stroke();
+  ctx.strokeStyle = `rgba(255,79,154,${flick.toFixed(2)})`;
+  ctx.beginPath(); ctx.arc(cx, y + 11, 6, Math.PI, 0); ctx.stroke();
+  ctx.strokeStyle = `rgba(46,207,207,${flick.toFixed(2)})`;
+  ctx.beginPath(); ctx.arc(cx, y + 6, 3.5, Math.PI, 0); ctx.stroke();
+  ctx.lineCap = 'butt';
+  ctx.lineJoin = 'miter';
+}
+
+// A pair of sneakers hanging by their laces from the wire, swaying.
+function drawScoopSneakers(x, y, time, seed, col) {
+  const sway = Math.sin(time * 1.2 + seed) * 2;
+  ctx.save();
+  ctx.translate(x + sway * 0.4, y);
+  ctx.rotate(sway * 0.03);
+  ctx.strokeStyle = '#e8e0d0';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-3, 9); ctx.moveTo(0, 0); ctx.lineTo(7, 9); ctx.stroke();
+  [[-9, 0], [3, 1]].forEach(([dx, dy]) => {
+    ctx.fillStyle = '#f4efe0';
+    ctx.fillRect(dx, 9 + dy, 10, 6);
+    ctx.fillStyle = col;
+    ctx.fillRect(dx, 9 + dy, 4, 5);
+    ctx.fillStyle = '#120a14';
+    ctx.fillRect(dx, 15 + dy, 11, 2);
+  });
+  ctx.restore();
+}
+
+// Tall speaker stack in a back corner; the woofer pushes out on the beat.
+function drawScoopSpeaker(x, y, beat) {
+  const w = TILE - 2, h = 2 * TILE - 2;
+  const px = x + 1;
+  ctx.fillStyle = '#0e0c10';
+  ctx.fillRect(px - 1, y + 1, w + 2, h + 2);
+  ctx.fillStyle = '#25202a';
+  ctx.fillRect(px, y + 2, w, h);
+  ctx.fillStyle = 'rgba(255,255,255,0.06)';
+  ctx.fillRect(px, y + 2, w, 2);
+  const cx = px + w / 2;
+  ctx.fillStyle = '#0e0c10';
+  ctx.beginPath(); ctx.arc(cx, y + 16, 5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#ff4f9a';
+  ctx.beginPath(); ctx.arc(cx, y + 16, 2.2, 0, Math.PI * 2); ctx.fill();
+  const pulse = Math.max(0, Math.sin(beat)) * 1.6;
+  ctx.fillStyle = '#0e0c10';
+  ctx.beginPath(); ctx.arc(cx, y + 44, 11 + pulse, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#3a3440';
+  ctx.beginPath(); ctx.arc(cx, y + 44, 7 + pulse * 0.6, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#2ecfcf';
+  ctx.beginPath(); ctx.arc(cx, y + 44, 2.5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#ffd23f';
+  ctx.fillRect(px + w - 6, y + h - 4, 3, 3);
+}
+
+// Chunky boombox on the counter, twin speakers bouncing to the beat.
+function drawScoopBoombox(x, y, beat) {
+  const pulse = Math.max(0, Math.sin(beat)) * 1.2;
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.fillRect(x + 1, y + 1, 30, 3);
+  ctx.fillStyle = '#120a14';
+  ctx.fillRect(x, y - 15, 30, 16);
+  ctx.fillStyle = '#c93a7a';
+  ctx.fillRect(x + 1, y - 14, 28, 14);
+  ctx.strokeStyle = '#120a14';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(x + 5, y - 15); ctx.lineTo(x + 8, y - 20); ctx.lineTo(x + 22, y - 20); ctx.lineTo(x + 25, y - 15); ctx.stroke();
+  [[8, 0], [22, 0]].forEach(([dx]) => {
+    ctx.fillStyle = '#120a14';
+    ctx.beginPath(); ctx.arc(x + dx, y - 6, 5 + pulse * 0.5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#4a4452';
+    ctx.beginPath(); ctx.arc(x + dx, y - 6, 3 + pulse * 0.4, 0, Math.PI * 2); ctx.fill();
+  });
+  ctx.fillStyle = '#ffd23f';
+  ctx.fillRect(x + 12, y - 11, 6, 3);
+  ctx.fillStyle = '#2ecfcf';
+  ctx.fillRect(x + 12, y - 6, 2, 2);
+  ctx.fillRect(x + 16, y - 6, 2, 2);
+}
+
+// Tip jar -- "TIPS" label, a few coins and a bill inside.
+function drawScoopTipJar(x, y) {
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.fillRect(x - 5, y - 1, 12, 3);
+  ctx.fillStyle = 'rgba(200,235,240,0.75)';
+  ctx.fillRect(x - 5, y - 12, 11, 12);
+  ctx.fillStyle = '#e8b830';
+  ctx.fillRect(x - 3, y - 3, 3, 2);
+  ctx.fillRect(x + 1, y - 4, 3, 2);
+  ctx.fillStyle = '#7bc47b';
+  ctx.fillRect(x - 3, y - 8, 7, 4);
+  ctx.fillStyle = '#ff4f9a';
+  ctx.fillRect(x - 6, y - 14, 13, 3);
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  ctx.fillRect(x - 4, y - 11, 1, 8);
+}
+
+// Little stand holding a row of waffle cones, scoops on top.
+function drawScoopConeRack(x, y) {
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.fillRect(x - 2, y - 1, 22, 3);
+  ctx.fillStyle = '#5a3d20';
+  ctx.fillRect(x - 2, y - 4, 22, 4);
+  const scoops = ['#ff8fb8', '#8be0c8', '#ffd23f'];
+  scoops.forEach((c, i) => {
+    const cx = x + 3 + i * 7;
+    ctx.fillStyle = '#d9a35a';
+    ctx.beginPath();
+    ctx.moveTo(cx - 3, y - 12); ctx.lineTo(cx + 3, y - 12); ctx.lineTo(cx, y - 4);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = c;
+    ctx.beginPath(); ctx.arc(cx, y - 14, 3.6, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.fillRect(cx - 2, y - 16, 1, 1);
+  });
+}
+
+// Sundae in a tulip glass with a cherry on top.
+function drawScoopSundae(x, y, scoopCol) {
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.fillRect(x - 5, y - 1, 11, 3);
+  ctx.fillStyle = 'rgba(210,235,245,0.85)';
+  ctx.fillRect(x - 1, y - 5, 3, 5);
+  ctx.beginPath();
+  ctx.moveTo(x - 6, y - 12); ctx.lineTo(x + 6, y - 12); ctx.lineTo(x + 2, y - 5); ctx.lineTo(x - 2, y - 5);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = scoopCol;
+  ctx.beginPath(); ctx.arc(x, y - 13, 5, Math.PI, 0); ctx.fill();
+  ctx.fillStyle = '#5a2a18';
+  ctx.fillRect(x - 4, y - 13, 8, 2);
+  ctx.fillStyle = '#d6242c';
+  ctx.beginPath(); ctx.arc(x, y - 19, 2, 0, Math.PI * 2); ctx.fill();
 }
 
 // ------------------------------------------------------------------
