@@ -10092,6 +10092,15 @@ julianImg.src = 'assets/julian.png';
 const bontaImg = new Image();
 bontaImg.src = 'assets/bonta.png';
 
+// QUEEN B -- the keeper of VILLAGE SCOOP out in the swamp: the drive-thru ice
+// cream queen, serving up every marvelous flavor with her sidekick Hendrix
+// (the sunglasses-wearing dachshund standing right beside her in the art).
+// A killer singer and passionate about the recycling industry. Drawn as a
+// shop keeper (see keeperImgs['QUEEN B'] below), not a roaming npc, so she
+// doesn't need an entry in SHOP_NPC_IMAGES.
+const queenbImg = new Image();
+queenbImg.src = 'assets/queenb.png';
+
 // ARKAIIK -- beat poet, emcee, and visual artist of many flavors: a very
 // talented, creative regular at GREEN DOOR STUDIO and at cyphers all over
 // the local scene. Black-and-white patterned beanie and a big multicolor
@@ -10527,7 +10536,10 @@ function makeSwamp() {
   // solid-walls-plus-one-door construction as GUT HUT above; doorX/doorY
   // are exported below (swampFoodDoor) for the transition wiring outside
   // this function.
-  const FOOD_X = 12, FOOD_Y = 4, FOOD_W = 6, FOOD_H = 4;
+  // Trimmed down from the original 6x4 to a compact 4x3 (same footprint as
+  // THE SOUL SHACK) so it no longer eats up the whole FOOD clearing -- that
+  // freed-up ground to its east is where VILLAGE SCOOP now sits.
+  const FOOD_X = 10, FOOD_Y = 5, FOOD_W = 4, FOOD_H = 3;
   const FOOD_DOOR_X = FOOD_X + Math.floor(FOOD_W / 2);
   const FOOD_DOOR_Y = FOOD_Y + FOOD_H - 1;
   for (let y = FOOD_Y; y < FOOD_Y + FOOD_H; y++)
@@ -10536,6 +10548,23 @@ function makeSwamp() {
   buildings.push({
     x: FOOD_X, y: FOOD_Y, w: FOOD_W, h: FOOD_H, name: 'SWAMP FOOD',
     wall: '#5a4a2e', roof: '#302416', doorX: FOOD_DOOR_X,
+  });
+
+  // VILLAGE SCOOP -- a small drive-thru ice cream shop right next to SWAMP
+  // FOOD, run by QUEEN B (and her sidekick Hendrix). Same 4x3 footprint and
+  // solid-walls-plus-one-door construction as SWAMP FOOD above, with one
+  // free tile of ground between the two buildings. doorX/doorY are exported
+  // below (villageScoopDoor) for the transition wiring outside this
+  // function. Strawberry-pink walls so it pops against the swamp browns.
+  const VS_X = 15, VS_Y = 5, VS_W = 4, VS_H = 3;
+  const VS_DOOR_X = VS_X + Math.floor(VS_W / 2);
+  const VS_DOOR_Y = VS_Y + VS_H - 1;
+  for (let y = VS_Y; y < VS_Y + VS_H; y++)
+    for (let x = VS_X; x < VS_X + VS_W; x++) g[y][x] = 'w';
+  g[VS_DOOR_Y][VS_DOOR_X] = 'D';
+  buildings.push({
+    x: VS_X, y: VS_Y, w: VS_W, h: VS_H, name: 'VILLAGE SCOOP',
+    wall: '#f0a8c4', roof: '#b03a6e', doorX: VS_DOOR_X,
   });
 
   // BURLINGTON RECORDS -- third swamp building: a proper record shop that
@@ -10674,12 +10703,22 @@ function makeSwamp() {
   // Force the tile just south of each door back to open ground.
   for (const [dx, dy] of [
     [HUT_DOOR_X, HUT_DOOR_Y], [FOOD_DOOR_X, FOOD_DOOR_Y],
+    [VS_DOOR_X, VS_DOOR_Y],
     [BURL_DOOR_X, BURL_DOOR_Y], [JFP_DOOR_X, JFP_DOOR_Y],
     [JPOOL_DOOR_X, JPOOL_DOOR_Y], [TL_DOOR_X, TL_DOOR_Y],
     [SOUL_DOOR_X, SOUL_DOOR_Y],
   ]) {
     if (g[dy + 1] && g[dy + 1][dx] === '#') g[dy + 1][dx] = '.';
   }
+  // SWAMP FOOD/VILLAGE SCOOP are now smaller and sit side by side, so keep
+  // the walking routes around them open regardless of where the random tree
+  // sprinkle landed: the one-tile gap between the two buildings (x=14), and
+  // the row just above them (y=4), which carries the player over to the
+  // boardwalk that leads east to the ballpark's west gate at x=19.
+  for (let yy = FOOD_Y - 1; yy <= FOOD_Y + FOOD_H; yy++)
+    if (g[yy][FOOD_X + FOOD_W] === '#') g[yy][FOOD_X + FOOD_W] = '.';
+  for (let xx = FOOD_X + 1; xx < FOOD_CLEAR_X + FOOD_CLEAR_W; xx++)
+    if (g[FOOD_Y - 1][xx] === '#') g[FOOD_Y - 1][xx] = '.';
 
   // Return portal back to the Burlington (town) map -- sits on the west
   // edge, right on the boardwalk trunk (row 12) so it's immediately
@@ -10747,6 +10786,7 @@ function makeSwamp() {
     _crateKeys: crateKeys,
     swamp: true, gutHutDoor: { x: HUT_DOOR_X, y: HUT_DOOR_Y },
     swampFoodDoor: { x: FOOD_DOOR_X, y: FOOD_DOOR_Y },
+    villageScoopDoor: { x: VS_DOOR_X, y: VS_DOOR_Y },
     burlingtonRecordsDoor: { x: BURL_DOOR_X, y: BURL_DOOR_Y },
     jfpDoor: { x: JFP_DOOR_X, y: JFP_DOOR_Y },
     jfpPoolDoor: { x: JPOOL_DOOR_X, y: JPOOL_DOOR_Y },
@@ -11874,6 +11914,35 @@ const shops = {
       { id: 'digon', tx: 6, ty: 6, label: 'PLAY DIG ON' },
     ],
   }),
+  // VILLAGE SCOOP -- the swamp's drive-thru ice cream shop, next door to
+  // SWAMP FOOD. QUEEN B runs the window with her sidekick Hendrix (the
+  // sunglasses-wearing dachshund baked into her portrait, see
+  // keeperImgs['QUEEN B']), serves every flavor under the sun, sings like a
+  // star, and is passionate about the recycling industry (green recycling
+  // symbol on her top). `world: 'swamp'` for consistency with the other
+  // swamp shops, but nothing in here is a hidden record -- both crates are
+  // junk on purpose, so none of the swamp's five records (moss, frog,
+  // choir, swampdrum, honeysuckle) are ever in them. `dance: true` gives
+  // her the same bounce/sway and floating music notes FATTIE B gets, since
+  // she's always mid-song behind the counter.
+  villagescoop: makeShop('villagescoop', {
+    world: 'swamp',
+    floor: '#f3dce6', plank: '#e2bfd0', wallColor: '#7a3a5a',
+    keeper: { name: 'QUEEN B', shirt: '#c9a24a', skin: '#c8783a', dance: true,
+      lines: [
+        'Welcome to Village Scoop, sugar! Walk-up, drive-thru, or swamp-boat-thru — I serve every kind of customer.',
+        'That cool pup in the shades is Hendrix. He supervises every cone, and he takes quality control very seriously.',
+        'Swamp Mint Chip, Gator Gold Praline, Frog Leg Fudge Ripple... okay, the frog one is just a name. Mostly. Pick a flavor!',
+        '*hums a few bars, then belts out a high note that rattles the cone display* Don\'t mind me. The singing comes with the sprinkles.',
+        'Recycling is my whole heart. Every cup, every lid, every spoon in here gets a second life. Reduce, reuse, recycle — then add a cherry on top.',
+        'See the little green symbol on my top? Wore it on purpose. The planet deserves a scoop of love too.',
+        'Two crates in the back, if you\'re digging. Mostly my old favorites and some mystery mixes — nothing you\'re hunting for, I\'m afraid.',
+        'Hendrix got his first pair of sunglasses at a yard sale. Now he won\'t leave the house without them. Iconic.',
+      ] },
+    // Two crates in here, both junk on purpose -- Village Scoop is an ice
+    // cream window, not a record spot.
+    crates: [ { junkSeed: 6 }, { junkSeed: 7 } ],
+  }),
   // BURLINGTON RECORDS -- the swamp's third building: a proper record shop
   // that set up out here off the boardwalk, owned and run by Ian.
   // `world: 'swamp'` again for consistency with GUT HUT/SWAMP FOOD above --
@@ -12510,6 +12579,9 @@ transitions['guthut:' + key(6, 9)] = { map: 'swamp', x: swamp.gutHutDoor.x + 0.5
 // SWAMP FOOD door wiring -- same pattern as GUT HUT above.
 transitions['swamp:' + key(swamp.swampFoodDoor.x, swamp.swampFoodDoor.y)] = { map: 'swampfood', x: 6.5, y: 7.5 };
 transitions['swampfood:' + key(6, 9)] = { map: 'swamp', x: swamp.swampFoodDoor.x + 0.5, y: swamp.swampFoodDoor.y + 1.6 };
+// VILLAGE SCOOP door wiring -- same pattern as SWAMP FOOD just above.
+transitions['swamp:' + key(swamp.villageScoopDoor.x, swamp.villageScoopDoor.y)] = { map: 'villagescoop', x: 6.5, y: 7.5 };
+transitions['villagescoop:' + key(6, 9)] = { map: 'swamp', x: swamp.villageScoopDoor.x + 0.5, y: swamp.villageScoopDoor.y + 1.6 };
 // BURLINGTON RECORDS door wiring -- same pattern as GUT HUT above.
 transitions['swamp:' + key(swamp.burlingtonRecordsDoor.x, swamp.burlingtonRecordsDoor.y)] = { map: 'burlington', x: 6.5, y: 7.5 };
 transitions['burlington:' + key(6, 9)] = { map: 'swamp', x: swamp.burlingtonRecordsDoor.x + 0.5, y: swamp.burlingtonRecordsDoor.y + 1.6 };
@@ -22913,6 +22985,7 @@ function drawBuildings(map) {
     const isDeli = b.name === 'Kountry Kart Deli';
     const isBurlington = b.name === 'BURLINGTON RECORDS';
     const isSwampFood = b.name === 'SWAMP FOOD';
+    const isVillageScoop = b.name === 'VILLAGE SCOOP';
     const isJohnnysFunPark = b.name === "JOHNNY'S FUN PARK";
     const isJohnnysPool = b.name === "JOHNNY'S POOL";
     const isFoamBrewersSign = b.name === 'FOAM BREWERS';
@@ -22985,7 +23058,7 @@ function drawBuildings(map) {
     ctx.fillStyle = 'rgba(0,0,0,0.3)';
     ctx.fillRect(px, py + TILE + 8, w, 3);
 
-    if (!isDeli && !isBurlington && !isJohnnysPool) {
+    if (!isDeli && !isBurlington && !isJohnnysPool && !isVillageScoop) {
       for (let i = 0; i < b.w; i++) {
         if (b.x + i === b.doorX) continue;
         if (i === 0 || i === b.w - 1) continue;
@@ -23205,6 +23278,67 @@ function drawBuildings(map) {
       lines.forEach((line, i) => {
         ctx.fillText(line, px + w / 2, sy + lineH * (i + 1) - 3);
       });
+    } else if (isVillageScoop) {
+      // Ice cream parlor front: a cream sign plate with a strawberry-pink
+      // border (name + a little DRIVE-THRU tag), a striped awning over the
+      // pickup window, and a mini menu board beside the door.
+      const maxTextW = w + 20;
+      let fsize = 15;
+      ctx.font = 'bold ' + fsize + 'px monospace';
+      while (fsize > 10 && ctx.measureText(b.name).width > maxTextW) {
+        fsize--;
+        ctx.font = 'bold ' + fsize + 'px monospace';
+      }
+      const textW = ctx.measureText(b.name).width;
+      const sw = textW + 24, sh = fsize + 22;
+      const sx = px + (w - sw) / 2, sy = py + 3;
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.fillRect(sx + 2, sy + 3, sw, sh);
+      ctx.fillStyle = '#e0508a';
+      ctx.fillRect(sx - 3, sy - 3, sw + 6, sh + 6);
+      ctx.fillStyle = '#fff4e0';
+      ctx.fillRect(sx, sy, sw, sh);
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#b02a60';
+      ctx.font = 'bold ' + fsize + 'px monospace';
+      ctx.fillText(b.name, px + w / 2, sy + 5 + fsize);
+      ctx.fillStyle = '#3a9a8a';
+      ctx.font = 'bold 8px monospace';
+      ctx.fillText('DRIVE-THRU', px + w / 2, sy + fsize + 17);
+
+      // pickup window (the tile left of the door) with a striped awning
+      const wx = px + TILE + 3, wy = py + h - TILE - 14;
+      ctx.fillStyle = '#3a2a1c';
+      ctx.fillRect(wx - 2, wy - 2, 28, 24);
+      ctx.fillStyle = '#ffe9f0';
+      ctx.fillRect(wx, wy, 24, 20);
+      ctx.fillStyle = 'rgba(0,0,0,0.18)';
+      ctx.fillRect(wx, wy + 11, 24, 9);
+      ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      ctx.fillRect(wx + 2, wy + 2, 6, 6);
+      ctx.fillStyle = '#e0508a';                            // counter ledge
+      ctx.fillRect(wx - 3, wy + 20, 30, 3);
+      for (let i = 0; i < 5; i++) {                         // awning stripes
+        ctx.fillStyle = i % 2 === 0 ? '#e0508a' : '#fff4e0';
+        ctx.fillRect(wx - 4 + i * 6.4, wy - 9, 6.4, 8);
+      }
+      ctx.fillStyle = '#1c140f';
+      ctx.fillRect(wx - 4, wy - 1, 32, 1);
+
+      // mini menu board with a little cone
+      const mx = px + 3 * TILE + 6, my = py + h - TILE - 12;
+      ctx.fillStyle = '#2a1c12';
+      ctx.fillRect(mx - 2, my - 2, 24, 28);
+      ctx.fillStyle = '#3a2a3a';
+      ctx.fillRect(mx, my, 20, 24);
+      ctx.fillStyle = '#e8c07a';                            // cone
+      ctx.beginPath();
+      ctx.moveTo(mx + 5, my + 11); ctx.lineTo(mx + 15, my + 11); ctx.lineTo(mx + 10, my + 22);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#ff8fb8';                            // scoops
+      ctx.beginPath(); ctx.arc(mx + 10, my + 8, 5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#8fe0c8';
+      ctx.beginPath(); ctx.arc(mx + 10, my + 4, 3.5, 0, Math.PI * 2); ctx.fill();
     } else if (isSwampFood) {
       // Weathered wooden plank sign, roped up over the doorway -- reads as
       // a hand-built swamp-shack sign rather than the standard dark plate
@@ -28896,6 +29030,8 @@ keeperImgs['FATTIE B'] = fattiebImg;
 keeperImgs.JULIAN = julianImg;
 // CB PRINTS' keeper, BONTA -- same idea as JULIAN above.
 keeperImgs.BONTA = bontaImg;
+// VILLAGE SCOOP's keeper, QUEEN B -- same idea as BONTA above.
+keeperImgs['QUEEN B'] = queenbImg;
 
 function drawAnt(cx, cy, s) {
   // A white ant silhouette (the Anthill Collective mark), drawn on SK1's hat.
