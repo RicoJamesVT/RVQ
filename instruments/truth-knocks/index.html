@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
+<meta name="theme-color" content="#05080c" />
+<title>Truth Knocks — Swamp Beat 'Em Up</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<main class="app">
+  <div class="game-shell" id="gameShell" aria-label="Truth Knocks beat 'em up">
+    <div class="stage-zone" id="stageZone">
+      <div class="stage-wrap" id="stageWrap">
+        <canvas id="game" width="1280" height="720" aria-label="Truth Knocks game"></canvas>
+        <div id="titleScreen" class="title-screen">
+          <img src="assets/splash.png" alt="Truth Knocks" />
+          <div class="title-actions">
+            <button id="startBtn" class="primary">START GAME</button>
+            <button id="howBtn">HOW TO PLAY</button>
+          </div>
+          <p class="title-tip"><span class="tip-keys">WASD/arrows · Shift run · J/K/U/L attacks · I jump · Space dash · P pause</span><span class="tip-touch">Use the on-screen buttons</span></p>
+        </div>
+        <div id="pauseBadge" class="pause-badge hidden">PAUSED · <span class="tip-keys">press P</span><span class="tip-touch">tap ❚❚ to resume</span></div>
+        <div id="gameOver" class="game-over hidden">
+          <div class="ko">K.O.</div>
+          <div class="over-line">THE SWAMP WON THIS ROUND</div>
+          <div class="final-stats">SCORE <b id="finalScore">0000000</b> · WAVE <b id="finalWave">1</b></div>
+          <button id="restartBtn" class="primary">RUN IT BACK</button>
+        </div>
+      </div>
+    </div>
+    <button id="pauseBtn" class="pause-btn" type="button" aria-label="Pause / resume">❚❚</button>
+    <div id="rotateHint" class="rotate-hint hidden" aria-hidden="true">↻ Rotate your phone for a bigger view</div>
+    <div class="pad-zone" id="padZone" aria-label="Movement controls">
+      <div class="dpad">
+        <button data-key="up" class="control up">▲</button>
+        <button data-key="left" class="control left">◀</button>
+        <button data-key="down" class="control down">▼</button>
+        <button data-key="right" class="control right">▶</button>
+      </div>
+    </div>
+    <div class="action-zone" id="actionZone" aria-label="Action controls">
+      <div class="action-pad">
+        <button data-key="punch" class="control punch">PUNCH</button>
+        <button data-key="kick" class="control kick">KICK</button>
+        <button data-key="cane" class="control cane">CANE</button>
+        <button data-key="jump" class="control jump">JUMP</button>
+        <button data-key="dash" class="control dash">DASH</button>
+        <button data-key="special" class="control special">SPECIAL</button>
+      </div>
+    </div>
+  </div>
+  <div id="howPanel" class="how-panel hidden">
+    <strong>TRUTH KNOCKS</strong>
+    <span><b>Build combos:</b> PUNCH → KICK → CANE. Hits build ENERGY. Spend 60 ENERGY on SPECIAL.</span>
+    <span><b>Move:</b> WASD / arrows. Up/Down changes your 2.5D lane; Down alone crouches. Hold a direction to run or use <b>Shift</b>. <b>Jump:</b> I / JUMP. <b>Dash:</b> Space or DASH, in any direction. <b>Pause:</b> P.</span>
+    <span><b>2.5D combat:</b> line yourself up with enemies before attacking. You can sidestep around them, air-control jumps, dash diagonally, and use attack lunges to close distance. Watch the yellow <b>!</b>, dodge, grab ♥ health and ⚡ energy drops, and survive every wave.</span>
+    <span><b>Bosses:</b> every 5th wave swaps the grunts for a swamp boss — the Frog King, King Gator, then the Rat King — with a health bar up top. They hit harder than grunts, get faster and more aggressive past 50% HP, and each lap through the three gets tougher.</span>
+  <span><b>Two maps:</b> clear all 3 Dead Swamp bosses and you're airlifted to the Hog Yard for 10 waves of the crowned pig grunt, then it's back to the swamp for another lap — tougher every time around.</span>
+  </div>
+</main>
+<script src="game.js"></script>
+</body>
+</html>
