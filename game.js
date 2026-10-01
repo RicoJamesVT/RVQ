@@ -9398,6 +9398,23 @@ julianImg.src = 'assets/julian.png';
 const bontaImg = new Image();
 bontaImg.src = 'assets/bonta.png';
 
+// ARKAIIK -- beat poet, emcee, and visual artist of many flavors: a very
+// talented, creative regular at GREEN DOOR STUDIO and at cyphers all over
+// the local scene. Black-and-white patterned beanie and a big multicolor
+// knit hood, long dark hair, paint-splattered black jacket and olive cargos,
+// olive backpack, a crown-logo sketchbook under one arm and a spray can in
+// the other hand. Drawn as a shop npc (see SHOP_NPC_IMAGES below), hanging
+// out on the open floor inside CB PRINTS.
+const arkaiikImg = new Image();
+arkaiikImg.src = 'assets/arkaiik.png';
+
+// THE GHOST -- a gold-chained, mic-in-hand Wu-Tang-style emcee posted up on the
+// FOAM BREWERS dance floor (navy durag with a gold W, white-and-navy bomber,
+// gold W medallion, cargos and Timbs). Same pre-drawn shop-npc treatment as
+// Krishna/Arkaiik (see SHOP_NPC_IMAGES below).
+const ghostImg = new Image();
+ghostImg.src = 'assets/ghost.png';
+
 // ---------------------------------------------------------------- maps
 const SOLID = new Set(['#', 'w', 'f', '~', 'W', 'T', 'C', 'c', 'K', 'J', 'S', 'A', 'N', 'F', 'R', 'V', 'Z', 'U', 'X', 'm']);
 
@@ -11657,6 +11674,23 @@ const shops = {
     // Four crates: the skatepark's second record (Nitro Pour) plus three
     // eccentric-local-tunes junk crates (see FOAM_JUNK above).
     crates: [ { record: 'foam' }, { foamSeed: 0 }, { foamSeed: 1 }, { foamSeed: 2 } ],
+    // THE GHOST -- a gold-chained emcee holding the mic out on the dance
+    // floor at (9,5): clear of the counter (row 3) and tap tower (9,3), the
+    // crates (1,4)/(1,6)/(12,4)/(12,6), the barrel tables (3,7)/(10,7), and
+    // the door (6,9)/spawn (6.5,7.5), with walking room on every side.
+    // Full pre-drawn image, feet on the floor line -- see
+    // SHOP_NPC_IMAGES/drawShopImageNpcs.
+    npcs: [
+      { id: 'ghost', tx: 9, ty: 5, name: 'THE GHOST', sprite: 'ghost', spriteH: 84,
+        lines: [
+          "Ghost. Iron-clad and gold-plated. You hear the beat first, then you hear me -- that's how the room knows it's showtime.",
+          "Rough, raw, straight off the dome. I don't write the rhyme down, I let it come out the way the street told it to me.",
+          "Staten Island raised me, but a good room is a good room. FOAM's got the right kind of energy -- loud, warm, and nobody's faking it.",
+          "Gold chain, white jacket, mic in hand. That's the whole uniform. The rest is vocabulary.",
+          "Dig through those crates slow. Back in the day we'd flip a dusty soul record into a whole album. The best samples don't announce themselves.",
+          "Fattie B on the decks, me on the mic -- that's a cypher waiting to happen. Somebody drop the needle.",
+        ] },
+    ],
   }),
   // SPEAKING VOLUMES -- the skatepark's third building: a proper independent
   // record store, owned and run by Julian, who also plays in the local band
@@ -11708,6 +11742,24 @@ const shops = {
     confettiColors: ['#00aeef', '#ec008c', '#ffd400', '#1a1a1a'],
     blockTiles: [[3, 6], [4, 6], [9, 6], [10, 6]],
     crateSpots: [[1, 5], [12, 5]],
+    // ARKAIIK -- beat poet, emcee and visual artist, posted up on the open
+    // floor at (7,5): clear of the counter (row 3), the press (3,6)/(4,6)
+    // and its screens, the drying rack (9,6)/(10,6), both crates (1,5)/(12,5),
+    // the stacked frames and ink buckets on the side walls, and the door
+    // (6,9)/spawn (6.5,7.5), with walking room on every side. Same "full
+    // pre-drawn image, feet anchored to the floor line" treatment as
+    // Krishna/ES-K/etc -- see SHOP_NPC_IMAGES/drawShopImageNpcs.
+    npcs: [
+      { id: 'arkaiik', tx: 7, ty: 5, name: 'ARKAIIK', sprite: 'arkaiik',
+        lines: [
+          "Arkaiik. Poet, emcee, painter -- whatever the page, the mic or the wall needs me to be that day.",
+          "I'm in here all the time. Bonta pulls the prints, I bring the art. Half my sketchbook ends up on somebody's shirt eventually.",
+          "You'll catch me at GREEN DOOR STUDIO most weeks, and at just about every cypher in the scene. If there's a circle forming, I'm probably in it.",
+          "Beat poetry, bars, spray paint, ink -- people want me to pick one. Nah. It's all the same thing: you've got something to say, so you find a way to say it.",
+          "Cyphers are the best school there is. No script, no do-overs. Somebody drops a beat, you drop a verse, and the whole circle keeps you honest.",
+          "Check the crates while you're here. Hip hop on the left, reggae on the right. Dig slow -- the good stuff never jumps out at you.",
+        ] },
+    ],
     keeper: { name: 'BONTA', shirt: '#2a2c32', skin: '#c88a5c',
       lines: [
         "Welcome to CB Prints. Mind the ink -- it gets on everything, and I do mean everything.",
@@ -28306,7 +28358,7 @@ function drawKeeper(k) {
 // anchored to the tile's floor line — no procedural fallback, since there's
 // no simple shape that stands in for this art; it just waits for the image
 // to finish loading.
-const SHOP_NPC_IMAGES = { kanga: kangaImg, truth: truthImg, bill: billImg, rza: rzaImg, gza: gzaImg, zach: zachImg, humble: humbleImg, hicks: hicksImg, mavstar: mavstarImg, boxguts: boxgutsImg, trav: travImg, esk: esKImg, krishna: krishnaImg };
+const SHOP_NPC_IMAGES = { kanga: kangaImg, truth: truthImg, bill: billImg, rza: rzaImg, gza: gzaImg, zach: zachImg, humble: humbleImg, hicks: hicksImg, mavstar: mavstarImg, boxguts: boxgutsImg, trav: travImg, esk: esKImg, krishna: krishnaImg, arkaiik: arkaiikImg, ghost: ghostImg };
 
 function drawShopImageNpcs(map) {
   if (!map.npcs) return;
