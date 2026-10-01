@@ -1207,6 +1207,11 @@ const MINIGAME_ACTIONS = {
   // collaborative in-world cypher: create, pass the mic, build the room's
   // vibe, then leave a memory in the Blackbook.
   cypher: () => enterMinigame(createGreenDoorCypherGame()),
+  // CB PRINTS Cypher -- the next-generation cypher for LEVEL 3 (SKATEPARK):
+  // pick Fattie B / DJ A_Dog / Kanga on the decks, trade verses with the
+  // nine-artist circle over three rounds, and pull a screen-printed poster
+  // of the night. See createCBPrintsCypherGame().
+  cbcypher: () => enterMinigame(createCBPrintsCypherGame()),
   // The church street organ -- a gospel drawbar organ tucked into the
   // church's (very much not a church) interior. Same "full standalone web
   // app, not a canvas mini-game" shape as chess/beatbot just above (own
@@ -4692,7 +4697,9 @@ function createGreenDoorCypherGame() {
     ] },
   ];
 
-  let phase = 'intro'; // intro | choose | player | npc | pass | finale | done
+  let phase = 'intro'; // intro | choose | player | pass | npc | finale | done
+  const ROUNDS = 3;    // you -> pass the mic -> them, three times, then the finale
+  let round = 0;
   let phaseTimer = 0;
   let playerStep = 0;
   let npcStep = 0;
@@ -4722,8 +4729,10 @@ function createGreenDoorCypherGame() {
     phase = next;
     phaseTimer = 0;
     if (next === 'player') {
-      playerStep = 0; chosenWords = []; wordSetIndex = 0; currentPrompt = PROMPTS[Math.floor(Math.random()*PROMPTS.length)];
-      startAudio();
+      playerStep = 0; if (round === 0) chosenWords = []; wordSetIndex = 0; currentPrompt = PROMPTS[Math.floor(Math.random()*PROMPTS.length)];
+      // Start the beat once. Restarting it every round re-queued the already
+      // scheduled lookahead and doubled up the drums.
+      if (!audioNext) startAudio();
     }
     if (next === 'npc') npcStep = 0;
     if (next === 'pass') { passIndex = 0; }
@@ -4788,7 +4797,7 @@ function createGreenDoorCypherGame() {
     lastJudge = label;
     judgeTimer = 0.7;
     playerStep++;
-    if (playerStep >= TURN_STEPS) setPhase('npc');
+    if (playerStep >= TURN_STEPS) setPhase('pass');
   }
 
   function choosePass(delta) {
@@ -4872,6 +4881,7 @@ function createGreenDoorCypherGame() {
   function drawTopHud() {
     ctx.textAlign='left'; ctx.fillStyle='#f4ecd8'; ctx.font='bold 15px monospace'; ctx.fillText('GREEN DOOR CYPHER',34,190);
     ctx.fillStyle='#8b8290'; ctx.font='12px monospace'; ctx.fillText(currentPrompt,34,211);
+    ctx.textAlign='center'; ctx.fillStyle='#8b8290'; ctx.font='12px monospace'; ctx.fillText(`ROUND ${Math.min(round+1,ROUNDS)} / ${ROUNDS}`,cx,190);
     ctx.textAlign='right'; ctx.fillStyle='#e0a030'; ctx.font='bold 14px monospace'; ctx.fillText(`VIBE ${Math.round(vibe)}`,926,190);
     ctx.fillStyle='rgba(244,236,216,0.12)'; ctx.fillRect(650,200,276,8);
     ctx.fillStyle=vibe>=70?'#8cff5f':'#e0a030'; ctx.fillRect(650,200,276*(vibe/100),8);
@@ -5006,21 +5016,23 @@ function createGreenDoorCypherGame() {
         scheduleBeat();
         // Keyboard controls are deliberately simple and forgiving.
         const keysMap=[['arrowleft',0],['a',0],['arrowup',1],['w',1],['arrowright',2],['d',2]];
-        for(const [k,idx] of keysMap){const down=!!keys[k]; if(down&&!prev[k]){judgeChoice(idx);break;}}
-        prev.left=!!keys.arrowleft||!!keys.a; prev.up=!!keys.arrowup||!!keys.w; prev.right=!!keys.arrowright||!!keys.d;
+        // Edge-triggered: one hit per key press, however long it is held.
+        let fired=false;
+        for(const [k,idx] of keysMap){const down=!!keys[k]; if(down&&!prev[k]&&!fired){judgeChoice(idx);fired=true;} prev[k]=down;}
         // Let the beat advance naturally even if the player does nothing.
         // The turn has a hard musical length so a player can never get stuck
         // here by simply choosing not to press anything.
         if(music.ctx){const stepNow=Math.floor((music.ctx.currentTime-(audioNext-STEP))/STEP); if(stepNow!==lastBeat){lastBeat=stepNow;}}
-        if (phaseTimer >= TURN_STEPS * STEP + 0.35) setPhase('npc');
+        if (phaseTimer >= TURN_STEPS * STEP + 0.35) setPhase('pass');
         return;
       }
       if (phase==='npc') {
         scheduleBeat(); npcStep += dt/STEP; vibe=Math.min(100,vibe+0.04*dt*60); peakVibe=Math.max(peakVibe,vibe);
-        if(npcStep>=NPC_STEPS){setPhase('pass');}
+        if(npcStep>=NPC_STEPS){ round++; setPhase(round>=ROUNDS ? 'finale' : 'player'); }
         return;
       }
       if (phase==='pass') {
+        scheduleBeat();
         if(menuMove){choosePass(menuMove);menuMove=0;}
         if(selectMove){choosePass(selectMove);selectMove=0;}
         if(interactPressed){passMic();}
@@ -5060,6 +5072,688 @@ function createGreenDoorCypherGame() {
     onExit(){
       if (saved) return;
     },
+  };
+}
+
+// ---- CB PRINTS Cypher: "Pull a Print" ---------------------------------------
+// The next generation of the Green Door Cypher, built for CB PRINTS out in the
+// skatepark (LEVEL 3). Same spirit -- collaborative, no fail state, a missed
+// beat is just a stumble -- but a fuller night:
+//   * WHO'S ON THE DECKS: pick Fattie B, DJ A_Dog, or Kanga. Each one brings
+//     their own tempo and drum pattern, and you hear the beat while you browse.
+//   * A real circle: all nine artists stand around the floor ring (Arkaiik,
+//     Fattie B, DJ A_Dog, Tha Truth, Boxguts, Mavstar, MC Humble, SK1, Kanga).
+//   * Trade-off rounds: you -> pass the mic -> them, three times. Whoever you
+//     hand the mic to rides the last words YOU hit. A NEW VOICE (someone who
+//     hasn't had the mic yet tonight) lifts the room more.
+//   * The finale pulls a screen-printed gig poster of the night (four ink
+//     layers slide into register), and the shop remembers it in localStorage.
+// All nine artists use art that is already loaded elsewhere in this file.
+function createCBPrintsCypherGame() {
+  const cx = VIEW_W / 2;
+  const ROUNDS = 3;
+  const TURN_STEPS = 20;   // words the player can land per turn
+  const NPC_STEPS = 12;    // eighth-note steps an artist holds the mic
+  const BEAT_WINDOW = 0.23;
+  const CMYK = { c: '#00aeef', m: '#ec008c', y: '#ffd400', k: '#16141a', paper: '#f2ead6' };
+
+  // The three turntablists. Picking one sets the tempo and the drum feel for
+  // the whole night. Patterns are 16-step bars: kicks/snares are step lists,
+  // bass/lead are [step, midiNote] pairs.
+  const DECKS = [
+    { id: 'fattieb', name: 'FATTIE B', img: fattiebImg, accent: CMYK.y, bpm: 102,
+      tag: 'PARTY ROCKER', blurb: 'Decades of rocking rooms. Big, bright, and built to move.',
+      kicks: [0, 4, 8, 12], snares: [4, 12], openHat: 14,
+      bass: [[0, 41], [6, 41], [8, 44], [14, 43]], lead: [[2, 65], [10, 68]], leadType: 'square' },
+    { id: 'adog', name: 'DJ A_DOG', img: adogImg, accent: CMYK.c, bpm: 96,
+      tag: 'SCRATCH & SKATE', blurb: 'Punk, funk, soul, hip hop. Genres stop mattering when the needle drops.',
+      kicks: [0, 3, 8, 11], snares: [4, 12], openHat: 15, scratch: [6, 7, 14, 15],
+      bass: [[0, 43], [8, 40]], lead: [[7, 72], [15, 70]], leadType: 'sawtooth' },
+    { id: 'kanga', name: 'DJ KANGA', img: kangaImg, accent: '#4ad0ff', bpm: 90,
+      tag: 'NEW ENGLAND CUTS', blurb: 'Heavy pockets and clean blends. The turntablist of the town.',
+      kicks: [0, 3, 6, 8, 10], snares: [4, 12], openHat: 14,
+      bass: [[0, 38], [3, 38], [8, 41]], lead: [[6, 67], [14, 63]], leadType: 'triangle' },
+  ];
+
+  // The full circle -- nine artists. `role: 'dj'` turns their mic turn into
+  // a cut-up of your words instead of a verse.
+  const NPCS = [
+    { id: 'arkaiik', name: 'ARKAIIK', img: arkaiikImg, accent: CMYK.m, tag: 'BEAT POET', lines: [
+      'Arkaiik. Poet, emcee, painter -- whatever the page, the mic or the wall needs me to be.',
+      'Beat poetry, bars, spray paint, ink. It\'s all the same thing: you\'ve got something to say.',
+      'Cyphers are the best school there is. No script, no do-overs, the circle keeps you honest.',
+    ] },
+    { id: 'fattieb', name: 'FATTIE B', img: fattiebImg, accent: CMYK.y, role: 'dj', tag: 'PARTY ROCKER', lines: [
+      'Selector first, rocker always. I\'m gonna keep this floor moving.',
+      'Pass me the mic and I\'ll pass you the break -- watch the crowd answer.',
+      'Records, room, energy. That\'s the whole recipe.',
+    ] },
+    { id: 'adog', name: 'DJ A_DOG', img: adogImg, accent: CMYK.c, role: 'dj', tag: 'SCRATCH & SKATE', lines: [
+      'Boards on the wall, wax on the counter, beats always running.',
+      'Genres don\'t mean much once the needle drops. Punk, funk, soul, hip hop -- it all cuts.',
+      'Stay positive, keep digging, keep pushing.',
+    ] },
+    { id: 'truth', name: 'THA TRUTH', img: truthImg, accent: '#e0a030', tag: 'HOUSE HEART', lines: [
+      'You don\'t have to be perfect. Just bring something.',
+      'This circle gets better when everybody adds to it. That\'s the whole point.',
+      'Green Door runs on love, energy, and community -- and so does this print shop tonight.',
+    ] },
+    { id: 'boxguts', name: 'BOXGUTS', img: boxgutsImg, accent: '#ff5fa0', tag: 'BARS ON BARS', lines: [
+      'Boxguts. Bars on bars on bars -- I don\'t write filler.',
+      'Ferocious on the mic, always have been.',
+      'Come correct or don\'t come at all. That\'s the only rule I follow.',
+    ] },
+    { id: 'mavstar', name: 'MAVSTAR', img: mavstarImg, accent: '#b98cff', tag: 'CYPHER STAPLE', lines: [
+      'Mavstar. I\'m a staple in any cypher -- always hungry to rap.',
+      'Doesn\'t matter what room it is, put a mic near me and I\'m rapping.',
+      'Perfect ain\'t a destination, it\'s the whole walk. Let\'s go.',
+    ] },
+    { id: 'humble', name: 'MC HUMBLE', img: humbleImg, accent: '#ffe14a', tag: 'FREESTYLE WIZARD', lines: [
+      'Humble. They call me the freestyle master -- the freestyle wizard.',
+      'I don\'t write it down. It just comes when the beat hits right.',
+      'This is what hip hop expression and freestyle rhyming is supposed to look like.',
+    ] },
+    { id: 'sk1', name: 'SK1', img: keeperImgs['SK1'], accent: '#ff6b4a', tag: 'THE HOST', lines: [
+      'SK1. Third Thursdays is my night -- I host it, and I keep the circle grounded.',
+      'I get on the mic too when it\'s my turn, and I represent the culture right.',
+      'Freestyle\'s a responsibility, not just a flex. I take it seriously.',
+    ] },
+    { id: 'kanga', name: 'DJ KANGA', img: kangaImg, accent: '#4ad0ff', role: 'dj', tag: 'TURNTABLIST', lines: [
+      'I don\'t rhyme, I cut. Sit in this pocket, I got the breaks.',
+      'That\'s the illest cut in New England right there. Feel the blend.',
+      'I\'ll ride the wax under whoever\'s next.',
+    ] },
+  ];
+
+  const WORD_SETS = [
+    ['INK', 'FIRE', 'FUTURE'],
+    ['LAYER', 'RISE', 'GRIND'],
+    ['VOICE', 'VISION', 'PEACE'],
+    ['STREET', 'CANVAS', 'TOGETHER'],
+    ['PRESS', 'BUILD', 'SHARE'],
+    ['HEART', 'HOME', 'HOPE'],
+    ['PASS', 'MIC', 'LOVE'],
+    ['SCRATCH', 'SKATE', 'GROW'],
+    ['COLOR', 'WAX', 'FLOW'],
+    ['PULL', 'STAMP', 'REPEAT'],
+  ];
+  const PROMPTS = [
+    'WHAT ARE YOU PRINTING?',
+    'WHO PUT YOU ON?',
+    'WHAT COLOR IS YOUR SOUND?',
+    'WHAT DO YOU STAND FOR?',
+    'WHERE YOU FROM?',
+  ];
+  const TIERS = [
+    { min: 0,  name: 'TEST PRINT' },
+    { min: 55, name: 'FIRST PRESS' },
+    { min: 75, name: 'LIMITED RUN' },
+    { min: 90, name: 'SOLD OUT' },
+  ];
+  function tierFor(v) { let t = TIERS[0]; for (const x of TIERS) if (v >= x.min) t = x; return t; }
+
+  // ---- state ----
+  let phase = 'intro'; // intro | deck | player | pass | npc | finale | print
+  let phaseTimer = 0;
+  let deckIndex = 0;
+  let deck = DECKS[0];
+  let STEP = 60 / deck.bpm / 2;
+  let round = 0;
+  let playerStep = 0;
+  let countIn = 0;
+  let npcStep = 0;
+  let turnIndex = 0;
+  let passIndex = 0;
+  let vibe = 42, peakVibe = 42, combo = 0;
+  let playerHits = 0, playerMisses = 0;
+  let lastJudge = '', judgeTimer = 0;
+  let toast = '', toastTimer = 0;
+  let wordSetIndex = 0;
+  let currentPrompt = PROMPTS[0];
+  let roundWords = [[], [], []];
+  let featured = [];            // artist ids who have had the mic tonight
+  let audioNext = 0, audioStep = 0, gridLockUntil = 0, audioOn = false;
+  let saved = false, nightCount = 0, bestVibe = 0;
+  let finalMessage = '';
+  let lastPrintTier = TIERS[0].name;
+  const prevKeys = {};
+  try { nightCount = Number(localStorage.getItem('cbPrintsCypherCount') || 0); } catch (e) { nightCount = 0; }
+  try { bestVibe = Number(localStorage.getItem('cbPrintsCypherBest') || 0); } catch (e) { bestVibe = 0; }
+
+  // Fixed splat layout (side margins) so the room "gets printed up" as the vibe climbs.
+  const SPLATS = [];
+  for (let i = 0; i < 18; i++) {
+    const left = i % 2 === 0;
+    SPLATS.push({
+      x: left ? 18 + ((i * 37) % 90) : VIEW_W - 18 - ((i * 53) % 90),
+      y: 130 + ((i * 71) % 420),
+      r: 18 + (i * 13) % 28,
+      col: [CMYK.c, CMYK.m, CMYK.y][i % 3],
+    });
+  }
+
+  // ---- phase flow ----
+  function setPhase(next) {
+    phase = next;
+    phaseTimer = 0;
+    if (next === 'deck') { startAudio(); }
+    if (next === 'player') {
+      playerStep = 0; wordSetIndex = 0; roundWords[round] = [];
+      currentPrompt = PROMPTS[Math.floor(Math.random() * PROMPTS.length)];
+      countIn = round === 0 ? 1.3 : 0.5;
+    }
+    if (next === 'pass') passIndex = Math.min(passIndex, NPCS.length - 1);
+    if (next === 'npc') npcStep = 0;
+    if (next === 'finale') {
+      finalMessage = vibe >= 78 ? 'THAT\'S A WRAP. PULL THE PRINT.' : 'THAT\'S WHAT THE CIRCLE IS FOR.';
+    }
+    if (next === 'print') { persistPrint(); }
+  }
+
+  // ---- audio (the picked DJ's beat; runs continuously from the deck screen on) ----
+  function startAudio() {
+    music.start();
+    audioNext = music.ctx ? music.ctx.currentTime + 0.06 : 0;
+    audioStep = 0;
+    audioOn = true;
+  }
+  function beatNow() { return music.ctx ? music.ctx.currentTime : performance.now() / 1000; }
+  function scheduleBeat() {
+    if (!music.ctx || !audioOn) return;
+    const now = music.ctx.currentTime;
+    if (!audioNext) audioNext = now + 0.05;
+    while (audioNext < now + 0.8) {
+      const t = audioNext, s = audioStep % 16;
+      if (deck.kicks.includes(s)) music.kick(t);
+      if (deck.snares.includes(s)) music.snare(t);
+      music.hat(t, s === deck.openHat, s % 2 ? 0.045 : 0.075);
+      if (deck.scratch && deck.scratch.includes(s)) music.hat(t + STEP * 0.5, false, 0.06);
+      for (const [bs, midi] of deck.bass) if (bs === s) music.note(t, 'triangle', midi, STEP * 1.8, 0.045, 0.04);
+      for (const [ls, midi] of deck.lead) if (ls === s) music.note(t, deck.leadType, midi, STEP * 0.6, 0.025, 0.02);
+      audioNext += STEP;
+      audioStep++;
+    }
+  }
+  function timingOffset() {
+    const local = beatNow() - (audioNext - STEP);
+    const wrapped = ((local + STEP / 2) % STEP + STEP) % STEP - STEP / 2;
+    return Math.abs(wrapped);
+  }
+  function lockDeck() {
+    deck = DECKS[deckIndex];
+    STEP = 60 / deck.bpm / 2;
+    // The grid only agrees with the new tempo once the already-scheduled
+    // lookahead (0.8s) has played out, so no hits count until then.
+    gridLockUntil = beatNow() + 1.2;
+    setPhase('player');
+  }
+
+  // ---- player turn ----
+  function judgeChoice(index) {
+    if (phase !== 'player' || countIn > 0 || beatNow() < gridLockUntil) return;
+    const off = timingOffset();
+    let label, gain;
+    if (off <= 0.075) { label = 'PERFECT'; gain = 5; }
+    else if (off <= 0.14) { label = 'NICE'; gain = 3; }
+    else if (off <= BEAT_WINDOW) { label = 'GOOD'; gain = 2; }
+    else { label = 'SHAKE IT OFF'; gain = -2; }
+    if (gain > 0) {
+      combo++; playerHits++;
+      vibe = Math.min(100, vibe + gain + Math.min(3, Math.floor(combo / 4)));
+      roundWords[round].push(WORD_SETS[wordSetIndex % WORD_SETS.length][index]);
+      wordSetIndex++;
+    } else {
+      combo = 0; playerMisses++;
+      vibe = Math.max(10, vibe - 1);
+    }
+    peakVibe = Math.max(peakVibe, vibe);
+    lastJudge = label; judgeTimer = 0.7;
+    playerStep++;
+    if (playerStep >= TURN_STEPS) setPhase('pass');
+  }
+
+  // ---- passing the mic ----
+  function movePass(delta) { passIndex = (passIndex + delta + NPCS.length) % NPCS.length; }
+  function passMic() {
+    turnIndex = passIndex;
+    const who = NPCS[turnIndex];
+    if (!featured.includes(who.id)) {
+      featured.push(who.id);
+      vibe = Math.min(100, vibe + 6);
+      peakVibe = Math.max(peakVibe, vibe);
+      toast = 'NEW VOICE  +6'; toastTimer = 1.4;
+    }
+    setPhase('npc');
+  }
+  const PASS_W = 250, PASS_H = 86, PASS_GX = 14, PASS_GY = 12;
+  const PASS_X0 = cx - (3 * PASS_W + 2 * PASS_GX) / 2, PASS_Y0 = 232;
+  function passRect(i) {
+    const c = i % 3, r = Math.floor(i / 3);
+    return { x: PASS_X0 + c * (PASS_W + PASS_GX), y: PASS_Y0 + r * (PASS_H + PASS_GY), w: PASS_W, h: PASS_H };
+  }
+  function deckRect(i) { return { x: cx - 385 + i * 270, y: 190, w: 250, h: 250 }; }
+  function inRect(vx, vy, r) { return vx >= r.x && vx <= r.x + r.w && vy >= r.y && vy <= r.y + r.h; }
+
+  // ---- persistence ----
+  function persistPrint() {
+    if (saved) return;
+    saved = true;
+    nightCount++;
+    const tier = tierFor(vibe);
+    lastPrintTier = tier.name;
+    const entry = {
+      count: nightCount,
+      date: new Date().toISOString().slice(0, 10),
+      vibe: Math.round(vibe), peak: Math.round(peakVibe),
+      tier: tier.name, deck: deck.name,
+      artists: featured.map((id) => NPCS.find((n) => n.id === id).name),
+      bars: roundWords.map((w) => w.slice(-4)),
+    };
+    if (Math.round(vibe) > bestVibe) bestVibe = Math.round(vibe);
+    try {
+      localStorage.setItem('cbPrintsCypherCount', String(nightCount));
+      localStorage.setItem('cbPrintsCypherLast', JSON.stringify(entry));
+      localStorage.setItem('cbPrintsCypherBest', String(bestVibe));
+    } catch (e) { /* private/incognito storage may be unavailable; the night still completes */ }
+  }
+
+  // ---- drawing helpers ----
+  function sprite(img, x, y, w, h, sheet) {
+    if (!img || !img.complete || !img.naturalWidth) return false;
+    if (sheet) {
+      const frame = Math.floor(performance.now() / 160) % 3;
+      ctx.drawImage(img, frame * SHEET_CW, 1 * SHEET_CH, SHEET_CW, SHEET_CH, x - w / 2, y - h, w, h);
+    } else {
+      const sc = Math.min(w / img.naturalWidth, h / img.naturalHeight);
+      const dw = img.naturalWidth * sc, dh = img.naturalHeight * sc;
+      ctx.drawImage(img, x - dw / 2, y - dh, dw, dh);
+    }
+    return true;
+  }
+  // Same as sprite(), but falls back to a colored initial if the art hasn't
+  // loaded (offline / missing asset) so no card is ever blank.
+  function face(n, x, y, w, h) {
+    if (sprite(n.img, x, y, w, h, false)) return;
+    ctx.fillStyle = n.accent;
+    ctx.beginPath(); ctx.arc(x, y - h / 2, Math.min(w, h) * 0.4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = CMYK.k; ctx.textAlign = 'center'; ctx.font = 'bold ' + Math.round(h * 0.4) + 'px monospace';
+    ctx.fillText(n.name.replace(/^(DJ|MC) /, '')[0], x, y - h / 2 + h * 0.14);
+  }
+  // Misregistered CMYK lettering: three offset ink layers under a top layer.
+  function printText(text, x, y, font, off, top, p) {
+    const o = off === undefined ? 1.5 : off;
+    const a = p === undefined ? 1 : p;
+    ctx.font = font; ctx.textAlign = 'center';
+    ctx.globalAlpha = Math.max(0, Math.min(1, a));
+    ctx.fillStyle = CMYK.y; ctx.fillText(text, x, y + o);
+    ctx.fillStyle = CMYK.c; ctx.fillText(text, x - o, y);
+    ctx.fillStyle = CMYK.m; ctx.fillText(text, x + o, y - o);
+    ctx.fillStyle = top || CMYK.paper; ctx.fillText(text, x, y);
+    ctx.globalAlpha = 1;
+  }
+  function regMark(x, y, col) {
+    ctx.strokeStyle = col || 'rgba(244,236,216,0.5)'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(x, y, 8, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x - 13, y); ctx.lineTo(x + 13, y); ctx.moveTo(x, y - 13); ctx.lineTo(x, y + 13); ctx.stroke();
+  }
+  function halftone(x, y, cols, rows, gap, col, maxR) {
+    ctx.fillStyle = col;
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+      const rad = maxR * (c + 1) / cols;
+      ctx.beginPath(); ctx.arc(x + c * gap, y + r * gap, rad, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  function ringPos(i) {
+    const a = (-70 + i * 40) * Math.PI / 180;
+    return { x: cx + Math.cos(a) * 330, y: 405 + Math.sin(a) * 100, depth: (Math.sin(a) + 1) / 2 };
+  }
+
+  function drawRoom(time) {
+    ctx.fillStyle = '#0d0b12'; ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+    ctx.fillStyle = '#17141d'; ctx.fillRect(0, 108, VIEW_W, VIEW_H - 108);
+    // ink splats climb with the vibe
+    const shown = Math.floor(vibe / 100 * SPLATS.length);
+    ctx.globalAlpha = 0.17;
+    for (let i = 0; i < shown; i++) {
+      const s = SPLATS[i];
+      ctx.fillStyle = s.col; ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    // banner
+    ctx.fillStyle = '#231d2b'; ctx.fillRect(28, 18, VIEW_W - 56, 86);
+    halftone(40, 30, 14, 3, 12, 'rgba(236,0,140,0.28)', 4);
+    halftone(VIEW_W - 40 - 13 * 12, 30, 14, 3, 12, 'rgba(0,174,239,0.28)', 4);
+    ctx.fillStyle = CMYK.c; ctx.fillRect(28, 98, (VIEW_W - 56) / 4, 6);
+    ctx.fillStyle = CMYK.m; ctx.fillRect(28 + (VIEW_W - 56) / 4, 98, (VIEW_W - 56) / 4, 6);
+    ctx.fillStyle = CMYK.y; ctx.fillRect(28 + (VIEW_W - 56) / 2, 98, (VIEW_W - 56) / 4, 6);
+    ctx.fillStyle = CMYK.paper; ctx.fillRect(28 + 3 * (VIEW_W - 56) / 4, 98, (VIEW_W - 56) / 4, 6);
+    regMark(52, 50); regMark(VIEW_W - 52, 50);
+    printText('CB PRINTS CYPHER', cx, 58, 'bold 30px monospace', 2 + Math.sin(time * 1.3) * 0.4);
+    ctx.textAlign = 'center'; ctx.fillStyle = '#c9c0b4'; ctx.font = 'bold 12px monospace';
+    ctx.fillText('ONE PULL  •  ONE COLOR  •  ONE CIRCLE  •  PASS THE MIC', cx, 84);
+    // floor circle (a registration target on the concrete)
+    ctx.fillStyle = 'rgba(236,0,140,0.07)'; ctx.beginPath(); ctx.ellipse(cx, 405, 300, 100, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(0,174,239,0.4)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(cx, 405, 300, 100, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,212,0,0.25)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(cx, 405, 306, 105, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = 'rgba(244,236,216,0.12)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(cx - 330, 405); ctx.lineTo(cx + 330, 405); ctx.moveTo(cx, 295); ctx.lineTo(cx, 515); ctx.stroke();
+  }
+
+  // Everyone standing around the ring. `skipId` leaves a gap for whoever has
+  // stepped to center stage.
+  function drawRing(skipId, highlightId) {
+    const order = NPCS.map((n, i) => ({ n, i, p: ringPos(i) })).sort((a, b) => a.p.y - b.p.y);
+    for (const { n, p } of order) {
+      if (n.id === skipId) continue;
+      const sc = 0.8 + 0.3 * p.depth;
+      const bob = Math.sin(performance.now() / 200 + p.x) * (vibe > 70 ? 3 : 1.2);
+      if (n.id === highlightId) {
+        ctx.fillStyle = n.accent; ctx.globalAlpha = 0.28;
+        ctx.beginPath(); ctx.ellipse(p.x, p.y + 2, 34, 9, 0, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
+      }
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.beginPath(); ctx.ellipse(p.x, p.y + 1, 22 * sc, 6 * sc, 0, 0, Math.PI * 2); ctx.fill();
+      face(n, p.x, p.y + bob, 64 * sc, 64 * sc);
+      if (featured.includes(n.id)) { // little ink dot: they've had the mic
+        ctx.fillStyle = n.accent; ctx.beginPath(); ctx.arc(p.x, p.y + 10, 3, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+  }
+
+  function drawHud() {
+    ctx.textAlign = 'left'; ctx.fillStyle = CMYK.paper; ctx.font = 'bold 14px monospace';
+    ctx.fillText('ON THE DECKS: ' + deck.name, 34, 130);
+    // round pips
+    ctx.textAlign = 'center'; ctx.fillStyle = '#8b8290'; ctx.font = '11px monospace';
+    ctx.fillText('ROUND ' + Math.min(round + 1, ROUNDS) + ' / ' + ROUNDS, cx, 124);
+    for (let i = 0; i < ROUNDS; i++) {
+      ctx.fillStyle = i < round ? [CMYK.c, CMYK.m, CMYK.y][i % 3] : (i === round ? CMYK.paper : 'rgba(244,236,216,0.2)');
+      ctx.beginPath(); ctx.arc(cx - 20 + i * 20, 136, 4.5, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.textAlign = 'right'; ctx.fillStyle = CMYK.y; ctx.font = 'bold 14px monospace';
+    ctx.fillText('VIBE ' + Math.round(vibe), 926, 130);
+    ctx.fillStyle = 'rgba(244,236,216,0.12)'; ctx.fillRect(650, 136, 276, 8);
+    ctx.fillStyle = vibe >= 70 ? '#8cff5f' : CMYK.y; ctx.fillRect(650, 136, 276 * (vibe / 100), 8);
+    if (toast && toastTimer > 0) {
+      ctx.textAlign = 'right'; ctx.fillStyle = '#8cff5f'; ctx.font = 'bold 13px monospace';
+      ctx.fillText(toast, 926, 162);
+    }
+  }
+
+  function drawPlayerTurn() {
+    drawHud();
+    drawRing(null, null);
+    sprite(CHARACTERS[selectedCharacter].img, cx, 432, 70, 96, true);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = CMYK.paper; ctx.font = 'bold 16px monospace'; ctx.fillText('YOUR TURN  --  ' + currentPrompt, cx, 168);
+    const ready = countIn <= 0 && beatNow() >= gridLockUntil;
+    ctx.fillStyle = '#8b8290'; ctx.font = '12px monospace';
+    ctx.fillText(ready ? 'HIT A WORD ON THE BEAT. THERE IS NO WRONG ANSWER.' : 'GET READY... THE ' + deck.name + ' BEAT IS LOCKING IN', cx, 186);
+    const words = WORD_SETS[wordSetIndex % WORD_SETS.length];
+    const xs = [cx - 190, cx, cx + 190];
+    for (let i = 0; i < 3; i++) {
+      const pulse = ready ? 1 + 0.035 * Math.sin(performance.now() / 110 + i) : 1;
+      ctx.save(); ctx.translate(xs[i], 222); ctx.scale(pulse, pulse);
+      ctx.globalAlpha = ready ? 1 : 0.45;
+      ctx.fillStyle = '#2c2434'; ctx.fillRect(-110, -26, 220, 52);
+      ctx.strokeStyle = [CMYK.c, CMYK.m, CMYK.y][i]; ctx.lineWidth = 3; ctx.strokeRect(-110, -26, 220, 52);
+      ctx.fillStyle = CMYK.paper; ctx.font = 'bold 18px monospace'; ctx.fillText(words[i], 0, 6);
+      ctx.restore();
+    }
+    ctx.globalAlpha = 1;
+    const bar = roundWords[round].slice(-4).join('  •  ');
+    ctx.fillStyle = deck.accent; ctx.font = 'bold 13px monospace';
+    ctx.fillText(bar ? 'YOUR BAR: ' + bar : '', cx, 530);
+    if (lastJudge && judgeTimer > 0) {
+      ctx.fillStyle = lastJudge === 'SHAKE IT OFF' ? '#c06a7d' : '#8cff5f'; ctx.font = 'bold 22px monospace';
+      ctx.fillText(lastJudge, cx, 556);
+    }
+    if (combo > 1) { ctx.fillStyle = CMYK.y; ctx.font = 'bold 13px monospace'; ctx.fillText('FLOW x' + combo, cx, 574); }
+    ctx.fillStyle = '#8b8290'; ctx.font = '11px monospace';
+    ctx.fillText('◀ 1 / A     ▲ 2 / W     3 / D ▶', cx, 592);
+  }
+
+  function drawPass() {
+    drawHud();
+    ctx.fillStyle = 'rgba(13,11,18,0.9)'; ctx.fillRect(0, 150, VIEW_W, VIEW_H - 150);
+    ctx.textAlign = 'center';
+    printText('PASS THE MIC', cx, 190, 'bold 24px monospace', 1.5);
+    ctx.fillStyle = '#8b8290'; ctx.font = '12px monospace';
+    ctx.fillText('WHO DO YOU WANT TO HEAR NEXT?  A NEW VOICE LIFTS THE ROOM.', cx, 213);
+    for (let i = 0; i < NPCS.length; i++) {
+      const n = NPCS[i], r = passRect(i), active = i === passIndex;
+      ctx.fillStyle = active ? '#30273a' : '#19151e'; ctx.fillRect(r.x, r.y, r.w, r.h);
+      ctx.strokeStyle = active ? n.accent : '#4a414f'; ctx.lineWidth = active ? 3 : 1; ctx.strokeRect(r.x, r.y, r.w, r.h);
+      face(n, r.x + 40, r.y + r.h - 6, 58, 72);
+      ctx.textAlign = 'left';
+      ctx.fillStyle = active ? n.accent : CMYK.paper; ctx.font = 'bold 14px monospace'; ctx.fillText(n.name, r.x + 78, r.y + 28);
+      ctx.fillStyle = '#8b8290'; ctx.font = '10px monospace'; ctx.fillText(n.tag, r.x + 78, r.y + 45);
+      const dj = n.role === 'dj';
+      const status = featured.includes(n.id) ? 'HAD THE MIC' : (dj ? 'ON THE CUT' : 'ON THE MIC');
+      ctx.fillStyle = featured.includes(n.id) ? '#8b8290' : (active ? n.accent : '#a79fb0'); ctx.font = '10px monospace';
+      ctx.fillText((featured.includes(n.id) ? '✓ ' : '') + status, r.x + 78, r.y + 62);
+      if (n.id === deck.id) { ctx.fillStyle = deck.accent; ctx.fillText('ON THE DECKS', r.x + 78, r.y + 77); }
+    }
+    ctx.textAlign = 'center'; ctx.fillStyle = '#8b8290'; ctx.font = '12px monospace';
+    ctx.fillText('ARROWS CHOOSE     E / TAP AGAIN TO PASS THE MIC', cx, 566);
+  }
+
+  function drawNpc() {
+    drawHud();
+    const n = NPCS[turnIndex];
+    drawRing(n.id, null);
+    // spotlight + center-stage artist
+    ctx.fillStyle = n.accent; ctx.globalAlpha = 0.16; ctx.beginPath(); ctx.ellipse(cx, 428, 120, 26, 0, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
+    face(n, cx, 425, 150, 150);
+    ctx.textAlign = 'center'; ctx.fillStyle = n.accent; ctx.font = 'bold 18px monospace'; ctx.fillText(n.name + '  --  ' + n.tag, cx, 168);
+    const line = n.lines[Math.min(n.lines.length - 1, Math.floor(npcStep / 4))];
+    ctx.fillStyle = CMYK.paper; ctx.font = '14px monospace'; ctx.fillText(line, cx, 192);
+    const mine = roundWords[round].slice(-3).join('  •  ');
+    if (mine) {
+      ctx.fillStyle = '#a79fb0'; ctx.font = '12px monospace';
+      ctx.fillText((n.role === 'dj' ? 'CUTTING UP YOUR WORDS: ' : 'RIDING YOUR WORDS: ') + mine, cx, 214);
+    }
+    ctx.fillStyle = '#8b8290'; ctx.font = '12px monospace';
+    ctx.fillText(n.role === 'dj' ? 'THE ROOM IS LOCKED ON THE CUT...' : 'THE CIRCLE IS LISTENING...', cx, 534);
+    const p = Math.min(1, npcStep / NPC_STEPS);
+    ctx.fillStyle = 'rgba(244,236,216,0.12)'; ctx.fillRect(300, 548, 360, 7);
+    ctx.fillStyle = n.accent; ctx.fillRect(300, 548, 360 * p, 7);
+  }
+
+  function drawDeckSelect() {
+    ctx.fillStyle = 'rgba(8,6,12,0.8)'; ctx.fillRect(0, 108, VIEW_W, VIEW_H - 108);
+    ctx.textAlign = 'center';
+    printText('WHO\'S ON THE DECKS TONIGHT?', cx, 160, 'bold 22px monospace', 1.5);
+    for (let i = 0; i < DECKS.length; i++) {
+      const d = DECKS[i], r = deckRect(i), active = i === deckIndex;
+      ctx.fillStyle = active ? '#30273a' : '#19151e'; ctx.fillRect(r.x, r.y, r.w, r.h);
+      ctx.strokeStyle = active ? d.accent : '#4a414f'; ctx.lineWidth = active ? 4 : 1; ctx.strokeRect(r.x, r.y, r.w, r.h);
+      face({ img: d.img, accent: d.accent, name: d.name }, r.x + r.w / 2, r.y + 130, 110, 110);
+      ctx.textAlign = 'center';
+      ctx.fillStyle = active ? d.accent : CMYK.paper; ctx.font = 'bold 16px monospace'; ctx.fillText(d.name, r.x + r.w / 2, r.y + 158);
+      ctx.fillStyle = '#a79fb0'; ctx.font = '11px monospace'; ctx.fillText(d.tag + '  •  ' + d.bpm + ' BPM', r.x + r.w / 2, r.y + 178);
+      ctx.fillStyle = '#8b8290'; ctx.font = '10px monospace';
+      // wrap the blurb to two lines
+      const words = d.blurb.split(' '); let l1 = '', l2 = '';
+      for (const w of words) { if ((l1 + w).length < 38 && !l2) l1 += w + ' '; else l2 += w + ' '; }
+      ctx.fillText(l1.trim(), r.x + r.w / 2, r.y + 200); ctx.fillText(l2.trim(), r.x + r.w / 2, r.y + 214);
+      if (active) {
+        // little equalizer: you're hearing this beat right now
+        for (let b = 0; b < 8; b++) {
+          const h = 4 + Math.abs(Math.sin(performance.now() / (120 + b * 17) + b)) * 14;
+          ctx.fillStyle = d.accent; ctx.fillRect(r.x + r.w / 2 - 40 + b * 10, r.y + 244 - h, 6, h);
+        }
+      }
+    }
+    ctx.fillStyle = '#8b8290'; ctx.font = '12px monospace';
+    ctx.fillText('◀ ▶ HEAR EACH BEAT     E / TAP AGAIN TO LOCK IT IN', cx, 500);
+    ctx.fillText('THE DJ SETS THE TEMPO FOR THE WHOLE NIGHT.', cx, 522);
+  }
+
+  function drawFinale() {
+    drawHud();
+    drawRing(null, null);
+    const pulse = 1 + 0.03 * Math.sin(performance.now() / 90);
+    ctx.save(); ctx.translate(cx, 235); ctx.scale(pulse, pulse);
+    printText(finalMessage, 0, 0, 'bold 26px monospace', 2);
+    ctx.restore();
+    ctx.textAlign = 'center'; ctx.fillStyle = CMYK.paper; ctx.font = '14px monospace';
+    ctx.fillText('EVERYBODY BROUGHT SOMETHING. NOBODY HAD TO BE PERFECT.', cx, 270);
+    ctx.fillStyle = '#8cff5f'; ctx.font = 'bold 14px monospace'; ctx.fillText('PULLING YOUR PRINT...', cx, 296);
+    ctx.strokeStyle = 'rgba(236,0,140,0.5)'; ctx.lineWidth = 2;
+    for (let i = 0; i < 12; i++) {
+      const a = i * Math.PI / 6 + performance.now() / 2000;
+      ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * 120, 405 + Math.sin(a) * 65); ctx.lineTo(cx + Math.cos(a) * 190, 405 + Math.sin(a) * 105); ctx.stroke();
+    }
+  }
+
+  // The finished poster. Four ink layers slide into register over ~1.6s.
+  function drawPrint() {
+    ctx.fillStyle = '#0b0811'; ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+    const p = Math.min(1, phaseTimer / 1.6);
+    const off = (1 - p) * 16;
+    const px = cx - 190, py = 22, pw = 380, ph = 536;
+    const layer = (dx, dy, col, a) => { ctx.globalAlpha = a; ctx.fillStyle = col; ctx.fillRect(px + dx, py + dy, pw, 14); ctx.globalAlpha = 1; };
+    // paper
+    ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(px + 6, py + 8, pw, ph);
+    ctx.fillStyle = CMYK.paper; ctx.fillRect(px, py, pw, ph);
+    // ink bars: cyan, magenta, yellow, black slide in one after another
+    layer(-off, 0, CMYK.c, Math.min(1, p * 3));
+    layer(off, 14, CMYK.m, Math.min(1, Math.max(0, p * 3 - 0.5)));
+    layer(-off * 0.6, 28, CMYK.y, Math.min(1, Math.max(0, p * 3 - 1)));
+    ctx.globalAlpha = Math.min(1, Math.max(0, p * 3 - 1.5)); ctx.fillStyle = CMYK.k; ctx.fillRect(px, py + 42, pw, 6); ctx.globalAlpha = 1;
+    halftone(px + 18, py + 60, 6, 4, 9, 'rgba(236,0,140,0.5)', 3);
+    halftone(px + pw - 18 - 5 * 9, py + 60, 6, 4, 9, 'rgba(0,174,239,0.5)', 3);
+    regMark(px + 20, py + ph - 20, 'rgba(22,20,26,0.55)'); regMark(px + pw - 20, py + ph - 20, 'rgba(22,20,26,0.55)');
+    ctx.textAlign = 'center';
+    printText('CB PRINTS', cx, py + 100, 'bold 34px monospace', 1.5 + off * 0.5, CMYK.k, p * 2);
+    printText('CYPHER', cx, py + 132, 'bold 34px monospace', 1.5 + off * 0.5, CMYK.k, p * 2);
+    ctx.globalAlpha = Math.min(1, Math.max(0, p * 2 - 0.6));
+    ctx.fillStyle = CMYK.k; ctx.font = 'bold 12px monospace';
+    ctx.fillText('NIGHT #' + nightCount + '   •   ON THE DECKS: ' + deck.name, cx, py + 160);
+    // tier badge
+    ctx.fillStyle = CMYK.m; ctx.fillRect(cx - 80, py + 172, 160, 26);
+    ctx.fillStyle = CMYK.paper; ctx.font = 'bold 15px monospace'; ctx.fillText(lastPrintTier, cx, py + 190);
+    ctx.fillStyle = CMYK.k; ctx.font = 'bold 11px monospace'; ctx.fillText('FEATURING', cx, py + 222);
+    ctx.font = '12px monospace';
+    const names = featured.map((id) => NPCS.find((n) => n.id === id).name);
+    const row1 = names.slice(0, 2).join('  +  '), row2 = names.slice(2).join('  +  ');
+    ctx.fillText(row1 || 'THE WHOLE CIRCLE', cx, py + 242);
+    if (row2) ctx.fillText(row2, cx, py + 258);
+    ctx.fillStyle = CMYK.k; ctx.font = 'bold 11px monospace'; ctx.fillText('THE BARS', cx, py + 292);
+    ctx.font = '12px monospace';
+    for (let i = 0; i < ROUNDS; i++) {
+      const w = roundWords[i].slice(-4).join(' • ') || 'YOU SHOWED UP';
+      ctx.fillStyle = [CMYK.c, CMYK.m, CMYK.y][i]; ctx.fillRect(px + 30, py + 308 + i * 26, 8, 8);
+      ctx.fillStyle = CMYK.k; ctx.textAlign = 'left'; ctx.fillText(w, px + 46, py + 317 + i * 26); ctx.textAlign = 'center';
+    }
+    ctx.font = 'bold 13px monospace';
+    ctx.fillText('VIBE ' + Math.round(vibe) + '    PEAK ' + Math.round(peakVibe) + '    BEST ' + bestVibe, cx, py + 418);
+    ctx.fillStyle = '#5a5262'; ctx.font = '11px monospace';
+    ctx.fillText('YOU DON\'T HAVE TO BE THE BEST.', cx, py + 462);
+    ctx.fillText('YOU JUST HAVE TO BRING SOMETHING.', cx, py + 478);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? CMYK.y : CMYK.paper; ctx.font = 'bold 14px monospace';
+    ctx.fillText('- PRESS E OR TAP TO STEP BACK INTO THE SHOP -', cx, 584);
+  }
+
+  return {
+    musicDucked: true,
+    onPointerDown(vx, vy) {
+      if (phase === 'intro') { setPhase('deck'); return; }
+      if (phase === 'deck') {
+        for (let i = 0; i < DECKS.length; i++) {
+          if (inRect(vx, vy, deckRect(i))) {
+            if (i === deckIndex) lockDeck();
+            else { deckIndex = i; deck = DECKS[i]; STEP = 60 / deck.bpm / 2; }
+            return;
+          }
+        }
+        return;
+      }
+      if (phase === 'player') { judgeChoice(vx < cx - 80 ? 0 : (vx > cx + 80 ? 2 : 1)); return; }
+      if (phase === 'pass') {
+        for (let i = 0; i < NPCS.length; i++) {
+          if (inRect(vx, vy, passRect(i))) {
+            if (i === passIndex) passMic(); else passIndex = i;
+            return;
+          }
+        }
+        return;
+      }
+      if (phase === 'print' && phaseTimer > 1.0) { exitMinigame(); }
+    },
+    update(dt) {
+      if (buyPressed) { exitMinigame(); return; }
+      phaseTimer += dt;
+      judgeTimer = Math.max(0, judgeTimer - dt);
+      toastTimer = Math.max(0, toastTimer - dt);
+      if (audioOn) scheduleBeat();
+      if (phase === 'intro') { if (interactPressed && phaseTimer > 0.15) setPhase('deck'); return; }
+      if (phase === 'deck') {
+        const move = selectMove || 0;
+        if (move) {
+          deckIndex = (deckIndex + move + DECKS.length) % DECKS.length;
+          deck = DECKS[deckIndex]; STEP = 60 / deck.bpm / 2; selectMove = 0;
+        }
+        if (interactPressed && phaseTimer > 0.15) lockDeck();
+        return;
+      }
+      if (phase === 'player') {
+        countIn = Math.max(0, countIn - dt);
+        const keysMap = [['arrowleft', 0], ['a', 0], ['arrowup', 1], ['w', 1], ['arrowright', 2], ['d', 2]];
+        for (const [k, idx] of keysMap) {
+          const down = !!keys[k];
+          if (down && !prevKeys[k]) judgeChoice(idx);
+          prevKeys[k] = down;
+        }
+        // hard musical length so nobody gets stuck by not pressing anything
+        if (phaseTimer >= TURN_STEPS * STEP + 1.3 + 0.35) setPhase('pass');
+        return;
+      }
+      if (phase === 'pass') {
+        if (selectMove) { movePass(selectMove); selectMove = 0; }
+        if (menuMove) { movePass(3 * menuMove); menuMove = 0; }
+        if (interactPressed && phaseTimer > 0.15) passMic();
+        return;
+      }
+      if (phase === 'npc') {
+        npcStep += dt / STEP;
+        vibe = Math.min(100, vibe + 0.04 * dt * 60); peakVibe = Math.max(peakVibe, vibe);
+        if (npcStep >= NPC_STEPS) {
+          round++;
+          if (round >= ROUNDS) setPhase('finale'); else setPhase('player');
+        }
+        return;
+      }
+      if (phase === 'finale') {
+        if ((interactPressed && phaseTimer > 0.5) || phaseTimer > 4.2) setPhase('print');
+        return;
+      }
+      if (phase === 'print') { if (interactPressed && phaseTimer > 1.0) exitMinigame(); }
+    },
+    draw() {
+      const t = performance.now() / 1000;
+      if (phase === 'print') { drawPrint(); return; }
+      drawRoom(t);
+      if (phase === 'intro') {
+        drawRing(null, null);
+        ctx.fillStyle = 'rgba(8,6,12,0.74)'; ctx.fillRect(0, 108, VIEW_W, VIEW_H - 108);
+        ctx.textAlign = 'center';
+        printText('THE CB PRINTS CYPHER', cx, 245, 'bold 30px monospace', 2);
+        ctx.fillStyle = CMYK.paper; ctx.font = '16px monospace'; ctx.fillText('NINE ARTISTS. ONE CIRCLE. THE WHOLE SHOP IS LISTENING.', cx, 285);
+        ctx.fillStyle = '#8b8290'; ctx.font = '13px monospace'; ctx.fillText('PICK YOUR DJ.  TRADE VERSES.  PASS THE MIC.  PULL A PRINT.', cx, 315);
+        ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? CMYK.y : CMYK.paper; ctx.font = 'bold 17px monospace';
+        ctx.fillText('- PRESS E OR TAP TO STEP IN -', cx, 375);
+        ctx.fillStyle = '#8b8290'; ctx.font = '11px monospace';
+        ctx.fillText(nightCount + ' NIGHTS PRINTED  •  BEST VIBE ' + bestVibe, cx, 410);
+      } else if (phase === 'deck') drawDeckSelect();
+      else if (phase === 'player') drawPlayerTurn();
+      else if (phase === 'pass') drawPass();
+      else if (phase === 'npc') drawNpc();
+      else if (phase === 'finale') drawFinale();
+    },
+    onExit() { /* the print is saved when it's pulled, so nothing to do here */ },
   };
 }
 
@@ -11757,6 +12451,7 @@ const shops = {
           "You'll catch me at GREEN DOOR STUDIO most weeks, and at just about every cypher in the scene. If there's a circle forming, I'm probably in it.",
           "Beat poetry, bars, spray paint, ink -- people want me to pick one. Nah. It's all the same thing: you've got something to say, so you find a way to say it.",
           "Cyphers are the best school there is. No script, no do-overs. Somebody drops a beat, you drop a verse, and the whole circle keeps you honest.",
+          "There's a circle open on the floor by the drying rack. Fattie B, A_Dog and Kanga all take turns on the decks -- pick your DJ, trade bars, and we'll pull a print of the night.",
           "Check the crates while you're here. Hip hop on the left, reggae on the right. Dig slow -- the good stuff never jumps out at you.",
         ] },
     ],
@@ -11774,6 +12469,13 @@ const shops = {
     // junk crate (see CB_PRINTS_JUNK above -- genre picked by which side
     // of the shop the junk crate ends up on).
     crates: [ { record: 'print' }, { cbSeed: 0 } ],
+    // The CB PRINTS Cypher spot, on open floor at (8,7): right of Arkaiik
+    // (7,5), clear of the drying rack (9,6)/(10,6), the press (3,6)/(4,6),
+    // both crates, the ink buckets/frames on the side walls and the door
+    // (6,9)/spawn (6,7). Approach from (7,7) left, (8,8) below or (8,6) above.
+    minigames: [
+      { id: 'cbcypher', tx: 8, ty: 7, label: 'JOIN THE CB CYPHER' },
+    ],
   }),
 };
 
