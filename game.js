@@ -11176,11 +11176,26 @@ function makeSkatepark() {
     for (let y = top; y <= 8; y++) for (let x = px0; x < px0 + 3; x++) g[y][x] = 'b';
 
   // --- skatepark plaza, ringed by a curving walkway (the path in the photo)
+  // The whole park (walkway ring, plaza and every feature below) is drawn at
+  // SP_SCALE of its original size, centered on (CX, CY), so there's an open
+  // margin of grass between the park and the map edge/buildings for future
+  // elements. It used to be 1.0 (ring radii 24.5x11.5, plaza 21x9).
+  const SP_SCALE = 0.8;
   const CX = 26, CY = 23;
+  const RING_RX = 24.5 * SP_SCALE, RING_RY = 11.5 * SP_SCALE;   // outer edge of walkway
+  const INNER_RX = 22.5 * SP_SCALE, INNER_RY = 10 * SP_SCALE;   // inner edge of walkway
+  const PLAZA_RX = 21 * SP_SCALE, PLAZA_RY = 9 * SP_SCALE;      // concrete plaza
+  // Footprint of the ORIGINAL full-size park. Only used to keep the tree
+  // sprinkle below exactly where it was, so the ground the park gave up
+  // stays clear grass instead of filling with random trees.
+  const oldParkTile = (x, y) =>
+    y >= 12 && y < H - 1 && x >= 1 && x < W - 1 &&
+    ((inE(x, y, CX, CY, 24.5, 11.5) && !inE(x, y, CX, CY, 22.5, 10)) ||
+     (y >= 14 && inE(x, y, CX, CY, 21, 9)));
   for (let y = 12; y < H - 1; y++)
     for (let x = 1; x < W - 1; x++) {
-      if (inE(x, y, CX, CY, 24.5, 11.5) && !inE(x, y, CX, CY, 22.5, 10)) g[y][x] = 'p';
-      if (y >= 14 && inE(x, y, CX, CY, 21, 9)) g[y][x] = 'k';
+      if (inE(x, y, CX, CY, RING_RX, RING_RY) && !inE(x, y, CX, CY, INNER_RX, INNER_RY)) g[y][x] = 'p';
+      if (inE(x, y, CX, CY, PLAZA_RX, PLAZA_RY)) g[y][x] = 'k';
     }
 
   // --- park features (only ever painted over plaza concrete)
@@ -11189,16 +11204,22 @@ function makeSkatepark() {
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++)
       if (onK(x, y) && test(x, y)) g[y][x] = ch;
   };
+  // Ellipse helper for features: takes the ORIGINAL (full-size) center/radii
+  // and scales them about the park center by SP_SCALE.
+  const sc = (cx, cy, rx, ry) => [CX + (cx - CX) * SP_SCALE, CY + (cy - CY) * SP_SCALE, rx * SP_SCALE, ry * SP_SCALE];
+  const paintE = (cx, cy, rx, ry) => { const e = sc(cx, cy, rx, ry); return (x, y) => inE(x, y, e[0], e[1], e[2], e[3]); };
   // big peanut-shaped snake-run bowl, dead center
-  paint((x, y) => inE(x, y, 23.5, 20.5, 5.5, 3) || inE(x, y, 29, 24, 6, 3.5) || inE(x, y, 26.5, 22.5, 3, 2.5), 'o');
+  const bowlA = paintE(23.5, 20.5, 5.5, 3), bowlB = paintE(29, 24, 6, 3.5), bowlC = paintE(26.5, 22.5, 3, 2.5);
+  paint((x, y) => bowlA(x, y) || bowlB(x, y) || bowlC(x, y), 'o');
   // smaller bowls on the left: a kidney bowl and a round pod
-  paint((x, y) => inE(x, y, 10.5, 25.5, 3.5, 2), 'o');
-  paint((x, y) => inE(x, y, 17.5, 29, 1.7, 1.7), 'o');
+  paint(paintE(10.5, 25.5, 3.5, 2), 'o');
+  paint(paintE(17.5, 29, 1.7, 1.7), 'o');
   // right side: stepped stair set, manual-pad ledges, grind rails
+  // (tile runs re-fit to the 80% park by hand -- row, first column, last column)
   const setRun = (row, x0, x1, ch) => { for (let x = x0; x <= x1; x++) if (onK(x, row)) g[row][x] = ch; };
-  setRun(24, 39, 42, 'm'); setRun(25, 39, 41, 'm'); setRun(26, 39, 40, 'm');
-  setRun(17, 31, 36, 'm'); setRun(28, 30, 35, 'm'); setRun(18, 14, 18, 'm');
-  setRun(22, 33, 38, 'y'); setRun(20, 36, 38, 'y'); setRun(26, 12, 16, 'y');
+  setRun(24, 36, 38, 'm'); setRun(25, 36, 37, 'm'); setRun(26, 36, 36, 'm');
+  setRun(18, 30, 34, 'm'); setRun(27, 29, 33, 'm'); setRun(19, 16, 19, 'm');
+  setRun(22, 32, 36, 'y'); setRun(20, 34, 36, 'y'); setRun(26, 15, 18, 'y');
 
   // --- trees: scattered over the grass corners, never touching a path/plaza
   const near = (x, y, set) => {
@@ -11208,9 +11229,14 @@ function makeSkatepark() {
     }
     return false;
   };
+  const nearOldPark = (x, y) => {
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (oldParkTile(x + dx, y + dy)) return true;
+    return false;
+  };
   for (let y = 12; y < H - 1; y++)
     for (let x = 1; x < W - 1; x++)
-      if (g[y][x] === '.' && !near(x, y, ['p', 'k', 'o', 'm', 'y', 'f']) && rng() < 0.28) g[y][x] = '#';
+      if (g[y][x] === '.' && !oldParkTile(x, y) && !nearOldPark(x, y) &&
+          !near(x, y, ['p', 'k', 'o', 'm', 'y', 'f']) && rng() < 0.28) g[y][x] = '#';
   // border: tree line down both sides and along the bottom
   for (let y = 12; y < H; y++) { g[y][0] = '#'; g[y][W - 1] = '#'; }
   for (let x = 0; x < W; x++) g[H - 1][x] = '#';
@@ -11299,9 +11325,9 @@ function makeSkatepark() {
   const outdoorCrateDefs = [
     [15, 10, { junkSeed: 0 }],
     [45, 10, { junkSeed: 1 }],
-    [24, 12, { junkSeed: 2 }],
-    [9, 14, { junkSeed: 3 }],
-    [46, 17, { junkSeed: 4 }],
+    [24, 14, { junkSeed: 2 }],   // top of the walkway ring
+    [13, 16, { junkSeed: 3 }],   // west side of the ring
+    [42, 18, { junkSeed: 4 }],   // east side of the ring
   ];
   for (const [cx, cy, d] of outdoorCrateDefs) { g[cy][cx] = 'c'; crates[key(cx, cy)] = d; }
 
