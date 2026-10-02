@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f3eddf">
+  <title>CB PRINTS — Screen Printing Game</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<main class="game-shell">
+  <div class="paper-noise" aria-hidden="true"></div>
+  <header class="topbar">
+    <div class="brand-lockup"><span class="brand-mark">CB</span><span>PRINTS</span></div>
+    <div class="top-actions"><div class="score-pill"><span>★</span><span id="top-score">0000</span></div><button class="icon-button" id="help-button" aria-label="How to play">?</button><button class="icon-button menu-button" aria-label="Open menu">☰</button></div>
+  </header>
+  <section class="hero-copy"><div class="eyebrow"><span class="eyebrow-line"></span> <span id="lvl">LEVEL 01 / THE STARTER</span> <span class="eyebrow-line"></span></div><h1>MAKE YOUR<br><em>MARK.</em></h1><p>Pull the perfect print. Pick your ink, line up your design, and press it down.</p></section>
+  <section class="studio-grid" aria-label="Screen printing studio">
+    <aside class="control-panel panel-card">
+      <div class="step-label"><span>01</span><div><strong>CHOOSE YOUR INK</strong><small>Pick a color to load the screen</small></div></div>
+      <div class="ink-list" id="ink-list"></div>
+      <div class="panel-divider"></div>
+      <div class="step-label"><span>02</span><div><strong>CHOOSE A DESIGN</strong><small>What’s your statement?</small></div></div>
+      <div class="design-list" id="design-list"></div>
+      <div class="tip-box"><span>✦</span><span><b>PRO TIP</b> Less is more. A clean pull is a good pull.</span></div>
+    </aside>
+    <div class="print-zone">
+      <div class="zone-head"><span>◉ SCREEN TABLE 01</span><span class="ready-status"><i></i> <span id="status">READY TO PRINT</span></span></div>
+      <div class="order-card"><span>ORDER #<b id="oid">101</b></span><b id="otext"></b><span class="order-dots" id="odots"></span></div>
+      <div class="press" id="press"><div class="press-shadow"></div><div class="screen-frame" id="frame"><div class="screen-mesh"></div><div class="squeegee" id="squeegee"></div><div class="design-art" id="design-art"><span class="art-crown" id="art-stamp">★</span><strong id="art-title">BOOM BAP</strong><small id="art-subtitle">Beat maker</small><span class="art-bars">///</span></div></div><div class="hinge hinge-left"></div><div class="hinge hinge-right"></div><div class="shirt"><div class="shirt-neck"></div><div class="shirt-art" id="shirt-art"><span id="shirt-stamp">★</span><b id="shirt-title">BOOM BAP</b><small id="shirt-subtitle">Beat maker</small></div></div><div class="reg reg-ring" id="ring"></div><div class="reg reg-dot" id="dot"></div><div class="toast" id="toast"></div><div class="press-handle"></div></div>
+      <div class="coach" id="coach"><span id="coach-text"></span><div class="meter"><i class="needle" id="needle"></i></div></div>
+      <div class="action-row"><div class="ink-loaded"><span id="loaded-dot" class="ink-red"></span><span><small>INK LOADED</small><b id="loaded-name">CHERRY</b></span></div><button class="print-button" id="print-button">✋ <span id="print-label">PULL THE PRINT</span> ›</button></div>
+    </div>
+    <aside class="score-card panel-card"><div class="score-head">🏆 <span>PRINT SCORE</span><span class="combo-pill" id="combo-pill">STREAK 0</span></div><strong class="big-score" id="big-score">0000</strong><div class="score-rule"><span id="score-bar"></span></div><div class="score-details"><span>INK COVERAGE <b id="coverage">—</b></span><span>ALIGNMENT <b id="alignment">—</b></span><span>CURE <b id="cure">—</b></span><span>BEST <b id="best">0000</b></span></div><div class="badge"><span class="badge-star">★</span><span><b id="badge-title">NO PRINT YET</b><small id="badge-copy">Your best work is next.</small></span></div><button class="reset-button" id="reset-button">↻ RESET TABLE</button></aside>
+  </section>
+  <footer class="footer-note"><span>▱ BUILT FOR THE CULTURE</span><span>TOUCH / CLICK TO PLAY</span><span>CBP-001 <span class="footer-star">★</span></span></footer>
+  <div class="modal-backdrop" id="help-modal" hidden><div class="help-modal" role="dialog" aria-modal="true" aria-labelledby="help-title"><button class="close-help" id="close-help" aria-label="Close help">×</button><span class="modal-sticker">HOW TO PLAY</span><h2 id="help-title">Pull a fresh one.</h2><p>Fill the <b>ORDER</b>: pick the right ink and design. <b>1)</b> Drag to line the dot up with the ring. <b>2)</b> Lock, then swipe the squeegee across the screen — slow and steady covers best. <b>3)</b> Tap when the cure needle is in the green. Finish orders to level up!</p><button class="modal-button" id="got-it">GOT IT ›</button></div></div>
+</main>
+<script src="game.js"></script>
+</body></html>
