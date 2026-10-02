@@ -1130,15 +1130,11 @@ function exitMinigame() {
 // per-game wiring needed anywhere else.
 const MINIGAME_ACTIONS = {
   // "LEARN ABOUT ANDY" sign -- A_DOG SKATE SHOP's tribute plaque (see the
-  // `adogskateshop` shop's `minigames` list below). Unlike every other
-  // entry in this object, this doesn't open an in-game overlay -- it opens
-  // the real Friends For A_Dog Foundation website in a new tab. Wrapped in
-  // try/catch the same way the intro-video code at the top of this file
-  // guards window/DOM calls, so a blocked popup never breaks the game.
-  adogfoundation: () => {
-    try { window.open('https://www.friendsforadog.org/', '_blank', 'noopener,noreferrer'); }
-    catch (e) { /* popup blocked or window unavailable -- fail silently */ }
-  },
+  // `adogskateshop` shop's `minigames` list below). Opens an in-game bio
+  // pop-up about Andy "A_Dog" Williams that lists the Friends For A_Dog
+  // Foundation's web address for anyone who wants to look it up on their
+  // own -- the game itself never links out. See createAndyBioPopup().
+  adogfoundation: () => enterMinigame(createAndyBioPopup()),
   // Darts, Beat Match, Crate Digging, Whack-a-Pigeon, and Beat Jam each have
   // two renderers: the original canvas version and a Three.js remake. These
   // route through createModeSelectMenu(), which now goes straight to the 3D
@@ -1212,6 +1208,13 @@ const MINIGAME_ACTIONS = {
   // nine-artist circle over three rounds, and pull a screen-printed poster
   // of the night. See createCBPrintsCypherGame().
   cbcypher: () => enterMinigame(createCBPrintsCypherGame()),
+  // CB PRESS -- the CB PRINTS screen printing mini game, set up on the
+  // shop's four-color carousel press (see the `cbprints` shop's
+  // `minigames` list). Same "full standalone web app, not a canvas
+  // mini-game" shape as chess/beatbot/organ/Dust Racing above (own
+  // DOM/iframe overlay, bundled locally so it works with no connection).
+  // See openCBPrintsPressApp()/createCBPrintsPressOverlay() below.
+  cbpress: () => openCBPrintsPressApp(),
   // The church street organ -- a gospel drawbar organ tucked into the
   // church's (very much not a church) interior. Same "full standalone web
   // app, not a canvas mini-game" shape as chess/beatbot just above (own
@@ -7910,6 +7913,131 @@ function createSpeedSweep3DGame() {
   };
 }
 
+// "LEARN ABOUT ANDY" pop-up -- A_DOG SKATE SHOP's tribute plaque. A simple
+// two-page canvas card (same shape as every other enterMinigame() overlay:
+// update/draw, exits via exitMinigame()) with a short bio of Andy "A_Dog"
+// Williams and the Friends For A_Dog Foundation's web address, shown as
+// plain text for people to look up on their own -- nothing in here opens a
+// link. E / tap = next page (closes on the last page); X = close any time.
+// Bio adapted (in our own words) from Seven Days' "Burlington Remembers
+// Andy 'A-Dog' Williams" by Dan Bolles, Jan. 8, 2014.
+const ANDY_BIO_PAGES = [
+  { heading: 'THE DJ', paragraphs: [
+    'Andy "A-Dog" Williams (1975-2013) grew up in St. Albans, VT, breakdancing, riding BMX and skateboarding long before he ever owned a turntable.',
+    'He saved up for one deck wired to a tape deck, worked at the B-Side, and became Burlington\'s preeminent turntablist: a weekly fixture at Red Square and a go-to DJ for big Burton and Gravis parties.',
+    'Legends like Z-Trip and Rob Swift were in awe of his technique, and he dropped a new mixtape about every two months.',
+  ] },
+  { heading: 'THE LEGACY', paragraphs: [
+    'Andy passed away on December 26, 2013, after a yearlong battle with leukemia. More than 1,000 people joined a candlelight walk and vigil for him, ending at the waterfront skate park he loved.',
+    'Friends For A_Dog began when local DJs and friends rallied around him during his illness, including a benefit show at Higher Ground with DJ Z-Trip.',
+    'Burlington\'s mayor proclaimed August 30 "A-Dog Day" in his honor, and the skate park now carries his name.',
+  ] },
+];
+const ANDY_FOUNDATION_NAME = 'Friends For A_Dog Foundation';
+const ANDY_FOUNDATION_URL = 'friendsforadog.org';
+
+function createAndyBioPopup() {
+  let t = 0;    // short grace period so the E/tap that opened this can't instantly advance it
+  let page = 0;
+  return {
+    update(dt) {
+      t += dt;
+      if (t <= 0.25) return;
+      if (buyPressed) { exitMinigame(); return; }
+      if (interactPressed) {
+        if (page < ANDY_BIO_PAGES.length - 1) page++;
+        else exitMinigame();
+      }
+    },
+    draw() {
+      ctx.fillStyle = 'rgba(8,6,12,0.82)';
+      ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
+      const bw = 860, bh = 540;
+      const bx = (VIEW_W - bw) / 2, by = (VIEW_H - bh) / 2;
+      const accent = '#e0b040';
+      const pg = ANDY_BIO_PAGES[page];
+
+      // card
+      ctx.fillStyle = '#232228';
+      ctx.fillRect(bx, by, bw, bh);
+      ctx.strokeStyle = accent;
+      ctx.lineWidth = 4;
+      ctx.strokeRect(bx + 2, by + 2, bw - 4, bh - 4);
+      ctx.strokeStyle = '#d94f2b';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(bx + 10, by + 10, bw - 20, bh - 20);
+
+      // title
+      ctx.textAlign = 'center';
+      ctx.fillStyle = accent;
+      ctx.font = 'bold 28px monospace';
+      ctx.fillText('ANDY "A_DOG" WILLIAMS', VIEW_W / 2, by + 54);
+      ctx.fillStyle = '#c8c0d8';
+      ctx.font = '16px monospace';
+      ctx.fillText('1975 - 2013  |  Burlington, VT', VIEW_W / 2, by + 78);
+
+      // portrait (left), drawn only once the image has actually loaded
+      const px = bx + 36, py = by + 100, pw = 190, ph = 250;
+      ctx.fillStyle = '#14121a';
+      ctx.fillRect(px, py, pw, ph);
+      if (adogImg.complete && adogImg.naturalWidth > 0) {
+        const s = Math.min(pw / adogImg.naturalWidth, ph / adogImg.naturalHeight);
+        const dw = adogImg.naturalWidth * s, dh = adogImg.naturalHeight * s;
+        const prevSmooth = ctx.imageSmoothingEnabled;
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(adogImg, px + (pw - dw) / 2, py + (ph - dh) / 2, dw, dh);
+        ctx.imageSmoothingEnabled = prevSmooth;
+      }
+      ctx.strokeStyle = accent;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(px, py, pw, ph);
+
+      // page heading + bio text (right)
+      const tx = px + pw + 28, tw = bx + bw - 36 - tx;
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#d94f2b';
+      ctx.font = 'bold 18px monospace';
+      ctx.fillText(pg.heading, tx, py + 18);
+      ctx.fillStyle = '#e8e4f0';
+      ctx.font = '16px monospace';
+      let ty = py + 50;
+      for (const p of pg.paragraphs) {
+        for (const ln of wrapLinesCentered(p, tw)) { ctx.fillText(ln, tx, ty); ty += 22; }
+        ty += 8;
+      }
+
+      // foundation / URL strip
+      const sy = by + bh - 138;
+      ctx.fillStyle = '#14121a';
+      ctx.fillRect(bx + 36, sy, bw - 72, 70);
+      ctx.strokeStyle = '#d94f2b';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(bx + 36, sy, bw - 72, 70);
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#c8c0d8';
+      ctx.font = '15px monospace';
+      ctx.fillText('Want to learn more? Look up the ' + ANDY_FOUNDATION_NAME + ':', VIEW_W / 2, sy + 28);
+      ctx.fillStyle = accent;
+      ctx.font = 'bold 24px monospace';
+      ctx.fillText(ANDY_FOUNDATION_URL, VIEW_W / 2, sy + 56);
+
+      // source credit
+      ctx.fillStyle = '#8a8498';
+      ctx.font = '12px monospace';
+      ctx.fillText('Bio adapted from "Burlington Remembers Andy \'A-Dog\' Williams," Seven Days, Jan. 8, 2014', VIEW_W / 2, by + bh - 46);
+
+      // footer
+      const last = page === ANDY_BIO_PAGES.length - 1;
+      ctx.fillStyle = '#8a8498';
+      ctx.font = '14px monospace';
+      ctx.fillText((page + 1) + ' / ' + ANDY_BIO_PAGES.length + '   |   ' +
+        (last ? 'E or tap to close' : 'E or tap for next page') + '   |   X to close', VIEW_W / 2, by + bh - 24);
+      ctx.textAlign = 'left';
+    },
+  };
+}
+
 // Staring Contest with a Cat: the cat blinks at a random moment; hold
 // completely still (no movement keys, no E, no X) until it does, and you
 // win. Press or hold ANYTHING before the blink and that counts as giving
@@ -9497,6 +9625,7 @@ window.addEventListener('keydown', (e) => {
     if (k === 'escape' && state === 'diggerApp') { closeDiggerApp(); }
     if (k === 'escape' && state === 'johnnySlidesApp') { closeJohnnySlidesApp(); }
     if (k === 'escape' && state === 'dustRacingApp') { closeDustRacingApp(); }
+    if (k === 'escape' && state === 'cbPressApp') { closeCBPrintsPressApp(); }
     if (k === 'escape' && state === 'connectFourApp') { closeConnectFourApp(); }
     if (k === 'escape' && state === 'syrupRoadsApp') { closeSyrupRoadsApp(); }
     if (k === 'escape' && state === 'scoopBeatsApp') { closeScoopBeatsApp(); }
@@ -12442,9 +12571,8 @@ const shops = {
     // "LEARN ABOUT ANDY" sign -- a tribute plaque near the back wall
     // artwork (3,6), clear of the table (row 3), micStand (7,5), gearTiles
     // (3,3)/(8,3)/(4,7)/(10,7), Trav (6,6), the crates (1,4)/(1,6)/(12,4)/
-    // (12,6), and the door (6,9). Interacting opens the real Friends For
-    // A_Dog Foundation website in a new tab -- see
-    // MINIGAME_ACTIONS.adogfoundation above.
+    // (12,6), and the door (6,9). Interacting opens the Andy A_Dog bio
+    // pop-up -- see MINIGAME_ACTIONS.adogfoundation above.
     minigames: [
       { id: 'adogfoundation', tx: 3, ty: 6, label: 'LEARN ABOUT ANDY' },
     ],
@@ -12588,6 +12716,13 @@ const shops = {
     // (6,9)/spawn (6,7). Approach from (7,7) left, (8,8) below or (8,6) above.
     minigames: [
       { id: 'cbcypher', tx: 8, ty: 7, label: 'JOIN THE CB CYPHER' },
+      // The CB PRESS screen printing mini game, on the carousel press
+      // itself: the press is a solid blockTile pair at (3,6)/(4,6), so the
+      // player faces it from (3,7)/(4,7) below, (3,5)/(4,5) above or (2,6)/
+      // (5,6) beside it. `alsoTiles` makes the left tile (3,6) answer too,
+      // so the one floating sign (anchored on (4,6)) covers the whole press.
+      // See MINIGAME_ACTIONS.cbpress/openCBPrintsPressApp().
+      { id: 'cbpress', tx: 4, ty: 6, alsoTiles: [[3, 6]], label: 'RUN THE CB PRESS' },
     ],
   }),
 };
@@ -12687,7 +12822,7 @@ const player = {
   tempItem: null, tempItemTimer: 0,
 };
 const collected = new Set();
-let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | danceParty | portal | fifa | minigame | hotkeys | crate | photo | lab | labLocked | shopBackLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | qsdBalanceApp | vinylSnakeApp | waveformApp | bayouBreakApp | freqAltarApp | drumPatternDocApp | gatorJamSlamApp | swampCaveApp | vocalChopBoothApp | vtDirtApp | penaltyKingsApp | digDashApp | digOnApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | diggerApp | hyperSwimApp | linusTugApp | connectFourApp | syrupRoadsApp | scoopBeatsApp | clawMachineApp | kangaidenVideo | kangaidenSplash | kangaidenApp | hiphopLibraryApp | truthKnocksVideo | truthKnocksSplash | truthKnocksApp | johnnySlidesVideo | johnnySlidesSplash | johnnySlidesApp | dustRacingApp
+let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | danceParty | portal | fifa | minigame | hotkeys | crate | photo | lab | labLocked | shopBackLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | qsdBalanceApp | vinylSnakeApp | waveformApp | bayouBreakApp | freqAltarApp | drumPatternDocApp | gatorJamSlamApp | swampCaveApp | vocalChopBoothApp | vtDirtApp | penaltyKingsApp | digDashApp | digOnApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | diggerApp | hyperSwimApp | linusTugApp | connectFourApp | syrupRoadsApp | scoopBeatsApp | clawMachineApp | kangaidenVideo | kangaidenSplash | kangaidenApp | hiphopLibraryApp | truthKnocksVideo | truthKnocksSplash | truthKnocksApp | johnnySlidesVideo | johnnySlidesSplash | johnnySlidesApp | dustRacingApp | cbPressApp
 // State to snap back to when the [H] hotkeys popup is closed -- currently
 // always 'play' since that's the only state H can be opened from, but kept
 // as its own var in case another state wants to offer the popup later.
@@ -13382,7 +13517,7 @@ const music = {
 // enter/exit call sites, so it can't drift out of sync no matter which
 // of the several ways the player backs out of the lab popup (keyboard
 // [X], on-screen [X] button, closing the instrument iframe, etc.).
-const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'qsdBalanceApp', 'vinylSnakeApp', 'waveformApp', 'bayouBreakApp', 'freqAltarApp', 'drumPatternDocApp', 'gatorJamSlamApp', 'swampCaveApp', 'vocalChopBoothApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'digOnApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'johnnySlidesApp', 'dustRacingApp', 'hyperSwimApp', 'linusTugApp', 'connectFourApp', 'syrupRoadsApp', 'scoopBeatsApp', 'clawMachineApp', 'kangaidenVideo', 'kangaidenApp', 'hiphopLibraryApp', 'danceParty', 'truthKnocksVideo', 'truthKnocksApp', 'johnnySlidesVideo']);
+const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'qsdBalanceApp', 'vinylSnakeApp', 'waveformApp', 'bayouBreakApp', 'freqAltarApp', 'drumPatternDocApp', 'gatorJamSlamApp', 'swampCaveApp', 'vocalChopBoothApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'digOnApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'johnnySlidesApp', 'dustRacingApp', 'cbPressApp', 'hyperSwimApp', 'linusTugApp', 'connectFourApp', 'syrupRoadsApp', 'scoopBeatsApp', 'clawMachineApp', 'kangaidenVideo', 'kangaidenApp', 'hiphopLibraryApp', 'danceParty', 'truthKnocksVideo', 'truthKnocksApp', 'johnnySlidesVideo']);
 function syncMusicDuck() {
   const minigameDucked = state === 'minigame' && activeMinigame && activeMinigame.musicDucked;
   music.duck(DUCKED_STATES.has(state) || !!minigameDucked);
@@ -13578,7 +13713,10 @@ function facingTarget() {
       if (ns) return { type: 'newspaper', data: ns };
     }
     if (map.minigames) {
-      const mg = map.minigames.find(m => m.tx === tx && m.ty === ty);
+      // `alsoTiles` lets one mini-game answer to extra neighboring tiles
+      // (e.g. the two-tile-wide CB PRINTS press) without drawing a second sign.
+      const mg = map.minigames.find(m => (m.tx === tx && m.ty === ty) ||
+        (m.alsoTiles && m.alsoTiles.some(t => t[0] === tx && t[1] === ty)));
       if (mg) return { type: 'minigame', data: mg };
     }
   }
@@ -19304,6 +19442,123 @@ function closeDustRacingApp(fromPopState) {
   }
 }
 
+// CB PRESS -- the CB PRINTS screen printing mini game (pick an ink and a
+// design, line the screen up with the registration ring, pull the squeegee
+// across, then flash-cure the print at the right moment to fill orders and
+// level up). It's set up on the four-color carousel press inside CB PRINTS
+// (see the `cbprints` shop's `minigames` list). Same "full-screen DOM
+// overlay with an <iframe>" pattern as chess/the beat bot/the organ/.../Dust
+// Racing above.
+//
+// Ships as a bundled, self-contained page (plain HTML/CSS/JS -- no external
+// assets, no CDN fonts, no network calls at all) at
+// instruments/cb-prints-press/index.html (+ styles.css and game.js beside
+// it) -- the exact same local-file pattern DUSTRACING_APP_URL/
+// DIGGER_APP_URL/CHESS_APP_URL/... use. Being a same-origin local asset
+// rather than a live remote site means it loads and works the same with or
+// without a connection, so -- same as the others -- there's no online/
+// offline branching needed here either; its best score is kept in
+// localStorage (wrapped in try/catch inside the app) so it also survives
+// being closed and re-opened offline. The page is fully responsive and
+// drives everything with pointer events (drag to align, swipe to pull, tap
+// to cure) plus arrow keys for fine alignment, so it plays cleanly on
+// desktop and on mobile in both portrait and landscape.
+const CB_PRINTS_PRESS_APP_URL = 'instruments/cb-prints-press/index.html';
+let cbPressOverlayEl = null, cbPressOverlayFrame = null;
+let cbPressReturnState = 'play';
+let cbPressHistoryPushed = false; // mirrors dustRacingHistoryPushed/johnnySlidesHistoryPushed/... -- see openCBPrintsPressApp()/closeCBPrintsPressApp()
+
+function createCBPrintsPressOverlay() {
+  const style = document.createElement('style');
+  style.textContent = `
+    #cbPressApp {
+      position: fixed; inset: 0; z-index: 1000;
+      background: #f3eddf;
+      display: none; flex-direction: column;
+    }
+    #cbPressApp.open { display: flex; }
+    #cbPressApp .cbp-bar {
+      flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 10px 14px;
+      background: linear-gradient(#24211c, #14131a);
+      border-bottom: 2px solid #f5cc39;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    }
+    #cbPressApp .cbp-title {
+      color: #f3eddf; font: bold 14px monospace; letter-spacing: 0.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #cbPressApp .cbp-close {
+      flex: 0 0 auto; cursor: pointer;
+      background: rgba(245,204,57,0.15);
+      border: 1.5px solid rgba(245,204,57,0.85);
+      color: #f3eddf; border-radius: 8px;
+      padding: 7px 16px; font: bold 13px monospace;
+      -webkit-user-select: none; user-select: none;
+    }
+    #cbPressApp .cbp-close:active { background: rgba(245,204,57,0.4); }
+    #cbPressApp iframe {
+      flex: 1 1 auto; width: 100%; min-height: 0; border: 0; background: #f3eddf;
+    }
+  `;
+  document.head.appendChild(style);
+
+  cbPressOverlayEl = document.createElement('div');
+  cbPressOverlayEl.id = 'cbPressApp';
+
+  const bar = document.createElement('div');
+  bar.className = 'cbp-bar';
+  const title = document.createElement('div');
+  title.className = 'cbp-title';
+  title.textContent = 'CB PRINTS \u2014 THE PRESS';
+  const closeBtn = document.createElement('div');
+  closeBtn.className = 'cbp-close';
+  closeBtn.textContent = '\u2190 BACK TO CB PRINTS';
+  bindTap(closeBtn, closeCBPrintsPressApp);
+  bar.appendChild(title);
+  bar.appendChild(closeBtn);
+
+  cbPressOverlayFrame = document.createElement('iframe');
+  cbPressOverlayFrame.setAttribute('allow', 'autoplay');
+
+  cbPressOverlayEl.appendChild(bar);
+  cbPressOverlayEl.appendChild(cbPressOverlayFrame);
+  document.body.appendChild(cbPressOverlayEl);
+}
+createCBPrintsPressOverlay();
+
+// Opens the CB press overlay and switches state to 'cbPressApp'. Called
+// from MINIGAME_ACTIONS.cbpress (E on the press, or tapping its floating
+// sign), same entry points every other mini-game uses.
+function openCBPrintsPressApp() {
+  cbPressReturnState = state;
+  cbPressOverlayFrame.src = CB_PRINTS_PRESS_APP_URL;
+  cbPressOverlayEl.classList.add('open');
+  state = 'cbPressApp';
+  // Same throwaway-history-entry trick as openInstrument()/openChessApp()/
+  // .../openDustRacingApp() above, so the browser/OS back gesture closes
+  // the CB press overlay instead of leaving the game entirely.
+  history.pushState({ ricoCBPressApp: true }, '');
+  cbPressHistoryPushed = true;
+}
+
+// Tears the iframe back down and returns to ordinary gameplay in CB
+// PRINTS. fromPopState mirrors closeDustRacingApp()'s parameter -- true
+// when triggered by the browser's back button (whose history entry is
+// already consumed), so we must not call history.back() again in that case.
+function closeCBPrintsPressApp(fromPopState) {
+  cbPressOverlayEl.classList.remove('open');
+  cbPressOverlayFrame.src = 'about:blank';
+  reclaimGameFocus(cbPressOverlayFrame);
+  state = cbPressReturnState;
+  if (!fromPopState && cbPressHistoryPushed) {
+    cbPressHistoryPushed = false;
+    history.back();
+  } else {
+    cbPressHistoryPushed = false;
+  }
+}
+
 // Character-intro splash video, played once between character select and
 // the first frame of gameplay. Same DOM-overlay approach as the lab-app
 // iframe above and for the same reason: video decode/composite is handled
@@ -19536,6 +19791,8 @@ window.addEventListener('popstate', () => {
     closeJohnnySlidesApp(true);
   } else if (state === 'dustRacingApp') {
     closeDustRacingApp(true);
+  } else if (state === 'cbPressApp') {
+    closeCBPrintsPressApp(true);
   } else if (state === 'connectFourApp') {
     closeConnectFourApp(true);
   } else if (state === 'syrupRoadsApp') {
@@ -19565,7 +19822,7 @@ canvas.addEventListener('pointerdown', (e) => {
     const vx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const vy = (e.clientY - rect.top) * (canvas.height / rect.height);
     handleLabTap(vx, vy);
-  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'dustRacingApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'scoopBeatsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp') {
+  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'dustRacingApp' || state === 'cbPressApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'scoopBeatsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp') {
     // The DOM overlay sits on top of (and outside) the canvas while an
     // instrument/the chess app/the beat bot/the organ/mini golf/the
     // blackbook/Gator Grooves/Vinyl Snake/Bayou Break Station/Gator Jam
@@ -20099,6 +20356,13 @@ function update(dt) {
     // closing it directly. buyPressed is still consumed here too so the
     // on-screen [X] touch button works while Dust Racing is open.
     if (buyPressed) closeDustRacingApp();
+  } else if (state === 'cbPressApp') {
+    // Same reasoning as 'dustRacingApp' just above: the DOM overlay (see
+    // createCBPrintsPressOverlay()) owns input while the CB press is
+    // loaded -- its own close button and [Esc] handle closing it directly.
+    // buyPressed is still consumed here too so the on-screen [X] touch
+    // button works while the press is open.
+    if (buyPressed) closeCBPrintsPressApp();
   } else if (state === 'hyperSwimApp') {
     // Same reasoning as 'labApp'/'chessApp'/.../'diggerApp' just above: the
     // DOM overlay (see createHyperSwimOverlay()) owns input while Hyper
@@ -21042,7 +21306,7 @@ function render(time) {
     drawSplash();
     return;
   }
-  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'dustRacingApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'scoopBeatsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp') {
+  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'dustRacingApp' || state === 'cbPressApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'scoopBeatsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp') {
     // Same reasoning as the labApp overlay: a DOM element (the <video>,
     // see createCharacterIntroOverlay(), the chess <iframe>, see
     // createChessOverlay(), the beat bot <iframe>, see
