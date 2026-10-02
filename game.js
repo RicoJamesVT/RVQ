@@ -1505,6 +1505,11 @@ const MINIGAME_ACTIONS = {
   // assets and no network calls -- so it works with no connection). See
   // openSyrupRoadsApp()/createSyrupRoadsOverlay() below.
   syruproads: () => openSyrupRoadsApp(),
+  // SCOOP BEATS -- the build-your-own-flavor beat lab inside VILLAGE SCOOP
+  // (see the `villagescoop` shop's `minigames` list). Same "full standalone
+  // web app in its own DOM/iframe overlay, bundled locally, no network" shape
+  // as Syrup Roads above. See openScoopBeatsApp()/createScoopBeatsOverlay().
+  scoopbeats: () => openScoopBeatsApp(),
   // KANGAIDEN -- "Shadow of the Shogun", a Shinobi-style side-scrolling
   // brawler (slash/shuriken combat vs. zombie and elite enemies) parked out
   // on the open grass in town (see the town map's `minigames` list below),
@@ -9494,6 +9499,7 @@ window.addEventListener('keydown', (e) => {
     if (k === 'escape' && state === 'dustRacingApp') { closeDustRacingApp(); }
     if (k === 'escape' && state === 'connectFourApp') { closeConnectFourApp(); }
     if (k === 'escape' && state === 'syrupRoadsApp') { closeSyrupRoadsApp(); }
+    if (k === 'escape' && state === 'scoopBeatsApp') { closeScoopBeatsApp(); }
     if (k === 'escape' && state === 'clawMachineApp') { closeClawMachineApp(); }
     if (k === 'arrowleft') selectMove = -1;
     if (k === 'arrowright') selectMove = 1;
@@ -11948,6 +11954,12 @@ const shops = {
     // Two crates in here, both junk on purpose -- Village Scoop is an ice
     // cream window, not a record spot.
     crates: [ { junkSeed: 6 }, { junkSeed: 7 } ],
+    // SCOOP BEATS cabinet -- open floor on the right side, clear of the
+    // counter (row 3), the speaker stack at (12,1), the crates on the left
+    // wall (1,4)/(1,6), the record rug around (7,6), and the door at (6,9).
+    minigames: [
+      { id: 'scoopbeats', tx: 11, ty: 5, label: 'SCOOP BEATS' },
+    ],
   }),
   // BURLINGTON RECORDS -- the swamp's third building: a proper record shop
   // that set up out here off the boardwalk, owned and run by Ian.
@@ -12649,7 +12661,7 @@ const player = {
   tempItem: null, tempItemTimer: 0,
 };
 const collected = new Set();
-let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | danceParty | portal | fifa | minigame | hotkeys | crate | photo | lab | labLocked | shopBackLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | qsdBalanceApp | vinylSnakeApp | waveformApp | bayouBreakApp | freqAltarApp | drumPatternDocApp | gatorJamSlamApp | swampCaveApp | vocalChopBoothApp | vtDirtApp | penaltyKingsApp | digDashApp | digOnApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | diggerApp | hyperSwimApp | linusTugApp | connectFourApp | syrupRoadsApp | clawMachineApp | kangaidenVideo | kangaidenSplash | kangaidenApp | hiphopLibraryApp | truthKnocksVideo | truthKnocksSplash | truthKnocksApp | johnnySlidesVideo | johnnySlidesSplash | johnnySlidesApp | dustRacingApp
+let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | danceParty | portal | fifa | minigame | hotkeys | crate | photo | lab | labLocked | shopBackLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | qsdBalanceApp | vinylSnakeApp | waveformApp | bayouBreakApp | freqAltarApp | drumPatternDocApp | gatorJamSlamApp | swampCaveApp | vocalChopBoothApp | vtDirtApp | penaltyKingsApp | digDashApp | digOnApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | diggerApp | hyperSwimApp | linusTugApp | connectFourApp | syrupRoadsApp | scoopBeatsApp | clawMachineApp | kangaidenVideo | kangaidenSplash | kangaidenApp | hiphopLibraryApp | truthKnocksVideo | truthKnocksSplash | truthKnocksApp | johnnySlidesVideo | johnnySlidesSplash | johnnySlidesApp | dustRacingApp
 // State to snap back to when the [H] hotkeys popup is closed -- currently
 // always 'play' since that's the only state H can be opened from, but kept
 // as its own var in case another state wants to offer the popup later.
@@ -13344,7 +13356,7 @@ const music = {
 // enter/exit call sites, so it can't drift out of sync no matter which
 // of the several ways the player backs out of the lab popup (keyboard
 // [X], on-screen [X] button, closing the instrument iframe, etc.).
-const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'qsdBalanceApp', 'vinylSnakeApp', 'waveformApp', 'bayouBreakApp', 'freqAltarApp', 'drumPatternDocApp', 'gatorJamSlamApp', 'swampCaveApp', 'vocalChopBoothApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'digOnApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'johnnySlidesApp', 'dustRacingApp', 'hyperSwimApp', 'linusTugApp', 'connectFourApp', 'syrupRoadsApp', 'clawMachineApp', 'kangaidenVideo', 'kangaidenApp', 'hiphopLibraryApp', 'danceParty', 'truthKnocksVideo', 'truthKnocksApp', 'johnnySlidesVideo']);
+const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'qsdBalanceApp', 'vinylSnakeApp', 'waveformApp', 'bayouBreakApp', 'freqAltarApp', 'drumPatternDocApp', 'gatorJamSlamApp', 'swampCaveApp', 'vocalChopBoothApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'digOnApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'johnnySlidesApp', 'dustRacingApp', 'hyperSwimApp', 'linusTugApp', 'connectFourApp', 'syrupRoadsApp', 'scoopBeatsApp', 'clawMachineApp', 'kangaidenVideo', 'kangaidenApp', 'hiphopLibraryApp', 'danceParty', 'truthKnocksVideo', 'truthKnocksApp', 'johnnySlidesVideo']);
 function syncMusicDuck() {
   const minigameDucked = state === 'minigame' && activeMinigame && activeMinigame.musicDucked;
   music.duck(DUCKED_STATES.has(state) || !!minigameDucked);
@@ -15936,6 +15948,121 @@ function closeSyrupRoadsApp(fromPopState) {
     history.back();
   } else {
     syrupRoadsHistoryPushed = false;
+  }
+}
+
+// ---------------------------------------------------------------- Scoop Beats overlay
+// SCOOP BEATS -- the flavor-lab mini game inside VILLAGE SCOOP (see the
+// `villagescoop` shop's `minigames` list and MINIGAME_ACTIONS.scoopbeats).
+// Build a cup like a beat: four channels (BASE/kick, SWIRL/snare,
+// CRUNCH/hats, TOP/lead), fader-style scoop amounts, an EQ-style flavor
+// profile to match the customer's order, flavor COMBOS, then a churn rhythm
+// round played over your own beat. Six orders (Lil Sprinkle -> Queen B)
+// plus Freestyle.
+//
+// Ships as a bundled, self-contained page (own canvas art, own WebAudio
+// synth, localStorage for stars/combos found, no external assets, no network)
+// at instruments/scoop-beats/index.html -- same local-file pattern as
+// SYRUP_ROADS_APP_URL above, so it works with no connection.
+const SCOOP_BEATS_APP_URL = 'instruments/scoop-beats/index.html';
+let scoopBeatsOverlayEl = null, scoopBeatsOverlayFrame = null;
+let scoopBeatsReturnState = 'play';
+let scoopBeatsHistoryPushed = false;
+
+function createScoopBeatsOverlay() {
+  const style = document.createElement('style');
+  style.textContent = `
+    #ricoScoopBeatsApp {
+      position: fixed; inset: 0; z-index: 1000;
+      background: #000;
+      display: none; flex-direction: column;
+    }
+    #ricoScoopBeatsApp.open { display: flex; }
+    #ricoScoopBeatsApp .rsb-bar {
+      flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 10px 14px;
+      background: linear-gradient(#4a1f38, #1c1526);
+      border-bottom: 2px solid #ff4f9a;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    }
+    #ricoScoopBeatsApp .rsb-title {
+      color: #f4ecd8; font: bold 14px monospace; letter-spacing: 0.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #ricoScoopBeatsApp .rsb-close {
+      flex: 0 0 auto; cursor: pointer;
+      background: rgba(255,79,154,0.15);
+      border: 1.5px solid rgba(255,79,154,0.85);
+      color: #f4ecd8; border-radius: 8px;
+      padding: 7px 16px; font: bold 13px monospace;
+      -webkit-user-select: none; user-select: none;
+    }
+    #ricoScoopBeatsApp .rsb-close:active { background: rgba(255,79,154,0.4); }
+    #ricoScoopBeatsApp iframe {
+      flex: 1 1 auto; width: 100%; border: 0; background: #000;
+    }
+  `;
+  document.head.appendChild(style);
+
+  scoopBeatsOverlayEl = document.createElement('div');
+  scoopBeatsOverlayEl.id = 'ricoScoopBeatsApp';
+
+  const bar = document.createElement('div');
+  bar.className = 'rsb-bar';
+  const title = document.createElement('div');
+  title.className = 'rsb-title';
+  title.textContent = 'SCOOP BEATS';
+  const closeBtn = document.createElement('div');
+  closeBtn.className = 'rsb-close';
+  closeBtn.textContent = '\u2190 BACK TO VILLAGE SCOOP';
+  bindTap(closeBtn, closeScoopBeatsApp);
+  bar.appendChild(title);
+  bar.appendChild(closeBtn);
+
+  scoopBeatsOverlayFrame = document.createElement('iframe');
+  scoopBeatsOverlayFrame.setAttribute('allow', 'autoplay');
+
+  scoopBeatsOverlayEl.appendChild(bar);
+  scoopBeatsOverlayEl.appendChild(scoopBeatsOverlayFrame);
+  document.body.appendChild(scoopBeatsOverlayEl);
+
+  // [Esc] on the title screen inside the iframe never reaches this page's
+  // keydown handler, so the page posts a message instead.
+  window.addEventListener('message', (e) => {
+    if (!scoopBeatsOverlayFrame || e.source !== scoopBeatsOverlayFrame.contentWindow) return;
+    if (e.data && e.data.ricoScoopBeats === 'close' && state === 'scoopBeatsApp') closeScoopBeatsApp();
+  });
+}
+createScoopBeatsOverlay();
+
+// Opens the Scoop Beats overlay and switches state to 'scoopBeatsApp'.
+// Called from MINIGAME_ACTIONS.scoopbeats (E on the cabinet, or tapping its
+// floating arcade sign).
+function openScoopBeatsApp() {
+  scoopBeatsReturnState = state;
+  scoopBeatsOverlayFrame.src = SCOOP_BEATS_APP_URL;
+  scoopBeatsOverlayEl.classList.add('open');
+  state = 'scoopBeatsApp';
+  // Throwaway history entry so the browser/OS back gesture closes the
+  // overlay instead of leaving the game (same trick as openSyrupRoadsApp()).
+  history.pushState({ ricoScoopBeatsApp: true }, '');
+  scoopBeatsHistoryPushed = true;
+}
+
+// Tears the iframe down and returns to ordinary gameplay in VILLAGE SCOOP.
+// fromPopState is true when triggered by the browser's back button (history
+// entry already consumed), so history.back() must not be called again.
+function closeScoopBeatsApp(fromPopState) {
+  if (state !== 'scoopBeatsApp') return;
+  scoopBeatsOverlayEl.classList.remove('open');
+  scoopBeatsOverlayFrame.src = 'about:blank';
+  reclaimGameFocus(scoopBeatsOverlayFrame);
+  state = scoopBeatsReturnState;
+  if (!fromPopState && scoopBeatsHistoryPushed) {
+    scoopBeatsHistoryPushed = false;
+    history.back();
+  } else {
+    scoopBeatsHistoryPushed = false;
   }
 }
 
@@ -19387,6 +19514,8 @@ window.addEventListener('popstate', () => {
     closeConnectFourApp(true);
   } else if (state === 'syrupRoadsApp') {
     closeSyrupRoadsApp(true);
+  } else if (state === 'scoopBeatsApp') {
+    closeScoopBeatsApp(true);
   } else if (state === 'clawMachineApp') {
     closeClawMachineApp(true);
   } else if (state === 'kangaidenApp') {
@@ -19410,7 +19539,7 @@ canvas.addEventListener('pointerdown', (e) => {
     const vx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const vy = (e.clientY - rect.top) * (canvas.height / rect.height);
     handleLabTap(vx, vy);
-  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'dustRacingApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp') {
+  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'dustRacingApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'scoopBeatsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp') {
     // The DOM overlay sits on top of (and outside) the canvas while an
     // instrument/the chess app/the beat bot/the organ/mini golf/the
     // blackbook/Gator Grooves/Vinyl Snake/Bayou Break Station/Gator Jam
@@ -19972,6 +20101,10 @@ function update(dt) {
     // closing it directly. buyPressed is still consumed here too so the
     // on-screen [X] touch button works while Syrup Roads is open.
     if (buyPressed) closeSyrupRoadsApp();
+  } else if (state === 'scoopBeatsApp') {
+    // Same reasoning as 'syrupRoadsApp' just above: the DOM overlay (see
+    // createScoopBeatsOverlay()) owns input while Scoop Beats is loaded.
+    if (buyPressed) closeScoopBeatsApp();
   } else if (state === 'clawMachineApp') {
     // Same reasoning as 'labApp'/'chessApp'/.../'syrupRoadsApp' just above:
     // the DOM overlay (see createClawMachineOverlay()) owns input while the
@@ -20883,7 +21016,7 @@ function render(time) {
     drawSplash();
     return;
   }
-  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'dustRacingApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp') {
+  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'dustRacingApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'scoopBeatsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp') {
     // Same reasoning as the labApp overlay: a DOM element (the <video>,
     // see createCharacterIntroOverlay(), the chess <iframe>, see
     // createChessOverlay(), the beat bot <iframe>, see
