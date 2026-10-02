@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Scoop Beats</title>
+<style>
+:root{--bg:#1c1526;--pn:#2b1f3d;--pk:#ff4f9a;--mn:#2ecfcf;--gd:#ffd23f;--cr:#f4ecd8;--dim:#9a8aae;--ink:#17121c}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--cr);font:bold 13px/1.35 ui-monospace,Menlo,Consolas,monospace;overflow:hidden}
+#app{height:100%;overflow:auto;padding:12px;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px));background:repeating-linear-gradient(45deg,#1c1526 0 14px,#201929 14px 28px)}
+button{font:inherit;color:var(--cr);background:#3a2a52;border:3px solid var(--ink);border-radius:6px;padding:8px 12px;box-shadow:0 4px 0 var(--ink);cursor:pointer;touch-action:manipulation}
+button:active:not(:disabled){transform:translateY(3px);box-shadow:0 1px 0 var(--ink)}
+button:disabled{opacity:.4;cursor:default}
+button:focus-visible{outline:3px solid var(--gd)}
+.go{background:var(--pk);color:#fff}.sm{padding:4px 10px}.big{font-size:22px;padding:18px;width:100%;margin-top:10px}
+.wrap{max-width:560px;margin:0 auto}
+h1{margin:6px 0 0;font-size:54px;line-height:.9;color:var(--pk);text-shadow:4px 4px 0 var(--ink),-2px -2px 0 var(--mn);letter-spacing:2px}
+.sub{color:var(--gd);letter-spacing:3px;margin:8px 0 10px}.dim,i{color:var(--dim);font-style:normal}
+.row{display:grid;grid-template-columns:34px 1fr auto;grid-template-rows:auto auto;column-gap:8px;width:100%;text-align:left;margin:0 0 9px;padding:9px 12px}
+.row span{grid-row:1/3;font-size:22px;align-self:center}.row u{grid-row:1/3;grid-column:3;align-self:center;text-decoration:none;color:var(--gd);letter-spacing:2px}
+.free{background:var(--mn);color:var(--ink)}.free i{color:#145e5e}
+.hd{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px}.who{flex:1;background:var(--pn);border:3px solid var(--ink);border-radius:6px;padding:7px 10px}
+.grid{display:grid;grid-template-columns:minmax(240px,320px) 1fr;gap:10px}
+@media(max-width:720px){.grid{grid-template-columns:1fr}}
+.left{display:flex;flex-wrap:wrap;gap:8px;align-content:flex-start}
+#cup{width:120px;height:150px;image-rendering:pixelated;background:var(--pn);border:3px solid var(--ink);border-radius:6px}
+#eq{flex:1 1 180px;min-width:180px;max-width:300px;height:auto;background:var(--pn);border:3px solid var(--ink);border-radius:6px}
+#info{flex:1 1 100%;min-height:44px}
+.tag{display:inline-block;background:var(--gd);color:var(--ink);padding:2px 7px;border-radius:4px;margin:0 5px 5px 0}.bad{background:#ff6b6b}
+#strips{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:8px;align-content:start}
+.st{background:var(--pn);border:3px solid var(--ink);border-radius:6px;padding:8px}.sh{margin-bottom:6px;color:var(--mn)}
+.chips{display:flex;flex-wrap:wrap;gap:5px}.chip{padding:4px 7px;font-size:12px;box-shadow:0 3px 0 var(--ink);display:flex;gap:5px;align-items:center}
+.chip s{width:11px;height:11px;border:2px solid var(--ink);display:inline-block}.chip.on{background:var(--mn);color:var(--ink)}
+.amt{display:flex;gap:10px;align-items:center;margin-top:8px;min-height:30px}.amt span{color:var(--gd);letter-spacing:3px}
+.ft{position:sticky;bottom:-12px;display:flex;gap:8px;padding:10px 0 2px;margin-top:8px;background:linear-gradient(transparent,var(--bg) 30%)}.ft .go{flex:1}
+#ch{width:100%;max-width:640px;display:block;margin:0 auto;background:var(--pn);border:3px solid var(--ink);border-radius:6px;touch-action:none}
+.jd{text-align:center;font-size:20px;color:var(--gd);height:30px;margin-top:8px}
+.score{font-size:68px;color:var(--gd);text-shadow:4px 4px 0 var(--ink);line-height:1}.stars{font-size:34px;color:var(--gd);letter-spacing:6px}
+.box{background:var(--pn);border:3px solid var(--ink);border-radius:6px;padding:10px;margin:10px 0}
+</style></head><body><div id="app"></div>
+<script>
+'use strict';
+const $=s=>document.querySelector(s),app=$('#app');
+const BANDS=['SWEET','DEEP','ICY','JUICY','CRUNCH'],BC=['#ff8fb8','#c07a3a','#2ecfcf','#ff4f9a','#ffd23f'];
+// ingredient: [name, color, stats "sweet deep icy juicy crunch"]; voice VO[ch][i]
+const CH=[
+{n:'BASE',v:'KICK',o:[['Vanilla Bean','#f6e7b4','22000'],['Choc Fudge','#6b3a22','14000'],['Strawberry','#ff8fb8','20030'],['Mint Condition','#8be0c8','10400'],['Cold Brew','#8a5a3a','03100'],['Mango Tango','#ffb830','10040']]},
+{n:'SWIRL',v:'SNARE',o:[['Caramel','#d9902f','31000'],['Hot Fudge','#4a2314','13000'],['Berry Jam','#b02a6f','10030'],['Peanut Butter','#d9a85a','03001'],['Lemon Curd','#fff06a','00220'],['Marshmallow','#ffffff','30000']]},
+{n:'CRUNCH',v:'HATS',o:[['Cookie Chunks','#8a5a3a','10003'],['Pretzel Bits','#c8873a','01003'],['Pecans','#a8622a','02002'],['Brownie Bites','#3f2012','12001'],['Waffle Crush','#e8c27a','20002'],['Pop Rocks','#ff4f9a','10102']]},
+{n:'TOP',v:'LEAD',o:[['Sprinkles','#ffd23f','10001'],['Cherry','#d1122f','10020'],['Whip Cream','#ffffff','21000'],['Fresh Mint','#2ecfcf','00300'],['Crushed Berries','#8a2a8a','00130'],['Chili-Lime','#9bd13a','00210']]}];
+const VO=[
+[[120,.35,'x.....x..x......'],[85,.55,'x..x....x.x.....'],[140,.25,'x...x..x..x.x...'],[165,.18,'x......xx...x...'],[100,.45,'x.x.....x..x....'],[150,.28,'x..x..x.x..x..x.']],
+[[0,.2,'....x.......x...'],[1,.3,'....x.......x..x'],[2,.12,'....x......xx...'],[1,.25,'....x...x...x...'],[3,.1,'....x..x....x...'],[0,.35,'....x.......x.x.']],
+[[.05,7000,'x.x.x.x.x.x.x.x.'],[.04,9000,'x.xxx.x.x.xxx.x.'],[.07,5500,'..x...x...x...x.'],[.09,4500,'x...x...x...x...'],[.06,8000,'xxxxxxxxxxxxxxxx'],[.03,11000,'x.x..x.xx..x.x..']],
+[['sine',.25,'0.4.7.4.9.7.4.2.'],['triangle',.3,'7...5...4.5.7...'],['sawtooth',.5,'0.......3.......'],['sine',.4,'4.5.7.5.4.2.0...'],['square',.15,'0.2.4.2.0.2.4.7.'],['sawtooth',.2,'..7..7.5..4..2.0']]];
+const SC=[220,261.63,293.66,329.63,392,440,523.25,587.33,659.25,784];
+// combos: [chA,iA,chB,iB,name,band that gets +1]
+const COMBOS=[[0,3,1,1,'MINT CONDITION',2],[1,0,2,1,'SALTY SMOOTH',0],[0,2,2,0,'CHEESECAKE CRATE',3],[0,4,2,3,'ESPRESSO BEATS',1],[0,5,3,5,'SPICY SAMPLE',3],[0,2,1,3,'PB&J FLIP',3],[0,1,3,1,'BLACK FOREST BREAK',1],[0,0,3,0,'BIRTHDAY BAR',0],[1,4,3,4,'SUMMER MIXTAPE',3],[1,5,2,4,"S'MORES SESSION",0],[0,3,3,3,'DOUBLE MINT FLOW',2],[0,1,2,2,'ROCKY ROAD',4]];
+const LV=[
+{n:'LIL SPRINKLE',t:'OPEN MIC',e:'🎤',bpm:88,q:'Keep it sweet with a little crunch, yo. Easy vibes only.',r:[[0,2],[0,1],[0,1],[0,1]]},
+{n:'DJ BRAIN FREEZE',t:'BLOCK PARTY',e:'🎧',bpm:92,q:'Ice cold and juicy. Fresh like a new pair of kicks.',r:[[2,2],[4,2],null,[3,1]]},
+{n:'MC WAFFLE',t:'CYPHER',e:'🧇',bpm:94,q:'Deep and crunchy. Boom-bap in a cone, no filler.',r:[[1,2],[3,1],[1,2],null]},
+{n:'MISS FUDGE JONES',t:'STUDIO SESSION',e:'🎹',bpm:96,q:'Deep and rich. And I want a COMBO in there. I can taste a lazy mix.',r:[[4,2],[1,1],[3,2],[2,1]],combo:1},
+{n:'BIG GELATO',t:'HEADLINER',e:'🕶️',bpm:100,q:'All five bands in the mix. Nothing clipping, nothing missing.',r:[[0,2],[2,1],[5,2],[3,1]]},
+{n:'QUEEN B',t:'HALL OF FAME',e:'👑',bpm:104,q:'Make me a flavor nobody has ever scooped. Two combos, minimum. Hendrix is watching.',r:[[1,2],[5,1],[4,2],[1,1]],combo:2}];
+const SAVE='ricoScoopBeats1';let sv={s:[],f:[]};
+try{sv=Object.assign(sv,JSON.parse(localStorage.getItem(SAVE)||'{}'))}catch(e){}
+const save=()=>{try{localStorage.setItem(SAVE,JSON.stringify(sv))}catch(e){}};
+const def=()=>[{i:0,a:2},null,null,null];
+let scr='title',L=-1,mix=def(),seq=null,C=null,lastSm=0;
+const bpm=()=>L>=0?LV[L].bpm:92,total=m=>m.reduce((n,x)=>n+(x?x.a:0),0);
+const toMix=r=>r.map(x=>x?{i:x[0],a:x[1]}:null);
+function calc(m){const b=[0,0,0,0,0],cmb=[];
+ m.forEach((x,c)=>{if(!x)return;const s=CH[c].o[x.i][2];for(let k=0;k<5;k++)b[k]+=s[k]*x.a/2});
+ COMBOS.forEach((k,n)=>{const A=m[k[0]],B=m[k[2]];if(A&&B&&A.i==k[1]&&B.i==k[3]){cmb.push(n);b[k[5]]+=1}});
+ return{b,cmb}}
+// ---------- audio
+let ac,mg,nb;
+function au(){if(!ac){ac=new(window.AudioContext||window.webkitAudioContext)();mg=ac.createGain();mg.gain.value=.8;const c=ac.createDynamicsCompressor();mg.connect(c);c.connect(ac.destination);
+ nb=ac.createBuffer(1,ac.sampleRate,ac.sampleRate);const d=nb.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1}
+ if(ac.state==='suspended')ac.resume();return ac}
+const env=(g,t,v,d)=>{g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.001,t+d)};
+function kick(t,f,d,v){const o=ac.createOscillator(),g=ac.createGain();o.frequency.setValueAtTime(f,t);o.frequency.exponentialRampToValueAtTime(40,t+d*.6);env(g,t,v,d);o.connect(g);g.connect(mg);o.start(t);o.stop(t+d)}
+function noise(t,d,v,ty,f){const s=ac.createBufferSource(),fl=ac.createBiquadFilter(),g=ac.createGain();s.buffer=nb;s.loop=true;fl.type=ty;fl.frequency.value=f;env(g,t,v,d);s.connect(fl);fl.connect(g);g.connect(mg);s.start(t);s.stop(t+d)}
+function tone(t,f,w,d,v){const o=ac.createOscillator(),fl=ac.createBiquadFilter(),g=ac.createGain();o.type=w;o.frequency.value=f;fl.type='lowpass';fl.frequency.value=2600;env(g,t,v,d);o.connect(fl);fl.connect(g);g.connect(mg);o.start(t);o.stop(t+d)}
+function playStep(s,t){mix.forEach((x,c)=>{if(!x)return;const v=VO[c][x.i],a=x.a,ch=v[2][s];
+ if(c==0&&ch=='x')kick(t,v[0],v[1],.5+.12*a);
+ else if(c==1&&ch=='x'){const k=v[0],d=v[1],g=.3+.1*a;
+  if(k==0){[0,.012,.024].forEach(o=>noise(t+o,d,g*.7,'bandpass',1500))}
+  else if(k==1){noise(t,d,g,'highpass',1800);tone(t,190,'triangle',d*.7,g*.6)}
+  else if(k==2){tone(t,820,'square',d,g*.35);noise(t,d,g*.4,'highpass',5000)}
+  else{noise(t,d,g,'highpass',4000);tone(t,1400,'sine',d,g*.4)}}
+ else if(c==2&&ch=='x')noise(t,v[0],.05+.035*a,'highpass',v[1]);
+ else if(c==3&&ch!='.')tone(t,SC[+ch],v[0],v[1],.08+.04*a)})}
+function stopSeq(){if(seq){clearInterval(seq.tm);seq=null}$('#pl')&&($('#pl').textContent='▶ PLAY BEAT')}
+function startSeq(b,count,max){au();stopSeq();const sd=60/b/4,t0=ac.currentTime+.2+count*sd;
+ seq={sd,t0,step:-count,max,count};
+ const pump=()=>{if(!seq)return;while(seq.step<(max||1e9)&&seq.t0+seq.step*sd<ac.currentTime+.12){const s=seq.step,t=seq.t0+s*sd;
+  if(s<0){if(s%4==0)noise(t,.05,.3,'highpass',6000)}else playStep(s%16,t);seq.step++}};
+ pump();seq.tm=setInterval(pump,25)}
+// ---------- drawing
+const rng=s=>()=>(s=(s*16807)%2147483647)/2147483647;
+function disc(g,x,y,r,c){g.fillStyle=c;for(let dy=-r;dy<=r;dy++){const w=Math.floor(Math.sqrt(r*r-dy*dy));g.fillRect(x-w,y+dy,w*2+1,1)}}
+function drawCup(g,m,bob){g.clearRect(0,0,96,120);
+ g.fillStyle='rgba(180,230,255,.4)';for(let y=0;y<30;y++){const w=21-Math.floor(y*.3);g.fillRect(48-w,72+y,w*2,1)}
+ g.fillRect(45,102,6,9);g.fillRect(34,111,28,4);
+ const base=m[0];if(!base)return;const r=11+base.a*3,cy=70+bob-Math.round(r*.2),bc=CH[0].o[base.i][1],sw=m[1],sc=sw&&CH[1].o[sw.i][1];
+ for(let dy=-r;dy<=r;dy++){const w=Math.floor(Math.sqrt(r*r-dy*dy));for(let dx=-w;dx<=w;dx++){
+  let c=bc;if(sw&&((((dx+dy)%12)+12)%12)<sw.a*2+1)c=sc;
+  g.fillStyle=c;g.fillRect(48+dx,cy+dy,1,1);
+  if(dx+dy<-r*.9){g.fillStyle='rgba(255,255,255,.35)';g.fillRect(48+dx,cy+dy,1,1)}
+  else if(dx+dy>r*.85){g.fillStyle='rgba(0,0,0,.2)';g.fillRect(48+dx,cy+dy,1,1)}}}
+ const cr=m[2];if(cr){const R=rng(cr.i+7);g.fillStyle=CH[2].o[cr.i][1];for(let n=0;n<4+cr.a*4;n++){const an=R()*6.28,d=R()*(r-3);g.fillRect(Math.round(48+Math.cos(an)*d),Math.round(cy+Math.sin(an)*d),3,2)}}
+ const tp=m[3];if(tp){const R=rng(tp.i+3),ty=cy-r+1,col=CH[3].o[tp.i][1],a=tp.a;
+  if(tp.i==0){const cs=['#ff4f9a','#2ecfcf','#ffd23f','#fff','#8a4ab0'];for(let n=0;n<5+a*4;n++){g.fillStyle=cs[n%5];g.fillRect(Math.round(48+(R()-.5)*r*1.4),Math.round(ty+R()*r*.9),3,1)}}
+  else if(tp.i==1){for(let n=0;n<a;n++){const x=48+(n-(a-1)/2)*9;disc(g,x,ty-3,4,col);g.fillStyle='#fff';g.fillRect(x-2,ty-5,1,1);g.fillStyle='#3a7a2a';g.fillRect(x+1,ty-10,1,5)}}
+  else if(tp.i==2){disc(g,48,ty,5+a,col);disc(g,48,ty-5-a,3+a,col);disc(g,48,ty-9-2*a,2,col)}
+  else if(tp.i==3){for(let n=0;n<a+1;n++){disc(g,44+n*5,ty-3-n*2,3,col);g.fillStyle='#14857f';g.fillRect(44+n*5,ty-2-n*2,1,3)}}
+  else if(tp.i==4){for(let n=0;n<2+a*2;n++)disc(g,Math.round(48+(R()-.5)*r),Math.round(ty-1-R()*5),2,col)}
+  else{const cs=['#9bd13a','#d1122f'];for(let n=0;n<6+a*4;n++){g.fillStyle=cs[n%2];g.fillRect(Math.round(48+(R()-.5)*r*1.5),Math.round(ty+R()*r*.8),2,2)}}}}
+function drawEq(){const cv=$('#eq');if(!cv)return;const g=cv.getContext('2d'),{b}=calc(mix),tg=L>=0?calc(toMix(LV[L].r)).b:null;
+ g.clearRect(0,0,300,150);g.font='bold 10px monospace';g.textAlign='center';const U=100/12;
+ for(let k=0;k<5;k++){const x=14+k*57,v=Math.min(12,b[k]);
+  g.fillStyle='#17121c';g.fillRect(x,16,40,100);g.fillStyle=BC[k];g.fillRect(x,116-v*U,40,v*U);
+  if(b[k]>10){g.fillStyle='#ff3b3b';g.fillRect(x,16,40,5)}
+  if(tg){const y=116-Math.min(12,tg[k])*U;g.fillStyle='#fff';g.fillRect(x-4,y-1,48,3);g.fillStyle='#ffd23f';g.fillRect(x-4,y,48,1)}
+  g.fillStyle='#f4ecd8';g.fillText(b[k].toFixed(1),x+20,12);g.fillStyle='#9a8aae';g.fillText(BANDS[k],x+20,132)}
+ g.fillStyle='#9a8aae';g.fillText(tg?'WHITE LINE = ORDER · TOP RED = CLIP':'FREESTYLE: NO TARGET',150,146)}
+function drawChurn(){const cv=$('#ch');if(!cv||!seq||!C)return;const g=cv.getContext('2d'),now=ac.currentTime,hx=110,SP=240,sd=seq.sd;
+ g.clearRect(0,0,640,220);g.fillStyle='#17121c';g.fillRect(0,86,640,70);
+ for(let k=-4;k<24;k++){const x=hx+(seq.t0+k*sd*4-now)*SP;if(x<0||x>640)continue;g.fillStyle=k%4==0?'#ff4f9a':'#4a3a60';g.fillRect(x-1,86,k%4==0?3:1,70)}
+ const pulse=((now-seq.t0)/(sd*4)%1+1)%1,rr=26+Math.max(0,1-pulse*5)*5;
+ g.strokeStyle='#ffd23f';g.lineWidth=4;g.beginPath();g.arc(hx,121,rr,0,6.28);g.stroke();
+ C.notes.forEach(n=>{if(n.done)return;const x=hx+(n.t-now)*SP;if(x>660)return;disc(g,x,121,15,'#ff8fb8');disc(g,x,121,9,'#fff');g.fillStyle='#ff4f9a';g.fillRect(x-3,118,6,6)});
+ C.fx=C.fx.filter(f=>now-f.t0<.5);C.fx.forEach(f=>{const a=(now-f.t0)/.5;g.globalAlpha=1-a;g.strokeStyle=f.c;g.lineWidth=4;g.beginPath();g.arc(hx,121,28+a*36,0,6.28);g.stroke();g.fillStyle=f.c;g.font='bold 18px monospace';g.textAlign='center';g.fillText(f.l,hx,70-a*20);g.globalAlpha=1});
+ g.textAlign='center';g.fillStyle='#ffd23f';g.font='bold 40px monospace';
+ if(now<seq.t0)g.fillText(Math.ceil((seq.t0-now)/(sd*4)),320,60);
+ g.font='bold 13px monospace';g.fillStyle='#f4ecd8';g.textAlign='left';g.fillText('COMBO x'+C.combo+'   SMOOTH '+Math.round(100*C.pts/Math.max(1,C.notes.filter(n=>n.done).length))+'%',10,22);
+ const pr=Math.max(0,Math.min(1,(now-seq.t0)/(seq.max*sd)));g.fillStyle='#17121c';g.fillRect(10,180,620,12);g.fillStyle='#2ecfcf';g.fillRect(10,180,620*pr,12);
+ const lat=Math.min(.12,ac.outputLatency||0);
+ C.notes.forEach(n=>{if(!n.done&&now-lat>n.t+.16){n.done=1;C.combo=0;C.miss++;$('#jd').textContent='MISS'}});
+ if(now>seq.t0+(seq.max+2)*sd)endChurn()}
+function anim(){requestAnimationFrame(anim);
+ if(scr==='mix'){const cv=$('#cup');if(cv){let ph=0;if(seq&&ac)ph=((ac.currentTime-seq.t0)/(seq.sd*4)%1+1)%1;drawCup(cv.getContext('2d'),mix,Math.round(Math.max(0,1-ph*4)*3))}drawEq()}
+ else if(scr==='churn')drawChurn()}
+// ---------- screens
+function title(){scr='title';stopSeq();L=-1;
+ app.innerHTML=`<div class=wrap><h1>SCOOP<br>BEATS</h1><div class=sub>VILLAGE SCOOP FLAVOR LAB</div><p>Build a cup like you build a beat: pick a layer for every channel, set the faders, match the customer's vibe, then churn it on the beat.</p>`+
+ LV.map((l,i)=>{const ok=i==0||sv.s[i-1]>0,s=sv.s[i]||0;return`<button class=row ${ok?`data-a=lv data-i=${i}`:'disabled'}><span>${l.e}</span><b>${l.n}</b><i>${ok?l.t:'LOCKED'}</i><u>${'★'.repeat(s)+'☆'.repeat(3-s)}</u></button>`}).join('')+
+ `<button class="row free" data-a=free><span>🎛️</span><b>FREESTYLE</b><i>no order, pure flavor</i></button><div class=dim>COMBOS FOUND ${sv.f.length}/${COMBOS.length}</div></div>`}
+function strips(){return mix.map((x,c)=>`<div class=st><div class=sh>${CH[c].n} <i>${CH[c].v}</i></div><div class=chips>`+CH[c].o.map((o,i)=>`<button class="chip${x&&x.i==i?' on':''}" data-a=pick data-c=${c} data-i=${i}><s style="background:${o[1]}"></s>${o[0]}</button>`).join('')+
+ `</div><div class=amt>${x?`<button class=sm data-a=amt data-c=${c} data-d=-1>−</button><span>${'●'.repeat(x.a)+'○'.repeat(3-x.a)}</span><button class=sm data-a=amt data-c=${c} data-d=1>+</button>`:'<i>empty channel</i>'}</div></div>`).join('')}
+function upd(){const{cmb}=calc(mix),l=L>=0?LV[L]:null;
+ $('#strips').innerHTML=strips();
+ $('#info').innerHTML=`<div class=dim>CUP ${total(mix)}/8 scoops</div>`+cmb.map(n=>`<span class=tag>${COMBOS[n][4]}</span>`).join('')+(l&&l.combo?`<span class="tag${cmb.length>=l.combo?'':' bad'}">NEEDS ${l.combo} COMBO${l.combo>1?'S':''}</span>`:'')}
+function mixer(){scr='mix';stopSeq();const l=L>=0?LV[L]:null;
+ app.innerHTML=`<div class=hd><button class=sm data-a=home>◂ MENU</button><div class=who>${l?`<b>${l.e} ${l.n}</b> <i>${l.t} · ${l.bpm} BPM</i><br>“${l.q}”`:`<b>🎛️ FREESTYLE</b> <i>92 BPM</i><br>No order. Make something masterful.`}</div></div><div class=grid><div class=left><canvas id=cup width=96 height=120></canvas><canvas id=eq width=300 height=150></canvas><div id=info></div></div><div id=strips></div></div><div class=ft><button id=pl data-a=play>▶ PLAY BEAT</button><button class=go data-a=churn>CHURN IT ▸</button></div>`;upd()}
+function churn(){stopSeq();scr='churn';au();const lv=L<0?2:L;
+ app.innerHTML=`<div class=hd><button class=sm data-a=mixer>◂ MIXER</button><div class=who><b>CHURN IT</b><br>Tap on the pink scoops as they hit the gold ring. Your own beat is the metronome.</div></div><canvas id=ch width=640 height=220></canvas><div id=jd class=jd>GET READY</div><button class="go big" id=tap>CHURN!</button>`;
+ const notes=[];for(let bar=0;bar<4;bar++){const st=[0,4,8,12];if(lv>=2&&bar%2)st.push(10);if(lv>=4&&bar>=2)st.push(6);if(lv>=4&&bar==3)st.push(14);st.forEach(s=>notes.push({s:bar*16+s,done:0}))}
+ notes.sort((a,b)=>a.s-b.s);startSeq(bpm(),16,64);notes.forEach(n=>n.t=seq.t0+n.s*seq.sd);
+ C={notes,pts:0,combo:0,miss:0,perf:0,good:0,fx:[]};
+ const tp=e=>{e.preventDefault();tap()};$('#tap').addEventListener('pointerdown',tp);$('#ch').addEventListener('pointerdown',tp)}
+function tap(){if(scr!=='churn'||!seq||!C)return;const T=ac.currentTime-Math.min(.12,ac.outputLatency||0);let b=null,bd=.16;
+ C.notes.forEach(n=>{const d=Math.abs(T-n.t);if(!n.done&&d<bd){b=n;bd=d}});
+ if(!b){C.combo=0;$('#jd').textContent='TOO EARLY';return}
+ b.done=1;const p=bd<.07;C.pts+=p?1:.6;p?C.perf++:C.good++;C.combo++;
+ C.fx.push({t0:ac.currentTime,c:p?'#ffd23f':'#2ecfcf',l:p?'PERFECT':'GOOD'});$('#jd').textContent=p?'PERFECT!':'GOOD';
+ noise(ac.currentTime,.12,.5,'bandpass',900+C.combo*40);tone(ac.currentTime,SC[Math.min(9,C.combo%10)]*2,'triangle',.18,.25)}
+function endChurn(){const sm=C.pts/C.notes.length;stopSeq();result(sm)}
+const NAMES={0:'SWEET',1:'DEEP',2:'ICE-COLD',3:'JUICY',4:'CRUNCHY'};
+function result(sm){scr='res';const{b,cmb}=calc(mix);let sc,fl=0,line='';
+ if(L>=0){const l=LV[L],t=calc(toMix(l.r)).b;fl=Math.max(0,1-b.reduce((n,v,k)=>n+Math.abs(v-t[k]),0)/14);
+  const need=l.combo||0,cf=Math.min(1,cmb.length/Math.max(1,need));sc=100*(.6*fl+.3*sm+.1*cf);if(cmb.length<need)sc*=.8}
+ else{const mx=Math.max(...b),mn=Math.min(...b),bal=Math.max(0,1-(mx-mn)/Math.max(8,mx));sc=100*(.35*Math.min(1,cmb.length/3)+.3*bal+.35*sm);
+  const top=b.indexOf(mx);line=cmb.length?COMBOS[cmb[0]][4]+' '+['REMIX','FLIP','SESSION'][cmb[0]%3]:NAMES[top]+' '+CH[0].o[mix[0].i][0].split(' ')[0].toUpperCase()+' '+['FREESTYLE','CYPHER','SPECIAL'][top%3]}
+ sc=Math.round(sc);const st=sc>=85?3:sc>=65?2:sc>=40?1:0;
+ if(L>=0&&st>(sv.s[L]||0))sv.s[L]=st;cmb.forEach(n=>{if(!sv.f.includes(n))sv.f.push(n)});save();
+ const dog=['*sniffs it, walks away*','*polite sniff, tail wag*','*happy bark!* 🐕','*howls, sunglasses on* 🕶️🐕'][st],gold=st==3&&L==LV.length-1;
+ app.innerHTML=`<div class=wrap style="text-align:center"><div class=score>${sc}</div><div class=stars>${'★'.repeat(st)+'☆'.repeat(3-st)}</div>${line?`<div class=sub>YOUR FLAVOR: ${line}</div>`:''}
+ <div class=box style="text-align:left">${L>=0?`FLAVOR MATCH <b>${Math.round(fl*100)}%</b><br>`:''}CHURN SMOOTHNESS <b>${Math.round(sm*100)}%</b> <i>(${C.perf} perfect · ${C.good} good · ${C.miss} miss)</i><br>COMBOS ${cmb.length?cmb.map(n=>`<span class=tag>${COMBOS[n][4]}</span>`).join(''):'<i>none yet. Try pairing layers!</i>'}<br><i>Hendrix: ${dog}</i></div>
+ ${gold?'<div class=box>💿 GOLD RECORD! Queen B hangs it on the Village Scoop wall.</div>':st==0?'<div class=box>Not quite. Tweak the faders and run it back.</div>':''}
+ <button class="go big" data-a=mixer>${st?'TWEAK IT':'RETRY'}</button>${L>=0&&st>0&&L<LV.length-1?'<button class=big data-a=lv data-i='+(L+1)+'>NEXT ORDER ▸</button>':''}<button class=big data-a=home>MENU</button></div>`}
+// ---------- input
+document.addEventListener('click',e=>{const el=e.target.closest('[data-a]');if(!el)return;const a=el.dataset.a,c=+el.dataset.c,i=+el.dataset.i;au();
+ if(a=='lv'){L=i;mix=def();mixer()}
+ else if(a=='free'){L=-1;mix=def();mixer()}
+ else if(a=='home')title();
+ else if(a=='mixer')mixer();
+ else if(a=='churn'){if(!mix[0])return;churn()}
+ else if(a=='play'){if(seq){stopSeq()}else{startSeq(bpm(),0,0);$('#pl').textContent='■ STOP BEAT'}}
+ else if(a=='pick'){const x=mix[c];if(x&&x.i==i){if(c>0)mix[c]=null}else{const a0=x?x.a:1;if(total(mix)-(x?x.a:0)+a0>8)return;mix[c]={i,a:a0}}
+  tone(ac.currentTime,SC[c*2+i%3],'triangle',.15,.2);upd()}
+ else if(a=='amt'){const x=mix[c],d=+el.dataset.d;if(!x)return;const n=x.a+d;if(n<1||n>3||total(mix)+d>8)return;x.a=n;tone(ac.currentTime,SC[3+n],'sine',.12,.2);upd()}});
+document.addEventListener('keydown',e=>{
+ if(e.key==='Escape'){if(scr==='title')try{parent.postMessage({ricoScoopBeats:'close'},'*')}catch(x){}else if(scr==='churn')mixer();else title();return}
+ if(scr==='churn'&&(e.code==='Space'||e.code==='Enter'||/^Key[DFJK]$/.test(e.code))){e.preventDefault();if(!e.repeat)tap()}});
+window.focus();title();anim();
+</script></body></html>
