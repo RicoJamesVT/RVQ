@@ -1542,6 +1542,17 @@ const MINIGAME_ACTIONS = {
   // network calls -- so it works with no connection). See
   // openHipHopLibraryApp()/createHipHopLibraryOverlay() below.
   hiphoplibrary: () => openHipHopLibraryApp(),
+  // ARKAIIK IMPACT -- a skateboard painting studio parked on the concrete
+  // plaza of LEVEL 3 (SKATEPARK), see the skatepark map's `minigames` list
+  // in makeSkatepark(). `icon: 'paintbrush'` swaps the usual floating
+  // arcade-cabinet sign for a big paint brush (see
+  // drawMinigamePaintBrush()). Same "full standalone web app, not a canvas
+  // mini-game" shape as the Hip Hop Library above (own DOM/iframe overlay,
+  // bundled locally as one self-contained HTML file -- inline CSS/JS, the
+  // host art embedded as a data URI, no external fonts/CDNs/network calls --
+  // so it works with no connection). See openArkaiikImpactApp()/
+  // createArkaiikImpactOverlay() below.
+  arkaiikimpact: () => openArkaiikImpactApp(),
   // TRUTH KNOCKS -- "The Swamp Is Not A Secret," a 16-bit-style beat 'em up
   // (punch/kick/cane combos, a chargeable Special, and a boss rotation of
   // the Frog King/King Gator/Rat King every 5th wave) parked out on the
@@ -9622,6 +9633,7 @@ window.addEventListener('keydown', (e) => {
     if (k === 'escape' && state === 'kangaidenApp') { closeKangaidenApp(); }
     if (k === 'escape' && state === 'truthKnocksApp') { closeTruthKnocksApp(); }
     if (k === 'escape' && state === 'hiphopLibraryApp') { closeHipHopLibraryApp(); }
+    if (k === 'escape' && state === 'arkaiikImpactApp') { closeArkaiikImpactApp(); }
     if (k === 'escape' && state === 'diggerApp') { closeDiggerApp(); }
     if (k === 'escape' && state === 'johnnySlidesApp') { closeJohnnySlidesApp(); }
     if (k === 'escape' && state === 'dustRacingApp') { closeDustRacingApp(); }
@@ -11471,6 +11483,19 @@ function makeSkatepark() {
     id: 'skatepark', world: 'skatepark', w: W, h: H, grid: g, outside: true,
     buildings, doors: {}, crates, npcs: [], riverTiles: waterTiles,
     skatepark: true,
+    // ARKAIIK IMPACT -- a skateboard painting studio, triggered by a floating
+    // paint brush set on the open concrete at the top-center of the plaza.
+    // tx/ty (26, 17) is a flat 'k' plaza tile (row 17 is plain concrete from
+    // col 15 to 36; the bowls start at row 19 and the rails/ledges sit well
+    // off to either side), reachable from the walkway ring just above it and
+    // clear of every outdoor dig-spot crate. `icon: 'paintbrush'` swaps the
+    // usual arcade-cabinet sign for a paint brush (see
+    // drawMinigamePaintBrush()). Opens the full standalone ARKAIIK IMPACT
+    // app in its own DOM overlay; see openArkaiikImpactApp()/
+    // createArkaiikImpactOverlay().
+    minigames: [
+      { id: 'arkaiikimpact', tx: 26, ty: 17, label: 'ARKAIIK IMPACT', icon: 'paintbrush' },
+    ],
     adogSkateShopDoor: { x: ADOG_DOOR_X, y: ADOG_DOOR_Y },
     foamBrewersDoor: { x: FOAM_DOOR_X, y: FOAM_DOOR_Y },
     foamBrewers: { x: FOAM_X, y: FOAM_Y, w: FOAM_W, h: FOAM_H, doorX: FOAM_DOOR_X, doorY: FOAM_DOOR_Y },
@@ -12822,7 +12847,7 @@ const player = {
   tempItem: null, tempItemTimer: 0,
 };
 const collected = new Set();
-let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | danceParty | portal | fifa | minigame | hotkeys | crate | photo | lab | labLocked | shopBackLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | qsdBalanceApp | vinylSnakeApp | waveformApp | bayouBreakApp | freqAltarApp | drumPatternDocApp | gatorJamSlamApp | swampCaveApp | vocalChopBoothApp | vtDirtApp | penaltyKingsApp | digDashApp | digOnApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | diggerApp | hyperSwimApp | linusTugApp | connectFourApp | syrupRoadsApp | scoopBeatsApp | clawMachineApp | kangaidenVideo | kangaidenSplash | kangaidenApp | hiphopLibraryApp | truthKnocksVideo | truthKnocksSplash | truthKnocksApp | johnnySlidesVideo | johnnySlidesSplash | johnnySlidesApp | dustRacingApp | cbPressApp
+let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | danceParty | portal | fifa | minigame | hotkeys | crate | photo | lab | labLocked | shopBackLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | qsdBalanceApp | vinylSnakeApp | waveformApp | bayouBreakApp | freqAltarApp | drumPatternDocApp | gatorJamSlamApp | swampCaveApp | vocalChopBoothApp | vtDirtApp | penaltyKingsApp | digDashApp | digOnApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | diggerApp | hyperSwimApp | linusTugApp | connectFourApp | syrupRoadsApp | scoopBeatsApp | clawMachineApp | kangaidenVideo | kangaidenSplash | kangaidenApp | hiphopLibraryApp | truthKnocksVideo | truthKnocksSplash | truthKnocksApp | johnnySlidesVideo | johnnySlidesSplash | johnnySlidesApp | dustRacingApp | cbPressApp | arkaiikImpactApp
 // State to snap back to when the [H] hotkeys popup is closed -- currently
 // always 'play' since that's the only state H can be opened from, but kept
 // as its own var in case another state wants to offer the popup later.
@@ -13517,7 +13542,7 @@ const music = {
 // enter/exit call sites, so it can't drift out of sync no matter which
 // of the several ways the player backs out of the lab popup (keyboard
 // [X], on-screen [X] button, closing the instrument iframe, etc.).
-const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'qsdBalanceApp', 'vinylSnakeApp', 'waveformApp', 'bayouBreakApp', 'freqAltarApp', 'drumPatternDocApp', 'gatorJamSlamApp', 'swampCaveApp', 'vocalChopBoothApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'digOnApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'johnnySlidesApp', 'dustRacingApp', 'cbPressApp', 'hyperSwimApp', 'linusTugApp', 'connectFourApp', 'syrupRoadsApp', 'scoopBeatsApp', 'clawMachineApp', 'kangaidenVideo', 'kangaidenApp', 'hiphopLibraryApp', 'danceParty', 'truthKnocksVideo', 'truthKnocksApp', 'johnnySlidesVideo']);
+const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'qsdBalanceApp', 'vinylSnakeApp', 'waveformApp', 'bayouBreakApp', 'freqAltarApp', 'drumPatternDocApp', 'gatorJamSlamApp', 'swampCaveApp', 'vocalChopBoothApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'digOnApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'johnnySlidesApp', 'dustRacingApp', 'cbPressApp', 'hyperSwimApp', 'linusTugApp', 'connectFourApp', 'syrupRoadsApp', 'scoopBeatsApp', 'clawMachineApp', 'kangaidenVideo', 'kangaidenApp', 'hiphopLibraryApp', 'arkaiikImpactApp', 'danceParty', 'truthKnocksVideo', 'truthKnocksApp', 'johnnySlidesVideo']);
 function syncMusicDuck() {
   const minigameDucked = state === 'minigame' && activeMinigame && activeMinigame.musicDucked;
   music.duck(DUCKED_STATES.has(state) || !!minigameDucked);
@@ -18988,6 +19013,123 @@ function closeHipHopLibraryApp(fromPopState) {
   }
 }
 
+// ARKAIIK IMPACT -- a skateboard painting studio (pick ink, drag to paint a
+// deck, stickers, eraser, undo, export a PNG) set out on the concrete plaza
+// of LEVEL 3 (SKATEPARK), triggered by a floating paint brush (see the
+// skatepark map's `minigames` list in makeSkatepark()). Same "full-screen
+// DOM overlay with an <iframe>" pattern as the Hip Hop Library/chess/the
+// beat bot/the organ/.../Filter Lab above.
+//
+// Ships as ONE bundled, self-contained file (inline CSS and JS, host art
+// embedded as a data URI, no external fonts, CDNs, or network calls at all)
+// at instruments/arkaiik-impact/index.html -- the exact same local-file
+// pattern HIPHOP_LIBRARY_APP_URL/CHESS_APP_URL/.../FILTER_LAB_APP_URL use.
+// Being a same-origin local asset rather than a live remote site means it
+// loads and works identically with or without a connection, so there's no
+// online/offline branching needed here. Painting and PNG export are pure
+// client-side canvas work, so those work offline too.
+const ARKAIIK_IMPACT_APP_URL = 'instruments/arkaiik-impact/index.html';
+let arkaiikImpactOverlayEl = null, arkaiikImpactOverlayFrame = null;
+let arkaiikImpactReturnState = 'play';
+let arkaiikImpactHistoryPushed = false; // mirrors hiphopLibraryHistoryPushed/... -- see openArkaiikImpactApp()/closeArkaiikImpactApp()
+
+function createArkaiikImpactOverlay() {
+  const style = document.createElement('style');
+  style.textContent = `
+    #arkaiikImpactApp {
+      position: fixed; inset: 0; z-index: 1000;
+      background: #000;
+      display: none; flex-direction: column;
+    }
+    #arkaiikImpactApp.open { display: flex; }
+    #arkaiikImpactApp .aki-bar {
+      flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 10px 14px;
+      background: linear-gradient(#2a1208, #150a04);
+      border-bottom: 2px solid #ff4d00;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    }
+    #arkaiikImpactApp .aki-title {
+      color: #f7f3ea; font: bold 14px monospace; letter-spacing: 0.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #arkaiikImpactApp .aki-close {
+      flex: 0 0 auto; cursor: pointer;
+      background: rgba(255,77,0,0.15);
+      border: 1.5px solid rgba(255,77,0,0.9);
+      color: #f7f3ea; border-radius: 8px;
+      padding: 7px 16px; font: bold 13px monospace;
+      -webkit-user-select: none; user-select: none;
+    }
+    #arkaiikImpactApp .aki-close:active { background: rgba(255,77,0,0.45); }
+    #arkaiikImpactApp iframe {
+      flex: 1 1 auto; width: 100%; border: 0; background: #efe8dc;
+    }
+  `;
+  document.head.appendChild(style);
+
+  arkaiikImpactOverlayEl = document.createElement('div');
+  arkaiikImpactOverlayEl.id = 'arkaiikImpactApp';
+
+  const bar = document.createElement('div');
+  bar.className = 'aki-bar';
+  const title = document.createElement('div');
+  title.className = 'aki-title';
+  title.textContent = 'ARKAIIK IMPACT \u2014 PAINT LAB';
+  const closeBtn = document.createElement('div');
+  closeBtn.className = 'aki-close';
+  closeBtn.textContent = '\u2190 BACK TO THE PARK';
+  bindTap(closeBtn, closeArkaiikImpactApp);
+  bar.appendChild(title);
+  bar.appendChild(closeBtn);
+
+  arkaiikImpactOverlayFrame = document.createElement('iframe');
+
+  arkaiikImpactOverlayEl.appendChild(bar);
+  arkaiikImpactOverlayEl.appendChild(arkaiikImpactOverlayFrame);
+  document.body.appendChild(arkaiikImpactOverlayEl);
+
+  // [Esc] pressed while the iframe itself has keyboard focus never reaches
+  // this page's keydown handler, so the app posts a message instead.
+  window.addEventListener('message', (e) => {
+    if (!arkaiikImpactOverlayFrame || e.source !== arkaiikImpactOverlayFrame.contentWindow) return;
+    if (e.data && e.data.arkaiikImpact === 'close' && state === 'arkaiikImpactApp') closeArkaiikImpactApp();
+  });
+}
+createArkaiikImpactOverlay();
+
+// Opens the ARKAIIK IMPACT overlay and switches state to 'arkaiikImpactApp'.
+// Called from MINIGAME_ACTIONS.arkaiikimpact (E on the paint brush, or
+// tapping its floating sign), same entry points every other mini-game uses.
+function openArkaiikImpactApp() {
+  arkaiikImpactReturnState = state;
+  arkaiikImpactOverlayFrame.src = ARKAIIK_IMPACT_APP_URL;
+  arkaiikImpactOverlayEl.classList.add('open');
+  state = 'arkaiikImpactApp';
+  // Same throwaway-history-entry trick as openHipHopLibraryApp() etc.
+  // above, so the browser/OS back gesture closes the overlay instead of
+  // leaving the game entirely.
+  history.pushState({ arkaiikImpactApp: true }, '');
+  arkaiikImpactHistoryPushed = true;
+}
+
+// Tears the iframe back down and returns to ordinary gameplay in the park.
+// fromPopState mirrors closeHipHopLibraryApp()'s parameter -- true when
+// triggered by the browser's back button (whose history entry is already
+// consumed), so we must not call history.back() again in that case.
+function closeArkaiikImpactApp(fromPopState) {
+  arkaiikImpactOverlayEl.classList.remove('open');
+  arkaiikImpactOverlayFrame.src = 'about:blank';
+  reclaimGameFocus(arkaiikImpactOverlayFrame);
+  state = arkaiikImpactReturnState;
+  if (!fromPopState && arkaiikImpactHistoryPushed) {
+    arkaiikImpactHistoryPushed = false;
+    history.back();
+  } else {
+    arkaiikImpactHistoryPushed = false;
+  }
+}
+
 // Digger -- a classic boulder-dash-style digging game (dig through dirt,
 // dodge falling boulders, collect diamonds) tucked inside JOHNNY'S FUN PARK
 // (see the `johnnysfunpark` shop's `minigames` list). Same "full-screen DOM
@@ -19807,6 +19949,8 @@ window.addEventListener('popstate', () => {
     closeTruthKnocksApp(true);
   } else if (state === 'hiphopLibraryApp') {
     closeHipHopLibraryApp(true);
+  } else if (state === 'arkaiikImpactApp') {
+    closeArkaiikImpactApp(true);
   }
 });
 
@@ -19822,7 +19966,7 @@ canvas.addEventListener('pointerdown', (e) => {
     const vx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const vy = (e.clientY - rect.top) * (canvas.height / rect.height);
     handleLabTap(vx, vy);
-  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'dustRacingApp' || state === 'cbPressApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'scoopBeatsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp') {
+  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'dustRacingApp' || state === 'cbPressApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'scoopBeatsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp' || state === 'arkaiikImpactApp') {
     // The DOM overlay sits on top of (and outside) the canvas while an
     // instrument/the chess app/the beat bot/the organ/mini golf/the
     // blackbook/Gator Grooves/Vinyl Snake/Bayou Break Station/Gator Jam
@@ -20289,6 +20433,13 @@ function update(dt) {
     // handle closing it directly. buyPressed is still consumed here too
     // so the on-screen [X] touch button works while it's open.
     if (buyPressed) closeHipHopLibraryApp();
+  } else if (state === 'arkaiikImpactApp') {
+    // Same reasoning as 'hiphopLibraryApp' just above: the DOM overlay (see
+    // createArkaiikImpactOverlay()) owns input while the paint studio is
+    // loaded -- its own close button and [Esc] handle closing it directly.
+    // buyPressed is still consumed here so the on-screen [X] touch button
+    // works while it's open.
+    if (buyPressed) closeArkaiikImpactApp();
   } else if (state === 'digDashApp') {
     // Same reasoning as 'labApp'/'chessApp'/'beatBotApp'/'organApp'/
     // 'minigolfApp'/'blackbookApp'/'crocSwampApp'/'vinylSnakeApp'/
@@ -20992,6 +21143,118 @@ function drawMinigameHipHopKiosk(wx, wy, time, seed, label) {
   return { cx, cy, hw: postW / 2 + 14, hh: postH / 2 + 34 };
 }
 
+// Alternate mini-game marker used when a map entry sets `icon: 'paintbrush'`
+// (currently just ARKAIIK IMPACT, out on the concrete plaza of the skatepark)
+// -- same bob/label/hitbox contract as drawMinigameArcadeSign()/
+// drawMinigameHipHopKiosk() above so it drops into the exact same per-frame
+// loop and tap-shortcut handling. Drawn as a big paint brush standing
+// bristles-down in a splat of paint, tilted a little and bobbing, with a
+// few colored paint drops orbiting it, so it reads as "come paint a deck"
+// out in the world rather than "play this cabinet."
+function drawMinigamePaintBrush(wx, wy, time, seed, label) {
+  const s = MINIGAME_OBJECT_SCALE;
+  const bob = Math.sin(time * 0.003 + seed) * 3;
+  const cx = wx, cy = wy - 26 + bob;
+  const len = 44 * s;           // overall brush length
+  const tilt = -0.32 + Math.sin(time * 0.0016 + seed) * 0.05;
+
+  // flat paint splat on the concrete, independent of the brush's bob
+  const splat = [['#ff4d00', -9, 1, 9, 3.2], ['#f4d35e', 8, 3, 6, 2.4], ['#00c2a8', -2, 5, 5, 2], ['#f15bb5', 12, -1, 3.6, 1.6]];
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath();
+  ctx.ellipse(wx, wy + 3, 15 * s, 4.5 * s, 0, 0, Math.PI * 2);
+  ctx.fill();
+  for (const [col, ox, oy, rx, ry] of splat) {
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.ellipse(wx + ox * s, wy + oy * s, rx * s, ry * s, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // the brush itself: drawn upright in local coordinates (bristles at the
+  // bottom), then rotated about the tip so it leans like it's mid-stroke
+  ctx.save();
+  ctx.translate(cx, cy + len / 2);
+  ctx.rotate(tilt);
+  const bw = 7 * s;             // handle half-width at the ferrule
+  // wooden handle, tapering toward the top
+  ctx.fillStyle = '#d9a441';
+  ctx.beginPath();
+  ctx.moveTo(-bw * 0.5, -len * 0.38);
+  ctx.quadraticCurveTo(-bw * 0.9, -len * 0.75, -bw * 0.35, -len);
+  ctx.lineTo(bw * 0.35, -len);
+  ctx.quadraticCurveTo(bw * 0.9, -len * 0.75, bw * 0.5, -len * 0.38);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#151515';
+  ctx.lineWidth = 1.6;
+  ctx.stroke();
+  // handle highlight
+  ctx.strokeStyle = 'rgba(255,240,190,0.7)';
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.moveTo(-bw * 0.2, -len * 0.42);
+  ctx.lineTo(-bw * 0.12, -len * 0.92);
+  ctx.stroke();
+  // metal ferrule
+  ctx.fillStyle = '#b9bec6';
+  ctx.beginPath();
+  ctx.roundRect(-bw * 0.62, -len * 0.4, bw * 1.24, len * 0.14, 1.5 * s);
+  ctx.fill();
+  ctx.strokeStyle = '#151515';
+  ctx.lineWidth = 1.4;
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(21,21,21,0.45)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(-bw * 0.62, -len * 0.33); ctx.lineTo(bw * 0.62, -len * 0.33);
+  ctx.stroke();
+  // bristles, loaded with ARKAIIK orange, ending in a rounded tip
+  ctx.fillStyle = '#ff4d00';
+  ctx.beginPath();
+  ctx.moveTo(-bw * 0.6, -len * 0.26);
+  ctx.lineTo(bw * 0.6, -len * 0.26);
+  ctx.quadraticCurveTo(bw * 0.75, -len * 0.08, 0, 0);
+  ctx.quadraticCurveTo(-bw * 0.75, -len * 0.08, -bw * 0.6, -len * 0.26);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#151515';
+  ctx.lineWidth = 1.6;
+  ctx.stroke();
+  // a yellow streak of paint on the bristles
+  ctx.strokeStyle = '#f4d35e';
+  ctx.lineWidth = 1.8;
+  ctx.beginPath();
+  ctx.moveTo(-bw * 0.15, -len * 0.23);
+  ctx.lineTo(-bw * 0.05, -len * 0.06);
+  ctx.stroke();
+  ctx.restore();
+
+  // little paint drops orbiting the brush
+  const dropCols = ['#f4d35e', '#00c2a8', '#f15bb5'];
+  for (let i = 0; i < 3; i++) {
+    const a = time * 0.002 + seed + i * 2.1;
+    const dx = Math.cos(a) * 20 * s, dy = Math.sin(a) * 9 * s - 4 * s;
+    ctx.fillStyle = dropCols[i];
+    ctx.beginPath();
+    ctx.arc(cx + dx, cy + dy, 2.4 * s, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#151515';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
+  // floating label -- same flash-between-label-and-tap-hint behavior as
+  // the arcade sign/soccer ball/boombox/kiosk above
+  const flashOnLabel = Math.floor(time / 1400) % 2 === 0;
+  ctx.fillStyle = '#ff9a3c';
+  ctx.font = `bold ${Math.round(9 * s)}px monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillText(flashOnLabel ? (label || 'MINI-GAME') : 'TAP TO PAINT', cx, cy - len / 2 - 14 * s);
+
+  return { cx, cy, hw: 22 * s + 14, hh: len / 2 + 34 };
+}
+
 // Alternate mini-game marker used when a map entry sets `icon: 'connectfour'`
 // (currently just Connect 45s, out on the open grass in town) -- same
 // bob/label/hitbox contract as drawMinigameArcadeSign()/
@@ -21306,7 +21569,7 @@ function render(time) {
     drawSplash();
     return;
   }
-  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'dustRacingApp' || state === 'cbPressApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'scoopBeatsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp') {
+  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'dustRacingApp' || state === 'cbPressApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'scoopBeatsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp' || state === 'arkaiikImpactApp') {
     // Same reasoning as the labApp overlay: a DOM element (the <video>,
     // see createCharacterIntroOverlay(), the chess <iframe>, see
     // createChessOverlay(), the beat bot <iframe>, see
@@ -21422,6 +21685,8 @@ function render(time) {
         ? drawMinigameBoombox(wx, wy, time, seed, mg.label)
         : mg.icon === 'hiphopkiosk'
         ? drawMinigameHipHopKiosk(wx, wy, time, seed, mg.label)
+        : mg.icon === 'paintbrush'
+        ? drawMinigamePaintBrush(wx, wy, time, seed, mg.label)
         : drawMinigameArcadeSign(wx, wy, time, seed, mg.label);
       minigameSignHitboxes.push({ map: player.map, id: mg.id, ...rect });
     });
