@@ -16860,7 +16860,14 @@ function playTruthKnocksSplashVideo(onDone) {
   skipBtn.addEventListener('click', finish);
   skipBtn.addEventListener('touchend', (e) => { e.preventDefault(); finish(); });
   window.addEventListener('keydown', finish, { once: true });
-  const safety = setTimeout(finish, 9000);
+  // Safety net: if the file hasn't started playing within 5s, skip straight
+  // in; once it does start, allow its full length (+2s) so a slow load never
+  // cuts the video short.
+  let safety = setTimeout(finish, 5000);
+  v.addEventListener('playing', () => {
+    clearTimeout(safety);
+    safety = setTimeout(finish, ((v.duration && isFinite(v.duration)) ? v.duration : 8) * 1000 + 2000);
+  }, { once: true });
 
   const tryPlay = v.play();
   if (tryPlay && typeof tryPlay.catch === 'function') {
