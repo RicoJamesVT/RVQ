@@ -719,8 +719,9 @@ const WORLD_DEFS = {
     // second, Nitro Pour, is hidden in FOAM BREWERS (see the `foambrewers`
     // shop below). The third, Loud & Clear, is hidden in SPEAKING VOLUMES
     // (see the `speakingvolumes` shop below). The fourth, Halftone Dub, is
-    // hidden in CB PRINTS (see the `cbprints` shop below). More get added
-    // here as the rest of the level fills in.
+    // hidden in CB PRINTS (see the `cbprints` shop below). The fifth,
+    // Sonar Lullaby, is hidden in ECHO CENTER (see the `echocenter` shop
+    // below). More get added here as the rest of the level fills in.
     records: {
       grip: { title: 'Concrete Wax', artist: 'A-Dog & The Bearings', year: '1994',
               sample: 'Drum Loop', layer: 'drums', color: '#d94f2b', pad: 'DRM',
@@ -736,8 +737,13 @@ const WORLD_DEFS = {
       print: { title: 'Halftone Dub', artist: 'Pressure Point Sound', year: '1998',
                sample: 'Horn Stab', layer: 'horns', color: '#1fa8c9', pad: 'HRN',
                flavor: 'A hip hop-meets-reggae 12-inch pressed to go with one run of gig posters. The horns skank over a deep dub bassline, and the sleeve still smells faintly of ink.' },
+      // Fifth record of the level, hidden in one of ECHO CENTER's three
+      // crates (Shallows / Reef / Deep Sea -- see the `echocenter` shop below).
+      sonar: { title: 'Sonar Lullaby', artist: 'Champ & The Deep Echoes', year: '1987',
+               sample: 'Vocal Chop', layer: 'vox', color: '#3fbf7f', pad: 'VOX',
+               flavor: 'Cut from a hydrophone tape lowered into Lake Champlain. Something enormous hums a slow vocal line under the ripples, and every groove sounds underwater.' },
     },
-    padOrder: ['grip', 'foam', 'vol', 'print'],
+    padOrder: ['grip', 'foam', 'vol', 'print', 'sonar'],
   },
   // ADD MORE WORLDS HERE, e.g.:
   // subway: {
@@ -950,6 +956,40 @@ const CB_PRINTS_JUNK = {
       reply: "Sweet, sweet wax. Keep digging -- it's not in here." },
     { line: "Lovers rock compilations and studio one reissues, sleeves soft and warm like they've been sitting in the sun.",
       reply: "Gorgeous, but not the record you're after." },
+  ],
+};
+
+// ECHO CENTER's three dig crates -- Shallows (left), Deep Sea (right) and
+// Reef (front-left). Sonar Lullaby is shuffled between them each new game
+// (shuffleRecordCrates()), so the junk crates' theme is picked by WHICH SPOT
+// of the aquarium they sit on (see ECHO_CENTER_CRATE_THEMES and the
+// c.echoSeed branch in doInteract()). Never one of the collectibles, just
+// wax with a splash of water damage.
+const ECHO_CENTER_CRATE_THEMES = { '1,5': 'shallows', '12,5': 'deep', '2,8': 'reef' };
+const ECHO_CENTER_JUNK = {
+  shallows: [
+    { line: "A crate of lake-town 45s, sleeves rippled from years of humidity -- fishing-pier jingles, a ferry-horn polka and a very earnest record about perch.",
+      reply: "Charming and a little soggy. Not the record you're chasing." },
+    { line: "Field-recording LPs of loons, peepers and rain on a tin roof, stickered \"LAKE SOUNDS\" in Champ's loopy handwriting.",
+      reply: "Calming stuff. Still not it -- keep digging." },
+    { line: "Surf-guitar instrumentals pressed by a Burlington garage band that had never seen an actual wave.",
+      reply: "Gloriously confident. Just not what you came for." },
+  ],
+  reef: [
+    { line: "Tropical lounge records and steel-drum LPs, covers faded like a sun-bleached coral skeleton.",
+      reply: "Tiki heat. Not the record you're digging for, though." },
+    { line: "A stack of bossa nova and exotica albums, every sleeve showing a smiling clownfish somebody drew in the corner.",
+      reply: "Smooth as sea glass. Keep digging -- it's not in here." },
+    { line: "Calypso 7-inches in paper sleeves still smelling faintly of sunscreen and salt.",
+      reply: "Sweet, but it's not the one." },
+  ],
+  deep: [
+    { line: "Whale-song albums and sonar-ping experiments, every cover a different shade of midnight blue.",
+      reply: "Hauntingly good. Not the record you're after, though." },
+    { line: "Ambient drone LPs with titles like \"Pressure\" and \"Four Hundred Fathoms\" -- somebody's whole mood, pressed to vinyl.",
+      reply: "Deep stuff. Still not it -- keep digging." },
+    { line: "Bass-heavy dub plates that rattle the whole crate, sleeves stamped with a glowing anglerfish.",
+      reply: "Low end for days. But not the record you're digging for." },
   ],
 };
 
@@ -10261,6 +10301,14 @@ bontaImg.src = 'assets/bonta.png';
 const queenbImg = new Image();
 queenbImg.src = 'assets/queenb.png';
 
+// CHAMP -- the keeper of ECHO CENTER out in the skatepark: a friendly Loch
+// Ness-type monster who lives in Lake Champlain, green with a yellow belly,
+// a navy CHAMP tee and white sneakers. Drawn as a shop keeper (see
+// keeperImgs.CHAMP below), not a roaming npc, so she doesn't need an entry
+// in SHOP_NPC_IMAGES.
+const champImg = new Image();
+champImg.src = 'assets/champ.png';
+
 // ARKAIIK -- beat poet, emcee, and visual artist of many flavors: a very
 // talented, creative regular at GREEN DOOR STUDIO and at cyphers all over
 // the local scene. Black-and-white patterned beanie and a big multicolor
@@ -10279,7 +10327,7 @@ const ghostImg = new Image();
 ghostImg.src = 'assets/ghost.png';
 
 // ---------------------------------------------------------------- maps
-const SOLID = new Set(['#', 'w', 'f', '~', 'W', 'T', 'C', 'c', 'K', 'J', 'S', 'A', 'N', 'F', 'R', 'V', 'Z', 'U', 'X', 'm', 'h']);
+const SOLID = new Set(['#', 'w', 'f', '~', 'W', 'T', 'C', 'c', 'K', 'J', 'S', 'A', 'N', 'F', 'R', 'V', 'Z', 'U', 'X', 'm', 'h', 'q']);
 
 function blankGrid(w, h, fill) {
   return Array.from({ length: h }, () => Array(w).fill(fill));
@@ -11191,6 +11239,7 @@ function makeShop(id, opts) {
     foamBrewers: opts.foamBrewers || false,
     speakingVolumes: opts.speakingVolumes || false,
     cbPrints: opts.cbPrints || false,
+    echoCenter: opts.echoCenter || false,
     villageScoop: opts.villageScoop || false,
     recordingDesk: opts.recordingDesk
       ? { x: opts.recordingDesk[0], y: opts.recordingDesk[1], sign: opts.recordingDeskSign || 'SKYLAB' }
@@ -11470,6 +11519,25 @@ function makeSkatepark() {
     wall: '#23262e', roof: '#ec008c', doorX: CBP_DOOR_X,
   });
 
+  // --- ECHO CENTER -- the skatepark's fifth building: an aquarium up on
+  // the north shore, on the open grass just below the promenade between the
+  // plaza ring and FOAM BREWERS, so it looks out over Lake Champlain. 7x4
+  // tiles (x 37-43, rows 12-15); its door (bottom row, middle tile) drops
+  // the player onto the grass/walkway at row 16, which is clear. Carved
+  // AFTER the tree sprinkle so its footprint wins over any tree, and the
+  // row below the door is cleared of trees for good measure.
+  const ECHO_X = 37, ECHO_Y = 12, ECHO_W = 7, ECHO_H = 4;
+  const ECHO_DOOR_X = ECHO_X + Math.floor(ECHO_W / 2), ECHO_DOOR_Y = ECHO_Y + ECHO_H - 1;
+  for (let y = ECHO_Y; y < ECHO_Y + ECHO_H; y++)
+    for (let x = ECHO_X; x < ECHO_X + ECHO_W; x++) g[y][x] = 'w';
+  g[ECHO_DOOR_Y][ECHO_DOOR_X] = 'D';
+  for (let x = ECHO_X; x < ECHO_X + ECHO_W; x++)
+    if (g[ECHO_DOOR_Y + 1][x] === '#') g[ECHO_DOOR_Y + 1][x] = '.';
+  buildings.push({
+    x: ECHO_X, y: ECHO_Y, w: ECHO_W, h: ECHO_H, name: 'ECHO CENTER',
+    wall: '#14425f', roof: '#17a5b8', doorX: ECHO_DOOR_X,
+  });
+
   // --- BASKETBALL COURT -- a small full court on the open grass in the
   // bottom-left corner, just below the plaza ring and east of SPEAKING
   // VOLUMES (11 x 4 tiles: x 8-18, rows 31-34). 'u' tiles are walkable
@@ -11484,6 +11552,18 @@ function makeSkatepark() {
     for (let x = COURT_X; x < COURT_X + COURT_W; x++) g[y][x] = 'u';
   for (const hx of [COURT_X, COURT_X + COURT_W - 1])
     for (let y = COURT_Y + 1; y <= COURT_Y + 2; y++) g[y][hx] = 'h';
+
+  // --- TACO TRUCK ALL STARS -- a graffiti-painted food truck parked on the
+  // open grass just east of the plaza ring (tiles x 46-50, rows 20-22; the
+  // ring's walkway ends at x 45 and the tree border starts at x 51). 'q'
+  // tiles are SOLID and render as plain grass -- the truck itself is a
+  // cosmetic sprite painted by drawTacoTruck() in the decoration pass. Its
+  // serving window faces down, onto the open grass row 23 below it, where
+  // the 'tacotruck' entry in VENDOR_CARTS lets the player buy a taco.
+  // Carved AFTER the tree sprinkle so it wins over any tree.
+  const TACO_X = 46, TACO_Y = 20, TACO_W = 5, TACO_H = 3;
+  for (let y = TACO_Y; y < TACO_Y + TACO_H; y++)
+    for (let x = TACO_X; x < TACO_X + TACO_W; x++) g[y][x] = 'q';
 
   // --- a few outdoor dig spots scattered around the promenade/plaza ring,
   // same "sit right on a guaranteed-clear path tile" placement swamp's
@@ -11533,6 +11613,7 @@ function makeSkatepark() {
       { id: 'precisionpoints', tx: COURT_X + 5, ty: COURT_Y + 2, label: 'PRECISION POINTS', icon: 'basketball' },
     ],
     basketballCourt: { x: COURT_X, y: COURT_Y, w: COURT_W, h: COURT_H },
+    tacoTruck: { x: TACO_X, y: TACO_Y, w: TACO_W, h: TACO_H },
     adogSkateShopDoor: { x: ADOG_DOOR_X, y: ADOG_DOOR_Y },
     foamBrewersDoor: { x: FOAM_DOOR_X, y: FOAM_DOOR_Y },
     foamBrewers: { x: FOAM_X, y: FOAM_Y, w: FOAM_W, h: FOAM_H, doorX: FOAM_DOOR_X, doorY: FOAM_DOOR_Y },
@@ -11544,6 +11625,10 @@ function makeSkatepark() {
     // NOT named `cbPrints` on purpose (same reason as svExterior above):
     // that key is the interior-shop flag checked by render().
     cbExterior: { x: CBP_X, y: CBP_Y, w: CBP_W, h: CBP_H, doorX: CBP_DOOR_X, doorY: CBP_DOOR_Y },
+    echoCenterDoor: { x: ECHO_DOOR_X, y: ECHO_DOOR_Y },
+    // NOT named `echoCenter` on purpose (same reason as svExterior/
+    // cbExterior above): that key is the interior-shop flag checked by render().
+    echoExterior: { x: ECHO_X, y: ECHO_Y, w: ECHO_W, h: ECHO_H, doorX: ECHO_DOOR_X, doorY: ECHO_DOOR_Y },
     returnPortal: { x: RETURN_PORTAL_X, y: RETURN_PORTAL_Y },
     spawn: { x: 3.5, y: 10.5 }, // tile coords, on the promenade just inside the portal
     palette: {
@@ -12787,6 +12872,41 @@ const shops = {
       { id: 'cbpress', tx: 4, ty: 6, alsoTiles: [[3, 6]], label: 'RUN THE CB PRESS' },
     ],
   }),
+  // ECHO CENTER -- the skatepark's fifth building: an aquarium full of
+  // amazing underwater animals, run by CHAMP, the friendly Loch Ness-type
+  // monster who lives in Lake Champlain. `world: 'skatepark'` makes Sonar
+  // Lullaby a *skatepark* record. `echoCenter: true` gets the custom
+  // interior in drawEchoCenterInterior() (panoramic back-wall tank, porthole
+  // tanks in both side walls, two jellyfish columns, drifting light on the
+  // floor, sonar rings, brochures + a fishbowl + a Champ plushie on the
+  // counter, and a plaque over each crate). Three dig crates at (1,5)/(12,5)/
+  // (2,8) -- SHALLOWS / DEEP SEA / REEF -- Sonar Lullaby plus two junk
+  // crates; shuffleRecordCrates() moves the real one around each new game.
+  // blockTiles (4,6)/(9,6) = the two jellyfish columns: solid wall tiles
+  // dressed up by the painter. Everything is clear of the crates, the
+  // counter (row 3) and the door (6,9)/spawn (6.5,7.5).
+  echocenter: makeShop('echocenter', {
+    world: 'skatepark',
+    floor: '#2b4a63', plank: '#213c52', wallColor: '#0f3350',
+    echoCenter: true,
+    blockTiles: [[4, 6], [9, 6]],
+    crateSpots: [[1, 5], [12, 5], [2, 8]],
+    keeper: { name: 'CHAMP', shirt: '#f4ecd8', skin: '#3aa17a',
+      lines: [
+        "Welcome to ECHO CENTER! Mind the splash zone, and please don't tap the glass -- the jellyfish have feelings.",
+        "I'm Champ. Yes, THAT Champ -- Lake Champlain's very own monster. Turns out folks get a lot less scared when you hand them a ticket and a map.",
+        "I've lived in this lake longer than anybody can prove. Don't trust the blurry photos. Mine always come out blurry. I blame the water.",
+        "Every tank in here is a piece of the deep: sturgeon, rays, jellyfish, seahorses, a whole kelp forest. The best part of any lake is the part you can't see from the dock.",
+        "Echo's a good name for this place. Sound travels amazing underwater -- whale songs, sonar pings, one very patient hydrophone. Some of the best samples ever made were never meant for a record.",
+        "Three crates in here: Shallows, Reef and Deep Sea. One of 'em's got what you're after. Dig gently -- everything in this building is a little damp.",
+        "Skate hard, dig harder, and drink some water. Seriously. I'm basically an expert.",
+      ],
+      foundLine: "Sonar Lullaby! I hummed on that one, from way down at the bottom of the lake. Take it -- and play it loud enough for the fish to hear." },
+    // Three crates: the skatepark's fifth record (Sonar Lullaby) plus two
+    // junk crates (see ECHO_CENTER_JUNK above -- theme picked by which spot
+    // of the aquarium the junk crate ends up on).
+    crates: [ { record: 'sonar' }, { echoSeed: 0 }, { echoSeed: 1 } ],
+  }),
 };
 
 // door wiring: town door tile -> shop spawn; shop exit tile -> town spawn
@@ -12812,6 +12932,9 @@ transitions['speakingvolumes:' + key(6, 9)] = { map: 'skatepark', x: skatepark.s
 // CB PRINTS door wiring -- same pattern as SPEAKING VOLUMES just above.
 transitions['skatepark:' + key(skatepark.cbPrintsDoor.x, skatepark.cbPrintsDoor.y)] = { map: 'cbprints', x: 6.5, y: 7.5 };
 transitions['cbprints:' + key(6, 9)] = { map: 'skatepark', x: skatepark.cbPrintsDoor.x + 0.5, y: skatepark.cbPrintsDoor.y + 1.6 };
+// ECHO CENTER door wiring -- same pattern as CB PRINTS just above.
+transitions['skatepark:' + key(skatepark.echoCenterDoor.x, skatepark.echoCenterDoor.y)] = { map: 'echocenter', x: 6.5, y: 7.5 };
+transitions['echocenter:' + key(6, 9)] = { map: 'skatepark', x: skatepark.echoCenterDoor.x + 0.5, y: skatepark.echoCenterDoor.y + 1.6 };
 // GUT HUT door wiring -- same pattern as the loop above, written out by
 // hand since the swamp isn't on the shared `doors` map (it's not connected
 // to town yet, see the comment on WORLD_DEFS.swamp).
@@ -13747,6 +13870,11 @@ const VENDOR_CARTS = [
   // 23*TILE+4, 20*TILE+2 here matches the top-left corner drawSwampJuiceCart()
   // draws from below.
   { id: 'swampjuice', map: 'swamp', label: 'BUY SWAMP JUICE', x: 23 * TILE + 4 + 27, y: 20 * TILE + 2 + 40, radius: 42 },
+  // TACO TRUCK ALL STARS -- skatepark, east of the plaza ring. The truck
+  // fills tiles (46-50, 20-22); its serving window is ~21px in from the
+  // truck's left edge, so the buy point is that far in from tile 46, just
+  // below the truck's bottom edge (row 23) -- see drawTacoTruck().
+  { id: 'tacotruck', map: 'skatepark', label: 'BUY A TACO', x: 46 * TILE + 21, y: 23 * TILE + 26, radius: 46 },
 ];
 
 function facingTile() {
@@ -13855,6 +13983,13 @@ function doInteract() {
       const svj = SPEAKING_VOLUMES_JUNK[c.svSeed % SPEAKING_VOLUMES_JUNK.length];
       dialog = { name: 'CRATE', lines: [svj.line, svj.reply], i: 0 };
       state = 'dialog';
+    } else if (c.echoSeed !== undefined) {
+      // ECHO CENTER: the crate's SPOT picks its theme (Shallows / Deep Sea /
+      // Reef), since the real record gets shuffled between spots each game
+      const echoList = ECHO_CENTER_JUNK[ECHO_CENTER_CRATE_THEMES[target.tx + ',' + target.ty] || 'shallows'];
+      const ecj = echoList[Math.floor(Math.random() * echoList.length)];
+      dialog = { name: 'CRATE', lines: [ecj.line, ecj.reply], i: 0 };
+      state = 'dialog';
     } else if (c.cbSeed !== undefined) {
       // CB PRINTS: left-hand crate (x < 7) is hip hop, right-hand is reggae
       const cbList = CB_PRINTS_JUNK[target.tx < 7 ? 'hiphop' : 'reggae'];
@@ -13912,6 +14047,11 @@ function doBuy() {
     player.tempItem = 'swampJuice';
     player.tempItemTimer = 6;
     toast = { text: 'Swamp Juice!', t: 1.2 };
+  } else if (target.data.id === 'tacotruck') {
+    // held for 6 seconds, then the update loop clears it (tempItemTimer)
+    player.tempItem = 'taco';
+    player.tempItemTimer = 6;
+    toast = { text: 'Taco!', t: 1.2 };
   }
 }
 
@@ -21881,6 +22021,7 @@ function render(time) {
   if (map.foamBrewers) drawFoamBrewersInterior(time);
   if (map.speakingVolumes) drawSpeakingVolumesInterior(time);
   if (map.cbPrints) drawCBPrintsInterior(time);
+  if (map.echoCenter) drawEchoCenterInterior(time);
   if (map.villageScoop) drawVillageScoopInterior(time);
   if (map.recordShop) drawPurePopInterior(time);
   if (map.poolParty) drawJohnnysPoolInterior(time);
@@ -22754,7 +22895,167 @@ function drawSkateparkDecorations(time, map, camX, camY) {
   if (map.foamBrewers) drawFoamBrewersExterior(time, map);
   if (map.svExterior) drawSpeakingVolumesExterior(time, map);
   if (map.cbExterior) drawCBPrintsExterior(time, map);
+  if (map.echoExterior) drawEchoCenterExterior(time, map);
   if (map.basketballCourt) drawBasketballCourt(map.basketballCourt, camX, camY);
+  if (map.tacoTruck) drawTacoTruck(time, map, camX, camY);
+}
+
+// TACO TRUCK ALL STARS -- a graffiti-painted box truck parked on the grass
+// east of the skatepark plaza (see `tacoTruck` in makeSkatepark()). Side
+// view: serving window + chalkboard menu on the left of the box, the name
+// sign on the right, a white cab with a teal/blue painted door, a silver
+// roof and a red-white-blue TACOS feather flag. Purely visual -- collision
+// comes from the 'q' grid tiles, and the buy point is the 'tacotruck' entry
+// in VENDOR_CARTS. Local coords: (0,0) is the truck's top-left, 160px wide;
+// ly 90 lines up with the bottom edge of the truck's tile footprint.
+function drawTacoTruck(time, map, camX, camY) {
+  const c = map.tacoTruck;
+  const X = c.x * TILE, Y = (c.y + c.h) * TILE - 90, W = c.w * TILE;
+  if (X > camX + VIEW_W + 40 || X + W < camX - 40 || Y > camY + VIEW_H + 40 || Y + 100 < camY - 60) return;
+  const star = (cx, cy, r, col) => {
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    for (let i = 0; i < 10; i++) {
+      const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 === 0 ? r : r * 0.45;
+      ctx.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr);
+    }
+    ctx.closePath();
+    ctx.fill();
+  };
+  ctx.save();
+  ctx.translate(X, Y);
+
+  // ground shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.beginPath(); ctx.ellipse(80, 88, 84, 5, 0, 0, Math.PI * 2); ctx.fill();
+
+  // ---- white cab (right end), painted teal/blue below the windows
+  ctx.fillStyle = '#ecebe6';
+  ctx.beginPath();
+  ctx.moveTo(106, 30); ctx.lineTo(142, 30); ctx.lineTo(156, 48); ctx.lineTo(160, 52);
+  ctx.lineTo(160, 80); ctx.lineTo(106, 80);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#2f9a86';
+  ctx.beginPath();
+  ctx.moveTo(108, 58); ctx.quadraticCurveTo(124, 52, 138, 60);
+  ctx.quadraticCurveTo(150, 54, 160, 58); ctx.lineTo(160, 80); ctx.lineTo(108, 80);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = '#2c70d8'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(110, 76); ctx.quadraticCurveTo(136, 62, 160, 72); ctx.stroke();
+  star(122, 68, 4.5, '#f2c63c'); star(146, 66, 3.5, '#f2c63c');
+  // windshield + side window
+  ctx.fillStyle = '#243246';
+  ctx.beginPath();
+  ctx.moveTo(122, 34); ctx.lineTo(142, 34); ctx.lineTo(153, 48); ctx.lineTo(122, 48);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.16)';
+  ctx.beginPath(); ctx.moveTo(126, 34); ctx.lineTo(132, 34); ctx.lineTo(128, 48); ctx.lineTo(122, 48); ctx.closePath(); ctx.fill();
+  // door seam + handle, side mirror, headlight, bumper
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.fillRect(121, 31, 1, 49);
+  ctx.fillStyle = '#6a6e76'; ctx.fillRect(124, 52, 6, 2);
+  ctx.fillStyle = '#cfd4dc'; ctx.fillRect(111, 36, 5, 13);
+  ctx.fillStyle = '#e8a860'; ctx.fillRect(112, 37, 3, 9);
+  ctx.fillStyle = '#ffe9a0'; ctx.fillRect(157, 56, 3, 5);
+  ctx.fillStyle = '#9aa0a8'; ctx.fillRect(157, 74, 5, 7);
+
+  // ---- cargo box: purple base with teal / blue graffiti swirls and stars
+  ctx.fillStyle = '#3c2f78';
+  ctx.fillRect(0, 6, 108, 74);
+  ctx.fillStyle = '#7a2a5e';                       // magenta wash, upper left
+  ctx.fillRect(0, 6, 60, 22);
+  ctx.fillStyle = '#2aa6a0';
+  ctx.beginPath(); ctx.ellipse(28, 70, 34, 11, -0.1, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#2f6fd0';
+  ctx.beginPath(); ctx.ellipse(84, 68, 26, 12, 0.15, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#f08a3c'; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.moveTo(6, 62); ctx.quadraticCurveTo(24, 50, 40, 66); ctx.quadraticCurveTo(52, 74, 62, 60); ctx.stroke();
+  ctx.strokeStyle = '#f2c63c'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(70, 50); ctx.quadraticCurveTo(84, 44, 90, 56); ctx.quadraticCurveTo(96, 66, 106, 52); ctx.stroke();
+  ctx.strokeStyle = '#ff5fa2'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(4, 74); ctx.quadraticCurveTo(18, 66, 30, 76); ctx.stroke();
+  star(10, 52, 4, '#f2c63c'); star(52, 62, 3.5, '#f2c63c'); star(98, 66, 3, '#ff9a3c');
+  ctx.fillStyle = 'rgba(0,0,0,0.18)';
+  ctx.fillRect(0, 76, 108, 4);
+
+  // ---- name sign: "TACO TRUCK ALL STARS" in white handwriting
+  ctx.fillStyle = '#6a2260';
+  ctx.fillRect(62, 11, 44, 30);
+  ctx.fillStyle = '#2f6fd0';                        // blue splash on the right edge
+  ctx.beginPath(); ctx.ellipse(104, 26, 6, 13, 0, 0, Math.PI * 2); ctx.fill();
+  star(76, 17, 5, '#d8483a');
+  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 8px "Comic Sans MS", "Marker Felt", cursive';
+  ctx.fillText('TACO TRUCK', 83, 25, 40);
+  ctx.fillText('ALL STARS', 83, 35, 40);
+
+  // ---- chalkboard menu
+  ctx.fillStyle = '#e8e0d0'; ctx.fillRect(40, 10, 20, 44);
+  ctx.fillStyle = '#1c1a1e'; ctx.fillRect(41, 11, 18, 42);
+  ctx.fillStyle = '#f4f2ec';
+  ctx.font = 'bold 5px monospace';
+  const menu = ['TACOS', 'NACHO', 'RICE', 'BURRITO', 'SALAD'];
+  menu.forEach((t, i) => ctx.fillText(t, 50, 18 + i * 8, 16));
+
+  // ---- serving window with the cook leaning out (warm light, gentle flicker)
+  ctx.fillStyle = '#2a2430'; ctx.fillRect(2, 12, 36, 34);
+  const glow = 0.85 + 0.15 * Math.sin(time * 3);
+  ctx.fillStyle = `rgba(255, 207, 122, ${glow})`;
+  ctx.fillRect(4, 14, 32, 30);
+  ctx.fillStyle = '#c9803a'; ctx.fillRect(4, 14, 32, 6);          // dim ceiling
+  ctx.fillStyle = '#e8b890';                                       // face
+  ctx.beginPath(); ctx.arc(20, 27, 5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#b8863c';                                       // hair
+  ctx.beginPath(); ctx.arc(20, 25, 5.4, Math.PI, 0, false); ctx.fill();
+  ctx.fillStyle = '#2a2430'; ctx.fillRect(16, 21, 8, 2);           // sunglasses on head
+  ctx.fillStyle = '#3a6a78'; ctx.fillRect(12, 33, 16, 11);         // tank top
+  ctx.fillStyle = '#e8b890'; ctx.fillRect(12, 33, 2, 5); ctx.fillRect(26, 33, 2, 5);
+  // counter ledge + little chalk signs standing on it
+  ctx.fillStyle = '#c8ccd2'; ctx.fillRect(0, 45, 44, 4);
+  ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(0, 49, 44, 2);
+  for (let i = 0; i < 4; i++) {
+    ctx.fillStyle = '#4a3220'; ctx.fillRect(6 + i * 9, 39, 8, 6);
+    ctx.fillStyle = '#1c1a1e'; ctx.fillRect(7 + i * 9, 40, 6, 4);
+    ctx.fillStyle = '#f4f2ec'; ctx.fillRect(8 + i * 9, 41, 4, 1);
+  }
+  // condiment bottles on a bracket shelf under the window
+  ctx.fillStyle = '#9aa0a8'; ctx.fillRect(4, 62, 38, 2);
+  const sauces = ['#c84a2a', '#e08a30', '#f0c040', '#a83820', '#e08a30', '#c84a2a'];
+  sauces.forEach((col, i) => {
+    ctx.fillStyle = col; ctx.fillRect(7 + i * 6, 53, 4, 9);
+    ctx.fillStyle = '#f4ecd8'; ctx.fillRect(8 + i * 6, 51, 2, 2);
+  });
+
+  // ---- silver roof with a highlight, overhanging the cab slightly
+  ctx.fillStyle = '#cfd4dc'; ctx.fillRect(-2, 0, 112, 8);
+  ctx.fillStyle = '#f4f6fa'; ctx.fillRect(-2, 0, 112, 2);
+  ctx.fillStyle = '#8e949e'; ctx.fillRect(-2, 7, 112, 2);
+
+  // ---- wheels (with dark wheel wells)
+  for (const wx of [30, 128]) {
+    ctx.fillStyle = '#1a161e';
+    ctx.beginPath(); ctx.arc(wx, 80, 11, Math.PI, 0, false); ctx.fill();
+    ctx.fillStyle = '#1c1a20';
+    ctx.beginPath(); ctx.arc(wx, 82, 8, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#9aa0a8';
+    ctx.beginPath(); ctx.arc(wx, 82, 3, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // ---- TACOS feather flag on a pole at the front-left corner, waving
+  ctx.fillStyle = '#8a8e96'; ctx.fillRect(4, -34, 2, 42);
+  for (let i = 0; i < 26; i += 2) {
+    const dy = Math.sin(time * 4 + i * 0.35) * 1.5;
+    ctx.fillStyle = '#c8342c'; ctx.fillRect(6 + i, -34 + dy, 2, 7);
+    ctx.fillStyle = '#f4f2ec'; ctx.fillRect(6 + i, -27 + dy, 2, 7);
+    ctx.fillStyle = '#2a3a8c'; ctx.fillRect(6 + i, -20 + dy, 2, 7);
+  }
+  ctx.fillStyle = '#c8342c';
+  ctx.font = 'bold 6px monospace';
+  ctx.fillText('TACOS', 19, -21, 18);
+
+  ctx.restore();
+  ctx.textAlign = 'left';
 }
 
 // Scatter lily pads + cattails over the swamp's water. Called from render
@@ -23988,6 +24289,7 @@ function drawBuildings(map) {
     const isFoamBrewersSign = b.name === 'FOAM BREWERS';
     const isSpeakingVolumesSign = b.name === 'SPEAKING VOLUMES';
     const isCBPrintsSign = b.name === 'CB PRINTS';
+    const isEchoCenter = b.name === 'ECHO CENTER';
 
     // wall/roof shade colors: each building's wall/roof color never changes,
     // so compute these once per building and cache them on the building
@@ -24055,7 +24357,9 @@ function drawBuildings(map) {
     ctx.fillStyle = 'rgba(0,0,0,0.3)';
     ctx.fillRect(px, py + TILE + 8, w, 3);
 
-    if (!isDeli && !isBurlington && !isJohnnysPool && !isVillageScoop) {
+    // (ECHO CENTER skips these too: its two big aquarium windows are painted
+    // by drawEchoCenterExterior() instead.)
+    if (!isDeli && !isBurlington && !isJohnnysPool && !isVillageScoop && !isEchoCenter) {
       for (let i = 0; i < b.w; i++) {
         if (b.x + i === b.doorX) continue;
         if (i === 0 || i === b.w - 1) continue;
@@ -24650,6 +24954,41 @@ function drawBuildings(map) {
       ctx.fillStyle = '#00aeef'; ctx.fillText(cbLabel, cbx - 2, cby + 1);
       ctx.fillStyle = '#ec008c'; ctx.fillText(cbLabel, cbx + 2, cby - 1);
       ctx.fillStyle = '#16141a'; ctx.fillText(cbLabel, cbx, cby);
+    } else if (isEchoCenter) {
+      // ECHO CENTER's marquee: a deep-sea plate with a wavy bright-teal edge,
+      // the name in glowing sonar-cyan, and a little LAKE CHAMPLAIN AQUARIUM
+      // tagline underneath. (The Champ sculpture humping over the roofline
+      // and the aquarium windows are painted by drawEchoCenterExterior().)
+      const sw = Math.min(w - 40, 176), sh = 36;
+      const sx = px + (w - sw) / 2, sy = py + 4;
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.fillRect(sx + 2, sy + 3, sw, sh);
+      ctx.fillStyle = '#04141e';
+      ctx.fillRect(sx - 2, sy - 2, sw + 4, sh + 4);
+      ctx.fillStyle = '#0a3a52';
+      ctx.fillRect(sx, sy, sw, sh);
+      ctx.fillStyle = '#0d4d6a';
+      ctx.fillRect(sx, sy, sw, 9);
+      ctx.fillStyle = '#1fd0e0';
+      for (let wx = 0; wx < sw; wx += 8) {
+        ctx.fillRect(sx + wx, sy + sh - 4 - ((wx / 8) % 2) * 2, 8, 3);
+      }
+      const ecLabel = 'ECHO CENTER';
+      let ecSize = 19;
+      ctx.font = 'bold ' + ecSize + 'px monospace';
+      while (ecSize > 11 && ctx.measureText(ecLabel).width > sw - 14) {
+        ecSize--;
+        ctx.font = 'bold ' + ecSize + 'px monospace';
+      }
+      const ecx = px + w / 2, ecy = sy + 20;
+      ctx.textAlign = 'center';
+      ctx.fillStyle = 'rgba(60,230,255,0.30)';
+      for (const [ox, oy] of NEON_GLOW_OFFSETS) ctx.fillText(ecLabel, ecx + ox, ecy + oy);
+      ctx.fillStyle = '#35e0f5'; ctx.fillText(ecLabel, ecx, ecy);
+      ctx.fillStyle = '#e4fdff'; ctx.fillText(ecLabel, ecx, ecy - 0.6);
+      ctx.font = 'bold 7px monospace';
+      ctx.fillStyle = '#9fe8f2';
+      ctx.fillText('LAKE CHAMPLAIN AQUARIUM', ecx, sy + sh - 8);
     } else if (isSpeakingVolumesSign && getSpeakingVolumesSign(Math.min(w - 24, 168), Math.round(Math.min(w - 24, 168) * 328 / 560))) {
       // The real Speaking Volumes badge, big and centered on the storefront,
       // overlapping the roof band and the wall below it (the record emblem
@@ -29343,6 +29682,573 @@ function drawCBPrintsExterior(time, map) {
   ctx.fillText('POSTERS', sx + 10, sy + 16);
 }
 
+// ---------------------------------------------------------------- ECHO CENTER
+// Shared aquarium bits used by both ECHO CENTER painters below (interior
+// tanks + exterior windows): banded water with swaying light rays and a
+// sand floor, swaying kelp, a friendly fish, a pulsing jellyfish, a shark,
+// and rising bubbles. All chunky flat fills (no per-frame gradients), same
+// look as the rest of the file.
+const ECHO_WATER_BANDS = ['#2db1d6', '#2299c6', '#1a7db0', '#13608f', '#0b4271', '#072c52'];
+
+function drawEchoWater(x, y, w, h, time, seed) {
+  const bh = h / ECHO_WATER_BANDS.length;
+  for (let i = 0; i < ECHO_WATER_BANDS.length; i++) {
+    ctx.fillStyle = ECHO_WATER_BANDS[i];
+    ctx.fillRect(x, y + i * bh, w, bh + 1);
+  }
+  // sunbeams drifting down through the water
+  ctx.fillStyle = 'rgba(255,255,255,0.08)';
+  for (let i = 0; i < 4; i++) {
+    const rx = x + (i * 0.27 + 0.08) * w + Math.sin(time * 0.5 + i + seed) * 5;
+    ctx.beginPath();
+    ctx.moveTo(rx, y); ctx.lineTo(rx + 9, y);
+    ctx.lineTo(rx + 24, y + h); ctx.lineTo(rx + 4, y + h);
+    ctx.closePath(); ctx.fill();
+  }
+  // sandy bottom with a few pebbles
+  ctx.fillStyle = '#cdb77a';
+  ctx.fillRect(x, y + h - 5, w, 5);
+  ctx.fillStyle = '#a99157';
+  ctx.fillRect(x, y + h - 5, w, 1);
+  for (let px2 = 6; px2 < w - 3; px2 += 17) {
+    ctx.fillStyle = (px2 % 2) ? '#8d7a4a' : '#e6d6a0';
+    ctx.fillRect(x + px2 + (seed % 5), y + h - 3, 3, 2);
+  }
+}
+
+function drawEchoKelp(bx, by, hgt, time, seed) {
+  ctx.save();
+  ctx.lineCap = 'round';
+  for (let pass = 0; pass < 2; pass++) {
+    ctx.strokeStyle = pass === 0 ? '#1f7a45' : '#47b86a';
+    ctx.lineWidth = pass === 0 ? 3.5 : 1.6;
+    ctx.beginPath();
+    ctx.moveTo(bx, by);
+    for (let j = 1; j <= 5; j++) {
+      ctx.lineTo(bx + Math.sin(time * 1.6 + seed + j * 0.8) * 3.2 * (j / 5), by - j * hgt / 5);
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawEchoFish(x, y, len, dir, body, belly, time, seed) {
+  const h = len * 0.46;
+  const wag = Math.sin(time * 9 + seed) * len * 0.12;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(dir, 1);
+  ctx.fillStyle = body;
+  ctx.beginPath();                                   // tail
+  ctx.moveTo(-len * 0.38, 0);
+  ctx.lineTo(-len * 0.64, -h * 0.75 + wag);
+  ctx.lineTo(-len * 0.64, h * 0.75 + wag);
+  ctx.closePath(); ctx.fill();
+  ctx.beginPath();                                   // dorsal fin
+  ctx.moveTo(-len * 0.1, -h * 0.4); ctx.lineTo(len * 0.05, -h * 0.85); ctx.lineTo(len * 0.18, -h * 0.4);
+  ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(0, 0, len * 0.45, h * 0.5, 0, 0, Math.PI * 2); ctx.fill();   // body
+  ctx.fillStyle = belly;
+  ctx.beginPath(); ctx.ellipse(len * 0.02, h * 0.17, len * 0.36, h * 0.2, 0, 0, Math.PI * 2); ctx.fill();
+  const ex = len * 0.22;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(ex - 1.5, -h * 0.2 - 1.5, 3, 3);
+  ctx.fillStyle = '#0b1630';
+  ctx.fillRect(ex - 0.5, -h * 0.2 - 0.5, 1.8, 1.8);
+  ctx.restore();
+}
+
+function drawEchoJelly(cx, cy, r, time, seed, bell, trail) {
+  const pulse = 1 + Math.sin(time * 2.2 + seed) * 0.13;
+  const rw = r / pulse, rh = r * 0.8 * pulse;
+  ctx.save();
+  ctx.strokeStyle = trail;
+  ctx.lineWidth = 1.3;
+  for (let i = 0; i < 5; i++) {
+    const tx = cx + (i - 2) * rw * 0.42;
+    ctx.beginPath();
+    ctx.moveTo(tx, cy);
+    for (let j = 1; j <= 4; j++) ctx.lineTo(tx + Math.sin(time * 2 + seed + i + j * 0.9) * 2, cy + j * r * 0.42);
+    ctx.stroke();
+  }
+  ctx.fillStyle = bell;
+  ctx.beginPath(); ctx.ellipse(cx, cy, rw, rh, 0, Math.PI, 0); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.55)';
+  ctx.fillRect(cx - rw * 0.45, cy - rh * 0.6, 2, 2);
+  ctx.restore();
+}
+
+function drawEchoShark(x, y, len, dir, time) {
+  const wag = Math.sin(time * 2.6) * len * 0.05;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(dir, 1);
+  ctx.fillStyle = '#6f8797';
+  ctx.beginPath();
+  ctx.moveTo(len * 0.5, 0);
+  ctx.quadraticCurveTo(len * 0.15, -len * 0.17, -len * 0.3, -len * 0.04);
+  ctx.lineTo(-len * 0.52, -len * 0.19 + wag);
+  ctx.lineTo(-len * 0.45, wag * 0.5);
+  ctx.lineTo(-len * 0.52, len * 0.14 + wag);
+  ctx.lineTo(-len * 0.3, len * 0.04);
+  ctx.quadraticCurveTo(len * 0.15, len * 0.13, len * 0.5, 0);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#d3dde4';                          // pale belly
+  ctx.beginPath();
+  ctx.moveTo(len * 0.45, len * 0.01);
+  ctx.quadraticCurveTo(len * 0.15, len * 0.12, -len * 0.28, len * 0.04);
+  ctx.quadraticCurveTo(len * 0.1, len * 0.06, len * 0.45, len * 0.01);
+  ctx.fill();
+  ctx.fillStyle = '#566c7b';                          // dorsal fin
+  ctx.beginPath();
+  ctx.moveTo(len * 0.06, -len * 0.1); ctx.lineTo(-len * 0.08, -len * 0.28); ctx.lineTo(-len * 0.16, -len * 0.07);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#0b1630';                          // eye
+  ctx.fillRect(len * 0.3, -len * 0.05, 2, 2);
+  ctx.restore();
+}
+
+function drawEchoBubbles(x, y, w, h, time, n, seed) {
+  ctx.save();
+  ctx.strokeStyle = 'rgba(225,252,255,0.75)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < n; i++) {
+    const ph = (time * 0.2 + i / n + seed * 0.37) % 1;
+    const bx = x + (((i * 53 + seed * 17) % 100) / 100) * w + Math.sin(time * 2 + i) * 1.8;
+    const by = y + h - ph * h;
+    ctx.beginPath(); ctx.arc(bx, by, 1 + ((i * 7) % 3) * 0.7, 0, Math.PI * 2); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// ECHO CENTER's interior: an aquarium. A panoramic tank runs along the whole
+// back wall behind CHAMP (kelp, a school of fish, a sturgeon, two jellyfish,
+// bubbles) under a glowing name plate; round porthole tanks line both side
+// walls; two glass jellyfish columns stand on the floor (the solid blockTiles
+// at (4,6) and (9,6)); soft light ripples across the floor and sonar rings
+// ping out from Champ's counter. On the counter: a stack of brochures, a
+// Champ plushie and a goldfish bowl; plaques over the three crates --
+// SHALLOWS (1,5), DEEP SEA (12,5) and REEF (2,8). Called from render()
+// whenever map.echoCenter is set (shop map only -- the outdoor skatepark map
+// uses `echoExterior` instead so it never trips this).
+function drawEchoCenterInterior(time) {
+  ctx.save();
+  ctx.textBaseline = 'alphabetic';
+  ctx.textAlign = 'center';
+  const STEEL = '#8aa0ae', DARK = '#06141e', FLOOR = '#2b4a63';
+
+  // --- light ripples drifting across the floor, like sun through water
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = 'rgba(160,240,255,0.11)';
+  for (let i = 0; i < 16; i++) {
+    const cx = 20 + ((i * 97) % 410) + Math.sin(time * 0.6 + i) * 9;
+    const cy = 112 + ((i * 53) % 160);
+    ctx.beginPath(); ctx.ellipse(cx, cy, 13 + (i % 3) * 3, 3.2, 0, 0.1, Math.PI - 0.1); ctx.stroke();
+  }
+  // --- sonar rings pinging out from Champ's counter (the "echo")
+  for (let k = 0; k < 3; k++) {
+    const ph = (time * 0.28 + k / 3) % 1;
+    ctx.strokeStyle = 'rgba(110,240,255,' + (0.2 * (1 - ph)).toFixed(3) + ')';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.ellipse(208, 104, 16 + ph * 190, 5 + ph * 46, 0, 0, Math.PI * 2); ctx.stroke();
+  }
+
+  // --- glowing name plate, top center
+  ctx.fillStyle = DARK;
+  ctx.fillRect(150, 1, 148, 15);
+  ctx.fillStyle = '#1fd0e0';
+  ctx.fillRect(150, 14, 148, 2);
+  ctx.font = 'bold 11px monospace';
+  ctx.fillStyle = 'rgba(60,230,255,0.28)';
+  for (const [ox, oy] of NEON_GLOW_OFFSETS) ctx.fillText('ECHO CENTER', 224 + ox, 12 + oy);
+  ctx.fillStyle = '#e4fdff';
+  ctx.fillText('ECHO CENTER', 224, 12);
+  drawEchoFish(138, 8, 11, 1, '#ffb347', '#ffe2b0', time, 5);
+  drawEchoFish(310, 8, 11, -1, '#7fd0ff', '#e0f6ff', time, 6);
+
+  // --- panoramic back-wall tank
+  const TX = 22, TY = 20, TW = 404, TH = 42;
+  ctx.fillStyle = DARK;
+  ctx.fillRect(TX - 4, TY - 4, TW + 8, TH + 8);
+  ctx.fillStyle = STEEL;
+  ctx.fillRect(TX - 2, TY - 2, TW + 4, TH + 4);
+  ctx.save();
+  ctx.beginPath(); ctx.rect(TX, TY, TW, TH); ctx.clip();
+  drawEchoWater(TX, TY, TW, TH, time, 1);
+  [[48, 1], [112, 2], [176, 5], [300, 3], [364, 4], [410, 6]].forEach(([kx, s]) => drawEchoKelp(kx, TY + TH - 3, 24 + (s % 3) * 4, time, s));
+  ctx.fillStyle = '#5b6a76';                                   // a couple of rocks
+  ctx.beginPath(); ctx.ellipse(236, TY + TH - 4, 14, 6, 0, Math.PI, 0); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(86, TY + TH - 4, 10, 5, 0, Math.PI, 0); ctx.fill();
+  for (let i = 0; i < 6; i++) {                                // orange school, heading right
+    const fx = TX + ((time * (20 + i * 2) + i * 71) % (TW + 40)) - 20;
+    const fy = TY + 9 + ((i * 13) % 22) + Math.sin(time * 2 + i) * 2;
+    drawEchoFish(fx, fy, 11, 1, i % 2 ? '#ffb347' : '#ff7a59', '#ffe2b0', time, i);
+  }
+  for (let i = 0; i < 5; i++) {                                // blue school, heading left
+    const fx = TX + TW + 20 - ((time * (16 + i) + i * 83) % (TW + 40));
+    const fy = TY + 12 + ((i * 17) % 20) + Math.sin(time * 2.3 + i) * 2;
+    drawEchoFish(fx, fy, 9, -1, '#7fd0ff', '#e0f6ff', time, i + 10);
+  }
+  const stx = TX + ((time * 9 + 120) % (TW + 120)) - 60;      // a big lake sturgeon
+  drawEchoFish(stx, TY + 30, 40, 1, '#7b8d9b', '#c8d3da', time, 9);
+  drawEchoJelly(TX + 160, TY + 13 + Math.sin(time * 0.9) * 5, 8, time, 1, 'rgba(255,170,220,0.85)', 'rgba(255,200,235,0.6)');
+  drawEchoJelly(TX + 262, TY + 15 + Math.sin(time * 0.8 + 2) * 5, 7, time, 2, 'rgba(170,200,255,0.85)', 'rgba(200,220,255,0.6)');
+  drawEchoBubbles(TX, TY, TW, TH, time, 16, 3);
+  ctx.restore();
+  ctx.fillStyle = 'rgba(255,255,255,0.10)';                    // glass glints
+  [[60, 18], [250, 12], [380, 18]].forEach(([gx, gw]) => {
+    ctx.beginPath();
+    ctx.moveTo(TX + gx, TY); ctx.lineTo(TX + gx + gw, TY);
+    ctx.lineTo(TX + gx + gw - 14, TY + TH); ctx.lineTo(TX + gx - 14, TY + TH);
+    ctx.closePath(); ctx.fill();
+  });
+  ctx.fillStyle = '#c4d2da';                                   // frame rivets
+  for (let rx = TX + 6; rx < TX + TW; rx += 40) {
+    ctx.fillRect(rx, TY - 3, 2, 2);
+    ctx.fillRect(rx, TY + TH + 1, 2, 2);
+  }
+
+  // --- porthole tanks in both side walls
+  const porthole = (cx, cy, kind, seed) => {
+    ctx.fillStyle = DARK;
+    ctx.beginPath(); ctx.arc(cx, cy, 14, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = STEEL;
+    ctx.beginPath(); ctx.arc(cx, cy, 12.5, 0, Math.PI * 2); ctx.fill();
+    ctx.save();
+    ctx.beginPath(); ctx.arc(cx, cy, 10, 0, Math.PI * 2); ctx.clip();
+    drawEchoWater(cx - 10, cy - 10, 20, 20, time, seed);
+    if (kind === 0) {
+      drawEchoFish(cx - 12 + ((time * 9 + seed * 7) % 34), cy - 1 + Math.sin(time * 2 + seed) * 2, 9, 1, '#ffb347', '#ffe2b0', time, seed);
+    } else if (kind === 1) {
+      drawEchoJelly(cx, cy - 2 + Math.sin(time * 0.9 + seed) * 2.5, 5, time, seed, 'rgba(255,170,220,0.9)', 'rgba(255,200,235,0.6)');
+    } else if (kind === 2) {
+      drawEchoFish(cx + 12 - ((time * 7 + seed * 5) % 34), cy + Math.sin(time * 2.4 + seed) * 2, 9, -1, '#7fd0ff', '#e0f6ff', time, seed);
+    } else {
+      ctx.fillStyle = '#ff7a59';                               // starfish on the sand
+      const sx = cx + 1, sy = cy + 6;
+      ctx.beginPath();
+      for (let p = 0; p < 10; p++) {
+        const a = -Math.PI / 2 + p * Math.PI / 5, rr = p % 2 === 0 ? 4 : 1.7;
+        ctx.lineTo(sx + Math.cos(a) * rr, sy + Math.sin(a) * rr);
+      }
+      ctx.closePath(); ctx.fill();
+      drawEchoFish(cx - 12 + ((time * 6 + seed * 3) % 34), cy - 3, 6, 1, '#ffd447', '#fff0b0', time, seed);
+    }
+    drawEchoBubbles(cx - 10, cy - 10, 20, 20, time, 3, seed);
+    ctx.restore();
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.fillRect(cx - 7, cy - 7, 3, 3);
+    ctx.fillStyle = '#c4d2da';                                 // bolts at the compass points
+    ctx.fillRect(cx - 1, cy - 13, 2, 2); ctx.fillRect(cx - 1, cy + 11, 2, 2);
+    ctx.fillRect(cx - 13, cy - 1, 2, 2); ctx.fillRect(cx + 11, cy - 1, 2, 2);
+  };
+  porthole(16, 84, 0, 1);   porthole(16, 116, 1, 2);
+  porthole(16, 208, 3, 3);  porthole(16, 240, 2, 4);
+  porthole(432, 84, 2, 5);  porthole(432, 116, 0, 6);
+  porthole(432, 208, 1, 7); porthole(432, 240, 3, 8);
+
+  // --- the two glass jellyfish columns on tiles (4,6) and (9,6)
+  const column = (cx, baseY, seed, jellyColors) => {
+    ctx.fillStyle = FLOOR;                                     // cover the wall-tile texture
+    ctx.fillRect(cx - 16, baseY - 32, 32, 32);
+    const glow = getGlowSprite(44, 'rgba(70,220,255,ALPHA)');
+    ctx.save();
+    ctx.globalAlpha = 0.34 + 0.1 * Math.sin(time * 2 + seed);
+    ctx.drawImage(glow, cx - 44, baseY - 100, 88, 88);
+    ctx.restore();
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.beginPath(); ctx.ellipse(cx, baseY - 3, 20, 5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#1a2a38';                                 // base
+    ctx.fillRect(cx - 17, baseY - 12, 34, 10);
+    ctx.fillStyle = '#3a5468';
+    ctx.fillRect(cx - 17, baseY - 12, 34, 3);
+    const top = baseY - 82, gh = baseY - 12 - top;
+    ctx.fillStyle = DARK;                                      // glass tube
+    ctx.fillRect(cx - 14, top - 2, 28, gh + 2);
+    ctx.save();
+    ctx.beginPath(); ctx.rect(cx - 12, top, 24, gh); ctx.clip();
+    drawEchoWater(cx - 12, top, 24, gh, time, seed);
+    for (let i = 0; i < 3; i++) {
+      const jy = top + 12 + (gh - 34) * (0.5 + 0.5 * Math.sin(time * 0.5 + i * 2.1 + seed));
+      const jx = cx + (i - 1) * 6;
+      drawEchoJelly(jx, jy, 5 + (i % 2), time, seed + i, jellyColors[i % jellyColors.length][0], jellyColors[i % jellyColors.length][1]);
+    }
+    drawEchoBubbles(cx - 12, top, 24, gh, time, 6, seed);
+    ctx.restore();
+    ctx.fillStyle = '#3a5468';                                 // top cap
+    ctx.fillRect(cx - 16, top - 6, 32, 5);
+    ctx.fillStyle = '#1a2a38';
+    ctx.fillRect(cx - 16, top - 3, 32, 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';                  // glass glint
+    ctx.fillRect(cx - 9, top + 4, 3, gh - 10);
+  };
+  column(4 * TILE + 16, 7 * TILE, 11, [['rgba(255,235,245,0.9)', 'rgba(255,240,250,0.6)'], ['rgba(255,170,220,0.9)', 'rgba(255,200,235,0.6)']]);
+  column(9 * TILE + 16, 7 * TILE, 21, [['rgba(150,200,255,0.9)', 'rgba(190,220,255,0.6)'], ['rgba(120,255,220,0.85)', 'rgba(170,255,235,0.6)']]);
+
+  // --- counter (table is row 3): brochures left of Champ; a Champ plushie
+  // and a goldfish bowl to the right
+  const BROCH = ['#e4fdff', '#7fe0ee', '#e4fdff', '#ffd447'];
+  BROCH.forEach((c, i) => {
+    ctx.fillStyle = c;
+    ctx.fillRect(4 * TILE + 10 + (i % 2), 3 * TILE + 8 - i * 3, 22, 3);
+  });
+  ctx.fillStyle = '#0a3a52';
+  ctx.fillRect(4 * TILE + 16, 3 * TILE - 5, 8, 2);
+  ctx.fillStyle = '#7fe0ee';
+  ctx.fillRect(4 * TILE + 24, 3 * TILE - 8, 2, 2);
+  // plushie (neck + head, belly, tiny eyes)
+  const plx = 8 * TILE + 2, ply = 3 * TILE + 9;
+  ctx.fillStyle = '#0b1630';
+  ctx.beginPath(); ctx.ellipse(plx, ply - 5, 9, 8, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillRect(plx - 1, ply - 22, 8, 16);
+  ctx.beginPath(); ctx.arc(plx + 4, ply - 22, 6, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#46b08a';
+  ctx.beginPath(); ctx.ellipse(plx, ply - 5, 8, 7, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillRect(plx, ply - 21, 6, 14);
+  ctx.beginPath(); ctx.arc(plx + 4, ply - 22, 5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#f0d878';
+  ctx.beginPath(); ctx.ellipse(plx, ply - 2, 5, 3.5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillRect(plx + 3, ply - 18, 3, 9);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(plx + 4, ply - 24, 3, 3);
+  ctx.fillStyle = '#0b1630';
+  ctx.fillRect(plx + 5, ply - 23, 2, 2);
+  // goldfish bowl
+  const bwx = 9 * TILE + 4, bwy = 3 * TILE - 1;
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.fillRect(bwx - 11, bwy + 10, 22, 3);
+  ctx.fillStyle = '#9fd9ec';
+  ctx.beginPath(); ctx.arc(bwx, bwy, 11, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#4fb4d8';
+  ctx.beginPath(); ctx.arc(bwx, bwy + 2, 9.5, 0, Math.PI); ctx.closePath(); ctx.fill();
+  drawEchoFish(bwx + Math.sin(time * 1.4) * 4, bwy + 3, 7, Math.cos(time * 1.4) > 0 ? 1 : -1, '#ff9a30', '#ffd9a0', time, 3);
+  ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(bwx, bwy, 8, Math.PI * 1.1, Math.PI * 1.45); ctx.stroke();
+
+  // --- plaques over the three crates
+  const cratePlaque = (cx, y, label) => {
+    const w = 50, h = 12, x = cx - w / 2;
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillRect(x + 1, y + 2, w, h);
+    ctx.fillStyle = '#0a3a52';
+    ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = '#1fd0e0';
+    ctx.fillRect(x, y + h - 2, w, 2);
+    ctx.fillStyle = '#e4fdff';
+    ctx.font = 'bold 7px monospace';
+    ctx.fillText(label, cx, y + 7);
+  };
+  cratePlaque(1 * TILE + 16, 4 * TILE + 14, 'SHALLOWS');
+  cratePlaque(12 * TILE + 16, 4 * TILE + 14, 'DEEP SEA');
+  cratePlaque(2 * TILE + 16, 7 * TILE + 14, 'REEF');
+
+  // --- a wavy tide-line along the bottom wall, either side of the door
+  ctx.fillStyle = 'rgba(31,208,224,0.55)';
+  for (let wx = 0; wx < 448; wx += 8) {
+    if (wx >= 192 && wx < 224) continue;
+    ctx.fillRect(wx, 9 * TILE + 3 + ((wx / 8) % 2) * 2, 8, 2);
+  }
+  ctx.restore();
+}
+
+// ECHO CENTER's front: a lake-monster-sized stunt on the roof -- CHAMP's
+// humps and neck arching out of the roofline (she's the Lake Champlain
+// monster, after all), two big lit aquarium windows (a shark cruising past
+// one, a school of fish and jellies in the other), a teal porthole door
+// with a cyan glow and bubbles drifting out, water-light pooling on the
+// ground in front, and a sandwich board by the door. The name sign itself is
+// drawn in drawBuildings(). Called from drawSkateparkDecorations() whenever
+// the map has `echoExterior`.
+function drawEchoCenterExterior(time, map) {
+  const f = map.echoExterior;
+  const px = f.x * TILE, py = f.y * TILE, w = f.w * TILE, h = f.h * TILE;
+  const OUT = '#0b1630', GREEN = '#46b08a', GREEN_HI = '#8fe0b0', GREEN_DK = '#2f8f6d', YELLOW = '#f0d878';
+  ctx.save();
+  ctx.textBaseline = 'alphabetic';
+  ctx.textAlign = 'center';
+
+  // --- water-light pooling on the ground in front of the windows
+  const pool = getGlowSprite(60, 'rgba(60,200,255,ALPHA)');
+  ctx.save();
+  ctx.globalAlpha = 0.16 + 0.05 * Math.sin(time * 1.5);
+  ctx.drawImage(pool, px + 50 - 60, py + h - 18, 120, 120);
+  ctx.drawImage(pool, px + 174 - 60, py + h - 18, 120, 120);
+  ctx.restore();
+
+  // --- CHAMP rising out of the roof: three humps, then a neck and head
+  const ripple = (cx, r) => {
+    ctx.strokeStyle = 'rgba(190,245,255,0.7)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.ellipse(cx, py + 1, r + 6 + Math.sin(time * 2 + cx) * 1.2, 3, 0, 0, Math.PI * 2); ctx.stroke();
+  };
+  const hump = (cx, r) => {
+    ctx.fillStyle = OUT;
+    ctx.beginPath(); ctx.arc(cx, py + 1, r + 2, Math.PI, 0); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = GREEN;
+    ctx.beginPath(); ctx.arc(cx, py + 1, r, Math.PI, 0); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = GREEN_DK;
+    ctx.fillRect(Math.round(cx - r * 0.55), Math.round(py - r * 0.5), 3, 3);
+    ctx.fillRect(Math.round(cx + r * 0.25), Math.round(py - r * 0.7), 3, 3);
+    ctx.fillRect(Math.round(cx + r * 0.1), Math.round(py - r * 0.25), 3, 3);
+    ctx.fillStyle = GREEN_HI;
+    ctx.fillRect(Math.round(cx - r * 0.4), Math.round(py - r * 0.92), Math.round(r * 0.55), 2);
+  };
+  ripple(px + 30, 11); ripple(px + 64, 15); ripple(px + 100, 12);
+  hump(px + 30, 11); hump(px + 64, 15); hump(px + 100, 12);
+
+  const bob = Math.sin(time * 1.4) * 1.6;
+  const nx0 = px + 142, ny0 = py + 1, nx1 = px + 168, ny1 = py - 33 + bob;
+  const neck = (lw, col, dx, dy) => {
+    ctx.strokeStyle = col;
+    ctx.lineWidth = lw;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(nx0 + dx, ny0 + dy);
+    ctx.quadraticCurveTo(nx0 + 3 + dx, ny0 - 30, nx1 + dx, ny1 + dy);
+    ctx.stroke();
+  };
+  ripple(px + 142, 8);
+  neck(15, OUT, 0, 0);
+  neck(11, GREEN, 0, 0);
+  neck(3, YELLOW, 4, 1);                                       // yellow belly stripe down the front
+  const hx = nx1 + 7, hy = ny1 - 3;
+  ctx.fillStyle = OUT;                                         // head
+  ctx.beginPath(); ctx.ellipse(hx, hy, 15, 10, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = GREEN;
+  ctx.beginPath(); ctx.ellipse(hx, hy, 13, 8, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = GREEN_HI;
+  ctx.beginPath(); ctx.ellipse(hx + 1, hy - 3, 8, 2.5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = YELLOW;                                      // yellow jaw
+  ctx.beginPath(); ctx.ellipse(hx + 3, hy + 4, 9, 3, 0, 0, Math.PI); ctx.fill();
+  ctx.fillStyle = '#ffffff';                                   // big friendly eye
+  ctx.beginPath(); ctx.arc(hx + 3, hy - 2, 3.6, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = OUT;
+  ctx.beginPath(); ctx.arc(hx + 4, hy - 2, 2, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(hx + 4, hy - 3, 1, 1);
+  ctx.strokeStyle = OUT;                                       // smile
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(hx + 6, hy + 1, 5, 0.25, Math.PI * 0.7); ctx.stroke();
+  ctx.fillStyle = OUT;                                         // nostril
+  ctx.fillRect(hx + 11, hy - 1, 1.5, 1.5);
+  ctx.fillStyle = '#1b5f93';                                   // crest spikes
+  for (let i = 0; i < 3; i++) {
+    ctx.beginPath();
+    ctx.moveTo(hx - 9 + i * 5, hy - 8);
+    ctx.lineTo(hx - 7 + i * 5, hy - 15 - (i === 1 ? 2 : 0));
+    ctx.lineTo(hx - 4 + i * 5, hy - 8);
+    ctx.closePath(); ctx.fill();
+  }
+
+  // --- the two big aquarium windows, either side of the door
+  const win = (wx, wy, ww, wh, variant) => {
+    ctx.fillStyle = '#06141e';
+    ctx.fillRect(wx - 4, wy - 4, ww + 8, wh + 8);
+    ctx.fillStyle = '#8aa0ae';
+    ctx.fillRect(wx - 2, wy - 2, ww + 4, wh + 4);
+    ctx.save();
+    ctx.beginPath(); ctx.rect(wx, wy, ww, wh); ctx.clip();
+    drawEchoWater(wx, wy, ww, wh, time, variant * 3 + 1);
+    if (variant === 0) {
+      drawEchoKelp(wx + 10, wy + wh - 3, 24, time, 1);
+      drawEchoKelp(wx + 20, wy + wh - 3, 18, time, 2);
+      drawEchoKelp(wx + ww - 12, wy + wh - 3, 26, time, 3);
+      ctx.fillStyle = '#5b6a76';
+      ctx.beginPath(); ctx.ellipse(wx + ww * 0.55, wy + wh - 4, 11, 5, 0, Math.PI, 0); ctx.fill();
+      const shx = wx - 30 + ((time * 9) % (ww + 70));           // a friendly shark cruising by
+      drawEchoShark(shx, wy + 18 + Math.sin(time * 0.8) * 3, 34, 1, time);
+      for (let i = 0; i < 3; i++) {
+        const fx = wx + ww + 8 - ((time * (12 + i * 2) + i * 31) % (ww + 20));
+        drawEchoFish(fx, wy + 8 + i * 9, 8, -1, '#ffb347', '#ffe2b0', time, i);
+      }
+    } else {
+      drawEchoKelp(wx + 12, wy + wh - 3, 22, time, 4);
+      drawEchoKelp(wx + ww - 10, wy + wh - 3, 26, time, 5);
+      const gx = wx + ww + 24 - ((time * 14) % (ww + 70));      // a school heading left
+      [[0, 0], [10, -6], [10, 6], [20, -10], [20, 0], [20, 10], [30, 0]].forEach(([ox, oy], i) => {
+        drawEchoFish(gx + ox, wy + 22 + oy + Math.sin(time * 2 + i) * 1.5, 8, -1, '#7fd0ff', '#e0f6ff', time, i + 4);
+      });
+      drawEchoJelly(wx + 18, wy + 12 + Math.sin(time * 0.9) * 4, 7, time, 3, 'rgba(255,170,220,0.88)', 'rgba(255,200,235,0.6)');
+      drawEchoJelly(wx + 48, wy + 10 + Math.sin(time * 0.8 + 2) * 4, 6, time, 4, 'rgba(170,200,255,0.88)', 'rgba(200,220,255,0.6)');
+    }
+    drawEchoBubbles(wx, wy, ww, wh, time, 8, variant + 1);
+    ctx.restore();
+    ctx.fillStyle = 'rgba(255,255,255,0.13)';                  // glass glints
+    [[10, 14], [44, 9]].forEach(([gx2, gw]) => {
+      ctx.beginPath();
+      ctx.moveTo(wx + gx2, wy); ctx.lineTo(wx + gx2 + gw, wy);
+      ctx.lineTo(wx + gx2 + gw - 12, wy + wh); ctx.lineTo(wx + gx2 - 12, wy + wh);
+      ctx.closePath(); ctx.fill();
+    });
+    ctx.fillStyle = '#c4d2da';                                 // frame rivets
+    ctx.fillRect(wx - 3, wy - 3, 2, 2); ctx.fillRect(wx + ww + 1, wy - 3, 2, 2);
+    ctx.fillRect(wx - 3, wy + wh + 1, 2, 2); ctx.fillRect(wx + ww + 1, wy + wh + 1, 2, 2);
+  };
+  win(px + 12, py + 50, 76, 44, 0);
+  win(px + 136, py + 50, 76, 44, 1);
+
+  // --- teal porthole door (painted over the standard door drawBuildings() lays down)
+  const dx = f.doorX * TILE;
+  const dTop = py + h - TILE - 2;
+  ctx.fillStyle = '#06141e';
+  ctx.fillRect(dx + 1, dTop - 1, TILE - 2, TILE + 3);
+  ctx.fillStyle = '#12879a';
+  ctx.fillRect(dx + 3, dTop + 2, TILE - 6, TILE - 1);
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.fillRect(dx + 3, dTop + 2, (TILE - 6) / 2, TILE - 1);
+  ctx.fillStyle = 'rgba(255,255,255,0.12)';
+  ctx.fillRect(dx + 3 + (TILE - 6) / 2, dTop + 2, (TILE - 6) / 2, TILE - 1);
+  const pcx = dx + TILE / 2, pcy = dTop + 14;
+  ctx.fillStyle = '#c4d2da';                                   // porthole ring
+  ctx.beginPath(); ctx.arc(pcx, pcy, 8, 0, Math.PI * 2); ctx.fill();
+  ctx.save();
+  ctx.beginPath(); ctx.arc(pcx, pcy, 6, 0, Math.PI * 2); ctx.clip();
+  drawEchoWater(pcx - 6, pcy - 6, 12, 12, time, 9);
+  drawEchoFish(pcx - 8 + ((time * 6) % 20), pcy, 5, 1, '#ffb347', '#ffe2b0', time, 2);
+  ctx.restore();
+  ctx.fillStyle = '#e8c860';                                   // handle
+  ctx.fillRect(dx + TILE - 9, dTop + 22, 3, 3);
+  ctx.fillStyle = 'rgba(31,208,224,0.7)';                      // wavy stripe near the bottom
+  for (let sx = dx + 4; sx < dx + TILE - 4; sx += 4) ctx.fillRect(sx, dTop + 26 + ((sx - dx) / 4 % 2) * 1.5, 4, 2);
+
+  // --- door glow + bubbles drifting out
+  const gdx = dx + TILE / 2, gdy = (f.doorY + 1) * TILE;
+  const glow = getGlowSprite(46, 'rgba(80,220,255,ALPHA)');
+  ctx.save();
+  ctx.globalAlpha = 0.3 + 0.1 * Math.sin(time * 4);
+  ctx.drawImage(glow, gdx - 46, gdy - 60, 92, 92);
+  ctx.restore();
+  ctx.strokeStyle = 'rgba(225,252,255,0.8)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 3; i++) {
+    const ph = (time * 0.4 + i * 0.33) % 1;
+    ctx.globalAlpha = Math.max(0, 1 - ph);
+    ctx.beginPath();
+    ctx.arc(gdx + (i - 1) * 7 + Math.sin(ph * 6 + i) * 3, gdy - 4 - ph * 28, 1.6 + i * 0.5, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+
+  // --- sandwich board on the grass right of the door
+  const sbx = (f.doorX + 1) * TILE + 4, sby = (f.doorY + 1) * TILE + 4;
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.fillRect(sbx - 1, sby + 24, 24, 3);
+  ctx.fillStyle = '#3a2410';
+  ctx.fillRect(sbx, sby + 20, 3, 6);
+  ctx.fillRect(sbx + 17, sby + 20, 3, 6);
+  ctx.fillStyle = '#5a3d20';
+  ctx.fillRect(sbx - 1, sby - 1, 22, 24);
+  ctx.fillStyle = '#0a2a3c';
+  ctx.fillRect(sbx + 1, sby + 1, 18, 20);
+  ctx.font = 'bold 6px monospace';
+  ctx.fillStyle = '#e4fdff';
+  ctx.fillText('MEET', sbx + 10, sby + 9);
+  ctx.fillStyle = '#7fe8a8';
+  ctx.fillText('CHAMP!', sbx + 10, sby + 17);
+  ctx.restore();
+}
+
 // A small cluster of jagged crystal shards on a dark wooden base, with a
 // soft pulsing halo behind it (via the shared getGlowSprite() cache --
 // glowColor must contain the literal 'ALPHA' placeholder, same contract as
@@ -30380,6 +31286,8 @@ keeperImgs.JULIAN = julianImg;
 keeperImgs.BONTA = bontaImg;
 // VILLAGE SCOOP's keeper, QUEEN B -- same idea as BONTA above.
 keeperImgs['QUEEN B'] = queenbImg;
+// ECHO CENTER's keeper, CHAMP -- same idea as BONTA/QUEEN B above.
+keeperImgs.CHAMP = champImg;
 
 function drawAnt(cx, cy, s) {
   // A white ant silhouette (the Anthill Collective mark), drawn on SK1's hat.
@@ -30642,6 +31550,8 @@ function drawPlayer(time) {
     drawPlayerIceCream(spriteTopY);
   } else if (player.tempItem === 'swampJuice') {
     drawPlayerSwampJuice(spriteTopY);
+  } else if (player.tempItem === 'taco') {
+    drawPlayerTaco(spriteTopY);
   } else {
     if (player.holdingCoffee) drawPlayerColdBrew(spriteTopY);
     if (player.holdingTea) drawPlayerIcedTea(spriteTopY);
@@ -30745,6 +31655,45 @@ function drawPlayerIceCream(spriteTopY) {
   ctx.beginPath();
   ctx.arc(hx, hy - 8, 2, 0, Math.PI * 2);
   ctx.fill();
+}
+
+// A crunchy taco held at Rico's side -- bought from TACO TRUCK ALL STARS
+// (see VENDOR_CARTS/doBuy()). Same hand position as the other held items.
+function drawPlayerTaco(spriteTopY) {
+  const hx = player.x + (player.dir === 'left' ? -13 : 13), hy = spriteTopY + SPR_H * 0.5;
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx.fillRect(hx - 7, hy + 12, 14, 2);
+  // back half of the shell
+  ctx.fillStyle = '#d99a3a';
+  ctx.beginPath();
+  ctx.arc(hx, hy + 2, 8, Math.PI, 0, false);
+  ctx.closePath();
+  ctx.fill();
+  // filling spilling out of the top: lettuce, tomato, cheese
+  ctx.fillStyle = '#4aa038';
+  for (let i = 0; i < 4; i++) {
+    ctx.beginPath();
+    ctx.arc(hx - 5 + i * 3.4, hy + 1, 2.6, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.fillStyle = '#c0382c';
+  ctx.beginPath(); ctx.arc(hx - 2, hy, 1.8, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(hx + 3, hy + 1, 1.6, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#f2c63c';
+  ctx.beginPath(); ctx.arc(hx + 0.5, hy - 1.5, 1.4, 0, Math.PI * 2); ctx.fill();
+  // front half of the shell (covers the bottom of the filling)
+  ctx.fillStyle = '#f0b848';
+  ctx.beginPath();
+  ctx.arc(hx, hy + 3, 7.5, 0, Math.PI, false);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#b87a20';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(hx, hy + 3, 7.5, 0, Math.PI, false);
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.35)';
+  ctx.fillRect(hx - 5, hy + 5, 1, 3);
 }
 
 // ---------------------------------------------------------------- UI
