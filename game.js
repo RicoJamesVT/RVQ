@@ -1553,6 +1553,18 @@ const MINIGAME_ACTIONS = {
   // so it works with no connection). See openArkaiikImpactApp()/
   // createArkaiikImpactOverlay() below.
   arkaiikimpact: () => openArkaiikImpactApp(),
+  // PRECISION POINTS -- a one-button, timing-based basketball shooting game
+  // parked at center court of the little basketball court at the bottom of
+  // LEVEL 3 (SKATEPARK), see the skatepark map's `minigames` list and
+  // `basketballCourt` in makeSkatepark(). `icon: 'basketball'` swaps the
+  // usual floating arcade-cabinet sign for a bobbing basketball (see
+  // drawMinigameBasketball()). Same "full standalone web app, not a canvas
+  // mini-game" shape as ARKAIIK IMPACT above (own DOM/iframe overlay, bundled
+  // locally as one self-contained HTML file -- inline CSS/JS, sprites and
+  // sounds generated or embedded as data URIs, no external fonts/CDNs/
+  // network calls -- so it works with no connection). See
+  // openPrecisionPointsApp()/createPrecisionPointsOverlay() below.
+  precisionpoints: () => openPrecisionPointsApp(),
   // TRUTH KNOCKS -- "The Swamp Is Not A Secret," a 16-bit-style beat 'em up
   // (punch/kick/cane combos, a chargeable Special, and a boss rotation of
   // the Frog King/King Gator/Rat King every 5th wave) parked out on the
@@ -9634,6 +9646,7 @@ window.addEventListener('keydown', (e) => {
     if (k === 'escape' && state === 'truthKnocksApp') { closeTruthKnocksApp(); }
     if (k === 'escape' && state === 'hiphopLibraryApp') { closeHipHopLibraryApp(); }
     if (k === 'escape' && state === 'arkaiikImpactApp') { closeArkaiikImpactApp(); }
+    if (k === 'escape' && state === 'precisionPointsApp') { closePrecisionPointsApp(); }
     if (k === 'escape' && state === 'diggerApp') { closeDiggerApp(); }
     if (k === 'escape' && state === 'johnnySlidesApp') { closeJohnnySlidesApp(); }
     if (k === 'escape' && state === 'dustRacingApp') { closeDustRacingApp(); }
@@ -10266,7 +10279,7 @@ const ghostImg = new Image();
 ghostImg.src = 'assets/ghost.png';
 
 // ---------------------------------------------------------------- maps
-const SOLID = new Set(['#', 'w', 'f', '~', 'W', 'T', 'C', 'c', 'K', 'J', 'S', 'A', 'N', 'F', 'R', 'V', 'Z', 'U', 'X', 'm']);
+const SOLID = new Set(['#', 'w', 'f', '~', 'W', 'T', 'C', 'c', 'K', 'J', 'S', 'A', 'N', 'F', 'R', 'V', 'Z', 'U', 'X', 'm', 'h']);
 
 function blankGrid(w, h, fill) {
   return Array.from({ length: h }, () => Array(w).fill(fill));
@@ -11457,6 +11470,21 @@ function makeSkatepark() {
     wall: '#23262e', roof: '#ec008c', doorX: CBP_DOOR_X,
   });
 
+  // --- BASKETBALL COURT -- a small full court on the open grass in the
+  // bottom-left corner, just below the plaza ring and east of SPEAKING
+  // VOLUMES (11 x 4 tiles: x 8-18, rows 31-34). 'u' tiles are walkable
+  // court floor; the two 'h' tiles at each baseline are the solid hoop
+  // posts (rows 32-33), so the top and bottom rows stay open to walk
+  // around the hoops. Carved AFTER the tree sprinkle so it wins over any
+  // tree (it covers two border-row trees at row 34). The center-court
+  // tile is PRECISION POINTS' basketball -- see `minigames` below. Lines,
+  // key and hoops are painted by drawBasketballCourt().
+  const COURT_X = 8, COURT_Y = 31, COURT_W = 11, COURT_H = 4;
+  for (let y = COURT_Y; y < COURT_Y + COURT_H; y++)
+    for (let x = COURT_X; x < COURT_X + COURT_W; x++) g[y][x] = 'u';
+  for (const hx of [COURT_X, COURT_X + COURT_W - 1])
+    for (let y = COURT_Y + 1; y <= COURT_Y + 2; y++) g[y][hx] = 'h';
+
   // --- a few outdoor dig spots scattered around the promenade/plaza ring,
   // same "sit right on a guaranteed-clear path tile" placement swamp's
   // boardwalk crates use. All junk for now (no more of the level's
@@ -11495,7 +11523,16 @@ function makeSkatepark() {
     // createArkaiikImpactOverlay().
     minigames: [
       { id: 'arkaiikimpact', tx: 26, ty: 17, label: 'ARKAIIK IMPACT', icon: 'paintbrush' },
+      // PRECISION POINTS -- a basketball at center court of the little
+      // basketball court at the bottom of the map (tile (13, 33) is the
+      // walkable 'u' tile just below the half-court line's midpoint, reachable
+      // from the open court on every side). `icon: 'basketball'` -- see
+      // drawMinigameBasketball(). Opens the standalone PRECISION POINTS app
+      // in its own DOM overlay; see openPrecisionPointsApp()/
+      // createPrecisionPointsOverlay().
+      { id: 'precisionpoints', tx: COURT_X + 5, ty: COURT_Y + 2, label: 'PRECISION POINTS', icon: 'basketball' },
     ],
+    basketballCourt: { x: COURT_X, y: COURT_Y, w: COURT_W, h: COURT_H },
     adogSkateShopDoor: { x: ADOG_DOOR_X, y: ADOG_DOOR_Y },
     foamBrewersDoor: { x: FOAM_DOOR_X, y: FOAM_DOOR_Y },
     foamBrewers: { x: FOAM_X, y: FOAM_Y, w: FOAM_W, h: FOAM_H, doorX: FOAM_DOOR_X, doorY: FOAM_DOOR_Y },
@@ -12847,7 +12884,7 @@ const player = {
   tempItem: null, tempItemTimer: 0,
 };
 const collected = new Set();
-let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | danceParty | portal | fifa | minigame | hotkeys | crate | photo | lab | labLocked | shopBackLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | qsdBalanceApp | vinylSnakeApp | waveformApp | bayouBreakApp | freqAltarApp | drumPatternDocApp | gatorJamSlamApp | swampCaveApp | vocalChopBoothApp | vtDirtApp | penaltyKingsApp | digDashApp | digOnApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | diggerApp | hyperSwimApp | linusTugApp | connectFourApp | syrupRoadsApp | scoopBeatsApp | clawMachineApp | kangaidenVideo | kangaidenSplash | kangaidenApp | hiphopLibraryApp | truthKnocksVideo | truthKnocksSplash | truthKnocksApp | johnnySlidesVideo | johnnySlidesSplash | johnnySlidesApp | dustRacingApp | cbPressApp | arkaiikImpactApp
+let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | danceParty | portal | fifa | minigame | hotkeys | crate | photo | lab | labLocked | shopBackLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | qsdBalanceApp | vinylSnakeApp | waveformApp | bayouBreakApp | freqAltarApp | drumPatternDocApp | gatorJamSlamApp | swampCaveApp | vocalChopBoothApp | vtDirtApp | penaltyKingsApp | digDashApp | digOnApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | diggerApp | hyperSwimApp | linusTugApp | connectFourApp | syrupRoadsApp | scoopBeatsApp | clawMachineApp | kangaidenVideo | kangaidenSplash | kangaidenApp | hiphopLibraryApp | truthKnocksVideo | truthKnocksSplash | truthKnocksApp | johnnySlidesVideo | johnnySlidesSplash | johnnySlidesApp | dustRacingApp | cbPressApp | arkaiikImpactApp | precisionPointsApp
 // State to snap back to when the [H] hotkeys popup is closed -- currently
 // always 'play' since that's the only state H can be opened from, but kept
 // as its own var in case another state wants to offer the popup later.
@@ -13542,7 +13579,7 @@ const music = {
 // enter/exit call sites, so it can't drift out of sync no matter which
 // of the several ways the player backs out of the lab popup (keyboard
 // [X], on-screen [X] button, closing the instrument iframe, etc.).
-const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'qsdBalanceApp', 'vinylSnakeApp', 'waveformApp', 'bayouBreakApp', 'freqAltarApp', 'drumPatternDocApp', 'gatorJamSlamApp', 'swampCaveApp', 'vocalChopBoothApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'digOnApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'johnnySlidesApp', 'dustRacingApp', 'cbPressApp', 'hyperSwimApp', 'linusTugApp', 'connectFourApp', 'syrupRoadsApp', 'scoopBeatsApp', 'clawMachineApp', 'kangaidenVideo', 'kangaidenApp', 'hiphopLibraryApp', 'arkaiikImpactApp', 'danceParty', 'truthKnocksVideo', 'truthKnocksApp', 'johnnySlidesVideo']);
+const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'qsdBalanceApp', 'vinylSnakeApp', 'waveformApp', 'bayouBreakApp', 'freqAltarApp', 'drumPatternDocApp', 'gatorJamSlamApp', 'swampCaveApp', 'vocalChopBoothApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'digOnApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'johnnySlidesApp', 'dustRacingApp', 'cbPressApp', 'hyperSwimApp', 'linusTugApp', 'connectFourApp', 'syrupRoadsApp', 'scoopBeatsApp', 'clawMachineApp', 'kangaidenVideo', 'kangaidenApp', 'hiphopLibraryApp', 'arkaiikImpactApp', 'precisionPointsApp', 'danceParty', 'truthKnocksVideo', 'truthKnocksApp', 'johnnySlidesVideo']);
 function syncMusicDuck() {
   const minigameDucked = state === 'minigame' && activeMinigame && activeMinigame.musicDucked;
   music.duck(DUCKED_STATES.has(state) || !!minigameDucked);
@@ -19137,6 +19174,127 @@ function closeArkaiikImpactApp(fromPopState) {
   }
 }
 
+// PRECISION POINTS -- a one-button, timing-based basketball shooting game
+// (hold to charge, release in the sweet spot, string together swishes)
+// parked at center court of the little basketball court at the bottom of
+// the SKATEPARK level (see the skatepark map's `minigames` list). Same
+// "full-screen DOM overlay with an <iframe>" pattern as ARKAIIK IMPACT /
+// the Hip Hop Library above.
+//
+// Ships as ONE bundled, self-contained file (inline CSS and JS, every sprite
+// embedded as a data URI, sound effects synthesized with WebAudio, no
+// external fonts, CDNs, or network calls at all) at
+// instruments/precision-points/index.html -- the exact same local-file
+// pattern ARKAIIK_IMPACT_APP_URL/HIPHOP_LIBRARY_APP_URL/... use. Being a
+// same-origin local asset rather than a live remote site means it loads and
+// works identically with or without a connection, so there's no
+// online/offline branching needed here. High scores are saved with
+// try/catch-wrapped localStorage, so that works offline too (and just
+// doesn't persist if storage is unavailable).
+const PRECISION_POINTS_APP_URL = 'instruments/precision-points/index.html';
+let precisionPointsOverlayEl = null, precisionPointsOverlayFrame = null;
+let precisionPointsReturnState = 'play';
+let precisionPointsHistoryPushed = false; // mirrors arkaiikImpactHistoryPushed -- see openPrecisionPointsApp()/closePrecisionPointsApp()
+
+function createPrecisionPointsOverlay() {
+  const style = document.createElement('style');
+  style.textContent = `
+    #precisionPointsApp {
+      position: fixed; inset: 0; z-index: 1000;
+      background: #000;
+      display: none; flex-direction: column;
+    }
+    #precisionPointsApp.open { display: flex; }
+    #precisionPointsApp .pp-bar {
+      flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 10px 14px;
+      background: linear-gradient(#2b1440, #160f26);
+      border-bottom: 2px solid #ffc72c;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    }
+    #precisionPointsApp .pp-title {
+      color: #f4ecff; font: bold 14px monospace; letter-spacing: 0.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #precisionPointsApp .pp-close {
+      flex: 0 0 auto; cursor: pointer;
+      background: rgba(255,199,44,0.15);
+      border: 1.5px solid rgba(255,199,44,0.9);
+      color: #f4ecff; border-radius: 8px;
+      padding: 7px 16px; font: bold 13px monospace;
+      -webkit-user-select: none; user-select: none;
+    }
+    #precisionPointsApp .pp-close:active { background: rgba(255,199,44,0.45); }
+    #precisionPointsApp iframe {
+      flex: 1 1 auto; width: 100%; border: 0; background: #0b0714;
+    }
+  `;
+  document.head.appendChild(style);
+
+  precisionPointsOverlayEl = document.createElement('div');
+  precisionPointsOverlayEl.id = 'precisionPointsApp';
+
+  const bar = document.createElement('div');
+  bar.className = 'pp-bar';
+  const title = document.createElement('div');
+  title.className = 'pp-title';
+  title.textContent = 'PRECISION POINTS \u2014 SLAM DUNK';
+  const closeBtn = document.createElement('div');
+  closeBtn.className = 'pp-close';
+  closeBtn.textContent = '\u2190 BACK TO THE PARK';
+  bindTap(closeBtn, closePrecisionPointsApp);
+  bar.appendChild(title);
+  bar.appendChild(closeBtn);
+
+  precisionPointsOverlayFrame = document.createElement('iframe');
+
+  precisionPointsOverlayEl.appendChild(bar);
+  precisionPointsOverlayEl.appendChild(precisionPointsOverlayFrame);
+  document.body.appendChild(precisionPointsOverlayEl);
+
+  // [Esc] pressed while the iframe itself has keyboard focus never reaches
+  // this page's keydown handler, so the app posts a message instead.
+  window.addEventListener('message', (e) => {
+    if (!precisionPointsOverlayFrame || e.source !== precisionPointsOverlayFrame.contentWindow) return;
+    if (e.data && e.data.precisionPoints === 'close' && state === 'precisionPointsApp') closePrecisionPointsApp();
+  });
+}
+createPrecisionPointsOverlay();
+
+// Opens the PRECISION POINTS overlay and switches state to
+// 'precisionPointsApp'. Called from MINIGAME_ACTIONS.precisionpoints (E on
+// the basketball, or tapping its floating sign), same entry points every
+// other mini-game uses.
+function openPrecisionPointsApp() {
+  precisionPointsReturnState = state;
+  precisionPointsOverlayFrame.src = PRECISION_POINTS_APP_URL;
+  precisionPointsOverlayEl.classList.add('open');
+  state = 'precisionPointsApp';
+  // Same throwaway-history-entry trick as openArkaiikImpactApp() etc.
+  // above, so the browser/OS back gesture closes the overlay instead of
+  // leaving the game entirely.
+  history.pushState({ precisionPointsApp: true }, '');
+  precisionPointsHistoryPushed = true;
+}
+
+// Tears the iframe back down (which also stops the game's loop and audio)
+// and returns to ordinary gameplay on the court. fromPopState mirrors
+// closeArkaiikImpactApp()'s parameter -- true when triggered by the
+// browser's back button (whose history entry is already consumed), so we
+// must not call history.back() again in that case.
+function closePrecisionPointsApp(fromPopState) {
+  precisionPointsOverlayEl.classList.remove('open');
+  precisionPointsOverlayFrame.src = 'about:blank';
+  reclaimGameFocus(precisionPointsOverlayFrame);
+  state = precisionPointsReturnState;
+  if (!fromPopState && precisionPointsHistoryPushed) {
+    precisionPointsHistoryPushed = false;
+    history.back();
+  } else {
+    precisionPointsHistoryPushed = false;
+  }
+}
+
 // Digger -- a classic boulder-dash-style digging game (dig through dirt,
 // dodge falling boulders, collect diamonds) tucked inside JOHNNY'S FUN PARK
 // (see the `johnnysfunpark` shop's `minigames` list). Same "full-screen DOM
@@ -19958,6 +20116,8 @@ window.addEventListener('popstate', () => {
     closeHipHopLibraryApp(true);
   } else if (state === 'arkaiikImpactApp') {
     closeArkaiikImpactApp(true);
+  } else if (state === 'precisionPointsApp') {
+    closePrecisionPointsApp(true);
   }
 });
 
@@ -19973,7 +20133,7 @@ canvas.addEventListener('pointerdown', (e) => {
     const vx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const vy = (e.clientY - rect.top) * (canvas.height / rect.height);
     handleLabTap(vx, vy);
-  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'dustRacingApp' || state === 'cbPressApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'scoopBeatsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp' || state === 'arkaiikImpactApp') {
+  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'dustRacingApp' || state === 'cbPressApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'scoopBeatsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp' || state === 'arkaiikImpactApp' || state === 'precisionPointsApp') {
     // The DOM overlay sits on top of (and outside) the canvas while an
     // instrument/the chess app/the beat bot/the organ/mini golf/the
     // blackbook/Gator Grooves/Vinyl Snake/Bayou Break Station/Gator Jam
@@ -20447,6 +20607,13 @@ function update(dt) {
     // buyPressed is still consumed here so the on-screen [X] touch button
     // works while it's open.
     if (buyPressed) closeArkaiikImpactApp();
+  } else if (state === 'precisionPointsApp') {
+    // Same reasoning as 'arkaiikImpactApp' just above: the DOM overlay (see
+    // createPrecisionPointsOverlay()) owns input while the shooting game is
+    // loaded -- its own back button and [Esc] handle closing it directly.
+    // buyPressed is still consumed here so the on-screen [X] touch button
+    // works while it's open.
+    if (buyPressed) closePrecisionPointsApp();
   } else if (state === 'digDashApp') {
     // Same reasoning as 'labApp'/'chessApp'/'beatBotApp'/'organApp'/
     // 'minigolfApp'/'blackbookApp'/'crocSwampApp'/'vinylSnakeApp'/
@@ -21150,6 +21317,62 @@ function drawMinigameHipHopKiosk(wx, wy, time, seed, label) {
   return { cx, cy, hw: postW / 2 + 14, hh: postH / 2 + 34 };
 }
 
+// Alternate mini-game marker used when a map entry sets `icon: 'basketball'`
+// (currently just PRECISION POINTS, at center court of the skatepark's
+// basketball court) -- same bob/label/hitbox contract as
+// drawMinigameSoccerBall()/drawMinigamePaintBrush() above/below so it drops
+// into the exact same per-frame loop and tap-shortcut handling. Drawn as a
+// classic orange basketball (black seams, a little pebbled highlight) bobbing
+// over a soft shadow on the court.
+function drawMinigameBasketball(wx, wy, time, seed, label) {
+  const s = MINIGAME_OBJECT_SCALE;
+  const bob = Math.sin(time * 0.003 + seed) * 3;
+  const cx = wx, cy = wy - 14 + bob;
+  const r = 12 * s;
+
+  // soft contact shadow on the court, independent of the ball's bob
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.beginPath();
+  ctx.ellipse(wx, wy + 2, r * 0.95, r * 0.32, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ball body
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fillStyle = '#e8772e';
+  ctx.fill();
+
+  // seams, clipped to the ball so they never poke past the outline
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.clip();
+  ctx.strokeStyle = '#2a1608';
+  ctx.lineWidth = 1.3;
+  ctx.beginPath(); ctx.moveTo(cx - r, cy); ctx.lineTo(cx + r, cy); ctx.stroke();      // horizontal seam
+  ctx.beginPath(); ctx.moveTo(cx, cy - r); ctx.lineTo(cx, cy + r); ctx.stroke();      // vertical seam
+  ctx.beginPath(); ctx.arc(cx - r * 1.25, cy, r * 0.95, -1.1, 1.1); ctx.stroke();     // left curved seam
+  ctx.beginPath(); ctx.arc(cx + r * 1.25, cy, r * 0.95, Math.PI - 1.1, Math.PI + 1.1); ctx.stroke(); // right curved seam
+  ctx.restore();
+
+  // outline + highlight
+  ctx.strokeStyle = '#2a1608';
+  ctx.lineWidth = 1.4;
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,235,200,0.45)';
+  ctx.beginPath(); ctx.ellipse(cx - r * 0.42, cy - r * 0.45, r * 0.22, r * 0.14, -0.6, 0, Math.PI * 2); ctx.fill();
+
+  // floating label above the ball -- same flash-between-label-and-tap-hint
+  // behavior as the arcade sign/soccer ball/paint brush
+  const flashOnLabel = Math.floor(time / 1400) % 2 === 0;
+  ctx.fillStyle = '#ffc72c';
+  ctx.font = `bold ${Math.round(9 * s)}px monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillText(flashOnLabel ? (label || 'MINI-GAME') : 'TAP TO SHOOT', cx, cy - r - 10);
+
+  return { cx, cy, hw: r + 16, hh: r + 24 };
+}
+
 // Alternate mini-game marker used when a map entry sets `icon: 'paintbrush'`
 // (currently just ARKAIIK IMPACT, out on the concrete plaza of the skatepark)
 // -- same bob/label/hitbox contract as drawMinigameArcadeSign()/
@@ -21576,7 +21799,7 @@ function render(time) {
     drawSplash();
     return;
   }
-  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'dustRacingApp' || state === 'cbPressApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'scoopBeatsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp' || state === 'arkaiikImpactApp') {
+  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'dustRacingApp' || state === 'cbPressApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'scoopBeatsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp' || state === 'arkaiikImpactApp' || state === 'precisionPointsApp') {
     // Same reasoning as the labApp overlay: a DOM element (the <video>,
     // see createCharacterIntroOverlay(), the chess <iframe>, see
     // createChessOverlay(), the beat bot <iframe>, see
@@ -21694,6 +21917,8 @@ function render(time) {
         ? drawMinigameHipHopKiosk(wx, wy, time, seed, mg.label)
         : mg.icon === 'paintbrush'
         ? drawMinigamePaintBrush(wx, wy, time, seed, mg.label)
+        : mg.icon === 'basketball'
+        ? drawMinigameBasketball(wx, wy, time, seed, mg.label)
         : drawMinigameArcadeSign(wx, wy, time, seed, mg.label);
       minigameSignHitboxes.push({ map: player.map, id: mg.id, ...rect });
     });
@@ -21945,6 +22170,16 @@ function drawTiles(map, time, camX = 0, camY = 0) {
           if (!isO(tx - 1, ty)) ctx.fillRect(px, py, 3, TILE);
           if (!isO(tx + 1, ty)) ctx.fillRect(px + TILE - 3, py, 3, TILE);
           if (!isO(tx, ty + 1)) ctx.fillRect(px, py + TILE - 3, TILE, 3);
+          break;
+        }
+        case 'u':
+        case 'h': {
+          // basketball court floor (see drawBasketballCourt() for the
+          // painted lines, key and hoops, drawn on top in the decoration
+          // pass). 'h' is the same floor but SOLID: the two tiles under
+          // each hoop's post/backboard.
+          ctx.fillStyle = (h % 5 === 0) ? '#2c566f' : '#2f5a74';
+          ctx.fillRect(px, py, TILE, TILE);
           break;
         }
         case 'm': {
@@ -22412,6 +22647,65 @@ function drawSkateConcrete(px, py, tx, ty) {
   }
 }
 
+// Paints the skatepark's little basketball court on top of its 'u'/'h' floor
+// tiles (see makeSkatepark()): a lighter in-bounds surface, white boundary and
+// half-court lines, a center circle, a painted key + free-throw circle and a
+// three-point arc at each end, and a backboard + rim over each pair of solid
+// 'h' tiles. Purely visual -- all collision comes from the grid ('h' is in
+// SOLID). Drawn straight in world coords with a handful of cheap shapes, and
+// skipped entirely when the court is off screen.
+function drawBasketballCourt(c, camX, camY) {
+  const X = c.x * TILE, Y = c.y * TILE, W = c.w * TILE, H = c.h * TILE;
+  if (X > camX + VIEW_W + 8 || X + W < camX - 8 || Y > camY + VIEW_H + 8 || Y + H < camY - 8) return;
+  const L = '#f2f0e8';                       // line color
+  const ix = X + 5, iy = Y + 5, iw = W - 10, ih = H - 10; // in-bounds rect
+  const midY = Y + H / 2, midX = X + W / 2;
+
+  // in-bounds surface
+  ctx.fillStyle = '#3f7391';
+  ctx.fillRect(ix, iy, iw, ih);
+  // painted keys (both ends), drawn under the lines
+  const keyW = 62, keyH = 44;
+  ctx.fillStyle = '#b4532f';
+  ctx.fillRect(ix, midY - keyH / 2, keyW, keyH);
+  ctx.fillRect(ix + iw - keyW, midY - keyH / 2, keyW, keyH);
+
+  ctx.strokeStyle = L;
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'butt';
+  // boundary + half-court line
+  ctx.strokeRect(ix, iy, iw, ih);
+  ctx.beginPath(); ctx.moveTo(midX, iy); ctx.lineTo(midX, iy + ih); ctx.stroke();
+  // center circle
+  ctx.beginPath(); ctx.arc(midX, midY, 24, 0, Math.PI * 2); ctx.stroke();
+  // keys (outline), free-throw semicircles, three-point arcs
+  ctx.strokeRect(ix, midY - keyH / 2, keyW, keyH);
+  ctx.strokeRect(ix + iw - keyW, midY - keyH / 2, keyW, keyH);
+  ctx.beginPath(); ctx.arc(ix + keyW, midY, 16, -Math.PI / 2, Math.PI / 2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(ix + iw - keyW, midY, 16, Math.PI / 2, Math.PI * 1.5); ctx.stroke();
+  ctx.beginPath(); ctx.arc(ix + 12, midY, 54, -1.02, 1.02); ctx.stroke();
+  ctx.beginPath(); ctx.arc(ix + iw - 12, midY, 54, Math.PI - 1.02, Math.PI + 1.02); ctx.stroke();
+
+  // hoops: a steel post just outside the baseline, a backboard on the
+  // baseline and an orange rim reaching into the court. dir = +1 faces east.
+  const hoop = (bx, dir) => {
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.beginPath(); ctx.ellipse(bx + dir * 8, midY + 12, 12, 4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#4a4e57';
+    ctx.fillRect(bx - dir * 4 - 2, midY - 3, 4, 6);                 // post
+    ctx.fillStyle = '#e9eef2';
+    ctx.fillRect(bx - 2, midY - 17, 4, 34);                          // backboard
+    ctx.strokeStyle = '#7a8088'; ctx.lineWidth = 1;
+    ctx.strokeRect(bx - 2, midY - 17, 4, 34);
+    ctx.strokeStyle = '#ee6a22'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(bx + dir * 9, midY, 6, 0, Math.PI * 2); ctx.stroke(); // rim
+    ctx.strokeStyle = 'rgba(255,255,255,0.65)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(bx + dir * 9, midY, 3.5, 0, Math.PI * 2); ctx.stroke(); // net
+  };
+  hoop(ix + 2, 1);
+  hoop(ix + iw - 2, -1);
+}
+
 // Waterfront + skatepark dressing: sailboats bobbing in the lake and
 // lamp posts / benches along the promenade. Called from render only when
 // the current map has `skatepark: true`. Purely visual -- nothing here
@@ -22460,6 +22754,7 @@ function drawSkateparkDecorations(time, map, camX, camY) {
   if (map.foamBrewers) drawFoamBrewersExterior(time, map);
   if (map.svExterior) drawSpeakingVolumesExterior(time, map);
   if (map.cbExterior) drawCBPrintsExterior(time, map);
+  if (map.basketballCourt) drawBasketballCourt(map.basketballCourt, camX, camY);
 }
 
 // Scatter lily pads + cattails over the swamp's water. Called from render
