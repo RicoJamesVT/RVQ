@@ -10326,6 +10326,19 @@ arkaiikImg.src = 'assets/arkaiik.png';
 const ghostImg = new Image();
 ghostImg.src = 'assets/ghost.png';
 
+// HAGEN -- Burlington music legend in a battered brown cowboy hat, glasses and
+// a full beard, denim jacket and jeans, a tele-style guitar slung on a
+// patterned strap. Same pre-drawn shop-npc treatment as THE GHOST, hanging
+// out on the FOAM BREWERS dance floor (see SHOP_NPC_IMAGES below).
+const hagenImg = new Image();
+hagenImg.src = 'assets/hagen.png';
+
+// PRECISEMC -- California emcee in an A's cap, purple Sacramento Kings tee,
+// jeans and purple-and-white kicks, mic in hand. Same shop-npc treatment as
+// HAGEN, hanging out next to him on the FOAM BREWERS dance floor.
+const preciseMcImg = new Image();
+preciseMcImg.src = 'assets/precisemc.png';
+
 // ---------------------------------------------------------------- maps
 const SOLID = new Set(['#', 'w', 'f', '~', 'W', 'T', 'C', 'c', 'K', 'J', 'S', 'A', 'N', 'F', 'R', 'V', 'Z', 'U', 'X', 'm', 'h', 'q']);
 
@@ -12771,6 +12784,29 @@ const shops = {
           "Gold chain, white jacket, mic in hand. That's the whole uniform. The rest is vocabulary.",
           "Dig through those crates slow. Back in the day we'd flip a dusty soul record into a whole album. The best samples don't announce themselves.",
           "Fattie B on the decks, me on the mic -- that's a cypher waiting to happen. Somebody drop the needle.",
+        ] },
+      // HAGEN + PRECISEMC -- two more regulars hanging together on the open
+      // dance floor at (3,5)/(5,5), planning a live show: clear of the counter
+      // (row 3), speaker stacks (4,1)-(4,2), crates (1,4)/(1,6), barrel table
+      // (3,7), and the door (6,9)/spawn (6.5,7.5). Same full pre-drawn image
+      // treatment as THE GHOST -- see SHOP_NPC_IMAGES/drawShopImageNpcs.
+      { id: 'hagen', tx: 3, ty: 5, name: 'HAGEN', sprite: 'hagen', spriteH: 84,
+        lines: [
+          "Hagen. Burlington's my home base, but I don't stay in one lane. Surf, punk, folk, noise -- if there's a stage and a plug, I'm in.",
+          "PreciseMC and I are in here cooking up a live show. A full band behind a lineup of emcees, everybody rockin' the same stage at once. Guitars, drums, bass, and mics up front.",
+          "I play surf rock in The High Breaks. Reverb-drenched, wet-sand-in-your-boots kind of music. Good for a summer night and a cold pour.",
+          "Then there's Savage Hen. Hardcore. Fast, loud, and over before you can blink. Totally different animal from The High Breaks, and I love 'em both the same.",
+          "I'm in a bunch of bands and projects, honestly. If you've been to a show around town, odds are I was on the bill or in the crowd. Usually both.",
+          "Hip hop and live bands belong on the same bill. Always have. Give a good emcee a real band and watch the room lose its mind.",
+        ] },
+      { id: 'precisemc', tx: 5, ty: 5, name: 'PRECISEMC', sprite: 'precisemc', spriteH: 84,
+        lines: [
+          "PreciseMC. California emcee. I'm out in Arizona these days, but I'm in town visiting and I'm looking for a mic to rock while I'm here.",
+          "I lived in Vermont for about eight years. Ran the scene here with Rico James as PR DepARTment. Good times, good people, and a lot of cold shows.",
+          "Hagen and I are putting together a live show -- a band and emcees all rockin' together. Real drums, real guitars, mics up front. That's the vision.",
+          "Back home in California I run with DJB as ILL EFFECT. Two emcees, no filler, every bar earns its spot.",
+          "You found the basketball court down at the bottom of the park? Precision Points. If you ever want to challenge me on the court, go find me and ball up.",
+          "Talk is cheap on the court, same as on the mic. Hit the court, hit the shot, then we'll talk. I'll be there.",
         ] },
     ],
   }),
@@ -31452,7 +31488,7 @@ function drawKeeper(k) {
 // anchored to the tile's floor line — no procedural fallback, since there's
 // no simple shape that stands in for this art; it just waits for the image
 // to finish loading.
-const SHOP_NPC_IMAGES = { kanga: kangaImg, truth: truthImg, bill: billImg, rza: rzaImg, gza: gzaImg, zach: zachImg, humble: humbleImg, hicks: hicksImg, mavstar: mavstarImg, boxguts: boxgutsImg, trav: travImg, esk: esKImg, krishna: krishnaImg, arkaiik: arkaiikImg, ghost: ghostImg };
+const SHOP_NPC_IMAGES = { kanga: kangaImg, truth: truthImg, bill: billImg, rza: rzaImg, gza: gzaImg, zach: zachImg, humble: humbleImg, hicks: hicksImg, mavstar: mavstarImg, boxguts: boxgutsImg, trav: travImg, esk: esKImg, krishna: krishnaImg, arkaiik: arkaiikImg, ghost: ghostImg, hagen: hagenImg, precisemc: preciseMcImg };
 
 function drawShopImageNpcs(map) {
   if (!map.npcs) return;
