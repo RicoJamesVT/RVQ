@@ -1507,6 +1507,14 @@ const MINIGAME_ACTIONS = {
   // openJohnnySlidesSplash()/openJohnnySlidesApp()/
   // createJohnnySlidesOverlay() below.
   johnnyslides: () => openJohnnySlidesSplash(),
+  // Humble Treasures -- Anthill Collective's pixel-art treasure-hunting
+  // platformer, set up as a cabinet inside ECHO CENTER in the skatepark (see
+  // the `echocenter` shop's `minigames` list + drawEchoCenterInterior()).
+  // Same "intro video -> still key-art splash -> start opens the actual
+  // overlay" shape as Johnny Slides above, and the same bundled-local-file
+  // offline story -- see openHumbleTreasuresSplash()/openHumbleTreasuresApp()/
+  // createHumbleTreasuresOverlay() below.
+  humbletreasures: () => openHumbleTreasuresSplash(),
   // Dust Racing -- a top-down arcade racer (Catmull-Rom dirt track, dust/
   // tire-mark trails, a short-burst nitro boost, 7 AI racers), tucked
   // inside JOHNNY'S FUN PARK right alongside Digger and Johnny Slides (see
@@ -9689,6 +9697,8 @@ window.addEventListener('keydown', (e) => {
     if (k === 'escape' && state === 'precisionPointsApp') { closePrecisionPointsApp(); }
     if (k === 'escape' && state === 'diggerApp') { closeDiggerApp(); }
     if (k === 'escape' && state === 'johnnySlidesApp') { closeJohnnySlidesApp(); }
+    if (k === 'escape' && state === 'humbleTreasuresApp') { closeHumbleTreasuresApp(); }
+    if (k === 'escape' && state === 'humbleTreasuresSplash') { state = humbleTreasuresSplashReturnState; }
     if (k === 'escape' && state === 'dustRacingApp') { closeDustRacingApp(); }
     if (k === 'escape' && state === 'cbPressApp') { closeCBPrintsPressApp(); }
     if (k === 'escape' && state === 'connectFourApp') { closeConnectFourApp(); }
@@ -10038,6 +10048,15 @@ johnnySlidesSplashImg.src = 'assets/JS_splash.png';
 // so replaying it (walking away and back) never has to fight leftover
 // playback state from the previous run.
 const JOHNNY_SLIDES_SPLASH_VIDEO_SRC = 'assets/JS_splash_vid.mp4';
+
+// HUMBLE TREASURES key-art splash + intro video -- same pattern as the
+// JOHNNY SLIDES pair just above: the still is preloaded here so it's decoded
+// and ready the moment the video ends, and the video is a plain same-origin
+// local file (no fetch()/blob: URL, no network), so both play identically
+// with or without a connection. See openHumbleTreasuresSplash() below.
+const humbleTreasuresSplashImg = new Image();
+humbleTreasuresSplashImg.src = 'assets/humble_treasures_splash.png';
+const HUMBLE_TREASURES_SPLASH_VIDEO_SRC = 'assets/humble-treasures-splash-vid.mp4';
 
 const purePopPosterImg = new Image();
 purePopPosterImg.src = 'assets/purepop_poster.png';
@@ -12925,7 +12944,11 @@ const shops = {
     world: 'skatepark',
     floor: '#2b4a63', plank: '#213c52', wallColor: '#0f3350',
     echoCenter: true,
-    blockTiles: [[4, 6], [9, 6]],
+    // (12,8) = the Humble Treasures arcade cabinet (see `minigames` below and
+    // the cabinet painted in drawEchoCenterInterior()): another solid tile
+    // dressed up by the painter, clear of the Deep Sea crate (12,5), HUMBLE
+    // (10,7), the center aisle and the door (6,9)/spawn (6.5,7.5).
+    blockTiles: [[4, 6], [9, 6], [12, 8]],
     crateSpots: [[1, 5], [12, 5], [2, 8]],
     keeper: { name: 'CHAMP', shirt: '#f4ecd8', skin: '#3aa17a',
       lines: [
@@ -12942,6 +12965,38 @@ const shops = {
     // junk crates (see ECHO_CENTER_JUNK above -- theme picked by which spot
     // of the aquarium the junk crate ends up on).
     crates: [ { record: 'sonar' }, { echoSeed: 0 }, { echoSeed: 1 } ],
+    // HUMBLE TREASURES -- Anthill Collective's pixel-art platformer, on an
+    // arcade cabinet in the bottom-right corner (tile (12,8)). Intro video ->
+    // key-art splash -> Press Start, then the bundled offline overlay. See
+    // MINIGAME_ACTIONS.humbletreasures/openHumbleTreasuresSplash().
+    minigames: [
+      { id: 'humbletreasures', tx: 12, ty: 8, label: 'PLAY HUMBLE TREASURES' },
+    ],
+    // SKYSPLITTERINK + HUMBLE -- visiting the aquarium, in addition to their
+    // usual spots (SKYSPLITTERINK in Green Door Studio, HUMBLE at Nectars).
+    // Parked at (3,7)/(10,7): clear of the three crates, the jellyfish
+    // columns (4,6)/(9,6), the counter (row 3), and the door (6,9)/spawn
+    // (6.5,7.5), so the center aisle stays open. Same pre-drawn image
+    // treatment as the other shop npcs -- see SHOP_NPC_IMAGES/drawShopImageNpcs.
+    npcs: [
+      { id: 'zach', tx: 3, ty: 7, name: 'SKYSPLITTERINK', sprite: 'zach',
+        lines: [
+          'SkySplitterInk, out of the studio for once. Turns out a room full of aquariums is basically one giant reverb tank.',
+          'Listen close by the glass -- that low hum from the pumps is a drone note. I\'m already thinking about sampling it.',
+          'Champ\'s sonar pings are begging for a beat under them. Slow tempo, tons of low end, maybe some whale-song chops.',
+          'Sound engineer\'s rule: water changes everything. Highs get soft, lows get heavy. Best natural EQ there is.',
+          () => collected.size >= 3
+            ? 'Heard you\'ve been digging all over. Keep going -- the best samples are always in the crate you almost skipped.'
+            : null,
+        ] },
+      { id: 'humble', tx: 10, ty: 7, name: 'HUMBLE', sprite: 'humble',
+        lines: [
+          'Humble -- freestyle wizard, now visiting the deep end. These jellyfish got better flow than half the cyphers I\'ve been in.',
+          'Look at that tank. Slow, smooth, never rushing the bar. That\'s pocket.',
+          'I could freestyle for an hour off just the sea creatures in here. Sturgeon, rays, seahorses -- every tank is a new topic.',
+          'Don\'t tap the glass, Champ\'s serious about that. I tried a beat on it once. Once.',
+        ] },
+    ],
   }),
 };
 
@@ -13043,7 +13098,7 @@ const player = {
   tempItem: null, tempItemTimer: 0,
 };
 const collected = new Set();
-let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | danceParty | portal | fifa | minigame | hotkeys | crate | photo | lab | labLocked | shopBackLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | qsdBalanceApp | vinylSnakeApp | waveformApp | bayouBreakApp | freqAltarApp | drumPatternDocApp | gatorJamSlamApp | swampCaveApp | vocalChopBoothApp | vtDirtApp | penaltyKingsApp | digDashApp | digOnApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | diggerApp | hyperSwimApp | linusTugApp | connectFourApp | syrupRoadsApp | scoopBeatsApp | clawMachineApp | kangaidenVideo | kangaidenSplash | kangaidenApp | hiphopLibraryApp | truthKnocksVideo | truthKnocksSplash | truthKnocksApp | johnnySlidesVideo | johnnySlidesSplash | johnnySlidesApp | dustRacingApp | cbPressApp | arkaiikImpactApp | precisionPointsApp
+let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | danceParty | portal | fifa | minigame | hotkeys | crate | photo | lab | labLocked | shopBackLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | qsdBalanceApp | vinylSnakeApp | waveformApp | bayouBreakApp | freqAltarApp | drumPatternDocApp | gatorJamSlamApp | swampCaveApp | vocalChopBoothApp | vtDirtApp | penaltyKingsApp | digDashApp | digOnApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | diggerApp | hyperSwimApp | linusTugApp | connectFourApp | syrupRoadsApp | scoopBeatsApp | clawMachineApp | kangaidenVideo | kangaidenSplash | kangaidenApp | hiphopLibraryApp | truthKnocksVideo | truthKnocksSplash | truthKnocksApp | johnnySlidesVideo | johnnySlidesSplash | johnnySlidesApp | humbleTreasuresVideo | humbleTreasuresSplash | humbleTreasuresApp | dustRacingApp | cbPressApp | arkaiikImpactApp | precisionPointsApp
 // State to snap back to when the [H] hotkeys popup is closed -- currently
 // always 'play' since that's the only state H can be opened from, but kept
 // as its own var in case another state wants to offer the popup later.
@@ -13738,7 +13793,7 @@ const music = {
 // enter/exit call sites, so it can't drift out of sync no matter which
 // of the several ways the player backs out of the lab popup (keyboard
 // [X], on-screen [X] button, closing the instrument iframe, etc.).
-const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'qsdBalanceApp', 'vinylSnakeApp', 'waveformApp', 'bayouBreakApp', 'freqAltarApp', 'drumPatternDocApp', 'gatorJamSlamApp', 'swampCaveApp', 'vocalChopBoothApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'digOnApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'johnnySlidesApp', 'dustRacingApp', 'cbPressApp', 'hyperSwimApp', 'linusTugApp', 'connectFourApp', 'syrupRoadsApp', 'scoopBeatsApp', 'clawMachineApp', 'kangaidenVideo', 'kangaidenApp', 'hiphopLibraryApp', 'arkaiikImpactApp', 'precisionPointsApp', 'danceParty', 'truthKnocksVideo', 'truthKnocksApp', 'johnnySlidesVideo']);
+const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'qsdBalanceApp', 'vinylSnakeApp', 'waveformApp', 'bayouBreakApp', 'freqAltarApp', 'drumPatternDocApp', 'gatorJamSlamApp', 'swampCaveApp', 'vocalChopBoothApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'digOnApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'johnnySlidesApp', 'humbleTreasuresApp', 'dustRacingApp', 'cbPressApp', 'hyperSwimApp', 'linusTugApp', 'connectFourApp', 'syrupRoadsApp', 'scoopBeatsApp', 'clawMachineApp', 'kangaidenVideo', 'kangaidenApp', 'hiphopLibraryApp', 'arkaiikImpactApp', 'precisionPointsApp', 'danceParty', 'truthKnocksVideo', 'truthKnocksApp', 'johnnySlidesVideo', 'humbleTreasuresVideo']);
 function syncMusicDuck() {
   const minigameDucked = state === 'minigame' && activeMinigame && activeMinigame.musicDucked;
   music.duck(DUCKED_STATES.has(state) || !!minigameDucked);
@@ -19925,6 +19980,233 @@ function closeDustRacingApp(fromPopState) {
   }
 }
 
+// HUMBLE TREASURES -- Anthill Collective's bright pixel-art treasure-hunting
+// platformer (collect gems, find keys and chests, stomp enemies, uncover
+// secret rooms, 8 levels, a Treasure Hub with unlockable abilities). It's set
+// up as a cabinet inside ECHO CENTER in the skatepark (see the `echocenter`
+// shop's `minigames` list). Same "full-screen DOM overlay with an <iframe>"
+// pattern as Johnny Slides/CB PRESS/etc. above, with the same intro flow as
+// Johnny Slides: skippable intro video -> still key-art splash -> E/tap
+// ("Press Start") opens the actual overlay.
+//
+// Ships as ONE bundled, self-contained page at
+// instruments/humble-treasures/index.html: the game's HTML, CSS and JS are
+// all inlined, and its "Press Start 2P" pixel font is embedded as a base64
+// data URI instead of being pulled from Google Fonts -- no external assets
+// and no network calls at all -- so it loads and plays the same with or
+// without a connection (progress is kept in localStorage inside the app, so
+// it also survives being closed and re-opened offline). The intro video and
+// splash image are plain local files in assets/, same as the other splashes.
+const HUMBLE_TREASURES_APP_URL = 'instruments/humble-treasures/index.html';
+let humbleTreasuresOverlayEl = null, humbleTreasuresOverlayFrame = null;
+let humbleTreasuresReturnState = 'play';
+let humbleTreasuresHistoryPushed = false; // mirrors johnnySlidesHistoryPushed/cbPressHistoryPushed/... -- see openHumbleTreasuresApp()/closeHumbleTreasuresApp()
+
+// Remembered the moment the player steps up to the cabinet (before the
+// video/splash swap `state` a couple of times) -- same role as
+// johnnySlidesSplashReturnState.
+let humbleTreasuresSplashReturnState = 'play';
+
+// Full-screen, skippable intro video -- same shape as
+// playJohnnySlidesSplashVideo() above (SKIP button, click/tap/`ended`/
+// `error`/any keypress all dismiss it; sound-first-then-muted autoplay
+// fallback; hard safety timeout so a slow/blocked file can never strand the
+// player on a black screen). `onDone` fires exactly once however playback
+// ends. The safety timeout is a bit longer than the 8s clip.
+function playHumbleTreasuresSplashVideo(onDone) {
+  const v = document.createElement('video');
+  v.src = HUMBLE_TREASURES_SPLASH_VIDEO_SRC;
+  v.preload = 'auto';
+  v.playsInline = true; // iOS: play inline instead of forcing fullscreen
+  v.setAttribute('webkit-playsinline', 'true');
+  v.disablePictureInPicture = true;
+  v.controls = false;
+  v.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;'
+    + 'object-fit:contain;background:#000;z-index:2147483647;';
+  document.body.appendChild(v);
+
+  const skipBtn = document.createElement('div');
+  skipBtn.textContent = 'SKIP \u25b8';
+  skipBtn.style.cssText = 'position:fixed;right:14px;bottom:14px;'
+    + 'padding:8px 16px;padding-bottom:calc(8px + env(safe-area-inset-bottom, 0px));'
+    + 'background:rgba(20,16,26,0.55);border:1.5px solid rgba(244,236,216,0.55);'
+    + 'border-radius:8px;color:#f4ecd8;font:bold 12px monospace;letter-spacing:0.5px;'
+    + '-webkit-user-select:none;user-select:none;z-index:2147483647;cursor:pointer;';
+  document.body.appendChild(skipBtn);
+
+  let done = false;
+  function finish() {
+    if (done) return;
+    done = true;
+    clearTimeout(safety);
+    window.removeEventListener('keydown', finish);
+    v.pause();
+    v.remove();
+    skipBtn.remove();
+    onDone();
+  }
+  v.addEventListener('click', finish);
+  v.addEventListener('ended', finish);
+  v.addEventListener('error', finish); // missing/corrupt file -> never block the game on it
+  skipBtn.addEventListener('click', finish);
+  skipBtn.addEventListener('touchend', (e) => { e.preventDefault(); finish(); });
+  window.addEventListener('keydown', finish);
+  const safety = setTimeout(finish, 11000);
+
+  const tryPlay = v.play();
+  if (tryPlay && typeof tryPlay.catch === 'function') {
+    tryPlay.catch(() => {
+      v.muted = true;
+      v.play().catch(finish); // if even muted autoplay fails, just skip straight in
+    });
+  }
+}
+
+// Kicks off the video and switches state to 'humbleTreasuresVideo' (blocking
+// ordinary input/movement like every other overlay state), then -- once the
+// video's onDone fires -- hands off to the still key-art splash
+// (state = 'humbleTreasuresSplash'). Called from MINIGAME_ACTIONS.humbletreasures
+// (E on the cabinet, or tapping its floating sign).
+function openHumbleTreasuresSplash() {
+  humbleTreasuresSplashReturnState = state;
+  state = 'humbleTreasuresVideo';
+  playHumbleTreasuresSplashVideo(() => {
+    state = 'humbleTreasuresSplash';
+  });
+}
+
+// Full-screen splash card. Unlike the cover-fit splashes above, this art is a
+// complete framed 16:9 poster (coin border, "Press Start Button" baked into
+// the bottom edge), so it's drawn "contain"-fit on solid black: nothing gets
+// cropped. A small blinking prompt in the bottom letterbox bar says how to
+// start (E, or a tap) and how to back out (Esc / X).
+function drawHumbleTreasuresSplash() {
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
+  if (humbleTreasuresSplashImg.complete && humbleTreasuresSplashImg.naturalWidth) {
+    const iw = humbleTreasuresSplashImg.naturalWidth, ih = humbleTreasuresSplashImg.naturalHeight;
+    const scale = Math.min(VIEW_W / iw, VIEW_H / ih);
+    const dw = iw * scale, dh = ih * scale;
+    const dx = (VIEW_W - dw) / 2, dy = (VIEW_H - dh) / 2;
+    const prevSmooth = ctx.imageSmoothingEnabled;
+    ctx.imageSmoothingEnabled = false; // keep the pixel art crisp
+    ctx.drawImage(humbleTreasuresSplashImg, dx, dy, dw, dh);
+    ctx.imageSmoothingEnabled = prevSmooth;
+  } else {
+    // fallback text-only version, in case the art hasn't loaded in yet
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ffd447';
+    ctx.font = 'bold 26px monospace';
+    ctx.fillText('HUMBLE TREASURES', VIEW_W / 2, VIEW_H / 2 - 10);
+    ctx.fillStyle = '#f4efe0';
+    ctx.font = '14px monospace';
+    ctx.fillText('Press Start.', VIEW_W / 2, VIEW_H / 2 + 16);
+  }
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#ffd447' : '#f4efe0';
+  ctx.font = 'bold 12px monospace';
+  ctx.fillText('- PRESS E OR TAP TO START -   (ESC TO LEAVE)', VIEW_W / 2, VIEW_H - 10);
+}
+
+function createHumbleTreasuresOverlay() {
+  const style = document.createElement('style');
+  style.textContent = `
+    #humbleTreasuresApp {
+      position: fixed; inset: 0; z-index: 1000;
+      background: #7ee3ff;
+      display: none; flex-direction: column;
+    }
+    #humbleTreasuresApp.open { display: flex; }
+    #humbleTreasuresApp .ht-bar {
+      flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 10px 14px;
+      background: linear-gradient(#1d3f7a, #0f2347);
+      border-bottom: 2px solid #ffd447;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    }
+    #humbleTreasuresApp .ht-title {
+      color: #fff6e0; font: bold 14px monospace; letter-spacing: 0.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #humbleTreasuresApp .ht-close {
+      flex: 0 0 auto; cursor: pointer;
+      background: rgba(255,212,71,0.15);
+      border: 1.5px solid rgba(255,212,71,0.85);
+      color: #fff6e0; border-radius: 8px;
+      padding: 7px 16px; font: bold 13px monospace;
+      -webkit-user-select: none; user-select: none;
+    }
+    #humbleTreasuresApp .ht-close:active { background: rgba(255,212,71,0.4); }
+    #humbleTreasuresApp iframe {
+      flex: 1 1 auto; width: 100%; min-height: 0; border: 0; background: #7ee3ff;
+    }
+  `;
+  document.head.appendChild(style);
+
+  humbleTreasuresOverlayEl = document.createElement('div');
+  humbleTreasuresOverlayEl.id = 'humbleTreasuresApp';
+
+  const bar = document.createElement('div');
+  bar.className = 'ht-bar';
+  const title = document.createElement('div');
+  title.className = 'ht-title';
+  title.textContent = 'HUMBLE TREASURES \u2014 ANTHILL COLLECTIVE';
+  const closeBtn = document.createElement('div');
+  closeBtn.className = 'ht-close';
+  closeBtn.textContent = '\u2190 BACK TO ECHO CENTER';
+  bindTap(closeBtn, closeHumbleTreasuresApp);
+  bar.appendChild(title);
+  bar.appendChild(closeBtn);
+
+  humbleTreasuresOverlayFrame = document.createElement('iframe');
+  humbleTreasuresOverlayFrame.setAttribute('allow', 'autoplay');
+
+  humbleTreasuresOverlayEl.appendChild(bar);
+  humbleTreasuresOverlayEl.appendChild(humbleTreasuresOverlayFrame);
+  document.body.appendChild(humbleTreasuresOverlayEl);
+}
+createHumbleTreasuresOverlay();
+
+// Opens the Humble Treasures overlay and switches state to
+// 'humbleTreasuresApp'. Called once the player presses E (or taps) from the
+// splash -- not directly from MINIGAME_ACTIONS.humbletreasures, which opens
+// the intro video/splash first.
+function openHumbleTreasuresApp() {
+  humbleTreasuresReturnState = humbleTreasuresSplashReturnState;
+  humbleTreasuresOverlayFrame.src = HUMBLE_TREASURES_APP_URL;
+  humbleTreasuresOverlayEl.classList.add('open');
+  state = 'humbleTreasuresApp';
+  // Hand keyboard focus into the iframe once its document has loaded, so the
+  // arrow keys/WASD/Space work immediately without a click first (same
+  // reasoning as openOrganApp()).
+  humbleTreasuresOverlayFrame.addEventListener('load', () => {
+    try { humbleTreasuresOverlayFrame.contentWindow.focus(); } catch (e) { /* a click will focus it */ }
+  }, { once: true });
+  // Same throwaway-history-entry trick as every other overlay above, so the
+  // browser/OS back gesture closes this overlay instead of leaving the game.
+  history.pushState({ ricoHumbleTreasuresApp: true }, '');
+  humbleTreasuresHistoryPushed = true;
+}
+
+// Tears the iframe back down and returns to ordinary gameplay in ECHO
+// CENTER. fromPopState mirrors closeJohnnySlidesApp()'s parameter -- true
+// when triggered by the browser's back button (whose history entry is
+// already consumed), so we must not call history.back() again in that case.
+function closeHumbleTreasuresApp(fromPopState) {
+  humbleTreasuresOverlayEl.classList.remove('open');
+  humbleTreasuresOverlayFrame.src = 'about:blank';
+  reclaimGameFocus(humbleTreasuresOverlayFrame);
+  state = humbleTreasuresReturnState;
+  if (!fromPopState && humbleTreasuresHistoryPushed) {
+    humbleTreasuresHistoryPushed = false;
+    history.back();
+  } else {
+    humbleTreasuresHistoryPushed = false;
+  }
+}
+
 // CB PRESS -- the CB PRINTS screen printing mini game (pick an ink and a
 // design, line the screen up with the registration ring, pull the squeegee
 // across, then flash-cure the print at the right moment to fill orders and
@@ -20270,6 +20552,8 @@ window.addEventListener('popstate', () => {
     closeFilterLabApp(true);
   } else if (state === 'diggerApp') {
     closeDiggerApp(true);
+  } else if (state === 'humbleTreasuresApp') {
+    closeHumbleTreasuresApp(true);
   } else if (state === 'johnnySlidesApp') {
     closeJohnnySlidesApp(true);
   } else if (state === 'dustRacingApp') {
@@ -20309,7 +20593,7 @@ canvas.addEventListener('pointerdown', (e) => {
     const vx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const vy = (e.clientY - rect.top) * (canvas.height / rect.height);
     handleLabTap(vx, vy);
-  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'dustRacingApp' || state === 'cbPressApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'scoopBeatsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp' || state === 'arkaiikImpactApp' || state === 'precisionPointsApp') {
+  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'humbleTreasuresApp' || state === 'dustRacingApp' || state === 'cbPressApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'scoopBeatsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp' || state === 'arkaiikImpactApp' || state === 'precisionPointsApp') {
     // The DOM overlay sits on top of (and outside) the canvas while an
     // instrument/the chess app/the beat bot/the organ/mini golf/the
     // blackbook/Gator Grooves/Vinyl Snake/Bayou Break Station/Gator Jam
@@ -20542,6 +20826,15 @@ function update(dt) {
     // interactPressed via the generic pointerdown fallback) advances
     // straight into the DOM/iframe overlay.
     if (interactPressed) openTruthKnocksApp();
+  } else if (state === 'humbleTreasuresSplash') {
+    // Splash before the actual Humble Treasures iframe -- see
+    // drawHumbleTreasuresSplash()/openHumbleTreasuresSplash() and
+    // MINIGAME_ACTIONS.humbletreasures. E (or a tap, which also sets
+    // interactPressed via the generic pointerdown fallback) is "Press
+    // Start" and advances straight into the DOM/iframe overlay; [X] (the
+    // on-screen touch button) backs out to ECHO CENTER.
+    if (interactPressed) openHumbleTreasuresApp();
+    else if (buyPressed) state = humbleTreasuresSplashReturnState;
   } else if (state === 'johnnySlidesSplash') {
     // Splash before the actual Johnny Slides iframe -- see
     // drawJohnnySlidesSplash()/openJohnnySlidesSplash() and
@@ -20843,6 +21136,13 @@ function update(dt) {
     // directly. buyPressed is still consumed here too so the on-screen [X]
     // touch button works while Digger is open.
     if (buyPressed) closeDiggerApp();
+  } else if (state === 'humbleTreasuresApp') {
+    // Same reasoning as 'johnnySlidesApp' just below: the DOM overlay (see
+    // createHumbleTreasuresOverlay()) owns input while Humble Treasures is
+    // loaded -- its own close button and [Esc] handle closing it directly.
+    // buyPressed is still consumed here too so the on-screen [X] touch
+    // button works while it's open.
+    if (buyPressed) closeHumbleTreasuresApp();
   } else if (state === 'johnnySlidesApp') {
     // Same reasoning as 'labApp'/'chessApp'/.../'diggerApp' just above: the
     // DOM overlay (see createJohnnySlidesOverlay()) owns input while
@@ -21975,7 +22275,7 @@ function render(time) {
     drawSplash();
     return;
   }
-  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'dustRacingApp' || state === 'cbPressApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'scoopBeatsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp' || state === 'arkaiikImpactApp' || state === 'precisionPointsApp') {
+  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'humbleTreasuresApp' || state === 'dustRacingApp' || state === 'cbPressApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'scoopBeatsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp' || state === 'arkaiikImpactApp' || state === 'precisionPointsApp') {
     // Same reasoning as the labApp overlay: a DOM element (the <video>,
     // see createCharacterIntroOverlay(), the chess <iframe>, see
     // createChessOverlay(), the beat bot <iframe>, see
@@ -22128,6 +22428,7 @@ function render(time) {
   if (state === 'kangaidenSplash') drawKangaidenSplash();
   if (state === 'truthKnocksSplash') drawTruthKnocksSplash();
   if (state === 'johnnySlidesSplash') drawJohnnySlidesSplash();
+  if (state === 'humbleTreasuresSplash') drawHumbleTreasuresSplash();
   if (state === 'win') drawWin();
   if (state === 'danceParty') drawDanceCascade();
   if (state === 'portal') drawPortalPopup();
@@ -30020,6 +30321,65 @@ function drawEchoCenterInterior(time) {
   };
   column(4 * TILE + 16, 7 * TILE, 11, [['rgba(255,235,245,0.9)', 'rgba(255,240,250,0.6)'], ['rgba(255,170,220,0.9)', 'rgba(255,200,235,0.6)']]);
   column(9 * TILE + 16, 7 * TILE, 21, [['rgba(150,200,255,0.9)', 'rgba(190,220,255,0.6)'], ['rgba(120,255,220,0.85)', 'rgba(170,255,235,0.6)']]);
+
+  // --- Humble Treasures arcade cabinet on tile (12,8): a navy-and-gold
+  // upright with a bobbing gold coin on its screen (the splash art's coin),
+  // a little grass strip, and a flashing "HUMBLE TREASURES" marquee.
+  {
+    const bx = 12 * TILE, by = 8 * TILE, cx = bx + 16;
+    ctx.fillStyle = FLOOR;                                     // cover the wall-tile texture
+    ctx.fillRect(bx, by, 32, 32);
+    ctx.fillStyle = 'rgba(0,0,0,0.28)';                        // floor shadow
+    ctx.beginPath(); ctx.ellipse(cx, by + 29, 17, 4.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#0f2347';                                 // cabinet body
+    ctx.fillRect(bx + 4, by - 16, 24, 44);
+    ctx.fillStyle = '#1d3f7a';                                 // lit side panel
+    ctx.fillRect(bx + 4, by - 16, 3, 44);
+    ctx.strokeStyle = '#ffd447'; ctx.lineWidth = 1.5;
+    ctx.strokeRect(bx + 4.75, by - 15.25, 22.5, 42.5);
+    const blink = Math.floor(time * 2) % 2 === 0;
+    ctx.fillStyle = blink ? '#ffd447' : '#e0a82c';             // marquee
+    ctx.fillRect(bx + 7, by - 13, 18, 7);
+    ctx.fillStyle = '#0f2347';
+    ctx.font = 'bold 5px monospace';
+    ctx.fillText('HUMBLE', cx, by - 8.5);
+    ctx.fillStyle = '#7ee3ff';                                 // screen: sky
+    ctx.fillRect(bx + 8, by - 3, 16, 14);
+    ctx.fillStyle = '#59d47a';                                 // screen: grass
+    ctx.fillRect(bx + 8, by + 8, 16, 3);
+    ctx.fillStyle = '#9a6a3a';
+    ctx.fillRect(bx + 8, by + 10.5, 16, 0.5);
+    const coinY = by + 2 + Math.sin(time * 3) * 2;             // screen: bobbing coin
+    const coinW = Math.max(1.2, Math.abs(Math.cos(time * 2.2)) * 3.2);
+    ctx.fillStyle = '#ffd447';
+    ctx.beginPath(); ctx.ellipse(cx + 3, coinY, coinW, 3.4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#fff6b0';
+    ctx.fillRect(cx + 3 - 0.5, coinY - 2, 1, 4);
+    ctx.fillStyle = '#ff6f9c';                                 // screen: tiny hero
+    ctx.fillRect(bx + 11, by + 4, 3, 4);
+    ctx.fillStyle = '#fff6e0';
+    ctx.fillRect(bx + 11, by + 3, 3, 1.5);
+    ctx.fillStyle = 'rgba(255,255,255,0.18)';                  // screen glare
+    ctx.fillRect(bx + 9, by - 2, 2, 7);
+    ctx.fillStyle = '#1a2a38';                                 // control panel
+    ctx.fillRect(bx + 6, by + 13, 20, 6);
+    ctx.fillStyle = '#f4ecd8';
+    ctx.fillRect(bx + 10, by + 14, 1.5, 3.5);
+    ctx.beginPath(); ctx.arc(bx + 10.75, by + 14, 1.6, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ff6f9c';
+    ctx.beginPath(); ctx.arc(bx + 18, by + 16, 1.4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ffd447';
+    ctx.beginPath(); ctx.arc(bx + 22, by + 16, 1.4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#0a1830';                                 // coin slot kick plate
+    ctx.fillRect(bx + 8, by + 21, 16, 5);
+    ctx.fillStyle = '#ffd447';
+    ctx.fillRect(bx + 14, by + 22.5, 4, 1.5);
+    const glow = getGlowSprite(44, 'rgba(126,227,255,ALPHA)');   // soft screen glow on the floor
+    ctx.save();
+    ctx.globalAlpha = 0.22 + 0.06 * Math.sin(time * 2.4);
+    ctx.drawImage(glow, cx - 34, by + 4, 68, 56);
+    ctx.restore();
+  }
 
   // --- counter (table is row 3): brochures left of Champ; a Champ plushie
   // and a goldfish bowl to the right
