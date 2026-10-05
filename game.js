@@ -1613,6 +1613,17 @@ const MINIGAME_ACTIONS = {
   // network calls -- so it works with no connection). See
   // openPrecisionPointsApp()/createPrecisionPointsOverlay() below.
   precisionpoints: () => openPrecisionPointsApp(),
+  // LET'S SKATE billboard -- a big blinking sign out on the grass below the
+  // plaza of LEVEL 3 (SKATEPARK), see the skatepark map's `minigames` list
+  // and `skateBillboard` in makeSkatepark() / drawMinigameSkateBillboard().
+  // Launches J2S PRO SKATER, a full standalone 3D web app (Three.js bundled
+  // INTO the one local file -- no CDN, no network calls -- so it works with
+  // no connection). Like Truth Knocks/KANGAIDEN, stepping up to it first
+  // shows a still key-art splash (the Santos Shred card) and only opens the
+  // actual DOM/iframe overlay once the player presses E or taps from that
+  // splash -- see openJ2sProSkaterSplash()/drawJ2sProSkaterSplash() and
+  // openJ2sProSkaterApp()/createJ2sProSkaterOverlay() below.
+  j2sproskater: () => openJ2sProSkaterSplash(),
   // TRUTH KNOCKS -- "The Swamp Is Not A Secret," a 16-bit-style beat 'em up
   // (punch/kick/cane combos, a chargeable Special, and a boss rotation of
   // the Frog King/King Gator/Rat King every 5th wave) parked out on the
@@ -9695,6 +9706,8 @@ window.addEventListener('keydown', (e) => {
     if (k === 'escape' && state === 'hiphopLibraryApp') { closeHipHopLibraryApp(); }
     if (k === 'escape' && state === 'arkaiikImpactApp') { closeArkaiikImpactApp(); }
     if (k === 'escape' && state === 'precisionPointsApp') { closePrecisionPointsApp(); }
+    if (k === 'escape' && state === 'j2sProSkaterApp') { closeJ2sProSkaterApp(); }
+    if (k === 'escape' && state === 'j2sProSkaterSplash') { state = j2sProSkaterSplashReturnState; }
     if (k === 'escape' && state === 'diggerApp') { closeDiggerApp(); }
     if (k === 'escape' && state === 'johnnySlidesApp') { closeJohnnySlidesApp(); }
     if (k === 'escape' && state === 'humbleTreasuresApp') { closeHumbleTreasuresApp(); }
@@ -10014,6 +10027,14 @@ const KANGAIDEN_SPLASH_VIDEO_SRC = 'assets/KANGAIDEN_splash_vid.mp4';
 // drawTruthKnocksSplash() below.
 const truthKnocksSplashImg = new Image();
 truthKnocksSplashImg.src = 'assets/truth_knocks_splash.png';
+
+// J2S PRO SKATER key-art splash (Santos Shred) shown by
+// drawJ2sProSkaterSplash() the same way truthKnocksSplashImg is above --
+// preloaded here so it's already decoded by the time the player steps up to
+// the LET'S SKATE billboard. Plain same-origin <img> (local file in assets/),
+// so it's available offline like every other asset.
+const j2sProSkaterSplashImg = new Image();
+j2sProSkaterSplashImg.src = 'assets/j2s_pro_skater_splash.png';
 
 // TRUTH KNOCKS intro video -- plays once, full-screen, the instant the
 // player steps up to the cabinet, before the still key-art splash above and
@@ -11597,6 +11618,20 @@ function makeSkatepark() {
   for (let y = TACO_Y; y < TACO_Y + TACO_H; y++)
     for (let x = TACO_X; x < TACO_X + TACO_W; x++) g[y][x] = 'q';
 
+  // --- LET'S SKATE BILLBOARD -- a big blinking sign on the open grass just
+  // below the plaza ring (7 x 3 tiles: x 23-29, rows 32-34). It launches the
+  // J2S PRO SKATER mini-game (see `minigames` below). 'q' tiles are SOLID and
+  // render as plain grass -- the sign itself is a cosmetic sprite painted by
+  // drawMinigameSkateBillboard() (the whole structure sits inside this
+  // footprint, so nothing can walk "behind" it). The ring's bottom walkway
+  // (row 31) runs right above it, so it's reachable from the path and from
+  // the open grass either side. Carved AFTER the tree sprinkle so it wins
+  // over any tree; the tree border (row 35) is untouched.
+  const BB_X = 23, BB_Y = 32, BB_W = 7, BB_H = 3;
+  const bbTiles = [];
+  for (let y = BB_Y; y < BB_Y + BB_H; y++)
+    for (let x = BB_X; x < BB_X + BB_W; x++) { g[y][x] = 'q'; bbTiles.push([x, y]); }
+
   // --- a few outdoor dig spots scattered around the promenade/plaza ring,
   // same "sit right on a guaranteed-clear path tile" placement swamp's
   // boardwalk crates use. All junk for now (no more of the level's
@@ -11643,7 +11678,16 @@ function makeSkatepark() {
       // in its own DOM overlay; see openPrecisionPointsApp()/
       // createPrecisionPointsOverlay().
       { id: 'precisionpoints', tx: COURT_X + 5, ty: COURT_Y + 2, label: 'PRECISION POINTS', icon: 'basketball' },
+      // LET'S SKATE -- the blinking billboard below the plaza. Every tile of
+      // its solid footprint answers to [E] (`alsoTiles`), so it works from
+      // the walkway above or from either side. `icon: 'skatebillboard'` --
+      // see drawMinigameSkateBillboard(). Opens the standalone J2S PRO
+      // SKATER app (after its Santos Shred splash) in its own DOM overlay;
+      // see openJ2sProSkaterSplash()/openJ2sProSkaterApp().
+      { id: 'j2sproskater', tx: BB_X + 3, ty: BB_Y, label: "LET'S SKATE", icon: 'skatebillboard',
+        alsoTiles: bbTiles.filter(([x, y]) => !(x === BB_X + 3 && y === BB_Y)) },
     ],
+    skateBillboard: { x: BB_X, y: BB_Y, w: BB_W, h: BB_H },
     basketballCourt: { x: COURT_X, y: COURT_Y, w: COURT_W, h: COURT_H },
     tacoTruck: { x: TACO_X, y: TACO_Y, w: TACO_W, h: TACO_H },
     adogSkateShopDoor: { x: ADOG_DOOR_X, y: ADOG_DOOR_Y },
@@ -13793,7 +13837,7 @@ const music = {
 // enter/exit call sites, so it can't drift out of sync no matter which
 // of the several ways the player backs out of the lab popup (keyboard
 // [X], on-screen [X] button, closing the instrument iframe, etc.).
-const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'qsdBalanceApp', 'vinylSnakeApp', 'waveformApp', 'bayouBreakApp', 'freqAltarApp', 'drumPatternDocApp', 'gatorJamSlamApp', 'swampCaveApp', 'vocalChopBoothApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'digOnApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'johnnySlidesApp', 'humbleTreasuresApp', 'dustRacingApp', 'cbPressApp', 'hyperSwimApp', 'linusTugApp', 'connectFourApp', 'syrupRoadsApp', 'scoopBeatsApp', 'clawMachineApp', 'kangaidenVideo', 'kangaidenApp', 'hiphopLibraryApp', 'arkaiikImpactApp', 'precisionPointsApp', 'danceParty', 'truthKnocksVideo', 'truthKnocksApp', 'johnnySlidesVideo', 'humbleTreasuresVideo']);
+const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'qsdBalanceApp', 'vinylSnakeApp', 'waveformApp', 'bayouBreakApp', 'freqAltarApp', 'drumPatternDocApp', 'gatorJamSlamApp', 'swampCaveApp', 'vocalChopBoothApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'digOnApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'johnnySlidesApp', 'humbleTreasuresApp', 'dustRacingApp', 'cbPressApp', 'hyperSwimApp', 'linusTugApp', 'connectFourApp', 'syrupRoadsApp', 'scoopBeatsApp', 'clawMachineApp', 'kangaidenVideo', 'kangaidenApp', 'hiphopLibraryApp', 'arkaiikImpactApp', 'precisionPointsApp', 'j2sProSkaterApp', 'danceParty', 'truthKnocksVideo', 'truthKnocksApp', 'johnnySlidesVideo', 'humbleTreasuresVideo']);
 function syncMusicDuck() {
   const minigameDucked = state === 'minigame' && activeMinigame && activeMinigame.musicDucked;
   music.duck(DUCKED_STATES.has(state) || !!minigameDucked);
@@ -19526,6 +19570,210 @@ function closePrecisionPointsApp(fromPopState) {
   }
 }
 
+// ---------------------------------------------------------------- J2S PRO SKATER (LET'S SKATE billboard)
+// J2S PRO SKATER -- a gamepad-first 3D skateboarding game (Three.js) launched
+// from the blinking LET'S SKATE billboard below the plaza in LEVEL 3
+// (SKATEPARK); see the skatepark map's `minigames`/`skateBillboard` in
+// makeSkatepark() and drawMinigameSkateBillboard(). Same "full-screen DOM
+// overlay with an <iframe>" pattern as ARKAIIK IMPACT / PRECISION POINTS /
+// TRUTH KNOCKS above, with the same "still key-art splash first" flow Truth
+// Knocks uses: stepping up to the billboard shows the Santos Shred splash
+// (state 'j2sProSkaterSplash'), and E / a tap from there opens the app.
+//
+// Ships as ONE bundled, self-contained file (inline CSS and JS, Three.js
+// bundled INTO the page, the warehouse banner textures and title art embedded
+// as data URIs -- no CDN, no external fonts, no network calls at all, and no
+// ES-module <script> so it also runs when the game is opened from file://) at
+// instruments/j2s-pro-skater/index.html -- the exact same local-file pattern
+// every other app here uses. Being a same-origin local asset rather than a
+// live remote site means it loads and plays identically with or without a
+// connection, so there's no online/offline branching needed. The splash card
+// itself is a plain local image (assets/j2s_pro_skater_splash.png).
+const J2S_PRO_SKATER_APP_URL = 'instruments/j2s-pro-skater/index.html';
+let j2sProSkaterOverlayEl = null, j2sProSkaterOverlayFrame = null;
+let j2sProSkaterReturnState = 'play';
+let j2sProSkaterSplashReturnState = 'play';
+let j2sProSkaterHistoryPushed = false; // mirrors arkaiikImpactHistoryPushed/precisionPointsHistoryPushed -- see openJ2sProSkaterApp()/closeJ2sProSkaterApp()
+
+// Called from MINIGAME_ACTIONS.j2sproskater (E on the billboard, or tapping
+// it). Remembers where to return to, then flips to the splash card. State
+// stays off 'play', so movement/interaction are blocked while it's up, the
+// same way every other splash state works.
+function openJ2sProSkaterSplash() {
+  j2sProSkaterSplashReturnState = state;
+  state = 'j2sProSkaterSplash';
+}
+
+// Full-screen splash card -- same "scale art to fully cover the view, blink
+// a continue prompt at the bottom" shape as drawTruthKnocksSplash(). Drawn on
+// top of the ordinary skatepark render() pass, so the park stays visible/
+// dimmed underneath exactly like the other splashes do over their worlds.
+function drawJ2sProSkaterSplash() {
+  ctx.fillStyle = 'rgba(8,6,12,0.6)';
+  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
+  if (j2sProSkaterSplashImg.complete && j2sProSkaterSplashImg.naturalWidth) {
+    const iw = j2sProSkaterSplashImg.naturalWidth, ih = j2sProSkaterSplashImg.naturalHeight;
+    const scale = Math.max(VIEW_W / iw, VIEW_H / ih);
+    const dw = iw * scale, dh = ih * scale;
+    const dx = (VIEW_W - dw) / 2, dy = (VIEW_H - dh) / 2;
+    ctx.drawImage(j2sProSkaterSplashImg, dx, dy, dw, dh);
+    ctx.fillStyle = 'rgba(8,6,12,0.30)';
+    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+  } else {
+    // fallback text-only version, in case the art hasn't loaded in yet
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ffcf3a';
+    ctx.font = 'bold 26px monospace';
+    ctx.fillText('J2S PRO SKATER', VIEW_W / 2, VIEW_H / 2 - 10);
+    ctx.fillStyle = '#f4ecd8';
+    ctx.font = '14px monospace';
+    ctx.fillText("Let's skate.", VIEW_W / 2, VIEW_H / 2 + 16);
+  }
+
+  ctx.textAlign = 'center';
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = 'rgba(0,0,0,0.85)';
+  ctx.font = 'bold 16px monospace';
+  const prompt = '- PRESS E TO SKATE -';
+  ctx.strokeText(prompt, VIEW_W / 2, VIEW_H - 24);
+  ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#bfff32' : '#f4ecd8';
+  ctx.fillText(prompt, VIEW_W / 2, VIEW_H - 24);
+  ctx.font = 'bold 11px monospace';
+  ctx.strokeText('TAP / E: PLAY    ESC / X: BACK', VIEW_W / 2, VIEW_H - 8);
+  ctx.fillStyle = '#d8d2c4';
+  ctx.fillText('TAP / E: PLAY    ESC / X: BACK', VIEW_W / 2, VIEW_H - 8);
+}
+
+function createJ2sProSkaterOverlay() {
+  const style = document.createElement('style');
+  style.textContent = `
+    #j2sProSkaterApp {
+      position: fixed; inset: 0; z-index: 1000;
+      /* The splash art doubles as the loading backdrop, so there's never a
+         black flash between the splash card and the game's own title screen. */
+      background: #06080e url('assets/j2s_pro_skater_splash.png') center / cover no-repeat;
+      display: none; flex-direction: column;
+    }
+    #j2sProSkaterApp.open { display: flex; }
+    #j2sProSkaterApp .j2s-bar {
+      flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 10px 14px;
+      background: linear-gradient(#1c1a14, #0d0c08);
+      border-bottom: 2px solid #ffcf3a;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
+      position: relative; z-index: 2;
+    }
+    #j2sProSkaterApp .j2s-title {
+      color: #f7f3ea; font: bold 14px monospace; letter-spacing: 0.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #j2sProSkaterApp .j2s-close {
+      flex: 0 0 auto; cursor: pointer;
+      background: rgba(255,207,58,0.15);
+      border: 1.5px solid rgba(255,207,58,0.9);
+      color: #f7f3ea; border-radius: 8px;
+      padding: 7px 16px; font: bold 13px monospace;
+      -webkit-user-select: none; user-select: none;
+    }
+    #j2sProSkaterApp .j2s-close:active { background: rgba(255,207,58,0.45); }
+    #j2sProSkaterApp iframe {
+      flex: 1 1 auto; width: 100%; border: 0; background: transparent;
+      opacity: 0; transition: opacity 0.25s ease-out;
+    }
+    #j2sProSkaterApp.loaded iframe { opacity: 1; }
+    #j2sProSkaterApp .j2s-loading {
+      position: absolute; left: 0; right: 0; bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+      text-align: center; color: #bfff32; font: bold 16px monospace; letter-spacing: 1px;
+      text-shadow: 2px 2px 0 #000, 0 0 10px rgba(0,0,0,0.9);
+      animation: j2sBlink 1s steps(2, start) infinite; pointer-events: none;
+    }
+    #j2sProSkaterApp.loaded .j2s-loading { display: none; }
+    @keyframes j2sBlink { to { visibility: hidden; } }
+  `;
+  document.head.appendChild(style);
+
+  j2sProSkaterOverlayEl = document.createElement('div');
+  j2sProSkaterOverlayEl.id = 'j2sProSkaterApp';
+
+  const bar = document.createElement('div');
+  bar.className = 'j2s-bar';
+  const title = document.createElement('div');
+  title.className = 'j2s-title';
+  title.textContent = 'J2S PRO SKATER \u2014 WAREHOUSE FREE SKATE';
+  const closeBtn = document.createElement('div');
+  closeBtn.className = 'j2s-close';
+  closeBtn.textContent = '\u2190 BACK TO THE PARK';
+  bindTap(closeBtn, closeJ2sProSkaterApp);
+  bar.appendChild(title);
+  bar.appendChild(closeBtn);
+
+  const loading = document.createElement('div');
+  loading.className = 'j2s-loading';
+  loading.textContent = 'LOADING...';
+
+  j2sProSkaterOverlayFrame = document.createElement('iframe');
+  j2sProSkaterOverlayFrame.setAttribute('allow', 'autoplay; gamepad');
+  // Reveal the game (and hand it keyboard/gamepad focus) the moment it has
+  // loaded. The 'open' guard ignores the load event of the about:blank that
+  // closeJ2sProSkaterApp() points the frame at.
+  j2sProSkaterOverlayFrame.addEventListener('load', () => {
+    if (!j2sProSkaterOverlayEl.classList.contains('open')) return;
+    j2sProSkaterOverlayEl.classList.add('loaded');
+    try { j2sProSkaterOverlayFrame.contentWindow.focus(); } catch (_) {}
+  });
+
+  j2sProSkaterOverlayEl.appendChild(bar);
+  j2sProSkaterOverlayEl.appendChild(loading);
+  j2sProSkaterOverlayEl.appendChild(j2sProSkaterOverlayFrame);
+  document.body.appendChild(j2sProSkaterOverlayEl);
+
+  // [Esc] pressed while the iframe itself has keyboard focus never reaches
+  // this page's keydown handler, so the app posts a message instead.
+  window.addEventListener('message', (e) => {
+    if (!j2sProSkaterOverlayFrame || e.source !== j2sProSkaterOverlayFrame.contentWindow) return;
+    if (e.data && e.data.j2sProSkater === 'close' && state === 'j2sProSkaterApp') closeJ2sProSkaterApp();
+  });
+}
+createJ2sProSkaterOverlay();
+
+// Opens the J2S PRO SKATER overlay and switches state to 'j2sProSkaterApp'.
+// Called once the player presses E (or taps) from the splash card (see
+// drawJ2sProSkaterSplash() and the 'j2sProSkaterSplash' state handling in the
+// input loop) -- not directly from MINIGAME_ACTIONS.j2sproskater, which opens
+// the splash first.
+function openJ2sProSkaterApp() {
+  j2sProSkaterReturnState = j2sProSkaterSplashReturnState;
+  j2sProSkaterOverlayEl.classList.remove('loaded');
+  j2sProSkaterOverlayFrame.src = J2S_PRO_SKATER_APP_URL;
+  j2sProSkaterOverlayEl.classList.add('open');
+  state = 'j2sProSkaterApp';
+  // Same throwaway-history-entry trick as openArkaiikImpactApp() etc. above,
+  // so the browser/OS back gesture closes the overlay instead of leaving the
+  // game entirely.
+  history.pushState({ j2sProSkaterApp: true }, '');
+  j2sProSkaterHistoryPushed = true;
+}
+
+// Tears the iframe back down (which also stops the game's render loop and
+// audio) and returns to ordinary gameplay in the park. fromPopState mirrors
+// closePrecisionPointsApp()'s parameter -- true when triggered by the
+// browser's back button (whose history entry is already consumed), so we
+// must not call history.back() again in that case.
+function closeJ2sProSkaterApp(fromPopState) {
+  j2sProSkaterOverlayEl.classList.remove('open');
+  j2sProSkaterOverlayEl.classList.remove('loaded');
+  j2sProSkaterOverlayFrame.src = 'about:blank';
+  reclaimGameFocus(j2sProSkaterOverlayFrame);
+  state = j2sProSkaterReturnState;
+  if (!fromPopState && j2sProSkaterHistoryPushed) {
+    j2sProSkaterHistoryPushed = false;
+    history.back();
+  } else {
+    j2sProSkaterHistoryPushed = false;
+  }
+}
+
 // Digger -- a classic boulder-dash-style digging game (dig through dirt,
 // dodge falling boulders, collect diamonds) tucked inside JOHNNY'S FUN PARK
 // (see the `johnnysfunpark` shop's `minigames` list). Same "full-screen DOM
@@ -20578,6 +20826,8 @@ window.addEventListener('popstate', () => {
     closeArkaiikImpactApp(true);
   } else if (state === 'precisionPointsApp') {
     closePrecisionPointsApp(true);
+  } else if (state === 'j2sProSkaterApp') {
+    closeJ2sProSkaterApp(true);
   }
 });
 
@@ -20593,7 +20843,7 @@ canvas.addEventListener('pointerdown', (e) => {
     const vx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const vy = (e.clientY - rect.top) * (canvas.height / rect.height);
     handleLabTap(vx, vy);
-  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'humbleTreasuresApp' || state === 'dustRacingApp' || state === 'cbPressApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'scoopBeatsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp' || state === 'arkaiikImpactApp' || state === 'precisionPointsApp') {
+  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'humbleTreasuresApp' || state === 'dustRacingApp' || state === 'cbPressApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'scoopBeatsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp' || state === 'arkaiikImpactApp' || state === 'precisionPointsApp' || state === 'j2sProSkaterApp') {
     // The DOM overlay sits on top of (and outside) the canvas while an
     // instrument/the chess app/the beat bot/the organ/mini golf/the
     // blackbook/Gator Grooves/Vinyl Snake/Bayou Break Station/Gator Jam
@@ -20819,6 +21069,15 @@ function update(dt) {
     // interactPressed via the generic pointerdown fallback) advances
     // straight into the DOM/iframe overlay.
     if (interactPressed) openKangaidenApp();
+  } else if (state === 'j2sProSkaterSplash') {
+    // Splash before the actual J2S PRO SKATER iframe -- see
+    // drawJ2sProSkaterSplash()/openJ2sProSkaterSplash() and
+    // MINIGAME_ACTIONS.j2sproskater. E (or a tap, which also sets
+    // interactPressed via the generic pointerdown fallback) is "Press
+    // Start" and advances straight into the DOM/iframe overlay; [X] (the
+    // on-screen touch button) or [Esc] backs out to the park.
+    if (interactPressed) openJ2sProSkaterApp();
+    else if (buyPressed) state = j2sProSkaterSplashReturnState;
   } else if (state === 'truthKnocksSplash') {
     // Splash before the actual TRUTH KNOCKS iframe -- see
     // drawTruthKnocksSplash()/openTruthKnocksSplash() and
@@ -21083,6 +21342,13 @@ function update(dt) {
     // buyPressed is still consumed here so the on-screen [X] touch button
     // works while it's open.
     if (buyPressed) closePrecisionPointsApp();
+  } else if (state === 'j2sProSkaterApp') {
+    // Same reasoning as 'precisionPointsApp' just above: the DOM overlay (see
+    // createJ2sProSkaterOverlay()) owns input while J2S PRO SKATER is loaded
+    // -- its own back button and [Esc] handle closing it directly.
+    // buyPressed is still consumed here so the on-screen [X] touch button
+    // works while it's open.
+    if (buyPressed) closeJ2sProSkaterApp();
   } else if (state === 'digDashApp') {
     // Same reasoning as 'labApp'/'chessApp'/'beatBotApp'/'organApp'/
     // 'minigolfApp'/'blackbookApp'/'crocSwampApp'/'vinylSnakeApp'/
@@ -21849,6 +22115,150 @@ function drawMinigameBasketball(wx, wy, time, seed, label) {
   return { cx, cy, hw: r + 16, hh: r + 24 };
 }
 
+// Mini-game marker used when a map entry sets `icon: 'skatebillboard'`
+// (currently just the LET'S SKATE billboard below the skatepark plaza, which
+// launches J2S PRO SKATER) -- same label/hitbox contract as
+// drawMinigameArcadeSign()/drawMinigameBasketball() so it drops into the exact
+// same per-frame loop and tap-shortcut handling. Unlike those it isn't a small
+// floating icon: it's a big roadside billboard that fills its whole solid
+// `skateBillboard` footprint on the map (two steel posts, a lamp rack, and a
+// panel ringed with chasing marquee bulbs). To read as "interactive" from
+// across the park, the sign BLINKS: the LET'S SKATE lettering flashes
+// bright/dim about twice a second while the bulbs chase around the frame and
+// the floodlights pulse, and a small prompt above it alternates with a "TAP TO
+// PLAY" hint. All timing comes from performance.now() (not render()'s `time`,
+// which is in seconds). Purely visual -- collision comes from the 'q' tiles.
+function drawMinigameSkateBillboard(wx, wy, time, seed, label) {
+  const bb = maps[player.map] && maps[player.map].skateBillboard;
+  if (!bb) return drawMinigameArcadeSign(wx, wy, time, seed, label); // no footprint: fall back to the generic sign
+  const X = bb.x * TILE, Y = bb.y * TILE, W = bb.w * TILE, H = bb.h * TILE;
+  const now = performance.now();
+  const lit = Math.floor(now / 520) % 2 === 0;   // lettering blink
+  const chase = Math.floor(now / 140);           // marquee-bulb chase step
+
+  ctx.save();
+
+  // contact shadow on the grass
+  ctx.fillStyle = 'rgba(0,0,0,0.28)';
+  ctx.fillRect(X + 8, Y + H - 7, W - 16, 6);
+
+  // steel posts + cross strut
+  const panX = X + 4, panY = Y + 14, panW = W - 8, panH = 56;
+  const post1 = X + 26, post2 = X + W - 26 - 9;
+  for (const px of [post1, post2]) {
+    ctx.fillStyle = '#2b2e38';
+    ctx.fillRect(px, panY + panH, 9, Y + H - 5 - (panY + panH));
+    ctx.fillStyle = '#4a4f5e';
+    ctx.fillRect(px, panY + panH, 2, Y + H - 5 - (panY + panH));
+    ctx.fillStyle = '#1d1f26';
+    ctx.fillRect(px - 3, Y + H - 9, 15, 5);
+  }
+  ctx.fillStyle = '#2b2e38';
+  ctx.fillRect(post1 + 9, panY + panH + 12, post2 - post1 - 9, 3);
+
+  // lamp rack along the top: little floodlights aimed at the panel
+  for (let i = 0; i < 4; i++) {
+    const lx = X + 40 + i * ((W - 80) / 3);
+    ctx.fillStyle = '#20222a';
+    ctx.fillRect(lx - 1, Y + 6, 2, 8);
+    ctx.fillRect(lx - 7, Y + 3, 14, 5);
+    ctx.fillStyle = lit ? '#fff6b0' : '#6e6a48';
+    ctx.fillRect(lx - 5, Y + 7, 10, 2);
+    ctx.fillStyle = lit ? 'rgba(255,240,150,0.12)' : 'rgba(255,240,150,0.04)';
+    ctx.beginPath();
+    ctx.moveTo(lx - 4, Y + 9); ctx.lineTo(lx + 4, Y + 9);
+    ctx.lineTo(lx + 16, panY + panH - 4); ctx.lineTo(lx - 16, panY + panH - 4);
+    ctx.closePath(); ctx.fill();
+  }
+
+  // panel: dark frame, inner border, deep-purple face with graffiti color blocks
+  ctx.fillStyle = '#0e0c14';
+  ctx.fillRect(panX, panY, panW, panH);
+  ctx.fillStyle = '#2e2a3c';
+  ctx.fillRect(panX + 2, panY + 2, panW - 4, panH - 4);
+  const grad = ctx.createLinearGradient(0, panY + 4, 0, panY + panH - 4);
+  grad.addColorStop(0, '#2a1d52'); grad.addColorStop(1, '#120d26');
+  ctx.fillStyle = grad;
+  ctx.fillRect(panX + 4, panY + 4, panW - 8, panH - 8);
+  ctx.fillStyle = 'rgba(236,0,140,0.30)';
+  ctx.beginPath();
+  ctx.moveTo(panX + 4, panY + 4); ctx.lineTo(panX + 54, panY + 4); ctx.lineTo(panX + 4, panY + 34);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = 'rgba(80,220,255,0.25)';
+  ctx.beginPath();
+  ctx.moveTo(panX + panW - 4, panY + panH - 4); ctx.lineTo(panX + panW - 58, panY + panH - 4); ctx.lineTo(panX + panW - 4, panY + panH - 36);
+  ctx.closePath(); ctx.fill();
+
+  // marquee bulbs around the frame, chasing: every third bulb is lit and the
+  // pattern marches around the sign
+  const bulbs = [];
+  for (let x = panX + 9; x <= panX + panW - 9; x += 12) { bulbs.push([x, panY + 6]); }
+  for (let y = panY + 17; y <= panY + panH - 17; y += 12) { bulbs.push([panX + panW - 6, y]); }
+  for (let x = panX + panW - 9; x >= panX + 9; x -= 12) { bulbs.push([x, panY + panH - 6]); }
+  for (let y = panY + panH - 17; y >= panY + 17; y -= 12) { bulbs.push([panX + 6, y]); }
+  bulbs.forEach(([bx, by], i) => {
+    const on = ((i - chase) % 3 + 3) % 3 === 0;
+    if (on) {
+      ctx.fillStyle = 'rgba(255,230,80,0.35)';
+      ctx.beginPath(); ctx.arc(bx, by, 4.2, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.fillStyle = on ? '#fff35c' : '#5a4b14';
+    ctx.beginPath(); ctx.arc(bx, by, 2.1, 0, Math.PI * 2); ctx.fill();
+  });
+
+  // the lettering -- shrunk to fit if the system font runs wide
+  const text = "LET'S SKATE";
+  const cx = X + W / 2, ty = panY + 24;
+  let fs = 34;
+  ctx.font = `bold ${fs}px "Arial Black", Impact, monospace`;
+  while (ctx.measureText(text).width > 136 && fs > 12) { fs--; ctx.font = `bold ${fs}px "Arial Black", Impact, monospace`; }
+  const tw = ctx.measureText(text).width;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.lineJoin = 'round';
+  ctx.lineWidth = 5;
+  ctx.strokeStyle = '#000';
+  ctx.strokeText(text, cx, ty);
+  if (lit) { ctx.shadowColor = '#ffd23c'; ctx.shadowBlur = 14; }
+  ctx.fillStyle = lit ? '#fff35c' : '#9b7b22';
+  ctx.fillText(text, cx, ty);
+  ctx.shadowBlur = 0; ctx.shadowColor = 'transparent';
+
+  // a little skateboard either side of the lettering
+  const deck = (bx, by) => {
+    ctx.fillStyle = '#ec008c';
+    ctx.fillRect(bx - 9, by - 2, 18, 4);
+    ctx.fillRect(bx - 11, by - 4, 3, 3);
+    ctx.fillRect(bx + 8, by - 4, 3, 3);
+    ctx.fillStyle = '#f4ecd8';
+    ctx.fillRect(bx - 6, by + 2, 3, 3);
+    ctx.fillRect(bx + 3, by + 2, 3, 3);
+  };
+  deck(cx - tw / 2 - 16, ty);
+  deck(cx + tw / 2 + 16, ty);
+
+  // subtitle
+  ctx.font = 'bold 8px monospace';
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = '#000';
+  ctx.strokeText('J2S PRO SKATER', cx, panY + panH - 13);
+  ctx.fillStyle = '#6fe3ff';
+  ctx.fillText('J2S PRO SKATER', cx, panY + panH - 13);
+
+  // flashing prompt above the sign (same label <-> tap-hint idea as the other
+  // mini-game markers)
+  const promptText = Math.floor(now / 1400) % 2 === 0 ? 'PRESS E TO SKATE' : 'TAP TO PLAY';
+  ctx.font = 'bold 9px monospace';
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = 'rgba(0,0,0,0.85)';
+  ctx.strokeText(promptText, cx, Y - 6);
+  ctx.fillStyle = '#ffd23c';
+  ctx.fillText(promptText, cx, Y - 6);
+
+  ctx.restore();
+  return { cx, cy: Y + H / 2, hw: W / 2 + 14, hh: H / 2 + 16 };
+}
+
 // Alternate mini-game marker used when a map entry sets `icon: 'paintbrush'`
 // (currently just ARKAIIK IMPACT, out on the concrete plaza of the skatepark)
 // -- same bob/label/hitbox contract as drawMinigameArcadeSign()/
@@ -22275,7 +22685,7 @@ function render(time) {
     drawSplash();
     return;
   }
-  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'humbleTreasuresApp' || state === 'dustRacingApp' || state === 'cbPressApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'scoopBeatsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp' || state === 'arkaiikImpactApp' || state === 'precisionPointsApp') {
+  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'humbleTreasuresApp' || state === 'dustRacingApp' || state === 'cbPressApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'scoopBeatsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp' || state === 'arkaiikImpactApp' || state === 'precisionPointsApp' || state === 'j2sProSkaterApp') {
     // Same reasoning as the labApp overlay: a DOM element (the <video>,
     // see createCharacterIntroOverlay(), the chess <iframe>, see
     // createChessOverlay(), the beat bot <iframe>, see
@@ -22396,6 +22806,8 @@ function render(time) {
         ? drawMinigamePaintBrush(wx, wy, time, seed, mg.label)
         : mg.icon === 'basketball'
         ? drawMinigameBasketball(wx, wy, time, seed, mg.label)
+        : mg.icon === 'skatebillboard'
+        ? drawMinigameSkateBillboard(wx, wy, time, seed, mg.label)
         : drawMinigameArcadeSign(wx, wy, time, seed, mg.label);
       minigameSignHitboxes.push({ map: player.map, id: mg.id, ...rect });
     });
@@ -22427,6 +22839,7 @@ function render(time) {
   if (state === 'vinylNinjaSplash') drawVinylNinjaSplash();
   if (state === 'kangaidenSplash') drawKangaidenSplash();
   if (state === 'truthKnocksSplash') drawTruthKnocksSplash();
+  if (state === 'j2sProSkaterSplash') drawJ2sProSkaterSplash();
   if (state === 'johnnySlidesSplash') drawJohnnySlidesSplash();
   if (state === 'humbleTreasuresSplash') drawHumbleTreasuresSplash();
   if (state === 'win') drawWin();
