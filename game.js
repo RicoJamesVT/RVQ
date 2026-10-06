@@ -959,6 +959,23 @@ const CB_PRINTS_JUNK = {
   ],
 };
 
+// TALENT's four dig crates -- one per punk flavor, matched to the plaque over
+// each crate (THRASH / HARDCORE on the left, SKATE PUNK / CROSSOVER on the
+// right) via c.talentSeed 0-3, the same 1:1 pairing as SKATE_SHOP_JUNK above.
+// There's no collectible in this shop -- every crate is pure skate-video
+// soundtrack heat -- so nothing here ever gets shuffled by
+// shuffleRecordCrates().
+const TALENT_JUNK = [
+  { line: 'THRASH: 12-inches stacked edge to edge -- D.R.I., Suicidal Tendencies, Municipal Waste -- sleeves gone soft from being flipped through between sessions.',
+    reply: 'Fast, loud, and over in a blink. Not the record you\'re after, though.' },
+  { line: 'HARDCORE: 7-inches in plain paper sleeves -- Minor Threat, Bad Brains, Black Flag -- every corner chewed from decades of digging.',
+    reply: 'Pure fury. Still not the one -- keep digging.' },
+  { line: 'SKATE PUNK: the exact soundtrack to a hundred skate videos -- Descendents, NOFX, Pennywise, Bad Religion -- with a few board-shop price stickers still on.',
+    reply: 'Every one of these has soundtracked a kickflip. Not what you came for, though.' },
+  { line: 'CROSSOVER: thrash-meets-punk 7-inches next to local demo cassettes and photocopied zines, plus a VHS skate video with the soundtrack scribbled on the label.',
+    reply: 'Gloriously raw. Just not the record you\'re chasing.' },
+];
+
 // ECHO CENTER's three dig crates -- Shallows (left), Deep Sea (right) and
 // Reef (front-left). Sonar Lullaby is shuffled between them each new game
 // (shuffleRecordCrates()), so the junk crates' theme is picked by WHICH SPOT
@@ -10348,6 +10365,18 @@ julianImg.src = 'assets/julian.png';
 const bontaImg = new Image();
 bontaImg.src = 'assets/bonta.png';
 
+// LIGGY -- the keeper of TALENT out in the skatepark: Jason Liggett, the
+// Burlington, VT lighting designer and visual artist behind Liggy Lights
+// (lighting designer for Wilco), who also shoots skateboard photography and
+// film -- 1990s Brooklyn Banks and beyond -- and works with the youth and
+// the community through skating and creative projects. Pixel-art sprite:
+// long hair, glasses, goatee, black skull-logo trucker hat, blue zip-up
+// work jacket with a winged-skull patch, thumbs up. Drawn as a shop keeper
+// (see keeperImgs.LIGGY below), not a roaming npc, so he doesn't need an
+// entry in SHOP_NPC_IMAGES.
+const liggyImg = new Image();
+liggyImg.src = 'assets/liggy.png';
+
 // QUEEN B -- the keeper of VILLAGE SCOOP out in the swamp: the drive-thru ice
 // cream queen, serving up every marvelous flavor with her sidekick Hendrix
 // (the sunglasses-wearing dachshund standing right beside her in the art).
@@ -11308,6 +11337,7 @@ function makeShop(id, opts) {
     foamBrewers: opts.foamBrewers || false,
     speakingVolumes: opts.speakingVolumes || false,
     cbPrints: opts.cbPrints || false,
+    talent: opts.talent || false,
     echoCenter: opts.echoCenter || false,
     villageScoop: opts.villageScoop || false,
     recordingDesk: opts.recordingDesk
@@ -11607,6 +11637,26 @@ function makeSkatepark() {
     wall: '#14425f', roof: '#17a5b8', doorX: ECHO_DOOR_X,
   });
 
+  // --- TALENT -- the skatepark's sixth building: a small skate shop on the
+  // open grass off the west side of the plaza ring, between A_DOG SKATE SHOP
+  // up north and SPEAKING VOLUMES down south. A little smaller (5x4) than
+  // the bigger buildings, but still a proper enterable shop. Same solid-
+  // walls-plus-one-door construction as the rest. Carved AFTER the tree
+  // sprinkle so its footprint wins over any tree, and the grass row below
+  // the door plus the strip east to the walkway ring is cleared of trees so
+  // the player never spawns boxed in when stepping back outside.
+  const TAL_X = 1, TAL_Y = 21, TAL_W = 5, TAL_H = 4;
+  const TAL_DOOR_X = TAL_X + Math.floor(TAL_W / 2), TAL_DOOR_Y = TAL_Y + TAL_H - 1;
+  for (let y = TAL_Y; y < TAL_Y + TAL_H; y++)
+    for (let x = TAL_X; x < TAL_X + TAL_W; x++) g[y][x] = 'w';
+  g[TAL_DOOR_Y][TAL_DOOR_X] = 'D';
+  for (let x = TAL_X; x <= TAL_X + TAL_W + 1; x++)
+    if (g[TAL_DOOR_Y + 1][x] === '#') g[TAL_DOOR_Y + 1][x] = '.';
+  buildings.push({
+    x: TAL_X, y: TAL_Y, w: TAL_W, h: TAL_H, name: 'TALENT',
+    wall: '#2b3340', roof: '#1b2230', doorX: TAL_DOOR_X,
+  });
+
   // --- BASKETBALL COURT -- a small full court on the open grass in the
   // bottom-left corner, just below the plaza ring and east of SPEAKING
   // VOLUMES (11 x 4 tiles: x 8-18, rows 31-34). 'u' tiles are walkable
@@ -11721,6 +11771,10 @@ function makeSkatepark() {
     // NOT named `echoCenter` on purpose (same reason as svExterior/
     // cbExterior above): that key is the interior-shop flag checked by render().
     echoExterior: { x: ECHO_X, y: ECHO_Y, w: ECHO_W, h: ECHO_H, doorX: ECHO_DOOR_X, doorY: ECHO_DOOR_Y },
+    talentDoor: { x: TAL_DOOR_X, y: TAL_DOOR_Y },
+    // NOT named `talent` on purpose (same reason as svExterior/cbExterior
+    // above): that key is the interior-shop flag checked by render().
+    tlExterior: { x: TAL_X, y: TAL_Y, w: TAL_W, h: TAL_H, doorX: TAL_DOOR_X, doorY: TAL_DOOR_Y },
     returnPortal: { x: RETURN_PORTAL_X, y: RETURN_PORTAL_Y },
     spawn: { x: 3.5, y: 10.5 }, // tile coords, on the promenade just inside the portal
     palette: {
@@ -13011,6 +13065,39 @@ const shops = {
       { id: 'cbpress', tx: 4, ty: 6, alsoTiles: [[3, 6]], label: 'RUN THE CB PRESS' },
     ],
   }),
+  // TALENT -- the skatepark's sixth building: a cool little independent
+  // skate shop with its own tiny indoor park, run by LIGGY (Jason Liggett),
+  // the Burlington lighting designer and skate photographer/filmmaker who
+  // mentors the local youth through skating and creative projects.
+  // `world: 'skatepark'` keeps it on LEVEL 3. `talent: true` gets the custom
+  // interior in drawTalentInterior() (logo + hung decks, framed photos, gig
+  // flyers, tee rail, wheel/shoe shelves, neon OPEN, stage-light beams, a
+  // counter with grip tape/camcorder/zines, scuffed floor). Four dig crates
+  // on the default spots (1,4)/(1,6)/(12,4)/(12,6), every one skate-thrash-
+  // punk junk (see TALENT_JUNK above) -- there's no hunted record in this
+  // shop. blockTiles = the solid ramps dressed up by the painter: funbox
+  // (3,6)/(4,6), bank ramp (1,8)/(2,8) and quarter pipe (11,8)/(12,8); the
+  // kicker at (8,7)/(9,7) is a walkable floor decal. All clear of the crates,
+  // the counter (row 3), the door (6,9) and the spawn (6.5,7.5).
+  talent: makeShop('talent', {
+    world: 'skatepark',
+    floor: '#3d4350', plank: '#2f343f', wallColor: '#1a1f2b',
+    talent: true,
+    blockTiles: [[3, 6], [4, 6], [1, 8], [2, 8], [11, 8], [12, 8]],
+    keeper: { name: 'LIGGY', shirt: '#2a62c9', skin: '#e0a878',
+      lines: [
+        'Welcome to Talent! Decks on the wall, wax in the crates, and a little room to roll -- take a lap around the quarter pipe if you want. Just watch the dig crates.',
+        'Liggy. Jason Liggett if you\'re my mom or the DMV. I do lights -- Liggy Lights, out of Burlington, Vermont -- and I shoot skating every chance I get.',
+        'Lights are just skateboarding with more watts: find your line, hit your mark, and try not to bail in front of a crowd.',
+        'I ended up lighting shows for Wilco because I was running the spotlight at a Jeff Tweedy solo show at Higher Ground. Kept it on the right guy, I guess. One thing led to another.',
+        'Way before the touring, I was a kid with a camera down at the Brooklyn Banks in the nineties. Brick, banks, the whole city rolling by. I\'ve been chasing that frame ever since.',
+        'That\'s why I\'m at Talent. This place is about the kids -- skating, film, photography, whatever gets them making something. I\'ll hand somebody a camera or a board and see what they do with it.',
+        'Four crates in here: thrash, hardcore, skate punk and crossover. Every record in there has been in a skate video or somebody\'s garage. No hidden gem today, but dig loud anyway.',
+        'Support your local shop, film your friends, and look out for the next kid. That\'s the whole business plan.',
+      ] },
+    // Four junk crates, one per plaque (see TALENT_JUNK above).
+    crates: [ { talentSeed: 0 }, { talentSeed: 1 }, { talentSeed: 2 }, { talentSeed: 3 } ],
+  }),
   // ECHO CENTER -- the skatepark's fifth building: an aquarium full of
   // amazing underwater animals, run by CHAMP, the friendly Loch Ness-type
   // monster who lives in Lake Champlain. `world: 'skatepark'` makes Sonar
@@ -13107,6 +13194,9 @@ transitions['speakingvolumes:' + key(6, 9)] = { map: 'skatepark', x: skatepark.s
 // CB PRINTS door wiring -- same pattern as SPEAKING VOLUMES just above.
 transitions['skatepark:' + key(skatepark.cbPrintsDoor.x, skatepark.cbPrintsDoor.y)] = { map: 'cbprints', x: 6.5, y: 7.5 };
 transitions['cbprints:' + key(6, 9)] = { map: 'skatepark', x: skatepark.cbPrintsDoor.x + 0.5, y: skatepark.cbPrintsDoor.y + 1.6 };
+// TALENT door wiring -- same pattern as CB PRINTS just above.
+transitions['skatepark:' + key(skatepark.talentDoor.x, skatepark.talentDoor.y)] = { map: 'talent', x: 6.5, y: 7.5 };
+transitions['talent:' + key(6, 9)] = { map: 'skatepark', x: skatepark.talentDoor.x + 0.5, y: skatepark.talentDoor.y + 1.6 };
 // ECHO CENTER door wiring -- same pattern as CB PRINTS just above.
 transitions['skatepark:' + key(skatepark.echoCenterDoor.x, skatepark.echoCenterDoor.y)] = { map: 'echocenter', x: 6.5, y: 7.5 };
 transitions['echocenter:' + key(6, 9)] = { map: 'skatepark', x: skatepark.echoCenterDoor.x + 0.5, y: skatepark.echoCenterDoor.y + 1.6 };
@@ -14164,6 +14254,10 @@ function doInteract() {
       const echoList = ECHO_CENTER_JUNK[ECHO_CENTER_CRATE_THEMES[target.tx + ',' + target.ty] || 'shallows'];
       const ecj = echoList[Math.floor(Math.random() * echoList.length)];
       dialog = { name: 'CRATE', lines: [ecj.line, ecj.reply], i: 0 };
+      state = 'dialog';
+    } else if (c.talentSeed !== undefined) {
+      const tlj = TALENT_JUNK[c.talentSeed % TALENT_JUNK.length];
+      dialog = { name: 'CRATE', lines: [tlj.line, tlj.reply], i: 0 };
       state = 'dialog';
     } else if (c.cbSeed !== undefined) {
       // CB PRINTS: left-hand crate (x < 7) is hip hop, right-hand is reggae
@@ -22807,6 +22901,7 @@ function render(time) {
   if (map.foamBrewers) drawFoamBrewersInterior(time);
   if (map.speakingVolumes) drawSpeakingVolumesInterior(time);
   if (map.cbPrints) drawCBPrintsInterior(time);
+  if (map.talent) drawTalentInterior(time);
   if (map.echoCenter) drawEchoCenterInterior(time);
   if (map.villageScoop) drawVillageScoopInterior(time);
   if (map.recordShop) drawPurePopInterior(time);
@@ -23685,6 +23780,7 @@ function drawSkateparkDecorations(time, map, camX, camY) {
   if (map.foamBrewers) drawFoamBrewersExterior(time, map);
   if (map.svExterior) drawSpeakingVolumesExterior(time, map);
   if (map.cbExterior) drawCBPrintsExterior(time, map);
+  if (map.tlExterior) drawTalentExterior(time, map);
   if (map.echoExterior) drawEchoCenterExterior(time, map);
   if (map.basketballCourt) drawBasketballCourt(map.basketballCourt, camX, camY);
   if (map.tacoTruck) drawTacoTruck(time, map, camX, camY);
@@ -25080,6 +25176,7 @@ function drawBuildings(map) {
     const isSpeakingVolumesSign = b.name === 'SPEAKING VOLUMES';
     const isCBPrintsSign = b.name === 'CB PRINTS';
     const isEchoCenter = b.name === 'ECHO CENTER';
+    const isTalentSign = b.name === 'TALENT';
 
     // wall/roof shade colors: each building's wall/roof color never changes,
     // so compute these once per building and cache them on the building
@@ -25744,6 +25841,17 @@ function drawBuildings(map) {
       ctx.fillStyle = '#00aeef'; ctx.fillText(cbLabel, cbx - 2, cby + 1);
       ctx.fillStyle = '#ec008c'; ctx.fillText(cbLabel, cbx + 2, cby - 1);
       ctx.fillStyle = '#16141a'; ctx.fillText(cbLabel, cbx, cby);
+    } else if (isTalentSign && getTalentSign(Math.min(w - 26, 134), Math.round(Math.min(w - 26, 134) * 525 / 1828))) {
+      // The real TALENT SKATEPARK logo, centered in the roof band (see
+      // getTalentSign() just above drawTalentInterior()). Falls through to
+      // the plain plate sign below until the PNG has loaded.
+      const sw = Math.min(w - 26, 134), sh = Math.round(sw * 525 / 1828);
+      const spr = getTalentSign(sw, sh);
+      const sx = px + (w - sw) / 2, sy = py + 2;
+      ctx.save();
+      ctx.imageSmoothingEnabled = true;
+      ctx.drawImage(spr.img, sx, sy, sw, sh);
+      ctx.restore();
     } else if (isEchoCenter) {
       // ECHO CENTER's marquee: a deep-sea plate with a wavy bright-teal edge,
       // the name in glowing sonar-cyan, and a little LAKE CHAMPLAIN AQUARIUM
@@ -30132,6 +30240,443 @@ function drawSpeakingVolumesExterior(time, map) {
   ctx.fillText('& TAPES', sx + 10, sy + 16);
 }
 
+// TALENT's storefront logo: the real TALENT SKATEPARK logo (sky-blue block
+// letters with a yellow outline, SKATEPARK spelled out underneath). Loaded
+// from assets/talent_sign.png (background already transparent). Pre-scaled
+// ONCE into an offscreen canvas (same trick as the SPEAKING VOLUMES badge
+// above) so drawBuildings / drawTalentInterior only do cheap drawImage calls
+// per frame. Until the PNG loads (or if it's missing) both callers fall back
+// to plain lettering, so nothing ever renders blank.
+const talentSignImg = new Image();
+talentSignImg.src = 'assets/talent_sign.png';
+const talentSignCache = {};
+function getTalentSign(dw, dh) {
+  if (!talentSignImg.complete || !talentSignImg.naturalWidth) return null;
+  const k = dw + 'x' + dh;
+  if (talentSignCache[k]) return talentSignCache[k];
+  const img = document.createElement('canvas');
+  img.width = dw * 2; img.height = dh * 2;
+  const ic = img.getContext('2d');
+  ic.imageSmoothingEnabled = true;
+  ic.imageSmoothingQuality = 'high';
+  // step down in halves so the fine SKATEPARK lettering stays crisp
+  let cur = talentSignImg, cw = talentSignImg.naturalWidth, ch = talentSignImg.naturalHeight;
+  while (cw / 2 > img.width) {
+    const t = document.createElement('canvas');
+    t.width = Math.round(cw / 2); t.height = Math.round(ch / 2);
+    const tc = t.getContext('2d');
+    tc.imageSmoothingEnabled = true; tc.imageSmoothingQuality = 'high';
+    tc.drawImage(cur, 0, 0, t.width, t.height);
+    cur = t; cw = t.width; ch = t.height;
+  }
+  ic.drawImage(cur, 0, 0, img.width, img.height);
+  talentSignCache[k] = { dw, dh, img };
+  return talentSignCache[k];
+}
+
+// TALENT's interior: a cool little skate shop that's also a (tiny) indoor
+// park. Along the back wall: the TALENT logo, a wall of hung decks, framed
+// black-and-white skate photos (Liggy shot them), a collage of punk gig
+// flyers, a tee rail and a shoe/wheel shelf, a neon OPEN sign and three
+// colored stage-light par cans (Liggy Lights) sweeping soft beams across
+// the floor. On the counter: grip tape rolls, a hardware jar, a stack of
+// tees, a camcorder and a pile of zines. On the floor: a funbox (solid
+// blockTiles (3,6)/(4,6)), a bank ramp (solid (1,8)/(2,8)), a quarter pipe
+// (solid (11,8)/(12,8)) and a walkable kicker at (8,7)/(9,7), plus scuff
+// marks and a board lying on the floor. A plaque over each of the four
+// crates -- THRASH / HARDCORE (left) and SKATE PUNK / CROSSOVER (right).
+// Called from render() whenever map.talent is set (shop map only -- the
+// outdoor skatepark map uses `tlExterior` instead so it never trips this).
+function drawTalentInterior(time) {
+  ctx.save();
+  ctx.textBaseline = 'alphabetic';
+  ctx.textAlign = 'center';
+  const BL = '#55bbee', YL = '#fbe600', DK = '#12151c', PAPER = '#f2ead6';
+  const FLOOR = '#3d4350';
+
+  // --- skate scuffs and wheel marks across the floor
+  ctx.lineCap = 'round';
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+  [[70, 250, 150, 280, 214, 252], [250, 262, 330, 226, 396, 244], [100, 168, 190, 140, 276, 176], [236, 190, 300, 214, 340, 196]]
+    .forEach(([x0, y0, cx, cy, x1, y1]) => { ctx.beginPath(); ctx.moveTo(x0, y0); ctx.quadraticCurveTo(cx, cy, x1, y1); ctx.stroke(); });
+  ctx.strokeStyle = 'rgba(0,0,0,0.22)';
+  ctx.lineWidth = 1.5;
+  [[80, 240, 140, 268, 200, 244], [286, 256, 340, 232, 380, 252]]
+    .forEach(([x0, y0, cx, cy, x1, y1]) => { ctx.beginPath(); ctx.moveTo(x0, y0); ctx.quadraticCurveTo(cx, cy, x1, y1); ctx.stroke(); });
+  ctx.lineCap = 'butt';
+
+  // --- stage-light beams (Liggy Lights): three par cans on the back wall
+  // throw soft colored cones that sweep slowly across the floor
+  const cans = [[168, 10, 'rgba(85,187,238,', 0], [226, 10, 'rgba(251,230,0,', 2.1], [284, 10, 'rgba(236,0,140,', 4.2]];
+  cans.forEach(([cx, cy, col, ph]) => {
+    const sweep = Math.sin(time * 0.7 + ph) * 46;
+    ctx.fillStyle = col + '0.06)';
+    ctx.beginPath();
+    ctx.moveTo(cx - 4, cy + 6); ctx.lineTo(cx + 4, cy + 6);
+    ctx.lineTo(cx + sweep + 46, 232); ctx.lineTo(cx + sweep - 46, 232);
+    ctx.closePath(); ctx.fill();
+    const glow = getGlowSprite(34, col + 'ALPHA)');
+    ctx.save();
+    ctx.globalAlpha = 0.5;
+    ctx.drawImage(glow, cx + sweep - 34, 232 - 20, 68, 68);
+    ctx.restore();
+    // the can itself + a little clamp
+    ctx.fillStyle = '#23252c'; ctx.fillRect(cx - 6, cy - 4, 12, 11);
+    ctx.fillStyle = '#3b3e48'; ctx.fillRect(cx - 6, cy - 4, 12, 3);
+    ctx.fillStyle = col + '1)'; ctx.fillRect(cx - 4, cy + 5, 8, 2);
+    ctx.fillStyle = '#9a9aa2'; ctx.fillRect(cx - 1, cy - 8, 2, 5);
+  });
+
+  // --- TALENT logo, upper left of the back wall
+  const lw = 116, lh = Math.round(lw * 525 / 1828);
+  const spr = getTalentSign(lw, lh);
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.fillRect(36, 6, lw + 8, lh + 8);
+  ctx.fillStyle = DK;
+  ctx.fillRect(34, 4, lw + 8, lh + 8);
+  if (spr) {
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(spr.img, 38, 8, lw, lh);
+  } else {
+    ctx.font = 'bold 20px monospace';
+    ctx.fillStyle = YL; ctx.fillText('TALENT', 96, 30);
+    ctx.fillStyle = BL; ctx.fillText('TALENT', 95, 29);
+  }
+
+  // --- neon OPEN sign, with an occasional flicker
+  const flick = Math.sin(time * 19) > 0.95 ? 0.35 : 1;
+  ctx.globalAlpha = 0.95 * flick;
+  ctx.strokeStyle = '#ffe600';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(352, 8, 44, 18);
+  ctx.fillStyle = '#fff48a';
+  ctx.font = 'bold 11px monospace';
+  ctx.fillText('OPEN', 374, 21);
+  ctx.globalAlpha = 1;
+
+  // --- wall of hung decks, under the logo (x 40..128)
+  ctx.fillStyle = '#6a6a72';
+  ctx.fillRect(38, 46, 92, 3);
+  const deckCols = [['#d63a3a', YL], ['#2e6fbd', PAPER], ['#1d1d22', BL], ['#f2ead6', '#d63a3a'], ['#2f9e5a', YL], ['#ec008c', '#1d1d22'], ['#fbe600', '#2e6fbd'], ['#1d1d22', '#ec008c'], ['#55bbee', '#1d1d22']];
+  deckCols.forEach(([c1, c2], i) => {
+    const x = 40 + i * 10, y = 49;
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillRect(x + 2, y + 2, 8, 44);
+    ctx.fillStyle = c1;
+    ctx.fillRect(x, y + 2, 8, 40);
+    ctx.fillRect(x + 1, y, 6, 44);
+    ctx.fillStyle = c2;
+    if (i % 3 === 0) { ctx.beginPath(); ctx.arc(x + 4, y + 17, 2.6, 0, Math.PI * 2); ctx.fill(); ctx.fillRect(x + 1, y + 26, 6, 2); }
+    else if (i % 3 === 1) { ctx.fillRect(x + 1, y + 8, 6, 3); ctx.fillRect(x + 1, y + 15, 6, 3); ctx.fillRect(x + 1, y + 22, 6, 3); }
+    else { ctx.beginPath(); ctx.moveTo(x + 4, y + 8); ctx.lineTo(x + 7, y + 20); ctx.lineTo(x + 1, y + 20); ctx.closePath(); ctx.fill(); ctx.fillRect(x + 1, y + 30, 6, 2); }
+    ctx.fillStyle = 'rgba(255,255,255,0.18)';
+    ctx.fillRect(x + 1, y + 1, 2, 42);
+  });
+
+  // --- framed black-and-white skate photos (Liggy's own), left of the keeper
+  const photo = (x, y, w, h, variant) => {
+    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(x + 2, y + 2, w, h);
+    ctx.fillStyle = '#16141a'; ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = '#d9d6cf'; ctx.fillRect(x + 2, y + 2, w - 4, h - 4);
+    ctx.fillStyle = '#8a8883'; ctx.fillRect(x + 2, y + 2, w - 4, (h - 4) * 0.55);
+    ctx.fillStyle = '#4a4946';
+    if (variant === 0) {            // brick bank with a skater mid-air
+      ctx.beginPath(); ctx.moveTo(x + 2, y + h - 2); ctx.lineTo(x + w - 2, y + h * 0.5); ctx.lineTo(x + w - 2, y + h - 2); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#111'; ctx.fillRect(x + w * 0.45, y + h * 0.28, 3, 6); ctx.fillRect(x + w * 0.38, y + h * 0.4, 8, 1.5);
+    } else {                        // stairs + a rail
+      for (let s = 0; s < 4; s++) ctx.fillRect(x + 3 + s * 4, y + h - 4 - s * 3, w - 6 - s * 4, 3);
+      ctx.fillStyle = '#111'; ctx.fillRect(x + 4, y + h * 0.3, 10, 1.5);
+    }
+  };
+  photo(132, 44, 24, 30, 0);
+  photo(160, 52, 20, 22, 1);
+
+  // --- punk gig-flyer collage, right of the keeper (x 238..318)
+  const flyer = (x, y, w, h, bg, ink, v) => {
+    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(x + 1, y + 2, w, h);
+    ctx.fillStyle = bg; ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = ink;
+    if (v === 0) { ctx.fillRect(x + 3, y + 3, w - 6, 5); ctx.fillRect(x + 3, y + 11, w - 10, 2); ctx.beginPath(); ctx.arc(x + w / 2, y + h - 9, 5, 0, Math.PI * 2); ctx.fill(); }
+    else if (v === 1) { ctx.beginPath(); ctx.moveTo(x + w / 2, y + 4); ctx.lineTo(x + w - 4, y + h * 0.65); ctx.lineTo(x + 4, y + h * 0.65); ctx.closePath(); ctx.fill(); ctx.fillRect(x + 3, y + h - 6, w - 6, 3); }
+    else { for (let r = 0; r < 3; r++) ctx.fillRect(x + 3, y + 4 + r * 7, w - 6 - (r % 2) * 5, 4); ctx.fillRect(x + 3, y + h - 7, w - 6, 3); }
+    ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillRect(x + w / 2 - 3, y - 2, 6, 4);
+  };
+  flyer(240, 40, 20, 28, PAPER, '#16141a', 0);
+  flyer(264, 38, 22, 26, YL, '#16141a', 1);
+  flyer(290, 42, 20, 28, '#ec008c', PAPER, 2);
+  flyer(250, 72, 20, 20, BL, '#16141a', 2);
+  flyer(276, 70, 22, 22, '#16141a', YL, 0);
+
+  // --- tee rail + shoe and wheel shelves, upper right (x 330..412)
+  ctx.fillStyle = '#9a9aa2'; ctx.fillRect(330, 40, 82, 3);
+  ctx.fillStyle = '#6a6a72'; ctx.fillRect(330, 40, 3, 6); ctx.fillRect(409, 40, 3, 6);
+  const tee = (x, y, col, ink, shape) => {
+    ctx.fillStyle = '#9a9aa2'; ctx.fillRect(x + 8, y - 3, 2, 4);
+    ctx.fillStyle = col;
+    ctx.fillRect(x, y + 4, 18, 16); ctx.fillRect(x - 5, y + 2, 7, 8); ctx.fillRect(x + 16, y + 2, 7, 8);
+    ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.fillRect(x + 6, y + 2, 6, 3);
+    ctx.fillStyle = ink;
+    if (shape === 0) { ctx.beginPath(); ctx.arc(x + 9, y + 12, 4, 0, Math.PI * 2); ctx.fill(); }
+    else if (shape === 1) { ctx.fillRect(x + 4, y + 8, 10, 3); ctx.fillRect(x + 4, y + 13, 10, 3); }
+    else { ctx.beginPath(); ctx.moveTo(x + 9, y + 7); ctx.lineTo(x + 14, y + 15); ctx.lineTo(x + 4, y + 15); ctx.closePath(); ctx.fill(); }
+  };
+  tee(338, 46, '#1e1e24', BL, 0);
+  tee(362, 46, '#f2ead6', '#16141a', 1);
+  tee(386, 46, '#2e6fbd', YL, 2);
+  // wheel shelf
+  ctx.fillStyle = '#5a3d22'; ctx.fillRect(330, 76, 82, 3);
+  [['#fbe600', 0], ['#55bbee', 1], ['#ec008c', 2], ['#f2ead6', 3], ['#d63a3a', 4], ['#2f9e5a', 5]].forEach(([c, i]) => {
+    const wx = 338 + i * 13;
+    ctx.fillStyle = c; ctx.beginPath(); ctx.arc(wx, 71, 5.5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.beginPath(); ctx.arc(wx, 71, 1.8, 0, Math.PI * 2); ctx.fill();
+  });
+  // shoe shelf
+  ctx.fillStyle = '#5a3d22'; ctx.fillRect(330, 94, 82, 3);
+  [['#f2ead6', '#d63a3a'], ['#1d1d22', '#fbe600'], ['#2e6fbd', '#f2ead6'], ['#d63a3a', '#1d1d22']].forEach(([c1, c2], i) => {
+    const sx = 334 + i * 20, sy = 84;
+    ctx.fillStyle = c1; ctx.fillRect(sx, sy + 2, 16, 7); ctx.fillRect(sx + 9, sy, 7, 5);
+    ctx.fillStyle = c2; ctx.fillRect(sx, sy + 8, 17, 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(sx + 2, sy + 3, 5, 1);
+  });
+
+  // --- counter (table is row 3): grip tape + a hardware jar left of Liggy,
+  // a tee stack, a camcorder and zines to his right
+  [[134, '#1c1c20'], [150, '#1c1c20'], [166, '#2a2a30']].forEach(([x, c]) => {
+    ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(x + 1, 3 * TILE + 3, 12, 4);
+    ctx.fillStyle = c; ctx.fillRect(x, 3 * TILE - 12, 12, 16);
+    ctx.fillStyle = '#44444c'; ctx.fillRect(x, 3 * TILE - 12, 12, 3);
+    ctx.fillStyle = YL; ctx.fillRect(x + 2, 3 * TILE - 6, 8, 3);
+  });
+  // hardware jar (bolts, bearings)
+  ctx.fillStyle = 'rgba(190,225,240,0.5)'; ctx.fillRect(180, 3 * TILE - 10, 10, 14);
+  ctx.fillStyle = '#9a9aa2'; ctx.fillRect(179, 3 * TILE - 12, 12, 3);
+  ctx.fillStyle = '#c8c8d0'; ctx.fillRect(182, 3 * TILE - 2, 3, 3); ctx.fillRect(186, 3 * TILE - 5, 3, 3);
+  // tee stack
+  [['#1e1e24', BL], ['#f2ead6', '#16141a'], ['#2e6fbd', YL], ['#fbe600', '#16141a']].forEach(([col, ink], i) => {
+    const y = 3 * TILE - 2 - i * 5;
+    ctx.fillStyle = col; ctx.fillRect(238, y, 28, 5);
+    ctx.fillStyle = ink; ctx.fillRect(244, y + 1, 8, 2);
+  });
+  // camcorder (Liggy's VX-style cam)
+  ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(274, 3 * TILE + 3, 26, 4);
+  ctx.fillStyle = '#1c1c22'; ctx.fillRect(274, 3 * TILE - 14, 24, 16);
+  ctx.fillStyle = '#2e2e38'; ctx.fillRect(276, 3 * TILE - 12, 14, 12);
+  ctx.fillStyle = '#0a0a0e'; ctx.beginPath(); ctx.arc(291, 3 * TILE - 6, 6, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#3a4a6a'; ctx.beginPath(); ctx.arc(291, 3 * TILE - 6, 3, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#d63a3a'; ctx.fillRect(278, 3 * TILE - 16, 3, 3);
+  // zine pile
+  [['#f2ead6', 0], ['#ec008c', 2], ['#fbe600', 1]].forEach(([c, o], i) => {
+    ctx.fillStyle = c; ctx.fillRect(304 + o, 3 * TILE - 2 - i * 4, 14, 5);
+    ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(306 + o, 3 * TILE - 1 - i * 4, 6, 1);
+  });
+
+  // --- plaques over the four crates: (1,4) (1,6) on the left, (12,4) (12,6) right
+  const cratePlaque = (cx, y, label, c1, c2) => {
+    const w = 46, h = 12, x = cx - w / 2;
+    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(x + 1, y + 2, w, h);
+    ctx.fillStyle = DK; ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = c1; ctx.fillRect(x, y + h - 3, w / 2, 3);
+    ctx.fillStyle = c2; ctx.fillRect(x + w / 2, y + h - 3, w / 2, 3);
+    ctx.fillStyle = PAPER;
+    ctx.font = 'bold 7px monospace';
+    ctx.fillText(label, cx, y + 7);
+  };
+  cratePlaque(1 * TILE + 16, 4 * TILE - 16, 'THRASH', BL, YL);
+  cratePlaque(1 * TILE + 16, 6 * TILE - 16, 'HARDCORE', YL, BL);
+  cratePlaque(12 * TILE + 16, 4 * TILE - 16, 'SKATE PUNK', BL, YL);
+  cratePlaque(12 * TILE + 16, 6 * TILE - 16, 'CROSSOVER', YL, BL);
+
+  // ------------------------------------------------------------------ ramps
+  const shadowE = (cx, cy, rx) => {
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.beginPath(); ctx.ellipse(cx, cy, rx, 6, 0, 0, Math.PI * 2); ctx.fill();
+  };
+  const PLY = '#c79a5e', PLY_D = '#8d6a3a', PLY_L = '#e0b87a';
+
+  // FUNBOX on tiles (3,6)+(4,6): a flat-topped box with banked sides, a metal
+  // ledge along the top and TALENT blue panels
+  {
+    const x0 = 3 * TILE, y0 = 6 * TILE, w = 2 * TILE, b = y0 + TILE;   // bottom edge y=224
+    ctx.fillStyle = FLOOR; ctx.fillRect(x0, y0, w, TILE);
+    shadowE(x0 + w / 2, b - 1, 36);
+    const topY = b - 28;
+    // banked left and right sides
+    ctx.fillStyle = PLY_D;
+    ctx.beginPath(); ctx.moveTo(x0 + 1, b - 2); ctx.lineTo(x0 + 14, topY); ctx.lineTo(x0 + 14, b - 2); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(x0 + w - 1, b - 2); ctx.lineTo(x0 + w - 14, topY); ctx.lineTo(x0 + w - 14, b - 2); ctx.closePath(); ctx.fill();
+    // box body
+    ctx.fillStyle = '#2e6fbd';
+    ctx.fillRect(x0 + 14, topY, w - 28, 28 - 2);
+    ctx.fillStyle = '#245a9a';
+    ctx.fillRect(x0 + 14, topY + 14, w - 28, 12);
+    ctx.fillStyle = YL;
+    ctx.fillRect(x0 + 14, b - 6, w - 28, 3);                      // yellow kick stripe
+    // top deck + metal ledge
+    ctx.fillStyle = PLY_L; ctx.fillRect(x0 + 12, topY - 3, w - 24, 4);
+    ctx.fillStyle = '#c8c8d0'; ctx.fillRect(x0 + 12, topY - 4, w - 24, 2);
+    ctx.fillStyle = '#6a6a72'; ctx.fillRect(x0 + 12, topY - 2, w - 24, 1);
+    // stenciled TALENT
+    ctx.font = 'bold 8px monospace';
+    ctx.fillStyle = YL; ctx.fillText('TALENT', x0 + w / 2, topY + 12);
+  }
+
+  // BANK RAMP on tiles (1,8)+(2,8): a plywood wedge rising to the left wall
+  {
+    const x0 = 1 * TILE, y0 = 8 * TILE, w = 2 * TILE, b = y0 + TILE;   // bottom y=288
+    ctx.fillStyle = FLOOR; ctx.fillRect(x0, y0, w, TILE);
+    shadowE(x0 + w / 2, b - 1, 36);
+    ctx.fillStyle = PLY_D;
+    ctx.beginPath(); ctx.moveTo(x0 + w, b - 2); ctx.lineTo(x0, b - 2); ctx.lineTo(x0, b - 30); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = PLY;
+    ctx.beginPath(); ctx.moveTo(x0 + w, b - 4); ctx.lineTo(x0 + 2, b - 4); ctx.lineTo(x0 + 2, b - 28); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = PLY_L;
+    ctx.beginPath(); ctx.moveTo(x0 + 2, b - 28); ctx.lineTo(x0 + 6, b - 28); ctx.lineTo(x0 + w, b - 4); ctx.lineTo(x0 + w - 5, b - 4); ctx.closePath(); ctx.fill();
+    // grip-tape strip + stickers
+    ctx.fillStyle = '#1c1c20';
+    ctx.beginPath(); ctx.moveTo(x0 + 12, b - 8); ctx.lineTo(x0 + 12, b - 20); ctx.lineTo(x0 + 40, b - 8); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#ec008c'; ctx.fillRect(x0 + 6, b - 14, 6, 4);
+    ctx.fillStyle = BL; ctx.fillRect(x0 + 16, b - 9, 5, 3);
+  }
+
+  // QUARTER PIPE on tiles (11,8)+(12,8): a curved transition up the right
+  // wall with a metal coping edge
+  {
+    const x0 = 11 * TILE, y0 = 8 * TILE, w = 2 * TILE, b = y0 + TILE, H = 48;
+    ctx.fillStyle = FLOOR; ctx.fillRect(x0, y0, w, TILE);
+    shadowE(x0 + w / 2, b - 1, 36);
+    const prof = (t) => b - 3 - H * (1 - Math.sqrt(Math.max(0, 1 - t * t)));
+    ctx.fillStyle = PLY_D;
+    ctx.beginPath(); ctx.moveTo(x0, b - 3);
+    for (let i = 0; i <= 16; i++) ctx.lineTo(x0 + (w * i) / 16, prof(i / 16));
+    ctx.lineTo(x0 + w, b - 3); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = PLY; ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let i = 0; i <= 16; i++) { const px2 = x0 + (w * i) / 16, py2 = prof(i / 16); if (i) ctx.lineTo(px2, py2 + 3); else ctx.moveTo(px2, py2 + 3); }
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(0,0,0,0.22)'; ctx.lineWidth = 1;
+    for (let i = 2; i < 16; i += 3) { const t = i / 16; ctx.beginPath(); ctx.moveTo(x0 + w * t, prof(t) + 4); ctx.lineTo(x0 + w * t, b - 4); ctx.stroke(); }
+    // coping + a spray-painted blue stripe
+    ctx.fillStyle = '#c8c8d0'; ctx.fillRect(x0 + w - 4, b - 3 - H - 1, 4, 4);
+    ctx.fillStyle = '#9a9aa2'; ctx.fillRect(x0 + w - 4, b - 3 - H + 3, 4, 2);
+    ctx.fillStyle = BL; ctx.fillRect(x0 + 4, b - 9, 38, 3);
+    ctx.fillStyle = YL; ctx.fillRect(x0 + 8, b - 14, 6, 4);
+  }
+
+  // KICKER on tiles (8,7)+(9,7): a low walkable launch ramp
+  {
+    const x0 = 8 * TILE, y0 = 7 * TILE, w = 2 * TILE;
+    shadowE(x0 + w / 2, y0 + 28, 34);
+    ctx.fillStyle = PLY_D;
+    ctx.beginPath(); ctx.moveTo(x0 + 2, y0 + 26); ctx.lineTo(x0 + w - 2, y0 + 26); ctx.lineTo(x0 + w - 2, y0 + 10); ctx.quadraticCurveTo(x0 + w * 0.5, y0 + 22, x0 + 2, y0 + 25); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = PLY_L; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(x0 + 2, y0 + 24); ctx.quadraticCurveTo(x0 + w * 0.5, y0 + 21, x0 + w - 2, y0 + 8); ctx.stroke();
+    ctx.fillStyle = '#16141a';
+    ctx.beginPath(); ctx.moveTo(x0 + 14, y0 + 22); ctx.quadraticCurveTo(x0 + w * 0.55, y0 + 20, x0 + w - 6, y0 + 11); ctx.lineTo(x0 + w - 6, y0 + 15); ctx.quadraticCurveTo(x0 + w * 0.55, y0 + 24, x0 + 14, y0 + 25); ctx.closePath(); ctx.fill();
+  }
+
+  // a skateboard lying on the floor near the door, and a stray sticker
+  {
+    const bx = 216, by = 268;
+    ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(bx + 1, by + 6, 30, 4);
+    ctx.fillStyle = '#d63a3a'; ctx.fillRect(bx + 4, by, 24, 7);
+    ctx.beginPath(); ctx.arc(bx + 4, by + 3.5, 3.5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(bx + 28, by + 3.5, 3.5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#16141a'; ctx.fillRect(bx + 6, by + 1, 20, 2);
+    ctx.fillStyle = '#f2ead6';
+    [[bx + 8, by + 7], [bx + 22, by + 7]].forEach(([wx, wy]) => { ctx.beginPath(); ctx.arc(wx, wy, 2.2, 0, Math.PI * 2); ctx.fill(); });
+  }
+  ctx.restore();
+}
+
+// TALENT's front: the logo sits up in the roof band (see drawBuildings), and
+// below it a pennant string of blue-and-yellow flags, a few decks hung either
+// side of the door, a neon OPEN in the window, a pair of stage-light par cans
+// on the roofline (Liggy Lights) pulsing in blue/yellow/magenta, a door glow
+// with music notes, and a sandwich board out front. Called from
+// drawSkateparkDecorations() whenever the map has `tlExterior`.
+function drawTalentExterior(time, map) {
+  const f = map.tlExterior;
+  const px = f.x * TILE, py = f.y * TILE, w = f.w * TILE;
+  const BL = '#55bbee', YL = '#fbe600', DK = '#12151c', PAPER = '#f2ead6';
+  // blue/yellow test stripe under the logo
+  for (let i = 0; i < 10; i++) {
+    ctx.fillStyle = i % 2 ? YL : BL;
+    ctx.fillRect(px + i * (w / 10), py + 42, w / 10, 4);
+  }
+  // pennant string across the wall
+  ctx.strokeStyle = '#1c140f'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(px + 2, py + 50); ctx.quadraticCurveTo(px + w / 2, py + 60, px + w - 2, py + 50); ctx.stroke();
+  for (let i = 0; i < 9; i++) {
+    const t = (i + 0.5) / 9;
+    const fx = px + 2 + (w - 4) * t, fy = py + 50 + 10 * 4 * t * (1 - t) * 0.5 * 1.0;
+    ctx.fillStyle = i % 3 === 0 ? BL : (i % 3 === 1 ? YL : '#ec008c');
+    ctx.beginPath(); ctx.moveTo(fx - 4, fy); ctx.lineTo(fx + 4, fy); ctx.lineTo(fx, fy + 8); ctx.closePath(); ctx.fill();
+  }
+  // decks hung on the wall between the windows and the door
+  const hang = (x, y, c1, c2) => {
+    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(x + 1, y + 2, 6, 24);
+    ctx.fillStyle = c1; ctx.fillRect(x, y + 1, 6, 24); ctx.fillRect(x + 1, y, 4, 26);
+    ctx.fillStyle = c2; ctx.fillRect(x + 1, y + 8, 4, 3); ctx.fillRect(x + 1, y + 15, 4, 2);
+  };
+  hang(px + 8, py + 62, '#d63a3a', YL);
+  hang(px + 18, py + 62, '#1d1d22', BL);
+  hang(px + 28, py + 62, '#f2ead6', '#ec008c');
+  hang(px + 124, py + 62, '#2e6fbd', YL);
+  hang(px + 134, py + 62, '#fbe600', '#16141a');
+  hang(px + 144, py + 62, '#2f9e5a', PAPER);
+  // neon OPEN in the right window
+  const flick = Math.sin(time * 17) > 0.96 ? 0.3 : 1;
+  ctx.save();
+  ctx.globalAlpha = 0.95 * flick;
+  ctx.fillStyle = '#0e1a26'; ctx.fillRect(px + 105, py + 86, 14, 6);
+  ctx.strokeStyle = '#ffe600'; ctx.lineWidth = 1;
+  ctx.strokeRect(px + 104.5, py + 85.5, 15, 7);
+  ctx.fillStyle = '#fff48a'; ctx.font = 'bold 5px monospace'; ctx.textAlign = 'center';
+  ctx.fillText('OPEN', px + 112, py + 91);
+  ctx.restore();
+  // stage-light par cans on the roofline
+  const can = (cx, col, ph) => {
+    const pulse = 0.5 + 0.5 * Math.sin(time * 2.4 + ph);
+    ctx.fillStyle = '#23252c'; ctx.fillRect(cx - 6, py - 7, 12, 10);
+    ctx.fillStyle = '#3b3e48'; ctx.fillRect(cx - 6, py - 7, 12, 3);
+    ctx.fillStyle = col.replace('ALPHA', '1'); ctx.fillRect(cx - 4, py + 2, 8, 2);
+    const g = getGlowSprite(26, col);
+    ctx.save(); ctx.globalAlpha = 0.35 + 0.35 * pulse;
+    ctx.drawImage(g, cx - 26, py - 20, 52, 52);
+    ctx.restore();
+  };
+  can(px + 16, 'rgba(85,187,238,ALPHA)', 0);
+  can(px + w - 16, 'rgba(236,0,140,ALPHA)', 2.4);
+  // door glow
+  const dx = f.doorX * TILE + TILE / 2, dy = (f.doorY + 1) * TILE;
+  const glow = getGlowSprite(46, 'rgba(85,187,238,ALPHA)');
+  ctx.save();
+  ctx.globalAlpha = 0.3 + 0.1 * Math.sin(time * 4);
+  ctx.drawImage(glow, dx - 46, dy - 60, 92, 92);
+  ctx.restore();
+  // music notes (there's always a record on in here)
+  ctx.fillStyle = 'rgba(251, 230, 0, 0.9)';
+  ctx.font = 'bold 11px monospace';
+  ctx.textAlign = 'center';
+  for (let i = 0; i < 2; i++) {
+    const ph = (time * 0.45 + i * 0.5) % 1;
+    ctx.globalAlpha = Math.max(0, 1 - ph);
+    ctx.fillText(i === 0 ? '\u266A' : '\u266B', dx + (i === 0 ? -8 : 8) + Math.sin(ph * 6 + i) * 4, dy - 6 - ph * 26);
+  }
+  ctx.globalAlpha = 1;
+  // sandwich board on the grass left of the door
+  const sx = (f.doorX - 1) * TILE + 3, sy = (f.doorY + 1) * TILE + 4;
+  ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.fillRect(sx - 1, sy + 24, 24, 3);
+  ctx.fillStyle = '#3a2410'; ctx.fillRect(sx, sy + 20, 3, 6); ctx.fillRect(sx + 17, sy + 20, 3, 6);
+  ctx.fillStyle = '#5a3d20'; ctx.fillRect(sx - 1, sy - 1, 22, 24);
+  ctx.fillStyle = '#1e1a22'; ctx.fillRect(sx + 1, sy + 1, 18, 20);
+  ctx.font = 'bold 6px monospace';
+  ctx.fillStyle = YL; ctx.fillText('DECKS', sx + 10, sy + 8);
+  ctx.fillStyle = BL; ctx.fillText('WAX', sx + 10, sy + 14);
+  ctx.fillStyle = PAPER; ctx.fillText('FILM', sx + 10, sy + 20);
+}
+
 // CB PRINTS' interior: a small, artsy independent screen printing shop.
 // Misregistered CMYK "CB" / "PRINTS" plaques flank the keeper, a wall of
 // hand-pulled gig posters up on the left, a rail of printed tees on the
@@ -32137,6 +32682,8 @@ keeperImgs.BONTA = bontaImg;
 keeperImgs['QUEEN B'] = queenbImg;
 // ECHO CENTER's keeper, CHAMP -- same idea as BONTA/QUEEN B above.
 keeperImgs.CHAMP = champImg;
+// TALENT's keeper, LIGGY -- same idea as CHAMP above.
+keeperImgs.LIGGY = liggyImg;
 
 function drawAnt(cx, cy, s) {
   // A white ant silhouette (the Anthill Collective mark), drawn on SK1's hat.
