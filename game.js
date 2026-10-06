@@ -10256,6 +10256,22 @@ boxgutsImg.src = 'assets/boxguts.png';
 const travImg = new Image();
 travImg.src = 'assets/trav.png';
 
+// SINNN (S.I.N.siZZle) -- prominent Afrobeat and hip-hop artist, a leader and
+// fixture of the Burlington, VT hip-hop scene since arriving as a UVM student
+// in 2001. Kente-print short-sleeve shirt and matching pants, gold chain,
+// watch, and bright sneakers. Same pre-drawn shop-npc treatment as TRAV,
+// hanging out inside A_DOG SKATE SHOP (see SHOP_NPC_IMAGES below).
+const sinnnImg = new Image();
+sinnnImg.src = 'assets/sinnn.png';
+
+// BIG RYE -- Ryan "Big Rye" LaCross, "The Voice of New England": curator,
+// selecta, host, producer and event promoter, the glue of the Vermont
+// hip-hop scene. Black snapback, black "BIG RYE" crown hoodie, olive cargos,
+// black sneakers. Same pre-drawn shop-npc treatment as TRAV, hanging out
+// inside A_DOG SKATE SHOP (see SHOP_NPC_IMAGES below).
+const bigRyeImg = new Image();
+bigRyeImg.src = 'assets/bigrye.png';
+
 // ES-K -- veteran Burlington hip hop producer, beatmaker, and all-around
 // good human, posted up inside BURLINGTON RECORDS out in the swamp. Same
 // pre-drawn treatment as the rest of the shop npcs above.
@@ -12772,6 +12788,30 @@ const shops = {
           'Skate deck in one hand, sixteen bars in the other -- I don\'t really put either one down.',
           'You want a verse while you shop? Say less. I\'m always ready to spit.',
           'Check them crates while you\'re in here. A-Dog\'s got heat stacked up you wouldn\'t believe.',
+        ] },
+      // SINNN + BIG RYE -- hanging with TRAV on the shop floor at (5,6)/(7,6):
+      // clear of the micStand (7,5), the LEARN ABOUT ANDY plaque (3,6), the
+      // gear tiles (3,3)/(8,3)/(4,7)/(10,7), the crates (1,4)/(1,6)/(12,4)/
+      // (12,6), and the door (6,9)/spawn (6.5,7.5), so the center aisle stays
+      // open. Full pre-drawn images, feet on the floor line -- see
+      // SHOP_NPC_IMAGES/drawShopImageNpcs.
+      { id: 'sinnn', tx: 5, ty: 6, name: 'SINNN', sprite: 'sinnn', spriteH: 84,
+        lines: [
+          'Sinnn. Some people know me as S.I.N.siZZle. Afrobeat and hip hop, mixed together -- same heartbeat, different accents.',
+          'I landed in Burlington in 2001 as a UVM student, right around when VT Union and The Aztext were coming up. Never left. This scene became home.',
+          'I hopped on tracks around the VT Union camp -- got on some joints with Nastee -- but I always moved as my own artist. Solo, independent, down to collaborate with anybody who\'s serious.',
+          'Afrobeat gives you a groove you can\'t fake. Put it under a hard hip hop verse and the whole room moves. That\'s the formula.',
+          'Twenty-plus years deep in Burlington hip hop. I\'ve seen a lot of cyphers, a lot of shows, a lot of rooms. This skate shop? Top tier.',
+          'Trav\'s got the bars, Rye\'s got the voice, and I brought the drip. Honestly we could just run a show right here on the shop floor.',
+        ] },
+      { id: 'bigrye', tx: 7, ty: 6, name: 'BIG RYE', sprite: 'bigrye', spriteH: 84,
+        lines: [
+          'Big Rye. Ryan LaCross to the family, "The Voice of New England" to the mic. Pleased to meet you.',
+          'I wear a lot of hats. Curator, selecta, host, producer, promoter -- whatever the scene needs that night, I\'m on it.',
+          'I don\'t chase the spotlight. I play my position -- behind the scenes, pushing Vermont culture forward. That\'s the job and I love it.',
+          'I\'ve been around long enough to see a few generations of Vermont hip hop come through. Old-school underground heads and the new wave -- I try to be the bridge.',
+          'You\'ll catch me at the Vermont Reggae Festival -- production, photography, hosting, whatever they need. Good people, good music, good vibes.',
+          'Sinnn\'s a Burlington legend and Trav\'s always ready to spit. When these two are around, I just get on the mic and let the room do the rest.',
         ] },
     ],
     // Portrait art (see adogImg/keeperImgs['A-DOG']) takes over rendering
@@ -32261,7 +32301,7 @@ function drawKeeper(k) {
 // anchored to the tile's floor line — no procedural fallback, since there's
 // no simple shape that stands in for this art; it just waits for the image
 // to finish loading.
-const SHOP_NPC_IMAGES = { kanga: kangaImg, truth: truthImg, bill: billImg, rza: rzaImg, gza: gzaImg, zach: zachImg, humble: humbleImg, hicks: hicksImg, mavstar: mavstarImg, boxguts: boxgutsImg, trav: travImg, esk: esKImg, krishna: krishnaImg, arkaiik: arkaiikImg, ghost: ghostImg, hagen: hagenImg, precisemc: preciseMcImg };
+const SHOP_NPC_IMAGES = { kanga: kangaImg, truth: truthImg, bill: billImg, rza: rzaImg, gza: gzaImg, zach: zachImg, humble: humbleImg, hicks: hicksImg, mavstar: mavstarImg, boxguts: boxgutsImg, trav: travImg, sinnn: sinnnImg, bigrye: bigRyeImg, esk: esKImg, krishna: krishnaImg, arkaiik: arkaiikImg, ghost: ghostImg, hagen: hagenImg, precisemc: preciseMcImg };
 
 function drawShopImageNpcs(map) {
   if (!map.npcs) return;
