@@ -11698,6 +11698,20 @@ function makeSkatepark() {
   for (let y = BB_Y; y < BB_Y + BB_H; y++)
     for (let x = BB_X; x < BB_X + BB_W; x++) { g[y][x] = 'q'; bbTiles.push([x, y]); }
 
+  // --- ANDY A_DOG WILLIAMS SKATEPARK SIGN -- a big roadside-style park sign
+  // on the open grass along the north side of the park (8 x 3 tiles: x 10-17,
+  // rows 12-14), between A_DOG SKATE SHOP and the top of the walkway ring and
+  // just below the promenade. Modeled on the real sign: dark brown panel with
+  // a green/orange/blue stripe across the top, "Andy A_Dog Williams" over a
+  // big "Skatepark", and a round logo on the right, on two posts. 'q' tiles
+  // are SOLID and render as plain grass -- the sign is a cosmetic sprite
+  // painted by drawAndyAdogSign() (it stays inside its footprint so nothing
+  // can walk "behind" it). Carved AFTER the tree sprinkle so it wins over
+  // any tree.
+  const SIGN_X = 10, SIGN_Y = 12, SIGN_W = 8, SIGN_H = 3;
+  for (let y = SIGN_Y; y < SIGN_Y + SIGN_H; y++)
+    for (let x = SIGN_X; x < SIGN_X + SIGN_W; x++) g[y][x] = 'q';
+
   // --- a few outdoor dig spots scattered around the promenade/plaza ring,
   // same "sit right on a guaranteed-clear path tile" placement swamp's
   // boardwalk crates use. All junk for now (no more of the level's
@@ -11754,6 +11768,7 @@ function makeSkatepark() {
         alsoTiles: bbTiles.filter(([x, y]) => !(x === BB_X + 3 && y === BB_Y)) },
     ],
     skateBillboard: { x: BB_X, y: BB_Y, w: BB_W, h: BB_H },
+    andyAdogSign: { x: SIGN_X, y: SIGN_Y, w: SIGN_W, h: SIGN_H },
     basketballCourt: { x: COURT_X, y: COURT_Y, w: COURT_W, h: COURT_H },
     tacoTruck: { x: TACO_X, y: TACO_Y, w: TACO_W, h: TACO_H },
     adogSkateShopDoor: { x: ADOG_DOOR_X, y: ADOG_DOOR_Y },
@@ -23784,6 +23799,88 @@ function drawSkateparkDecorations(time, map, camX, camY) {
   if (map.echoExterior) drawEchoCenterExterior(time, map);
   if (map.basketballCourt) drawBasketballCourt(map.basketballCourt, camX, camY);
   if (map.tacoTruck) drawTacoTruck(time, map, camX, camY);
+  if (map.andyAdogSign) drawAndyAdogSign(map, camX, camY);
+}
+
+// ANDY A_DOG WILLIAMS SKATEPARK sign -- a big park sign on the grass along the
+// north side of the skatepark (see `andyAdogSign` in makeSkatepark()). Drawn to
+// match the real sign: two square posts (grey concrete top, rust-brown base)
+// holding a dark-brown panel with a thin green / orange / blue stripe along
+// the top edge, "Andy" + bold "A_Dog" + "Williams" on one line, a big bold
+// "Skatepark" under it, and a round white "b" logo at the right. Purely
+// visual -- collision comes from the 'q' grid tiles. The whole thing stays
+// inside its tile footprint so the player is never drawn "behind" it.
+function drawAndyAdogSign(map, camX, camY) {
+  const c = map.andyAdogSign;
+  const X = c.x * TILE, Y = c.y * TILE, W = c.w * TILE, H = c.h * TILE;
+  if (X > camX + VIEW_W + 40 || X + W < camX - 40 || Y > camY + VIEW_H + 40 || Y + H < camY - 40) return;
+  ctx.save();
+
+  // shadows on the grass (sign's shadow falls toward the viewer, like the photo)
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.fillRect(X + 14, Y + H - 8, W - 28, 6);
+
+  // posts
+  const panX = X + 6, panY = Y + 4, panW = W - 12, panH = 62;
+  const postW = 10;
+  for (const px of [X + 18, X + W - 18 - postW]) {
+    ctx.fillStyle = '#8d8a84';                         // weathered concrete / steel
+    ctx.fillRect(px, panY + panH - 2, postW, Y + H - 6 - (panY + panH - 2));
+    ctx.fillStyle = '#6e3a24';                         // rust-brown base block
+    ctx.fillRect(px, Y + H - 22, postW, 16);
+    ctx.fillStyle = '#4a2416';
+    ctx.fillRect(px + postW - 3, Y + H - 22, 3, 16);
+    ctx.fillStyle = '#5a5852';
+    ctx.fillRect(px - 2, Y + H - 8, postW + 4, 4);    // footing
+  }
+  // posts also run up behind the panel edges, like the photo
+  for (const px of [X + 18, X + W - 18 - postW]) {
+    ctx.fillStyle = '#8d8a84';
+    ctx.fillRect(px, panY - 2, postW, panH + 4);
+    ctx.fillStyle = '#6f6c66';
+    ctx.fillRect(px + postW - 3, panY - 2, 3, panH + 4);
+  }
+
+  // panel
+  ctx.fillStyle = '#3b2b25';
+  ctx.fillRect(panX, panY, panW, panH);
+  ctx.fillStyle = '#4a342b';
+  ctx.fillRect(panX + 2, panY + 6, panW - 4, panH - 8);
+  // top stripes: green, orange, blue
+  ctx.fillStyle = '#6cae3e'; ctx.fillRect(panX, panY, panW, 3);
+  ctx.fillStyle = '#d9722b'; ctx.fillRect(panX, panY + 3, panW, 2);
+  ctx.fillStyle = '#3e6fb5'; ctx.fillRect(panX, panY + 5, panW, 1);
+  // thin metal frame
+  ctx.strokeStyle = '#2a1e1a'; ctx.lineWidth = 1;
+  ctx.strokeRect(panX + 0.5, panY + 0.5, panW - 1, panH - 1);
+
+  // lettering
+  ctx.textBaseline = 'alphabetic';
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#f2ece4';
+  const lx = panX + 12;
+  ctx.font = '11px sans-serif';
+  ctx.fillText('Andy', lx, panY + 24);
+  let ax = lx + ctx.measureText('Andy ').width;
+  ctx.font = 'bold 11px sans-serif';
+  ctx.fillText('A_Dog', ax, panY + 24);
+  ax += ctx.measureText('A_Dog ').width;
+  ctx.font = '11px sans-serif';
+  ctx.fillText('Williams', ax, panY + 24);
+  ctx.font = 'bold 26px sans-serif';
+  ctx.fillText('Skatepark', lx, panY + 51);
+
+  // round logo (white ring with a bold "b") on the right
+  const lgx = panX + panW - 30, lgy = panY + 40, lgr = 13;
+  ctx.strokeStyle = '#f2ece4'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.arc(lgx, lgy, lgr, 0, Math.PI * 2); ctx.stroke();
+  ctx.fillStyle = '#f2ece4';
+  ctx.font = 'bold 20px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('b', lgx, lgy + 7);
+  ctx.textAlign = 'left';
+
+  ctx.restore();
 }
 
 // TACO TRUCK ALL STARS -- a graffiti-painted box truck parked on the grass
