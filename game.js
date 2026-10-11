@@ -1226,6 +1226,13 @@ const MINIGAME_ACTIONS = {
   clawmachine: () => openClawMachineApp(),
   beatjam: () => enterMinigame(createBeatJamModeSelect()),
   scratchdj: () => enterMinigame(createScratchDJModeSelect()),
+  // Turntablist -- "SCRATCH ROUTINE", a hands-on turntable mini-game on the
+  // decks inside A_DOG SKATE SHOP (see the `adogskateshop` shop's
+  // `minigames` list). Drag the platter / hold the arrows to scratch, chop
+  // the crossfader, and perform a scratch-notation routine. Everything
+  // (beat, scratch sample, visuals) is generated in the browser -- no assets,
+  // no network -- so it plays the same offline. See createTurntablistGame().
+  turntablist: () => enterMinigame(createTurntablistGame()),
   // Tightrope Walk -- the big-top's other marquee stunt, tucked into THE
   // CHURCH interior (see the `church` shop's `minigames` list). Same
   // createModeSelectMenu() shape as darts/beat match/etc.
@@ -1703,6 +1710,8 @@ const MINIGAME_TROPHIES = [
   // personalBests/the trophy case here.
   { id: 'scratchdj', label: 'Freestyle Scratch-DJ', unit: 'pts',
     flavor: 'Two needles, two hands, no time to think about either.' },
+  { id: 'turntablist', label: 'Turntablist Routine', unit: 'pts',
+    flavor: 'Grab the platter, chop the fader, and nail the whole routine.' },
   // Penalty Kicks moved to a full standalone web app (see
   // MINIGAME_ACTIONS.penaltyshootout/openPenaltyKingsApp() below), so like
   // the other bundled iframe apps (chess, mini golf, VT Dirt, etc.) it
@@ -8748,6 +8757,706 @@ function createScratchDJGame() {
   };
 }
 
+// ===========================================================================
+// TURNTABLIST -- "SCRATCH ROUTINE", the mini game on the decks inside A_DOG
+// SKATE SHOP (see the `adogskateshop` shop's `minigames` list).
+//
+// Nothing else in this file plays like it. Beat Match / Beat Jam / Mic Drop /
+// Scratch-DJ are all "hit a key when a marker lines up" games. This one is a
+// small working turntable: you physically *drag the platter* (mouse/touch --
+// or hold LEFT/RIGHT on a keyboard) and the record's audio really speeds up,
+// slows down, stops and runs backwards under your hand, and you chop the
+// crossfader (hold E / SPACE / Q, or the on-screen CUT pad) to make it stutter.
+// A real scratch-notation sheet scrolls past -- platter strokes up top, fader
+// cuts underneath, exactly how scratch routines are written down -- and you
+// perform the routine: BABY SCRATCH, 8TH BABIES, TRANSFORMS, TEARS, SCRIBBLE,
+// then a FLARE FINALE. There's a free WARM-UP deck first so you can just play.
+//
+// Details that make it feel like a real deck:
+//   * One revolution of the 45rpm record == two beats at 90 BPM, so left alone
+//     the sample loops in time with the beat.
+//   * SLIP MODE: while you're scratching, the "real" record keeps spinning
+//     underneath; let go and the sample snaps back onto the beat.
+//   * Reverse playback uses a second, reversed copy of the sample buffer
+//     (Web Audio's playbackRate can't go negative).
+//
+// 100% OFFLINE: no files, no network, no fonts. The beat (kick/snare/hats/
+// bass) and the scratch sample (a formant-synthesised "huh... WAH" vocal chop
+// with a couple of hat ticks) are generated in the browser with the Web Audio
+// API the rest of the game already uses (the shared `music.ctx`). Visuals are
+// plain canvas primitives. If Web Audio is unavailable the routine still runs
+// silently off the system clock.
+// ===========================================================================
+const TT_BPM = 90;
+const TT_BEAT = 60 / TT_BPM;               // 0.667s
+const TT_STEP = TT_BEAT / 4;               // one 16th note
+const TT_SAMPLE_LEN = TT_BEAT * 2;         // one 45rpm revolution = 2 beats
+const TT_OMEGA = (Math.PI * 2) / TT_SAMPLE_LEN; // rad/s at normal speed
+const TT_TECH_STEPS = 32;                  // every technique lasts 2 bars
+
+// [step, kind, holdSteps]  kind: 'P' push (forward) | 'L' pull (back) | 'C' fader cut
+const TT_ROUTINE = [
+  { name: 'BABY SCRATCH', blurb: 'Push, pull -- one stroke on every beat', notes: [
+    [0,'P'],[4,'L'],[8,'P'],[12,'L'],[16,'P'],[20,'L'],[24,'P'],[28,'L'] ] },
+  { name: '8TH-NOTE BABIES', blurb: 'Double time -- keep your hand loose', notes: [
+    [0,'P'],[2,'L'],[4,'P'],[6,'L'],[8,'P'],[10,'L'],[12,'P'],[14,'L'],
+    [16,'P'],[18,'L'],[20,'P'],[22,'L'],[24,'P'],[26,'L'],[28,'P'],[30,'L'] ] },
+  { name: 'TRANSFORMS', blurb: 'Keep the platter moving, chop the fader', notes: [
+    [0,'P',7],[2,'C'],[4,'C'],[6,'C'],[8,'L',7],[10,'C'],[12,'C'],[14,'C'],
+    [16,'P',7],[17,'C'],[19,'C'],[21,'C'],[24,'L',7],[25,'C'],[27,'C'],[29,'C'] ] },
+  { name: 'TEARS', blurb: 'Two quick pulls, then a push', notes: [
+    [0,'L'],[2,'L'],[4,'P'],[8,'L'],[10,'L'],[12,'P'],
+    [16,'L'],[18,'L'],[20,'P'],[24,'L'],[26,'L'],[28,'P'] ] },
+  { name: 'SCRIBBLE', blurb: 'Shake it -- four fast strokes at a time', notes: [
+    [0,'P'],[1,'L'],[2,'P'],[3,'L'],[8,'P'],[9,'L'],[10,'P'],[11,'L'],
+    [16,'P'],[17,'L'],[18,'P'],[19,'L'],[24,'P'],[25,'L'],[26,'P'],[27,'L'] ] },
+  { name: 'FLARE FINALE', blurb: 'Everything at once -- bring it home', notes: [
+    [0,'P',5],[2,'C'],[4,'C'],[6,'L'],[8,'P'],[9,'C'],[10,'L'],[11,'C'],[12,'P',3],[14,'C'],
+    [16,'L',5],[18,'C'],[20,'C'],[22,'P'],[24,'L'],[25,'C'],[26,'P'],[27,'C'],[28,'L',3],[30,'C'] ] },
+];
+
+// Built once per page load and reused (the sample is deterministic).
+let ttSampleCache = null;
+function ttBuildSample(ac) {
+  if (ttSampleCache && ttSampleCache.sr === ac.sampleRate) return ttSampleCache;
+  const sr = ac.sampleRate, n = Math.floor(TT_SAMPLE_LEN * sr);
+  const out = new Float32Array(n);
+  const lerp = (a, b, u) => a + (b - a) * u;
+  const gauss = (x) => Math.exp(-x * x);
+  // two vowel "syllables": a rising "huh" on beat 1 and a falling "WAH" on beat 2
+  const syl = [
+    { t0: 0.02, dur: 0.46, fa: 128, fb: 168, F1: [430, 720], F2: [1450, 1150], hiss: 0.10 },
+    { t0: TT_BEAT + 0.02, dur: 0.52, fa: 205, fb: 98, F1: [780, 520], F2: [1250, 880], hiss: 0.04 },
+  ];
+  syl.forEach((s) => {
+    const i0 = Math.floor(s.t0 * sr), i1 = Math.min(n, Math.floor((s.t0 + s.dur) * sr));
+    let ph = 0;
+    for (let i = i0; i < i1; i++) {
+      const u = (i - i0) / (i1 - i0);
+      const f0 = lerp(s.fa, s.fb, u);
+      ph += (Math.PI * 2 * f0) / sr;
+      const f1 = lerp(s.F1[0], s.F1[1], u), f2 = lerp(s.F2[0], s.F2[1], u);
+      let v = 0;
+      for (let h = 1; h <= 28; h++) {
+        const fh = h * f0;
+        if (fh > 4500) break;
+        const w = gauss((fh - f1) / 130) * 1.0 + gauss((fh - f2) / 220) * 0.55 + 0.05;
+        v += w * Math.sin(h * ph) / Math.sqrt(h);
+      }
+      const env = Math.pow(Math.sin(Math.PI * Math.min(1, u)), 0.55) * (1 - u * 0.25);
+      out[i] += v * env * 0.22 + (Math.random() * 2 - 1) * s.hiss * env * 0.3;
+    }
+  });
+  // two crisp hat-like ticks so scratches have a percussive "chirp" to them
+  [TT_BEAT * 0.5, TT_BEAT * 1.5].forEach((t0) => {
+    const i0 = Math.floor(t0 * sr), len = Math.floor(0.07 * sr);
+    let prev = 0;
+    for (let k = 0; k < len && i0 + k < n; k++) {
+      const nz = Math.random() * 2 - 1, hp = nz - prev; prev = nz;
+      out[i0 + k] += hp * Math.exp(-k / (len * 0.28)) * 0.38;
+    }
+  });
+  let peak = 0;
+  for (let i = 0; i < n; i++) peak = Math.max(peak, Math.abs(out[i]));
+  const g = peak > 0 ? 0.85 / peak : 1;
+  const fwd = ac.createBuffer(1, n, sr), rev = ac.createBuffer(1, n, sr);
+  const fd = fwd.getChannelData(0), rd = rev.getChannelData(0);
+  for (let i = 0; i < n; i++) { fd[i] = out[i] * g; rd[n - 1 - i] = fd[i]; }
+  ttSampleCache = { sr, fwd, rev };
+  return ttSampleCache;
+}
+
+function createTurntablistGame() {
+  const OK_W = 0.21, GOOD_W = 0.13, PERF_W = 0.07;   // timing windows (seconds)
+  const STROKE_LAG = 0.05;                            // platter ramp-up latency
+  const PLAYHEAD_X = 210, PPS = 190;                  // notation scroll
+  const PANEL = { x: 30, y: 96, w: 900, h: 150 };
+  const PLATTER = { x: 255, y: 402, r: 128 };
+  const CUTPAD = { x: 418, y: 402, w: 124, h: 74 };
+  const START_BTN = { x: 330, y: 138, w: 300, h: 56 };
+  const RETRY_BTN = { x: 250, y: 410, w: 200, h: 44 };
+  const LEAVE_BTN = { x: 510, y: 410, w: 200, h: 44 };
+  const XBTN = { x: 872, y: 8, w: 76, h: 28 };
+
+  // ---------------- audio ----------------
+  let ac = null;
+  try { music.start(); ac = music.ctx || null; } catch (e) { ac = null; }
+  if (!ac) {
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) ac = new AC();
+    } catch (e) { ac = null; }
+  }
+  if (ac && ac.state === 'suspended') { try { ac.resume(); } catch (e) {} }
+  let master = null, beatBus = null, voiceGain = null, scratchLevel = null, noiseBuf = null;
+  let sample = null, voice = null;
+  if (ac) {
+    try {
+      master = ac.createGain(); master.gain.value = 0.9; master.connect(ac.destination);
+      beatBus = ac.createGain(); beatBus.gain.value = 0.62; beatBus.connect(master);
+      scratchLevel = ac.createGain(); scratchLevel.gain.value = 0.5; scratchLevel.connect(master);
+      const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 9000; lp.connect(scratchLevel);
+      const hp = ac.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 90; hp.connect(lp);
+      voiceGain = ac.createGain(); voiceGain.gain.value = 1; voiceGain.connect(hp);
+      noiseBuf = ac.createBuffer(1, Math.floor(ac.sampleRate * 0.6), ac.sampleRate);
+      const nd = noiseBuf.getChannelData(0);
+      for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+      sample = ttBuildSample(ac);
+    } catch (e) { ac = null; sample = null; }
+  }
+  const hasAudio = () => !!(ac && sample);
+  const t0 = hasAudio() ? ac.currentTime + 0.15 : 0;
+  const perf0 = performance.now();
+  const audioClock = () => hasAudio() ? ac.currentTime - t0 : (performance.now() - perf0) / 1000 - 0.15;
+  // visuals/judging follow what the player can actually *hear* (output latency subtracted)
+  const clock = () => audioClock() - (hasAudio() ? Math.min(0.25, (ac.outputLatency || ac.baseLatency || 0)) : 0);
+
+  function startVoice(dir, pos, rate) {
+    if (!hasAudio()) return;
+    const now = ac.currentTime;
+    const s = ac.createBufferSource();
+    s.buffer = dir > 0 ? sample.fwd : sample.rev;
+    s.loop = true;
+    const g = ac.createGain(); g.gain.value = 0;
+    s.connect(g); g.connect(voiceGain);
+    s.playbackRate.value = Math.max(0, Math.abs(rate));
+    const off = dir > 0 ? pos : (TT_SAMPLE_LEN - pos) % TT_SAMPLE_LEN;
+    s.start(0, Math.max(0, Math.min(TT_SAMPLE_LEN - 0.001, off)));
+    g.gain.setTargetAtTime(1, now, 0.004);
+    if (voice) {
+      const old = voice;
+      old.g.gain.setTargetAtTime(0, now, 0.004);
+      try { old.s.stop(now + 0.04); } catch (e) {}
+    }
+    voice = { s, g, dir };
+  }
+
+  function kick(t) {
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(155, t); o.frequency.exponentialRampToValueAtTime(40, t + 0.13);
+    g.gain.setValueAtTime(0.95, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.34);
+    o.connect(g); g.connect(beatBus); o.start(t); o.stop(t + 0.36);
+  }
+  function noiseHit(t, hpFreq, dur, vol, dest) {
+    const s = ac.createBufferSource(); s.buffer = noiseBuf;
+    const f = ac.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = hpFreq;
+    const g = ac.createGain();
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    s.connect(f); f.connect(g); g.connect(dest || beatBus);
+    s.start(t, Math.random() * 0.3); s.stop(t + dur + 0.02);
+  }
+  function snare(t) {
+    noiseHit(t, 1400, 0.2, 0.55);
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = 'triangle'; o.frequency.setValueAtTime(200, t); o.frequency.exponentialRampToValueAtTime(130, t + 0.1);
+    g.gain.setValueAtTime(0.5, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+    o.connect(g); g.connect(beatBus); o.start(t); o.stop(t + 0.17);
+  }
+  function bass(t, freq) {
+    const o = ac.createOscillator(), f = ac.createBiquadFilter(), g = ac.createGain();
+    o.type = 'sawtooth'; o.frequency.value = freq;
+    f.type = 'lowpass'; f.frequency.setValueAtTime(520, t); f.frequency.exponentialRampToValueAtTime(140, t + 0.3);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.5, t + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.38);
+    o.connect(f); f.connect(g); g.connect(beatBus); o.start(t); o.stop(t + 0.4);
+  }
+  const BASS_BARS = [
+    [[0, 55], [3, 55], [10, 65.41]],
+    [[0, 55], [6, 55], [10, 49]],
+    [[0, 65.41], [3, 65.41], [10, 73.42]],
+    [[0, 49], [6, 49], [10, 55]],
+  ];
+  function scheduleStep(step) {
+    const t = t0 + step * TT_STEP, s = step % 16, bar = Math.floor(step / 16);
+    const even = bar % 2 === 0;
+    if (s === 0 || s === 10 || (!even && s === 6)) kick(t);
+    if (s === 4 || s === 12) snare(t);
+    if (s % 2 === 0) noiseHit(t, 7500, 0.045, s % 4 === 2 ? 0.28 : 0.17);
+    if (s === 15) noiseHit(t, 7500, 0.03, 0.09);
+    if (!even && s === 14) noiseHit(t, 6500, 0.22, 0.2);
+    BASS_BARS[bar % 4].forEach(([bs, f]) => { if (bs === s) bass(t, f); });
+  }
+
+  // ---------------- game state ----------------
+  let phase = 'practice';            // 'practice' | 'countin' | 'routine' | 'done'
+  let nextStep = 0;                  // next beat step to schedule
+  let routineStartStep = 0, routineStartT = 0, endT = 0;
+  let notes = [];
+  let score = 0, combo = 0, bestCombo = 0, hype = 0.3;
+  let counts = { PERFECT: 0, GOOD: 0, OK: 0, MISS: 0 };
+  let popups = [];
+  let bestRecorded = false, isNewBest = false, doneT = 0;
+
+  // turntable state
+  let rate = 1, platterAng = 0, pos = 0, slip = 0, wasTouching = false;   // pos/slip in sample-seconds
+  let grabId = null, lastAng = 0, accum = 0, ptr = { x: 0, y: 0 };
+  let cutId = null, cutLatch = !!(keys['e'] || keys[' '] || keys['q'] || keys['z']);
+  let cutPulse = 0, prevCut = false, cutOn = false;
+  const armed = { '1': true, '-1': true };
+  let deckBAng = 0, dead = false;
+
+  function buildRoutine(startStep) {
+    notes = [];
+    TT_ROUTINE.forEach((tech, ti) => {
+      tech.notes.forEach(([st, kind, hold]) => {
+        notes.push({ T: (startStep + ti * TT_TECH_STEPS + st) * TT_STEP, kind,
+          hold: (hold || 0) * TT_STEP, res: null, ti, holdGood: 0, holdBad: 0, holding: false, holdDone: false });
+      });
+    });
+    notes.sort((a, b) => a.T - b.T);
+    endT = (startStep + TT_ROUTINE.length * TT_TECH_STEPS) * TT_STEP + 2.2;
+  }
+  function startRoutine() {
+    const cur = Math.max(0, Math.floor(clock() / TT_STEP));
+    routineStartStep = (Math.floor((cur + 16) / 16) + 1) * 16;  // 1-2 bars of count-in
+    routineStartT = routineStartStep * TT_STEP;
+    score = 0; combo = 0; bestCombo = 0; hype = 0.3; popups = [];
+    counts = { PERFECT: 0, GOOD: 0, OK: 0, MISS: 0 };
+    bestRecorded = false; isNewBest = false;
+    buildRoutine(routineStartStep);
+    if (hasAudio()) {
+      try { master.gain.cancelScheduledValues(ac.currentTime); master.gain.setTargetAtTime(0.9, ac.currentTime, 0.02); } catch (e) {}
+      nextStep = Math.max(nextStep, Math.ceil((audioClock() + 0.05) / TT_STEP));
+    }
+    phase = 'countin';
+  }
+
+  function popup(text, color, x, y) { popups.push({ text, color, x, y, t: performance.now() }); }
+  function judge(n, d, atX, atY) {
+    const label = d <= PERF_W ? 'PERFECT' : d <= GOOD_W ? 'GOOD' : 'OK';
+    n.res = label; counts[label]++;
+    const base = label === 'PERFECT' ? 100 : label === 'GOOD' ? 60 : 25;
+    score += Math.round(base * (1 + Math.min(combo, 20) * 0.05));
+    combo++; bestCombo = Math.max(bestCombo, combo);
+    hype = Math.min(1, hype + (label === 'PERFECT' ? 0.05 : label === 'GOOD' ? 0.035 : 0.012));
+    popup(label + '!', label === 'PERFECT' ? '#ffe45f' : label === 'GOOD' ? '#8cff5f' : '#9fd8ff', atX, atY);
+    if (n.hold > 0) n.holding = true;
+  }
+  function tryHit(kind, tHit) {
+    let best = null, bd = 9;
+    for (let i = 0; i < notes.length; i++) {
+      const n = notes[i];
+      if (n.res || n.kind !== kind) continue;
+      const d = Math.abs(tHit - n.T);
+      if (d <= OK_W && d < bd) { bd = d; best = n; }
+    }
+    if (best) { judge(best, bd, PLAYHEAD_X + 70, kind === 'C' ? 292 : 270); return true; }
+    return false;
+  }
+
+  // ---------------- pointer ----------------
+  const inRect = (r, x, y) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
+  function toView(e) {
+    const rect = canvas.getBoundingClientRect();
+    return { x: (e.clientX - rect.left) * (canvas.width / rect.width), y: (e.clientY - rect.top) * (canvas.height / rect.height) };
+  }
+  const isActive = () => !dead && state === 'minigame' && activeMinigame === api;
+  function onDown(e) {
+    if (!isActive()) return;
+    const p = toView(e);
+    if (inRect(XBTN, p.x, p.y)) { leave(); return; }
+    if (phase === 'practice' && inRect(START_BTN, p.x, p.y)) { startRoutine(); return; }
+    if (phase === 'done' && doneT > 0.8) {
+      if (inRect(RETRY_BTN, p.x, p.y)) { startRoutine(); return; }
+      if (inRect(LEAVE_BTN, p.x, p.y)) { leave(); return; }
+    }
+    if (inRect(CUTPAD, p.x, p.y) && cutId === null) { cutId = e.pointerId; return; }
+    const dx = p.x - PLATTER.x, dy = p.y - PLATTER.y;
+    if (grabId === null && Math.hypot(dx, dy) <= PLATTER.r + 14) {
+      grabId = e.pointerId; lastAng = Math.atan2(dy, dx); accum = 0; ptr = p;
+    }
+  }
+  function onMove(e) {
+    if (!isActive() || e.pointerId !== grabId) return;
+    const p = toView(e); ptr = p;
+    const dx = p.x - PLATTER.x, dy = p.y - PLATTER.y;
+    if (Math.hypot(dx, dy) < 22) return;            // angle is noise near the spindle
+    const a = Math.atan2(dy, dx);
+    let d = a - lastAng;
+    while (d > Math.PI) d -= Math.PI * 2;
+    while (d < -Math.PI) d += Math.PI * 2;
+    accum += d; lastAng = a;
+  }
+  function onUp(e) {
+    if (e.pointerId === grabId) grabId = null;
+    if (e.pointerId === cutId) cutId = null;
+  }
+  function onKey(e) {
+    if (!isActive()) return;
+    const k = e.key.toLowerCase();
+    if (k === 'enter' && !e.repeat) {
+      if (phase === 'practice') startRoutine();
+      else if (phase === 'done' && doneT > 0.8) startRoutine();
+    }
+  }
+  canvas.addEventListener('pointerdown', onDown);
+  window.addEventListener('pointermove', onMove);
+  window.addEventListener('pointerup', onUp);
+  window.addEventListener('pointercancel', onUp);
+  window.addEventListener('keydown', onKey);
+
+  function leave() {
+    if (dead) return;
+    dead = true;
+    canvas.removeEventListener('pointerdown', onDown);
+    window.removeEventListener('pointermove', onMove);
+    window.removeEventListener('pointerup', onUp);
+    window.removeEventListener('pointercancel', onUp);
+    window.removeEventListener('keydown', onKey);
+    if (hasAudio()) {
+      try {
+        master.gain.setTargetAtTime(0, ac.currentTime, 0.06);
+        if (voice) voice.s.stop(ac.currentTime + 0.4);
+        setTimeout(() => { try { master.disconnect(); } catch (e) {} }, 700);
+      } catch (e) {}
+    }
+    exitMinigame();
+  }
+
+  // ---------------- per-frame ----------------
+  function gradeInfo() {
+    const total = notes.length || 1;
+    const acc = (counts.PERFECT + counts.GOOD * 0.7 + counts.OK * 0.35) / total;
+    if (acc >= 0.9) return { g: 'S', acc, text: 'THE CROWD LOST ITS MIND', color: '#ffe45f' };
+    if (acc >= 0.75) return { g: 'A', acc, text: 'CLEAN SETS, CLEAN CUTS', color: '#8cff5f' };
+    if (acc >= 0.55) return { g: 'B', acc, text: 'SOLID -- KEEP DIGGING', color: '#5fd0ff' };
+    if (acc >= 0.35) return { g: 'C', acc, text: 'THE NEEDLE NEEDS WORK', color: '#ff9f5f' };
+    return { g: 'D', acc, text: 'BACK TO THE WARM-UP DECK', color: '#ff5f7a' };
+  }
+
+  function update(dt) {
+    if (dead) return;
+    dt = Math.min(dt, 0.05);
+    const now = clock();
+
+    // ---- input: platter ----
+    const kl = !!(keys['arrowleft'] || keys['a']), kr = !!(keys['arrowright'] || keys['d']);
+    const keyTouch = (kl !== kr);
+    const touching = grabId !== null || keyTouch;
+    if (grabId !== null) {
+      const raw = (accum / Math.max(dt, 0.001)) / TT_OMEGA; accum = 0;
+      rate += (Math.max(-7, Math.min(7, raw)) - rate) * 0.55;
+    } else {
+      const target = keyTouch ? (kr ? 2.7 : -2.7) : 1;
+      rate += (target - rate) * (1 - Math.exp(-dt / (keyTouch ? 0.04 : 0.09)));
+    }
+    platterAng += rate * TT_OMEGA * dt;
+    deckBAng += TT_OMEGA * dt;
+    const aNow = audioClock();
+    slip = ((aNow % TT_SAMPLE_LEN) + TT_SAMPLE_LEN) % TT_SAMPLE_LEN;   // beat-locked 'real' record position
+    pos = touching ? ((pos + rate * dt) % TT_SAMPLE_LEN + TT_SAMPLE_LEN) % TT_SAMPLE_LEN : slip;
+
+    // ---- input: crossfader cut ----
+    const rawKeyCut = !!(keys['e'] || keys[' '] || keys['q'] || keys['z'] || keys['shift']);
+    if (cutLatch && !rawKeyCut) cutLatch = false;
+    if (interactPressed || scratchPressed) cutPulse = 0.09;
+    cutPulse = Math.max(0, cutPulse - dt);
+    cutOn = (rawKeyCut && !cutLatch) || cutId !== null || cutPulse > 0;
+    const cutEdge = cutOn && !prevCut;
+    prevCut = cutOn;
+
+    // ---- audio: voice follows the platter ----
+    if (hasAudio()) {
+      const tn = ac.currentTime;
+      if (wasTouching && !touching) { rate = 1; pos = slip; startVoice(1, slip, 1); }   // slip mode: snap back onto the beat
+      if (!voice) startVoice(1, pos, rate);
+      const dir = Math.abs(rate) < 0.03 ? voice.dir : (rate > 0 ? 1 : -1);
+      if (dir !== voice.dir) startVoice(dir, pos, rate);
+      else voice.s.playbackRate.setTargetAtTime(Math.abs(rate), tn, 0.008);
+      voiceGain.gain.setTargetAtTime(cutOn ? 0 : 1, tn, 0.004);
+      scratchLevel.gain.setTargetAtTime(touching ? 0.95 : 0.5, tn, 0.05);
+      // beat scheduler (lookahead)
+      while (phase !== 'done' && t0 + nextStep * TT_STEP < tn + 0.25) {
+        scheduleStep(nextStep);
+        if (phase !== 'practice' && nextStep === routineStartStep + TT_ROUTINE.length * TT_TECH_STEPS) {
+          noiseHit(t0 + nextStep * TT_STEP, 3000, 0.9, 0.5); kick(t0 + nextStep * TT_STEP);  // crash to end the set
+        }
+        nextStep++;
+      }
+    }
+    wasTouching = touching;
+
+    // ---- scoring ----
+    if (phase === 'countin' && now >= routineStartT - 0.5) phase = 'routine';
+    if (phase === 'routine' || phase === 'countin') {
+      for (const d of [1, -1]) {
+        if (!touching || rate * d < 0.35) armed[d] = true;
+      }
+      if (touching && Math.abs(rate) >= 0.9) {
+        const d = rate > 0 ? 1 : -1;
+        if (armed[d]) { armed[d] = false; tryHit(d > 0 ? 'P' : 'L', now - STROKE_LAG); }
+      }
+      if (cutEdge) tryHit('C', now);
+      for (let i = 0; i < notes.length; i++) {
+        const n = notes[i];
+        if (!n.res && now > n.T + OK_W + 0.02) {
+          n.res = 'MISS'; counts.MISS++; combo = 0; hype = Math.max(0, hype - 0.08);
+          popup('MISS', '#ff5f7a', PLAYHEAD_X + 70, n.kind === 'C' ? 292 : 270);
+        }
+        if (n.holding && !n.holdDone) {
+          const dirN = n.kind === 'P' ? 1 : -1;
+          if (touching && rate * dirN >= 0.55) n.holdGood += dt; else n.holdBad += dt;
+          if (now >= n.T + n.hold) {
+            n.holdDone = true;
+            const ratio = n.holdGood / Math.max(0.001, n.holdGood + n.holdBad);
+            if (ratio >= 0.8) { score += 40; popup('HELD! +40', '#5fd0ff', PLAYHEAD_X + 70, 250); hype = Math.min(1, hype + 0.02); }
+            else popup('DROPPED', '#ff9f5f', PLAYHEAD_X + 70, 250);
+          }
+        }
+      }
+      if (now >= routineStartT) phase = 'routine';
+      if (now >= endT) {
+        phase = 'done'; doneT = 0;
+        if (!bestRecorded) { isNewBest = recordMinigameScore('turntablist', score); bestRecorded = true; }
+        if (hasAudio()) master.gain.setTargetAtTime(0.0, ac.currentTime + 0.4, 0.5);
+      }
+    } else if (phase === 'done') {
+      doneT += dt;
+      if (doneT > 1.2 && interactPressed) { leave(); return; }
+    }
+    if (buyPressed) { leave(); return; }
+  }
+
+  // ---------------- drawing ----------------
+  function rrect(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  }
+  function button(r, label, color, glow) {
+    ctx.fillStyle = 'rgba(20,16,26,0.95)'; rrect(r.x, r.y, r.w, r.h, 8); ctx.fill();
+    ctx.strokeStyle = color; ctx.lineWidth = glow ? 3 : 2; rrect(r.x, r.y, r.w, r.h, 8); ctx.stroke();
+    ctx.fillStyle = color; ctx.textAlign = 'center';
+    ctx.font = 'bold 18px monospace'; ctx.fillText(label, r.x + r.w / 2, r.y + r.h / 2 + 6);
+  }
+  function drawPlatter(cx, cy, R, ang, accent, live) {
+    // plinth
+    ctx.fillStyle = '#1a1620'; rrect(cx - R - 18, cy - R - 18, (R + 18) * 2, (R + 18) * 2, 16); ctx.fill();
+    ctx.strokeStyle = live ? accent : '#3a3342'; ctx.lineWidth = live ? 3 : 2;
+    rrect(cx - R - 18, cy - R - 18, (R + 18) * 2, (R + 18) * 2, 16); ctx.stroke();
+    // strobe dots (rotate with the platter)
+    ctx.fillStyle = '#6a6070';
+    for (let i = 0; i < 36; i++) {
+      const a = ang + (i / 36) * Math.PI * 2;
+      ctx.beginPath(); ctx.arc(cx + Math.cos(a) * (R + 8), cy + Math.sin(a) * (R + 8), i % 9 === 0 ? 3 : 1.6, 0, Math.PI * 2); ctx.fill();
+    }
+    // vinyl
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fillStyle = '#0c0a10'; ctx.fill();
+    ctx.lineWidth = 1;
+    for (let r = R * 0.42; r < R - 4; r += 5) {
+      ctx.strokeStyle = 'rgba(255,255,255,0.045)';
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+    }
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate(ang);
+    // label + notch so you can see it spin / reverse
+    ctx.beginPath(); ctx.arc(0, 0, R * 0.34, 0, Math.PI * 2); ctx.fillStyle = accent; ctx.fill();
+    ctx.fillStyle = '#141018'; ctx.beginPath(); ctx.arc(0, 0, R * 0.05, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#141018'; ctx.font = `bold ${Math.round(R * 0.11)}px monospace`; ctx.textAlign = 'center';
+    ctx.fillText('A_DOG WAX', 0, -R * 0.12); ctx.fillText('45 RPM', 0, R * 0.24);
+    ctx.strokeStyle = '#f4ecd8'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(R * 0.4, 0); ctx.lineTo(R - 6, 0); ctx.stroke();
+    ctx.restore();
+    // static sheen
+    ctx.strokeStyle = 'rgba(255,255,255,0.10)'; ctx.lineWidth = 6;
+    ctx.beginPath(); ctx.arc(cx, cy, R * 0.8, -2.6, -1.9); ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx, cy, R * 0.8, 0.55, 1.25); ctx.stroke();
+  }
+
+  function drawNotation(now) {
+    ctx.save();
+    ctx.fillStyle = 'rgba(16,12,22,0.96)'; rrect(PANEL.x, PANEL.y, PANEL.w, PANEL.h, 10); ctx.fill();
+    ctx.strokeStyle = '#4a4258'; ctx.lineWidth = 2; rrect(PANEL.x, PANEL.y, PANEL.w, PANEL.h, 10); ctx.stroke();
+    ctx.beginPath(); ctx.rect(PANEL.x + 2, PANEL.y + 2, PANEL.w - 4, PANEL.h - 4); ctx.clip();
+    const yS = 152, yF = 218;
+    // lane backgrounds + labels
+    ctx.fillStyle = 'rgba(95,208,255,0.05)'; ctx.fillRect(PANEL.x, yS - 34, PANEL.w, 68);
+    ctx.fillStyle = 'rgba(255,200,64,0.05)'; ctx.fillRect(PANEL.x, yF - 22, PANEL.w, 44);
+    ctx.fillStyle = '#6a6070'; ctx.font = '11px monospace'; ctx.textAlign = 'left';
+    ctx.fillText('PLATTER', PANEL.x + 8, PANEL.y + 14); ctx.fillText('FADER', PANEL.x + 8, yF + 34);
+    // beat grid (scrolls with the music clock)
+    const tL = now - (PLAYHEAD_X - PANEL.x) / PPS, tR = now + (PANEL.x + PANEL.w - PLAYHEAD_X) / PPS;
+    for (let s = Math.max(0, Math.floor(tL / TT_STEP)); s * TT_STEP <= tR; s++) {
+      const x = PLAYHEAD_X + (s * TT_STEP - now) * PPS;
+      const bar = s % 16 === 0, beat = s % 4 === 0;
+      if (!beat) continue;
+      ctx.strokeStyle = bar ? 'rgba(244,236,216,0.35)' : 'rgba(244,236,216,0.12)';
+      ctx.lineWidth = bar ? 2 : 1;
+      ctx.beginPath(); ctx.moveTo(x, PANEL.y + 4); ctx.lineTo(x, PANEL.y + PANEL.h - 4); ctx.stroke();
+    }
+    // technique names
+    if (phase !== 'practice') {
+      TT_ROUTINE.forEach((tech, ti) => {
+        const x = PLAYHEAD_X + ((routineStartStep + ti * TT_TECH_STEPS) * TT_STEP - now) * PPS;
+        if (x < PANEL.x - 200 || x > PANEL.x + PANEL.w) return;
+        ctx.fillStyle = '#e0b040'; ctx.font = 'bold 12px monospace'; ctx.textAlign = 'left';
+        ctx.fillText(tech.name, x + 6, PANEL.y + 28);
+        ctx.strokeStyle = 'rgba(224,176,64,0.5)'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(x, PANEL.y + 4); ctx.lineTo(x, PANEL.y + PANEL.h - 4); ctx.stroke();
+      });
+    }
+    // notes
+    notes.forEach((n) => {
+      const x = PLAYHEAD_X + (n.T - now) * PPS;
+      if (x < PANEL.x - 120 || x > PANEL.x + PANEL.w + 20) return;
+      const done = !!n.res, miss = n.res === 'MISS';
+      ctx.globalAlpha = done ? (miss ? 0.3 : 0.4) : 1;
+      if (n.kind === 'C') {
+        ctx.strokeStyle = miss ? '#7a4a4a' : '#ffc840'; ctx.lineWidth = 6;
+        ctx.beginPath(); ctx.moveTo(x, yF - 16); ctx.lineTo(x, yF + 16); ctx.stroke();
+        ctx.lineWidth = 3; ctx.strokeStyle = '#fff3c0';
+        ctx.beginPath(); ctx.moveTo(x - 7, yF - 7); ctx.lineTo(x + 7, yF + 7); ctx.moveTo(x + 7, yF - 7); ctx.lineTo(x - 7, yF + 7); ctx.stroke();
+      } else {
+        const push = n.kind === 'P', col = miss ? '#7a4a4a' : (push ? '#5fd0ff' : '#ff5fb0');
+        const y0 = push ? yS + 22 : yS - 22, y1 = push ? yS - 22 : yS + 22;
+        if (n.hold > 0) {
+          const w = n.hold * PPS;
+          ctx.fillStyle = push ? 'rgba(95,208,255,0.28)' : 'rgba(255,95,176,0.28)';
+          rrect(x, yS - 12, w, 24, 12); ctx.fill();
+          ctx.fillStyle = col; ctx.font = 'bold 14px monospace'; ctx.textAlign = 'center';
+          for (let cx2 = x + 30; cx2 < x + w - 10; cx2 += 34) ctx.fillText(push ? '\u25b2' : '\u25bc', cx2, yS + 5);
+          if (n.holding && !n.holdDone) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; rrect(x, yS - 12, w, 24, 12); ctx.stroke(); }
+        }
+        ctx.strokeStyle = col; ctx.lineWidth = 7; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(x, y0); ctx.lineTo(x + 30, y1); ctx.stroke();
+        ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x, y0, 6, 0, Math.PI * 2); ctx.fill();
+        ctx.lineCap = 'butt';
+      }
+      ctx.globalAlpha = 1;
+    });
+    // playhead
+    const pulse = 0.5 + 0.5 * Math.sin(now * TT_OMEGA * 2);
+    ctx.strokeStyle = `rgba(255,255,255,${0.6 + pulse * 0.3})`; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(PLAYHEAD_X, PANEL.y + 2); ctx.lineTo(PLAYHEAD_X, PANEL.y + PANEL.h - 2); ctx.stroke();
+    ctx.restore();
+  }
+
+  function draw() {
+    const now = clock();
+    ctx.fillStyle = 'rgba(8,6,12,0.95)'; ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#e0b040'; ctx.font = 'bold 26px monospace';
+    ctx.fillText('TURNTABLIST -- SCRATCH ROUTINE', VIEW_W / 2, 32);
+
+    // HUD
+    ctx.font = 'bold 17px monospace'; ctx.textAlign = 'left'; ctx.fillStyle = '#f4ecd8';
+    ctx.fillText(`SCORE ${score}`, 32, 62);
+    ctx.fillStyle = combo >= 8 ? '#ffe45f' : '#f4ecd8';
+    ctx.fillText(`COMBO x${combo}`, 230, 62);
+    ctx.fillStyle = '#9a90a8'; ctx.font = 'bold 13px monospace';
+    ctx.fillText('CROWD', 640, 61);
+    ctx.fillStyle = '#2a2430'; ctx.fillRect(700, 50, 190, 14);
+    ctx.fillStyle = hype > 0.7 ? '#ffe45f' : hype > 0.35 ? '#8cff5f' : '#ff7a5f';
+    ctx.fillRect(700, 50, 190 * hype, 14);
+    ctx.strokeStyle = '#6a6070'; ctx.lineWidth = 1; ctx.strokeRect(700, 50, 190, 14);
+    button(XBTN, 'X EXIT', '#9a90a8', false);
+
+    // banner
+    ctx.textAlign = 'center';
+    let banner = 'WARM-UP DECK', sub = 'Scratch around, find the sound -- then start the routine.';
+    if (phase === 'countin') {
+      const beatsLeft = Math.max(1, Math.ceil((routineStartT - now) / TT_BEAT));
+      banner = 'GET READY'; sub = beatsLeft <= 4 ? String(beatsLeft) : '';
+    } else if (phase === 'routine') {
+      const ti = Math.max(0, Math.min(TT_ROUTINE.length - 1, Math.floor((now - routineStartT) / (TT_TECH_STEPS * TT_STEP))));
+      banner = TT_ROUTINE[ti].name; sub = TT_ROUTINE[ti].blurb;
+    } else if (phase === 'done') { banner = 'SET COMPLETE'; sub = ''; }
+    ctx.fillStyle = '#f4ecd8'; ctx.font = 'bold 20px monospace'; ctx.fillText(banner, VIEW_W / 2, 84);
+
+    drawNotation(now);
+    if (phase === 'countin' && sub) {
+      ctx.fillStyle = '#ffe45f'; ctx.font = 'bold 54px monospace'; ctx.fillText(sub, PANEL.x + PANEL.w * 0.62, 190);
+    }
+    if (phase === 'practice') {
+      button(START_BTN, 'START ROUTINE  [ENTER]', '#8cff5f', true);
+      ctx.fillStyle = '#9a90a8'; ctx.font = '14px monospace'; ctx.fillText(sub, VIEW_W / 2, 218);
+    } else if (phase !== 'done') {
+      ctx.fillStyle = '#9a90a8'; ctx.font = '13px monospace'; ctx.fillText(sub, VIEW_W / 2, 262);
+    }
+
+    // decks + mixer
+    const touching = grabId !== null || (!!(keys['arrowleft'] || keys['a']) !== !!(keys['arrowright'] || keys['d']));
+    drawPlatter(PLATTER.x, PLATTER.y, PLATTER.r, platterAng, '#e0b040', touching);
+    ctx.fillStyle = touching ? '#5fd0ff' : '#6a6070'; ctx.font = 'bold 13px monospace'; ctx.textAlign = 'center';
+    const spd = Math.abs(rate).toFixed(1);
+    ctx.fillText(`${touching ? 'HOLDING' : 'SPINNING'}  ${rate < -0.03 ? '<<' : '>>'} ${spd}x`, PLATTER.x, PLATTER.y + PLATTER.r + 38);
+    if (grabId !== null) {
+      ctx.strokeStyle = '#5fd0ff'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(ptr.x, ptr.y, 14, 0, Math.PI * 2); ctx.stroke();
+    }
+    // deck B (decoration -- spins on the beat)
+    drawPlatter(712, 402, 100, deckBAng * 0.75, '#3a7ab0', false);
+    ctx.strokeStyle = '#c8c0d0'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(800, 312); ctx.lineTo(770, 342); ctx.lineTo(742, 382); ctx.stroke(); ctx.lineCap = 'butt';
+    ctx.fillStyle = '#6a6070'; ctx.font = '12px monospace'; ctx.fillText('DECK B', 712, 540);
+
+    // mixer
+    ctx.fillStyle = '#17131d'; rrect(402, 290, 156, 232, 12); ctx.fill();
+    ctx.strokeStyle = '#3a3342'; ctx.lineWidth = 2; rrect(402, 290, 156, 232, 12); ctx.stroke();
+    ctx.fillStyle = '#9a90a8'; ctx.font = 'bold 12px monospace'; ctx.textAlign = 'center';
+    ctx.fillText('MIXER', 480, 316);
+    const beatNow = Math.floor(Math.max(0, now) / TT_BEAT) % 4;
+    for (let i = 0; i < 4; i++) {
+      ctx.fillStyle = i === beatNow ? '#ff5fb0' : '#2e2736';
+      ctx.beginPath(); ctx.arc(436 + i * 30, 336, 7, 0, Math.PI * 2); ctx.fill();
+    }
+    // crossfader slot + knob (left = open, right = cut)
+    ctx.fillStyle = '#0c0a10'; rrect(424, 366, 112, 14, 7); ctx.fill();
+    ctx.fillStyle = cutOn ? '#ff5f5f' : '#8cff5f';
+    rrect(cutOn ? 506 : 428, 358, 26, 30, 5); ctx.fill();
+    ctx.fillStyle = '#6a6070'; ctx.font = '10px monospace';
+    ctx.fillText('OPEN', 440, 398 - 0); ctx.fillText('CUT', 520, 398);
+    button(CUTPAD, cutOn ? 'CUT!' : 'CUT', cutOn ? '#ff5f5f' : '#ffc840', cutOn);
+    ctx.fillStyle = '#6a6070'; ctx.font = '11px monospace';
+    ctx.fillText('E / SPACE / Q', 480, 496); ctx.fillText('(hold = fader closed)', 480, 512);
+
+    // popups
+    const tNow = performance.now();
+    popups = popups.filter((p) => tNow - p.t < 650);
+    popups.forEach((p) => {
+      const u = (tNow - p.t) / 650;
+      ctx.globalAlpha = 1 - u * u; ctx.fillStyle = p.color;
+      ctx.font = `bold ${22 - Math.round(u * 4)}px monospace`; ctx.textAlign = 'center';
+      ctx.fillText(p.text, p.x, p.y - u * 16); ctx.globalAlpha = 1;
+    });
+
+    // footer hints
+    ctx.fillStyle = '#6a6070'; ctx.font = '13px monospace'; ctx.textAlign = 'center';
+    ctx.fillText('DRAG THE PLATTER (or hold \u2190 / \u2192) to scratch   -   hold E / SPACE / CUT pad to chop the fader', VIEW_W / 2, 583);
+    ctx.fillText('push = clockwise / right      pull = counter-clockwise / left      X to walk away', VIEW_W / 2, 598);
+
+    if (phase === 'done') {
+      const gi = gradeInfo();
+      ctx.fillStyle = 'rgba(8,6,12,0.88)'; ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+      ctx.fillStyle = '#17131d'; rrect(190, 110, 580, 370, 14); ctx.fill();
+      ctx.strokeStyle = gi.color; ctx.lineWidth = 3; rrect(190, 110, 580, 370, 14); ctx.stroke();
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#e0b040'; ctx.font = 'bold 24px monospace'; ctx.fillText('SET COMPLETE', VIEW_W / 2, 150);
+      ctx.fillStyle = gi.color; ctx.font = 'bold 96px monospace'; ctx.fillText(gi.g, VIEW_W / 2, 252);
+      ctx.fillStyle = '#f4ecd8'; ctx.font = 'bold 18px monospace'; ctx.fillText(gi.text, VIEW_W / 2, 284);
+      ctx.font = '17px monospace';
+      ctx.fillText(`SCORE ${score}   BEST COMBO x${bestCombo}   ACCURACY ${Math.round(gi.acc * 100)}%`, VIEW_W / 2, 322);
+      ctx.fillStyle = '#9a90a8'; ctx.font = '15px monospace';
+      ctx.fillText(`PERFECT ${counts.PERFECT}   GOOD ${counts.GOOD}   OK ${counts.OK}   MISS ${counts.MISS}`, VIEW_W / 2, 350);
+      ctx.fillStyle = isNewBest ? '#8cff5f' : '#9a90a8'; ctx.font = 'bold 16px monospace';
+      ctx.fillText(isNewBest ? 'NEW BEST!' : `BEST: ${bestFor('turntablist')}`, VIEW_W / 2, 380);
+      button(RETRY_BTN, 'RETRY [ENTER]', '#8cff5f', false);
+      button(LEAVE_BTN, 'LEAVE [E]', '#e0b040', false);
+    }
+  }
+
+  const api = {
+    // The shop's own beat is silenced while the deck plays (the game brings
+    // its own), same flag the other audio-heavy mini-games use.
+    musicDucked: true,
+    onPointerDown() { /* handled by this game's own pointer listeners */ },
+    update, draw,
+    onExit() { leave(); },
+  };
+  return api;
+}
+
+
 // ---- scratch-dj mode chooser ------------------------------------------------
 function createScratchDJModeSelect() {
   return createModeSelectMenu({
@@ -12845,12 +13554,14 @@ const shops = {
     // a couple of decks set up in the back corner, same "shop keeper's own
     // little DJ booth" touch GUT HUT has.
     recordPlayerTiles: [[10, 2], [12, 2]],
-    // TRAV -- skater and G FAM emcee, posted up in the middle of the shop
-    // floor. Same character/sprite as his spot in Kountry Kart Deli, just a
-    // second appearance -- a skate shop's about the most natural place in
-    // town for him to be hanging out.
+    // TRAV -- skater and G FAM emcee, posted up in the back-left corner of
+    // the shop (2,2). Same character/sprite as his spot in Kountry Kart
+    // Deli, just a second appearance -- a skate shop's about the most
+    // natural place in town for him to be hanging out. The three friends
+    // are deliberately spread across the room (Trav back-left, SINNN on the
+    // right side, BIG RYE front-left) instead of bunched up in the middle.
     npcs: [
-      { id: 'trav', tx: 6, ty: 6, name: 'TRAV', sprite: 'trav',
+      { id: 'trav', tx: 2, ty: 2, name: 'TRAV', sprite: 'trav',
         lines: [
           'Trav. Figured I\'d post up here instead of the deli for once -- this is basically my second living room.',
           'A-Dog\'s the reason half of G FAM even picked up a board in the first place. Dude\'s a legend around here.',
@@ -12858,13 +13569,14 @@ const shops = {
           'You want a verse while you shop? Say less. I\'m always ready to spit.',
           'Check them crates while you\'re in here. A-Dog\'s got heat stacked up you wouldn\'t believe.',
         ] },
-      // SINNN + BIG RYE -- hanging with TRAV on the shop floor at (5,6)/(7,6):
-      // clear of the micStand (7,5), the LEARN ABOUT ANDY plaque (3,6), the
-      // gear tiles (3,3)/(8,3)/(4,7)/(10,7), the crates (1,4)/(1,6)/(12,4)/
-      // (12,6), and the door (6,9)/spawn (6.5,7.5), so the center aisle stays
-      // open. Full pre-drawn images, feet on the floor line -- see
+      // SINNN (10,5) + BIG RYE (3,8) -- spread well apart from TRAV (2,2) and
+      // from each other. Both tiles are clear of the micStand (7,5), the
+      // LEARN ABOUT ANDY plaque (3,6), the TURNTABLIST decks (10,2)-(12,2)
+      // and their standing spots (10,3)-(12,3), the gear tiles (3,3)/(8,3)/
+      // (4,7)/(10,7), the crates (1,4)/(1,6)/(12,4)/(12,6), and the door
+      // (6,9)/spawn (6.5,7.5), so the center aisle stays open. Full pre-drawn images, feet on the floor line -- see
       // SHOP_NPC_IMAGES/drawShopImageNpcs.
-      { id: 'sinnn', tx: 5, ty: 6, name: 'SINNN', sprite: 'sinnn', spriteH: 84,
+      { id: 'sinnn', tx: 10, ty: 5, name: 'SINNN', sprite: 'sinnn', spriteH: 84,
         lines: [
           'Sinnn. Some people know me as S.I.N.siZZle. Afrobeat and hip hop, mixed together -- same heartbeat, different accents.',
           'I landed in Burlington in 2001 as a UVM student, right around when VT Union and The Aztext were coming up. Never left. This scene became home.',
@@ -12873,7 +13585,7 @@ const shops = {
           'Twenty-plus years deep in Burlington hip hop. I\'ve seen a lot of cyphers, a lot of shows, a lot of rooms. This skate shop? Top tier.',
           'Trav\'s got the bars, Rye\'s got the voice, and I brought the drip. Honestly we could just run a show right here on the shop floor.',
         ] },
-      { id: 'bigrye', tx: 7, ty: 6, name: 'BIG RYE', sprite: 'bigrye', spriteH: 84,
+      { id: 'bigrye', tx: 3, ty: 8, name: 'BIG RYE', sprite: 'bigrye', spriteH: 84,
         lines: [
           'Big Rye. Ryan LaCross to the family, "The Voice of New England" to the mic. Pleased to meet you.',
           'I wear a lot of hats. Curator, selecta, host, producer, promoter -- whatever the scene needs that night, I\'m on it.',
@@ -12905,8 +13617,17 @@ const shops = {
     // (3,3)/(8,3)/(4,7)/(10,7), Trav (6,6), the crates (1,4)/(1,6)/(12,4)/
     // (12,6), and the door (6,9). Interacting opens the Andy A_Dog bio
     // pop-up -- see MINIGAME_ACTIONS.adogfoundation above.
+    //
+    // TURNTABLIST -- the shop keeper's own pair of decks in the back-right
+    // corner (10,2)/(12,2). The sign hovers on the floor tile between them
+    // (11,2) and the decks themselves answer to [E] too (`alsoTiles`), so
+    // you can step up to either turntable from the front row (10,3)-(12,3).
+    // Clear of Trav (2,2), Sinnn (10,5), Big Rye (3,8), the micStand (7,5),
+    // the counter (row 3, x 4-9), and the crates. Plays fully offline -- see
+    // MINIGAME_ACTIONS.turntablist/createTurntablistGame().
     minigames: [
       { id: 'adogfoundation', tx: 3, ty: 6, label: 'LEARN ABOUT ANDY' },
+      { id: 'turntablist', tx: 11, ty: 2, label: 'PLAY TURNTABLIST', alsoTiles: [[10, 2], [12, 2]] },
     ],
   }),
   // FOAM BREWERS -- the skatepark's second building: a cool, hip Vermont
