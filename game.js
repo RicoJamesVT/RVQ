@@ -1539,6 +1539,15 @@ const MINIGAME_ACTIONS = {
   // offline story -- see openHumbleTreasuresSplash()/openHumbleTreasuresApp()/
   // createHumbleTreasuresOverlay() below.
   humbletreasures: () => openHumbleTreasuresSplash(),
+  // Reverb Reef -- an aquatic reverb-ear-training/jam game (Ear Dive, Tune
+  // the Tank, Reef Jam) on a second cabinet inside ECHO CENTER in the
+  // skatepark (see the `echocenter` shop's `minigames` list +
+  // drawEchoCenterInterior()). Fully self-contained: the page is inlined
+  // below as REVERB_REEF_HTML and every sound (including the reverb
+  // impulse responses) is generated live with the Web Audio API, so it
+  // plays with no connection and no extra files. See openReverbReefApp()/
+  // createReverbReefOverlay() below.
+  reverbreef: () => openReverbReefApp(),
   // Dust Racing -- a top-down arcade racer (Catmull-Rom dirt track, dust/
   // tire-mark trails, a short-burst nitro boost, 7 AI racers), tucked
   // inside JOHNNY'S FUN PARK right alongside Digger and Johnny Slides (see
@@ -10413,6 +10422,7 @@ window.addEventListener('keydown', (e) => {
     if (k === 'escape' && state === 'waveformApp') { closeWaveformPresentationApp(); }
     if (k === 'escape' && state === 'bayouBreakApp') { closeBayouBreakApp(); }
     if (k === 'escape' && state === 'freqAltarApp') { closeFrequencyAltarApp(); }
+    if (k === 'escape' && state === 'reverbReefApp') { closeReverbReefApp(); }
     if (k === 'escape' && state === 'drumPatternDocApp') { closeDrumPatternDocApp(); }
     if (k === 'escape' && state === 'gatorJamSlamApp') { closeGatorJamSlamApp(); }
     if (k === 'escape' && state === 'swampCaveApp') { closeSwampCaveApp(); }
@@ -13855,7 +13865,11 @@ const shops = {
     // the cabinet painted in drawEchoCenterInterior()): another solid tile
     // dressed up by the painter, clear of the Deep Sea crate (12,5), HUMBLE
     // (10,7), the center aisle and the door (6,9)/spawn (6.5,7.5).
-    blockTiles: [[4, 6], [9, 6], [12, 8]],
+    // (2,3) = the Reverb Reef arcade cabinet (see `minigames` below and the
+    // cabinet painted in drawEchoCenterInterior()): solid, in the upper-left
+    // corner below the back-wall tank -- clear of the crates, the counter
+    // (cols 4-9 of row 3), SKYSPLITTERINK (3,7) and the center aisle.
+    blockTiles: [[4, 6], [9, 6], [12, 8], [2, 3]],
     crateSpots: [[1, 5], [12, 5], [2, 8]],
     keeper: { name: 'CHAMP', shirt: '#f4ecd8', skin: '#3aa17a',
       lines: [
@@ -13878,6 +13892,9 @@ const shops = {
     // MINIGAME_ACTIONS.humbletreasures/openHumbleTreasuresSplash().
     minigames: [
       { id: 'humbletreasures', tx: 12, ty: 8, label: 'PLAY HUMBLE TREASURES' },
+      // REVERB REEF -- aquatic reverb game cabinet at (2,3). See
+      // MINIGAME_ACTIONS.reverbreef/openReverbReefApp().
+      { id: 'reverbreef', tx: 2, ty: 3, label: 'PLAY REVERB REEF' },
     ],
     // SKYSPLITTERINK + HUMBLE -- visiting the aquarium, in addition to their
     // usual spots (SKYSPLITTERINK in Green Door Studio, HUMBLE at Nectars).
@@ -14008,7 +14025,7 @@ const player = {
   tempItem: null, tempItemTimer: 0,
 };
 const collected = new Set();
-let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | danceParty | portal | fifa | minigame | hotkeys | crate | photo | lab | labLocked | shopBackLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | qsdBalanceApp | vinylSnakeApp | waveformApp | bayouBreakApp | freqAltarApp | drumPatternDocApp | gatorJamSlamApp | swampCaveApp | vocalChopBoothApp | vtDirtApp | penaltyKingsApp | digDashApp | digOnApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | diggerApp | hyperSwimApp | linusTugApp | connectFourApp | syrupRoadsApp | scoopBeatsApp | clawMachineApp | kangaidenVideo | kangaidenSplash | kangaidenApp | hiphopLibraryApp | truthKnocksVideo | truthKnocksSplash | truthKnocksApp | johnnySlidesVideo | johnnySlidesSplash | johnnySlidesApp | humbleTreasuresVideo | humbleTreasuresSplash | humbleTreasuresApp | dustRacingApp | cbPressApp | arkaiikImpactApp | precisionPointsApp
+let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | danceParty | portal | fifa | minigame | hotkeys | crate | photo | lab | labLocked | shopBackLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | qsdBalanceApp | vinylSnakeApp | waveformApp | bayouBreakApp | freqAltarApp | reverbReefApp | drumPatternDocApp | gatorJamSlamApp | swampCaveApp | vocalChopBoothApp | vtDirtApp | penaltyKingsApp | digDashApp | digOnApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | diggerApp | hyperSwimApp | linusTugApp | connectFourApp | syrupRoadsApp | scoopBeatsApp | clawMachineApp | kangaidenVideo | kangaidenSplash | kangaidenApp | hiphopLibraryApp | truthKnocksVideo | truthKnocksSplash | truthKnocksApp | johnnySlidesVideo | johnnySlidesSplash | johnnySlidesApp | humbleTreasuresVideo | humbleTreasuresSplash | humbleTreasuresApp | dustRacingApp | cbPressApp | arkaiikImpactApp | precisionPointsApp
 // State to snap back to when the [H] hotkeys popup is closed -- currently
 // always 'play' since that's the only state H can be opened from, but kept
 // as its own var in case another state wants to offer the popup later.
@@ -14703,7 +14720,7 @@ const music = {
 // enter/exit call sites, so it can't drift out of sync no matter which
 // of the several ways the player backs out of the lab popup (keyboard
 // [X], on-screen [X] button, closing the instrument iframe, etc.).
-const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'qsdBalanceApp', 'vinylSnakeApp', 'waveformApp', 'bayouBreakApp', 'freqAltarApp', 'drumPatternDocApp', 'gatorJamSlamApp', 'swampCaveApp', 'vocalChopBoothApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'digOnApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'johnnySlidesApp', 'humbleTreasuresApp', 'dustRacingApp', 'cbPressApp', 'hyperSwimApp', 'linusTugApp', 'connectFourApp', 'syrupRoadsApp', 'scoopBeatsApp', 'clawMachineApp', 'kangaidenVideo', 'kangaidenApp', 'hiphopLibraryApp', 'arkaiikImpactApp', 'precisionPointsApp', 'j2sProSkaterApp', 'danceParty', 'truthKnocksVideo', 'truthKnocksApp', 'johnnySlidesVideo', 'humbleTreasuresVideo']);
+const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'qsdBalanceApp', 'vinylSnakeApp', 'waveformApp', 'bayouBreakApp', 'freqAltarApp', 'reverbReefApp', 'drumPatternDocApp', 'gatorJamSlamApp', 'swampCaveApp', 'vocalChopBoothApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'digOnApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'johnnySlidesApp', 'humbleTreasuresApp', 'dustRacingApp', 'cbPressApp', 'hyperSwimApp', 'linusTugApp', 'connectFourApp', 'syrupRoadsApp', 'scoopBeatsApp', 'clawMachineApp', 'kangaidenVideo', 'kangaidenApp', 'hiphopLibraryApp', 'arkaiikImpactApp', 'precisionPointsApp', 'j2sProSkaterApp', 'danceParty', 'truthKnocksVideo', 'truthKnocksApp', 'johnnySlidesVideo', 'humbleTreasuresVideo']);
 function syncMusicDuck() {
   const minigameDucked = state === 'minigame' && activeMinigame && activeMinigame.musicDucked;
   music.duck(DUCKED_STATES.has(state) || !!minigameDucked);
@@ -19250,6 +19267,537 @@ function closeFrequencyAltarApp(fromPopState) {
   }
 }
 
+// Reverb Reef -- an aquatic reverb game (EAR DIVE: name the underwater
+// space you hear; TUNE THE TANK: match a mystery reverb by ear with
+// SIZE/MURK/MIX; REEF JAM: bubble pads + a tide beat through six spaces,
+// including a ping-pong echo canyon), set up as a cabinet inside ECHO
+// CENTER in the skatepark (see the `echocenter` shop's `minigames` list).
+// Same "full-screen DOM overlay with an <iframe>" trick as the Frequency
+// Altar/Precision Points, except the page is INLINED below as
+// REVERB_REEF_HTML and loaded through iframe.srcdoc -- so there's no extra
+// file to ship, nothing to fetch, and no network call anywhere. The reverbs
+// themselves are synthesized at runtime (noise-based impulse responses fed
+// to ConvolverNodes, plus a delay network for the canyon), and the sounds
+// are oscillator/noise voices, so it plays identically online or offline.
+// Best scores are saved with try/catch-wrapped localStorage. [Esc] inside
+// the iframe posts a message back (keys typed there never reach this page).
+const REVERB_REEF_HTML = `<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Reverb Reef</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+html,body{margin:0;height:100%;background:#031a2b;color:#e4fdff;font:700 14px/1.3 ui-monospace,Menlo,Consolas,monospace;overflow:hidden;touch-action:manipulation}
+#bg{position:fixed;inset:0;width:100%;height:100%;display:block}
+.scr{position:fixed;inset:0;display:none;flex-direction:column;gap:10px;padding:10px 12px calc(10px + env(safe-area-inset-bottom,0px));overflow-y:auto;max-width:760px;margin:0 auto}
+.scr.on{display:flex}
+h1{margin:6px 0 0;text-align:center;font-size:clamp(26px,7vw,44px);letter-spacing:3px;color:#e4fdff;text-shadow:0 0 14px #1fd0e0,0 0 32px #1fd0e0}
+.sub{margin:0;text-align:center;color:#9fe8f2;font-weight:600}
+.card,.btn,.chip,.opt{font:inherit;color:#e4fdff;cursor:pointer;border:2px solid #1fd0e0;background:rgba(6,40,62,.78);border-radius:12px;padding:12px 14px;text-align:left}
+.card{display:flex;flex-direction:column;gap:4px;box-shadow:0 0 18px rgba(31,208,224,.25)}
+.card b{font-size:18px;letter-spacing:1px}.card span{font-weight:600;color:#9fe8f2}
+.card:active,.btn:active,.chip:active,.opt:active{transform:scale(.97);background:rgba(31,208,224,.3)}
+.btn{text-align:center;padding:11px 16px;letter-spacing:1px}
+.btn.alt{border-color:#ffd447}.btn.big{font-size:17px;padding:14px}
+.hide{display:none!important}
+.hud{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.back{font:inherit;color:#e4fdff;cursor:pointer;background:rgba(6,40,62,.78);border:2px solid #7fe0ee;border-radius:10px;padding:7px 12px}
+.panel{background:rgba(4,30,48,.8);border:2px solid #1fd0e0;border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:10px;align-items:center;text-align:center}
+.row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;width:100%}
+.opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.opt{display:flex;flex-direction:column;gap:2px}
+.opt i{font-style:normal;font-size:22px}.opt small{font-weight:600;color:#9fe8f2}
+.opt.good{border-color:#5bf0a0;background:rgba(40,160,100,.55)}.opt.bad{border-color:#ff6f6f;background:rgba(160,40,60,.55)}
+.msg{min-height:38px;text-align:center;color:#ffe9a6}
+.sl{display:flex;flex-direction:column;gap:3px;width:100%;text-align:left}
+.sl label{display:flex;justify-content:space-between;color:#9fe8f2}
+input[type=range]{width:100%;height:30px;accent-color:#1fd0e0}
+.bar{position:relative;height:12px;border-radius:6px;background:rgba(255,255,255,.12);margin:4px 0 8px}
+.bar u{position:absolute;top:-3px;width:6px;height:18px;border-radius:3px;text-decoration:none}
+.chips{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:6px}
+.chip{padding:8px;text-align:center;font-size:12px}.chip.sel{background:rgba(31,208,224,.4);box-shadow:0 0 12px currentColor}
+.pads{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;flex:1 1 auto;min-height:150px}
+.pad{border:3px solid rgba(255,255,255,.55);border-radius:50%;aspect-ratio:1;max-height:100%;margin:auto;width:100%;max-width:140px;font:inherit;color:#fff;font-size:18px;cursor:pointer;box-shadow:inset 0 0 18px rgba(255,255,255,.4),0 0 14px rgba(0,0,0,.3);touch-action:none}
+.pad.hit{transform:scale(1.12);filter:brightness(1.5)}
+.big2{font-size:clamp(20px,5vw,30px);color:#ffd447}
+</style></head><body>
+<canvas id="bg"></canvas>
+
+<div id="menu" class="scr on">
+ <h1>REVERB REEF</h1>
+ <p class="sub">Sound behaves differently under the sea.<br>Headphones recommended. Works fully offline.</p>
+ <button class="card" data-go="listen"><b>EAR DIVE</b><span>Hear a sound, then name the underwater space it was recorded in. 10 rounds.</span></button>
+ <button class="card" data-go="tune"><b>TUNE THE TANK</b><span>A mystery reverb plays. Match it by ear with SIZE, MURK and MIX. 5 rounds.</span></button>
+ <button class="card" data-go="jam"><b>REEF JAM</b><span>Play bubble pads and a tide beat through six different reverb spaces.</span></button>
+ <p class="sub" id="bests"></p>
+</div>
+
+<div id="listen" class="scr">
+ <div class="hud"><button class="back" data-go="menu">&#9664; MENU</button><span id="lHud"></span></div>
+ <div class="panel"><div id="lQ">Where was this sound made?</div>
+  <div class="row"><button id="lPlay" class="btn">&#9654; REPLAY</button><button id="lDry" class="btn alt">HEAR DRY</button></div></div>
+ <div id="lOpts" class="opts"></div>
+ <div id="lMsg" class="msg"></div>
+ <button id="lNext" class="btn big hide">NEXT &#9654;</button>
+ <div id="lEnd" class="panel hide"></div>
+</div>
+
+<div id="tune" class="scr">
+ <div class="hud"><button class="back" data-go="menu">&#9664; MENU</button><span id="tHud"></span></div>
+ <div class="panel"><div>Match the mystery water. Listen to the TARGET, then shape YOURS.</div>
+  <div class="row"><button id="tT" class="btn">&#9654; TARGET</button><button id="tY" class="btn alt">&#9654; YOURS</button></div></div>
+ <div class="panel">
+  <div class="sl"><label><span>SIZE</span><span>tiny pool &harr; deep trench</span></label><input id="sSize" type="range" min="0" max="100" value="50"></div>
+  <div class="sl"><label><span>MURK</span><span>bright &harr; muffled</span></label><input id="sMurk" type="range" min="0" max="100" value="50"></div>
+  <div class="sl"><label><span>MIX</span><span>dry &harr; drenched</span></label><input id="sMix" type="range" min="10" max="100" value="60"></div>
+  <button id="tLock" class="btn big" style="width:100%">LOCK IN</button></div>
+ <div id="tRes" class="panel hide"></div>
+ <button id="tNext" class="btn big hide">NEXT &#9654;</button>
+</div>
+
+<div id="jam" class="scr">
+ <div class="hud"><button class="back" data-go="menu">&#9664; MENU</button><span id="jDesc" class="sub"></span></div>
+ <div id="chips" class="chips"></div>
+ <div id="pads" class="pads"></div>
+ <div class="row"><button id="jBeat" class="btn alt">&#9654; TIDE BEAT</button>
+  <div class="sl" style="max-width:300px"><label><span>MIX</span><span id="jMixV">60%</span></label><input id="jMix" type="range" min="0" max="100" value="60"></div></div>
+ <p class="sub" style="font-size:12px">Keys: A S D F G H J K play pads &middot; 1-6 switch space &middot; Space = beat</p>
+</div>
+
+<script>
+(function(){
+'use strict';
+var $=function(s){return document.querySelector(s)};
+var $$=function(s){return Array.prototype.slice.call(document.querySelectorAll(s))};
+var cp=function(n){return String.fromCodePoint(n)};
+var rnd=function(a,b){return a+Math.random()*(b-a)};
+var pick=function(a){return a[Math.floor(Math.random()*a.length)]};
+var shuffle=function(a){a=a.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1)),t=a[i];a[i]=a[j];a[j]=t}return a};
+
+/* ---------- the six underwater spaces ---------- */
+var SP=[
+ {n:'TIDE POOL',e:0x1F980,c:[89,224,255],dec:0.45,damp:0.15,pre:0.004,d:'tiny, bright and tight'},
+ {n:'KELP FOREST',e:0x1F420,c:[91,240,160],dec:1.5,damp:0.45,pre:0.012,d:'soft, leafy and diffuse'},
+ {n:'WRECK HALL',e:0x2693,c:[255,212,71],dec:2.8,damp:0.2,pre:0.035,d:'big metal room with a shiny tail'},
+ {n:'WHALE CAVERN',e:0x1F40B,c:[165,139,255],dec:5,damp:0.6,pre:0.05,d:'huge, dark and rumbling'},
+ {n:'ABYSS TRENCH',e:0x1F991,c:[255,111,174],dec:8.5,damp:0.85,pre:0.09,d:'endless, murky depths'},
+ {n:'ECHO CANYON',e:0x1F42C,c:[255,154,74],dec:3,damp:0.35,pre:0,echo:true,d:'ping-pong repeats, not a wash'}
+];
+var rgb=function(c,a){return 'rgba('+(c[0]|0)+','+(c[1]|0)+','+(c[2]|0)+','+a+')'};
+
+/* ---------- audio engine (100% procedural, no files, no network) ---------- */
+var ac=null,master=null,nb=null,nodes={};
+function initAudio(){
+ var AC=window.AudioContext||window.webkitAudioContext;
+ if(ac){if(ac.state==='suspended')ac.resume();return true}
+ if(!AC)return false;
+ ac=new AC();
+ var comp=ac.createDynamicsCompressor();comp.threshold.value=-14;comp.ratio.value=6;
+ master=ac.createGain();master.gain.value=0.85;master.connect(comp);comp.connect(ac.destination);
+ return true;
+}
+function buildIR(dec,damp,pre,seed){
+ var sr=ac.sampleRate,len=Math.max(64,Math.floor((pre+dec*1.1)*sr)),buf=ac.createBuffer(2,len,sr);
+ for(var ch=0;ch<2;ch++){
+  var d=buf.getChannelData(ch),y=0,s=(seed*7919+ch*104729+1)>>>0;
+  for(var i=0;i<len;i++){
+   var t=i/sr;
+   if(t<pre){d[i]=0;continue}
+   var tt=t-pre;
+   s=(s*1664525+1013904223)>>>0;
+   var n=s/2147483648-1;
+   var a=Math.max(0.025,1-damp*(0.45+0.55*Math.min(1,tt/(dec*0.8))));
+   y+=a*(n-y);
+   d[i]=y*Math.exp(-6.9*tt/dec)*(tt<0.015?tt/0.015:1);
+  }
+ }
+ return buf;
+}
+function pan(p,dest){
+ if(ac.createStereoPanner){var n=ac.createStereoPanner();n.pan.value=p;n.connect(dest);return n}
+ var g=ac.createGain();g.connect(dest);return g;
+}
+function makeEcho(){
+ var inp=ac.createGain(),out=ac.createGain(),dl=ac.createDelay(2),dr=ac.createDelay(2),fb=ac.createGain(),lp=ac.createBiquadFilter();
+ dl.delayTime.value=0.34;dr.delayTime.value=0.34;fb.gain.value=0.58;lp.type='lowpass';lp.frequency.value=2600;
+ inp.connect(dl);dl.connect(pan(-0.85,out));dl.connect(lp);lp.connect(dr);dr.connect(pan(0.85,out));dr.connect(fb);fb.connect(dl);
+ out.connect(master);
+ return {in:inp,out:out};
+}
+function convNode(dec,damp,pre,seed){
+ var cv=ac.createConvolver();cv.buffer=buildIR(dec,damp,pre,seed);cv.connect(master);
+ return {in:cv,out:cv,kill:function(){setTimeout(function(){try{cv.disconnect()}catch(e){}},(dec+2)*1000)}};
+}
+function getSpace(i){
+ if(nodes[i])return nodes[i];
+ var s=SP[i];
+ nodes[i]=s.echo?makeEcho():convNode(s.dec,s.damp,s.pre,i+1);
+ return nodes[i];
+}
+function noiseBuf(){
+ if(!nb){nb=ac.createBuffer(1,ac.sampleRate,ac.sampleRate);var d=nb.getChannelData(0);for(var i=0;i<d.length;i++)d[i]=Math.random()*2-1}
+ return nb;
+}
+function env(g,t,a,dcy,peak){g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(peak,t+a);g.gain.exponentialRampToValueAtTime(0.0001,t+a+dcy)}
+function osc(out,type,f0,f1,t,a,dcy,peak){
+ var o=ac.createOscillator(),g=ac.createGain();o.type=type;o.frequency.setValueAtTime(f0,t);
+ if(f1)o.frequency.exponentialRampToValueAtTime(f1,t+a+dcy);
+ env(g,t,a,dcy,peak);o.connect(g);g.connect(out);o.start(t);o.stop(t+a+dcy+0.05);
+}
+function nz(out,ft,ff,q,t,dcy,peak){
+ var s=ac.createBufferSource();s.buffer=noiseBuf();s.loop=true;
+ var f=ac.createBiquadFilter();f.type=ft;f.frequency.value=ff;f.Q.value=q;
+ var g=ac.createGain();env(g,t,0.002,dcy,peak);s.connect(f);f.connect(g);g.connect(out);s.start(t);s.stop(t+dcy+0.05);
+}
+/* one voice: kind through a space node (null = bone dry) at wet amount mix */
+function hit(kind,f,node,mix,t,vol){
+ if(!ac)return 0;
+ t=t||ac.currentTime+0.02;vol=vol||1;
+ var out=ac.createGain(),dg=ac.createGain();
+ dg.gain.value=(node?1-0.45*mix:1)*vol;out.connect(dg);dg.connect(master);
+ if(node){var sg=ac.createGain();sg.gain.value=mix*1.5*vol;out.connect(sg);sg.connect(node.in)}
+ if(kind==='snare'){nz(out,'bandpass',1900,0.9,t,0.16,0.9);osc(out,'triangle',230,150,t,0.002,0.1,0.6)}
+ else if(kind==='kick'){osc(out,'sine',150,42,t,0.002,0.22,1);nz(out,'lowpass',900,0.7,t,0.02,0.4)}
+ else if(kind==='hat'){nz(out,'highpass',7000,0.7,t,0.045,0.3)}
+ else if(kind==='ping'){osc(out,'sine',f*1.04,f,t,0.003,0.32,0.55);osc(out,'sine',f*2,f*2,t,0.003,0.1,0.15)}
+ else{osc(out,'sine',f,0,t,0.003,0.55,0.55);osc(out,'sine',f*4,0,t,0.002,0.12,0.16);osc(out,'triangle',f*0.5,0,t,0.003,0.2,0.2)}
+ return t;
+}
+
+/* ---------- animated ocean backdrop + sonar ripples ---------- */
+var cv=$('#bg'),g=cv.getContext('2d'),W=0,H=0,last=0;
+var tint=[31,208,224],tintTo=[31,208,224],rip=[],bub=[],fish=[];
+for(var bi=0;bi<46;bi++)bub.push({x:Math.random(),y:Math.random(),r:1+Math.random()*3.5,s:0.02+Math.random()*0.05,p:Math.random()*6});
+for(var fi=0;fi<7;fi++)fish.push({x:Math.random(),y:0.15+Math.random()*0.6,s:(Math.random()<0.5?-1:1)*(0.015+Math.random()*0.03),z:6+Math.random()*10});
+function resize(){var dpr=Math.min(2,window.devicePixelRatio||1);W=cv.clientWidth;H=cv.clientHeight;cv.width=W*dpr;cv.height=H*dpr;g.setTransform(dpr,0,0,dpr,0,0)}
+window.addEventListener('resize',resize);resize();
+function ripple(x,y,col,dur){
+ var t=performance.now()/1000;dur=Math.max(0.8,Math.min(6,dur));
+ for(var k=0;k<3;k++)rip.push({x:x,y:y,t:t+k*0.2,d:dur,c:col});
+ if(rip.length>45)rip.splice(0,rip.length-45);
+ tintTo=col;
+}
+function centerRipple(i,mixOrDur){ripple(W/2,Math.min(H*0.3,200),SP[i].c,SP[i].dec)}
+function frame(ms){
+ var t=ms/1000,dt=Math.min(0.05,t-last);last=t;
+ for(var i=0;i<3;i++)tint[i]+=(tintTo[i]-tint[i])*0.04;
+ var gr=g.createLinearGradient(0,0,0,H);
+ gr.addColorStop(0,'rgb('+(8+tint[0]*0.12|0)+','+(70+tint[1]*0.25|0)+','+(110+tint[2]*0.25|0)+')');
+ gr.addColorStop(1,'rgb(2,12,30)');
+ g.fillStyle=gr;g.fillRect(0,0,W,H);
+ for(var k=0;k<4;k++){
+  var sx=W*(0.12+0.24*k)+Math.sin(t*0.2+k)*40;
+  g.fillStyle=rgb(tint,0.05);g.beginPath();g.moveTo(sx,0);g.lineTo(sx+60,0);g.lineTo(sx+W*0.14,H);g.lineTo(sx-W*0.06,H);g.fill();
+ }
+ g.fillStyle='rgba(10,30,50,0.4)';
+ fish.forEach(function(f){
+  f.x+=f.s*dt;if(f.x>1.1)f.x=-0.1;if(f.x<-0.1)f.x=1.1;
+  var fx=f.x*W,fy=f.y*H+Math.sin(t*1.5+f.z)*4,d=f.s>0?1:-1;
+  g.beginPath();g.ellipse(fx,fy,f.z,f.z*0.45,0,0,6.3);g.fill();
+  g.beginPath();g.moveTo(fx-d*f.z,fy);g.lineTo(fx-d*(f.z+f.z*0.7),fy-f.z*0.4);g.lineTo(fx-d*(f.z+f.z*0.7),fy+f.z*0.4);g.fill();
+ });
+ g.strokeStyle='rgba(60,200,140,0.32)';g.lineWidth=6;g.lineCap='round';
+ for(var kk=0;kk<9;kk++){
+  var bx=W*(kk+0.5)/9,hh=60+(kk*37%50);
+  g.beginPath();g.moveTo(bx,H);
+  for(var s=1;s<=6;s++)g.lineTo(bx+Math.sin(t*0.9+kk+s*0.5)*s*3,H-hh*s/6);
+  g.stroke();
+ }
+ g.fillStyle='#0b2c3f';g.fillRect(0,H-14,W,14);
+ g.fillStyle='rgba(200,245,255,0.45)';
+ bub.forEach(function(b){
+  b.y-=b.s*dt;if(b.y<-0.05){b.y=1.05;b.x=Math.random()}
+  g.beginPath();g.arc(b.x*W+Math.sin(t+b.p)*6,b.y*H,b.r,0,6.3);g.fill();
+ });
+ for(var r=rip.length-1;r>=0;r--){
+  var p=(t-rip[r].t)/rip[r].d;
+  if(p>1){rip.splice(r,1);continue}
+  if(p<0)continue;
+  var rad=20+(1-Math.pow(1-p,2))*Math.max(W,H)*0.65;
+  g.strokeStyle=rgb(rip[r].c,(1-p)*0.6);g.lineWidth=2+(1-p)*4;
+  g.beginPath();g.arc(rip[r].x,rip[r].y,rad,0,6.3);g.stroke();
+ }
+ requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+/* ---------- screens ---------- */
+var BKEY='reverbReefBest';
+function bests(){try{return JSON.parse(localStorage.getItem(BKEY))||{}}catch(e){return {}}}
+function saveBest(k,v){var b=bests();if(!b[k]||v>b[k]){b[k]=v;try{localStorage.setItem(BKEY,JSON.stringify(b))}catch(e){}}return b[k]}
+function showBests(){var b=bests();$('#bests').textContent='BEST  EAR DIVE '+(b.listen||0)+'  |  TUNE THE TANK '+(b.tune||0)}
+var cur='menu';
+function go(n){
+ stopBeat();cur=n;
+ $$('.scr').forEach(function(s){s.classList.toggle('on',s.id===n)});
+ if(n!=='menu')initAudio();
+ if(n==='listen')lStart();else if(n==='tune')tStart();else if(n==='jam')jStart();else showBests();
+}
+$$('[data-go]').forEach(function(b){b.addEventListener('click',function(){go(b.getAttribute('data-go'))})});
+function rank(p){return p>=0.9?'LEVIATHAN':p>=0.75?'ORCA':p>=0.55?'DOLPHIN':p>=0.35?'MINNOW':'PLANKTON'}
+function sp(i){return cp(SP[i].e)+' '+SP[i].n}
+
+/* ---------- EAR DIVE: name the space ---------- */
+var L={};
+var NOTES=[262,294,330,392,440,523];
+function lStart(){L={r:0,score:0,streak:0,ok:0,n:10};$('#lEnd').classList.add('hide');$('#lPlay').parentNode.parentNode.classList.remove('hide');$('#lOpts').classList.remove('hide');lRound()}
+function lRound(){
+ L.r++;L.done=false;
+ var n=L.r<=3?3:L.r<=6?4:L.r<=8?5:6;
+ L.opts=shuffle([0,1,2,3,4,5]).slice(0,n);L.ans=pick(L.opts);
+ L.mix=L.r<=5?0.8:L.r<=8?0.6:0.45;
+ L.src=pick(['snare','mar','ping','snare']);L.f=pick(NOTES);
+ $('#lHud').textContent='ROUND '+L.r+'/'+L.n+'   SCORE '+L.score+'   STREAK '+L.streak;
+ $('#lMsg').textContent='Listen to the tail. Where are we?';
+ $('#lNext').classList.add('hide');
+ var o=$('#lOpts');o.innerHTML='';
+ L.opts.forEach(function(i){
+  var b=document.createElement('button');b.className='opt';
+  b.innerHTML='<i>'+cp(SP[i].e)+'</i>'+SP[i].n+'<small>'+SP[i].d+'</small>';
+  b.addEventListener('click',function(){lPick(i,b)});o.appendChild(b);
+ });
+ lPlay(true);
+}
+function lPlay(wet){
+ hit(L.src,L.f,wet?getSpace(L.ans):null,L.mix);
+ if(wet)centerRipple(L.ans);else ripple(W/2,Math.min(H*0.3,200),[200,200,200],0.8);
+}
+$('#lPlay').addEventListener('click',function(){lPlay(true)});
+$('#lDry').addEventListener('click',function(){lPlay(false)});
+function lPick(i,btn){
+ if(L.done)return;L.done=true;
+ var ok=i===L.ans,kids=$$('#lOpts .opt');
+ kids.forEach(function(b,k){if(L.opts[k]===L.ans)b.classList.add('good')});
+ if(ok){L.streak++;L.ok++;L.score+=100+Math.min(L.streak-1,5)*25;$('#lMsg').textContent='YES! '+sp(L.ans)+' - '+SP[L.ans].d+'.'}
+ else{btn.classList.add('bad');L.streak=0;$('#lMsg').textContent='That was '+sp(L.ans)+': '+SP[L.ans].d+'.'}
+ $('#lHud').textContent='ROUND '+L.r+'/'+L.n+'   SCORE '+L.score+'   STREAK '+L.streak;
+ centerRipple(L.ans);
+ var nx=$('#lNext');nx.textContent=L.r>=L.n?'RESULTS \\u25B6':'NEXT \\u25B6';nx.classList.remove('hide');
+}
+$('#lNext').addEventListener('click',function(){
+ if(L.r<L.n){lRound();return}
+ var best=saveBest('listen',L.score),e=$('#lEnd');
+ $('#lOpts').classList.add('hide');$('#lNext').classList.add('hide');$('#lMsg').textContent='';
+ e.classList.remove('hide');
+ e.innerHTML='<div>DIVE COMPLETE</div><div class="big2">'+rank(L.ok/L.n)+'</div><div>'+L.ok+'/'+L.n+' correct &middot; '+L.score+' pts &middot; best '+best+'</div><div class="row"><button class="btn big" id="lAgain">DIVE AGAIN</button><button class="btn alt big" data-go="menu">MENU</button></div>';
+ $('#lAgain').addEventListener('click',lStart);
+ e.querySelector('[data-go]').addEventListener('click',function(){go('menu')});
+});
+
+/* ---------- TUNE THE TANK: match a mystery reverb ---------- */
+var T={};
+function sizeToDec(v){return 0.3*Math.pow(8/0.3,v/100)}
+function params(p){return {dec:sizeToDec(p.size),damp:p.murk/100*0.95,pre:0.004+p.size/100*0.08,mix:p.mix/100}}
+function tStart(){T={r:0,score:0,total:0,tgt:null,you:null,dirty:true};tRound()}
+function tRound(){
+ T.r++;T.locked=false;
+ T.p={size:Math.round(rnd(6,95)),murk:Math.round(rnd(0,90)),mix:Math.round(rnd(40,95))};
+ if(T.tgt&&T.tgt.kill)T.tgt.kill();T.tgt=null;T.dirty=true;
+ $('#sSize').value=50;$('#sMurk').value=50;$('#sMix').value=60;
+ $('#tHud').textContent='ROUND '+T.r+'/5   SCORE '+T.score;
+ $('#tRes').classList.add('hide');$('#tNext').classList.add('hide');$('#tLock').classList.remove('hide');
+ tPlayTarget();
+}
+function phrase(node,mix){hit('snare',0,node,mix);hit('mar',392,node,mix,ac.currentTime+0.9)}
+function tPlayTarget(){
+ if(!T.tgt){var q=params(T.p);T.tgt=convNode(q.dec,q.damp,q.pre,77+T.r)}
+ var q2=params(T.p);phrase(T.tgt,q2.mix);ripple(W/2,Math.min(H*0.3,200),[255,212,71],q2.dec);
+}
+function mine(){return {size:+$('#sSize').value,murk:+$('#sMurk').value,mix:+$('#sMix').value}}
+function tPlayYours(){
+ var p=mine();
+ if(T.dirty||!T.you){if(T.you&&T.you.kill)T.you.kill();var q=params(p);T.you=convNode(q.dec,q.damp,q.pre,5);T.dirty=false}
+ var q3=params(p);phrase(T.you,q3.mix);ripple(W/2,Math.min(H*0.3,200),[31,208,224],q3.dec);
+}
+$('#tT').addEventListener('click',tPlayTarget);
+$('#tY').addEventListener('click',tPlayYours);
+['#sSize','#sMurk','#sMix'].forEach(function(s){
+ $(s).addEventListener('input',function(){T.dirty=true});
+ $(s).addEventListener('change',function(){if(!T.locked)tPlayYours()});
+});
+$('#tLock').addEventListener('click',function(){
+ if(T.locked)return;T.locked=true;
+ var m=mine(),t=T.p;
+ var err=Math.abs(m.size-t.size)/100*0.5+Math.abs(m.murk-t.murk)/100*0.3+Math.abs(m.mix-t.mix)/90*0.2;
+ var pts=Math.round(100*Math.max(0,1-err*3));
+ T.score+=pts;T.total=T.score;
+ $('#tHud').textContent='ROUND '+T.r+'/5   SCORE '+T.score;
+ function row(lbl,a,b,max){return '<div style="width:100%;text-align:left">'+lbl+'<div class="bar"><u style="left:calc('+(a/max*100)+'% - 3px);background:#ffd447"></u><u style="left:calc('+(b/max*100)+'% - 3px);background:#1fd0e0"></u></div></div>'}
+ var r=$('#tRes');r.classList.remove('hide');
+ r.innerHTML='<div class="big2">'+pts+' pts</div>'+row('SIZE',t.size,m.size,100)+row('MURK',t.murk,m.murk,100)+row('MIX',t.mix,m.mix,100)+'<div style="color:#9fe8f2">gold = target &middot; cyan = yours</div>';
+ $('#tLock').classList.add('hide');
+ var nx=$('#tNext');nx.textContent=T.r>=5?'RESULTS \\u25B6':'NEXT \\u25B6';nx.classList.remove('hide');
+ tPlayTarget();
+});
+$('#tNext').addEventListener('click',function(){
+ if(T.r<5){tRound();return}
+ var best=saveBest('tune',T.score),r=$('#tRes');
+ $('#tNext').classList.add('hide');r.classList.remove('hide');
+ r.innerHTML='<div>TANK TUNED</div><div class="big2">'+rank(T.score/500)+'</div><div>'+T.score+'/500 pts &middot; best '+best+'</div><div class="row"><button class="btn big" id="tAgain">TUNE AGAIN</button><button class="btn alt big" id="tMenu">MENU</button></div>';
+ $('#tAgain').addEventListener('click',tStart);$('#tMenu').addEventListener('click',function(){go('menu')});
+});
+
+/* ---------- REEF JAM: pads + tide beat ---------- */
+var J={sp:3,mix:0.6},B={on:false,step:0,next:0,timer:null};
+var PADN=[262,294,330,392,440,523,587,659],KEYS=['a','s','d','f','g','h','j','k'];
+function jStart(){
+ var c=$('#chips');c.innerHTML='';
+ SP.forEach(function(s,i){
+  var b=document.createElement('button');b.className='chip';b.style.color=rgb(s.c,1);b.innerHTML=cp(s.e)+' '+(i+1)+'<br>'+s.n;
+  b.addEventListener('click',function(){jSpace(i)});c.appendChild(b);
+ });
+ var p=$('#pads');p.innerHTML='';
+ PADN.forEach(function(f,i){
+  var b=document.createElement('button');b.className='pad';b.textContent=KEYS[i].toUpperCase();
+  b.style.background='radial-gradient(circle at 35% 30%,hsla('+(190+i*18)+',90%,70%,.95),hsla('+(190+i*18)+',80%,35%,.8))';
+  b.addEventListener('pointerdown',function(e){e.preventDefault();padHit(i)});p.appendChild(b);
+ });
+ jSpace(J.sp);
+}
+function jSpace(i){
+ J.sp=i;
+ $$('#chips .chip').forEach(function(b,k){b.classList.toggle('sel',k===i)});
+ $('#jDesc').textContent=SP[i].n+': '+SP[i].d;
+ getSpace(i);tintTo=SP[i].c;
+}
+function padHit(i){
+ if(!ac)return;
+ hit('mar',PADN[i],getSpace(J.sp),J.mix);
+ var el=$$('#pads .pad')[i];
+ if(el){el.classList.add('hit');setTimeout(function(){el.classList.remove('hit')},110);
+  var r=el.getBoundingClientRect();ripple(r.left+r.width/2,r.top+r.height/2,SP[J.sp].c,SP[J.sp].dec)}
+}
+$('#jMix').addEventListener('input',function(){J.mix=this.value/100;$('#jMixV').textContent=this.value+'%'});
+function beatTick(){
+ while(B.next<ac.currentTime+0.15){
+  var s=B.step%16,t=B.next,node=getSpace(J.sp);
+  if(s===0||s===6||s===10)hit('kick',0,null,0,t);
+  if(s===4||s===12){hit('snare',0,node,J.mix,t);(function(d){setTimeout(function(){if(B.on)ripple(W/2,H*0.4,SP[J.sp].c,SP[J.sp].dec)},d)})(Math.max(0,(t-ac.currentTime)*1000))}
+  if(s%2===0)hit('hat',0,node,J.mix*0.4,t,0.6);
+  B.next+=60/88/4;B.step++;
+ }
+}
+function startBeat(){if(!ac||B.on)return;B.on=true;B.step=0;B.next=ac.currentTime+0.06;B.timer=setInterval(beatTick,40);$('#jBeat').innerHTML='&#9632; STOP BEAT'}
+function stopBeat(){B.on=false;if(B.timer){clearInterval(B.timer);B.timer=null}var b=$('#jBeat');if(b)b.innerHTML='&#9654; TIDE BEAT'}
+$('#jBeat').addEventListener('click',function(){B.on?stopBeat():startBeat()});
+
+window.addEventListener('keydown',function(e){
+ if(e.repeat)return;var k=e.key.toLowerCase();
+ if(k==='escape'){try{parent.postMessage({reverbReef:'close'},'*')}catch(x){}return}
+ if(cur!=='jam')return;
+ var pi=KEYS.indexOf(k);if(pi>=0){padHit(pi);return}
+ if(k>='1'&&k<='6'){jSpace(+k-1);return}
+ if(k===' '){e.preventDefault();B.on?stopBeat():startBeat()}
+});
+document.addEventListener('visibilitychange',function(){if(document.hidden)stopBeat()});
+showBests();
+})();
+</script></body></html>
+`;
+let reverbReefOverlayEl = null, reverbReefOverlayFrame = null;
+let reverbReefReturnState = 'play';
+let reverbReefHistoryPushed = false; // mirrors freqAltarHistoryPushed -- see openReverbReefApp()/closeReverbReefApp()
+
+function createReverbReefOverlay() {
+  const style = document.createElement('style');
+  style.textContent = `
+    #reverbReefApp {
+      position: fixed; inset: 0; z-index: 1000;
+      background: #000;
+      display: none; flex-direction: column;
+    }
+    #reverbReefApp.open { display: flex; }
+    #reverbReefApp .rr-bar {
+      flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 10px 14px;
+      background: linear-gradient(#0a4a63, #06222f);
+      border-bottom: 2px solid #1fd0e0;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    }
+    #reverbReefApp .rr-title {
+      color: #e4fdff; font: bold 14px monospace; letter-spacing: 0.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #reverbReefApp .rr-close {
+      flex: 0 0 auto; cursor: pointer;
+      background: rgba(31,208,224,0.15);
+      border: 1.5px solid rgba(31,208,224,0.9);
+      color: #e4fdff; border-radius: 8px;
+      padding: 7px 16px; font: bold 13px monospace;
+      -webkit-user-select: none; user-select: none;
+    }
+    #reverbReefApp .rr-close:active { background: rgba(31,208,224,0.45); }
+    #reverbReefApp iframe {
+      flex: 1 1 auto; width: 100%; border: 0; background: #031a2b;
+    }
+  `;
+  document.head.appendChild(style);
+
+  reverbReefOverlayEl = document.createElement('div');
+  reverbReefOverlayEl.id = 'reverbReefApp';
+
+  const bar = document.createElement('div');
+  bar.className = 'rr-bar';
+  const title = document.createElement('div');
+  title.className = 'rr-title';
+  title.textContent = 'REVERB REEF';
+  const closeBtn = document.createElement('div');
+  closeBtn.className = 'rr-close';
+  closeBtn.textContent = '\u2190 BACK TO ECHO CENTER';
+  bindTap(closeBtn, closeReverbReefApp);
+  bar.appendChild(title);
+  bar.appendChild(closeBtn);
+
+  reverbReefOverlayFrame = document.createElement('iframe');
+  reverbReefOverlayFrame.setAttribute('allow', 'autoplay');
+
+  reverbReefOverlayEl.appendChild(bar);
+  reverbReefOverlayEl.appendChild(reverbReefOverlayFrame);
+  document.body.appendChild(reverbReefOverlayEl);
+
+  window.addEventListener('message', (e) => {
+    if (!reverbReefOverlayFrame || e.source !== reverbReefOverlayFrame.contentWindow) return;
+    if (e.data && e.data.reverbReef === 'close' && state === 'reverbReefApp') closeReverbReefApp();
+  });
+}
+createReverbReefOverlay();
+
+// Opens the Reverb Reef overlay and switches state to 'reverbReefApp'.
+// Called from MINIGAME_ACTIONS.reverbreef (E on the cabinet, or tapping its
+// floating sign), same entry point every other mini-game uses.
+function openReverbReefApp() {
+  reverbReefReturnState = state;
+  reverbReefOverlayFrame.srcdoc = REVERB_REEF_HTML;
+  reverbReefOverlayEl.classList.add('open');
+  state = 'reverbReefApp';
+  reverbReefOverlayFrame.addEventListener('load', () => {
+    try { reverbReefOverlayFrame.contentWindow.focus(); } catch (e) { /* a tap will focus it */ }
+  }, { once: true });
+  // Same throwaway-history-entry trick as openFrequencyAltarApp(), so the
+  // browser/OS back gesture closes the overlay instead of leaving the game.
+  history.pushState({ reverbReefApp: true }, '');
+  reverbReefHistoryPushed = true;
+}
+
+// Tears the iframe back down (which also stops all audio) and returns to
+// ordinary gameplay in ECHO CENTER. fromPopState mirrors
+// closeFrequencyAltarApp()'s parameter -- true when triggered by the
+// browser's back button (whose history entry is already consumed), so we
+// must not call history.back() again in that case.
+function closeReverbReefApp(fromPopState) {
+  reverbReefOverlayEl.classList.remove('open');
+  reverbReefOverlayFrame.removeAttribute('srcdoc');
+  reverbReefOverlayFrame.src = 'about:blank';
+  reclaimGameFocus(reverbReefOverlayFrame);
+  state = reverbReefReturnState;
+  if (!fromPopState && reverbReefHistoryPushed) {
+    reverbReefHistoryPushed = false;
+    history.back();
+  } else {
+    reverbReefHistoryPushed = false;
+  }
+}
+
 // The Drum Pattern Doc -- MRKBH's crate of 16th-note breakdowns (genre
 // grooves, Afro-Cuban patterns, classic breakbeats), set up inside THE
 // SOUL SHACK (see the `soulshack` shop's `minigames` list), right
@@ -21640,6 +22188,8 @@ window.addEventListener('popstate', () => {
     closeBayouBreakApp(true);
   } else if (state === 'freqAltarApp') {
     closeFrequencyAltarApp(true);
+  } else if (state === 'reverbReefApp') {
+    closeReverbReefApp(true);
   } else if (state === 'drumPatternDocApp') {
     closeDrumPatternDocApp(true);
   } else if (state === 'gatorJamSlamApp') {
@@ -21713,7 +22263,7 @@ canvas.addEventListener('pointerdown', (e) => {
     const vx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const vy = (e.clientY - rect.top) * (canvas.height / rect.height);
     handleLabTap(vx, vy);
-  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'humbleTreasuresApp' || state === 'dustRacingApp' || state === 'cbPressApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'scoopBeatsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp' || state === 'arkaiikImpactApp' || state === 'precisionPointsApp' || state === 'j2sProSkaterApp') {
+  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'reverbReefApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'humbleTreasuresApp' || state === 'dustRacingApp' || state === 'cbPressApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'scoopBeatsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp' || state === 'arkaiikImpactApp' || state === 'precisionPointsApp' || state === 'j2sProSkaterApp') {
     // The DOM overlay sits on top of (and outside) the canvas while an
     // instrument/the chess app/the beat bot/the organ/mini golf/the
     // blackbook/Gator Grooves/Vinyl Snake/Bayou Break Station/Gator Jam
@@ -22105,6 +22655,13 @@ function update(dt) {
     // here too so the on-screen [X] touch button works while Bayou
     // Break Station is open.
     if (buyPressed) closeBayouBreakApp();
+  } else if (state === 'reverbReefApp') {
+    // Same reasoning as 'freqAltarApp' just below: the DOM overlay (see
+    // createReverbReefOverlay()) owns input while Reverb Reef is loaded --
+    // its own back button and [Esc] handle closing it directly. buyPressed
+    // is still consumed here so the on-screen [X] touch button works while
+    // it's open.
+    if (buyPressed) closeReverbReefApp();
   } else if (state === 'freqAltarApp') {
     // Same reasoning as 'labApp'/'chessApp'/'beatBotApp'/'organApp'/
     // 'minigolfApp'/'blackbookApp'/'crocSwampApp'/'vinylSnakeApp'/
@@ -23555,7 +24112,7 @@ function render(time) {
     drawSplash();
     return;
   }
-  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'humbleTreasuresApp' || state === 'dustRacingApp' || state === 'cbPressApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'scoopBeatsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp' || state === 'arkaiikImpactApp' || state === 'precisionPointsApp' || state === 'j2sProSkaterApp') {
+  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'reverbReefApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'humbleTreasuresApp' || state === 'dustRacingApp' || state === 'cbPressApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'scoopBeatsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp' || state === 'arkaiikImpactApp' || state === 'precisionPointsApp' || state === 'j2sProSkaterApp') {
     // Same reasoning as the labApp overlay: a DOM element (the <video>,
     // see createCharacterIntroOverlay(), the chess <iframe>, see
     // createChessOverlay(), the beat bot <iframe>, see
@@ -32194,6 +32751,64 @@ function drawEchoCenterInterior(time) {
     ctx.save();
     ctx.globalAlpha = 0.22 + 0.06 * Math.sin(time * 2.4);
     ctx.drawImage(glow, cx - 34, by + 4, 68, 56);
+    ctx.restore();
+  }
+
+  // --- Reverb Reef arcade cabinet on tile (2,3): a deep-teal upright whose
+  // screen shows sonar rings rippling out from a little fish, three EQ-style
+  // knobs on the panel, and a flashing "REVERB" marquee.
+  {
+    const bx = 2 * TILE, by = 3 * TILE, cx = bx + 16;
+    ctx.fillStyle = FLOOR;                                     // cover the wall-tile texture
+    ctx.fillRect(bx, by, 32, 32);
+    ctx.fillStyle = 'rgba(0,0,0,0.28)';                        // floor shadow
+    ctx.beginPath(); ctx.ellipse(cx, by + 29, 17, 4.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#052a3a';                                 // cabinet body
+    ctx.fillRect(bx + 4, by - 16, 24, 44);
+    ctx.fillStyle = '#0f6a86';                                 // lit side panel
+    ctx.fillRect(bx + 4, by - 16, 3, 44);
+    ctx.strokeStyle = '#1fd0e0'; ctx.lineWidth = 1.5;
+    ctx.strokeRect(bx + 4.75, by - 15.25, 22.5, 42.5);
+    const blinkR = Math.floor(time * 2.4) % 2 === 0;
+    ctx.fillStyle = blinkR ? '#1fd0e0' : '#139fb0';            // marquee
+    ctx.fillRect(bx + 7, by - 13, 18, 7);
+    ctx.fillStyle = '#052a3a';
+    ctx.font = 'bold 5px monospace';
+    ctx.fillText('REVERB', cx, by - 8.5);
+    ctx.fillStyle = '#0b4d72';                                 // screen: deep water
+    ctx.fillRect(bx + 8, by - 3, 16, 16);
+    ctx.save();
+    ctx.beginPath(); ctx.rect(bx + 8, by - 3, 16, 16); ctx.clip();
+    for (let k = 0; k < 3; k++) {                              // screen: sonar rings
+      const ph = (time * 0.9 + k / 3) % 1;
+      ctx.strokeStyle = 'rgba(126,240,255,' + (0.85 * (1 - ph)).toFixed(3) + ')';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(cx - 3, by + 5, 1.5 + ph * 15, 0, Math.PI * 2); ctx.stroke();
+    }
+    ctx.restore();
+    ctx.fillStyle = '#ffb347';                                 // screen: little fish
+    ctx.beginPath(); ctx.ellipse(cx - 3, by + 5, 2.6, 1.6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(cx - 5.4, by + 5); ctx.lineTo(cx - 7.4, by + 3.4); ctx.lineTo(cx - 7.4, by + 6.6); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.18)';                  // screen glare
+    ctx.fillRect(bx + 9, by - 2, 2, 7);
+    ctx.fillStyle = '#1a2a38';                                 // control panel
+    ctx.fillRect(bx + 6, by + 13, 20, 6);
+    [['#ffd447', 0], ['#1fd0e0', 1], ['#ff6f9c', 2]].forEach(([kc, ki]) => {
+      const kx = bx + 10.5 + ki * 5.5;
+      ctx.fillStyle = kc;
+      ctx.beginPath(); ctx.arc(kx, by + 16, 1.7, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#06141e'; ctx.lineWidth = 0.7;
+      const ka = -Math.PI / 2 + Math.sin(time * 1.3 + ki * 2) * 0.9;
+      ctx.beginPath(); ctx.moveTo(kx, by + 16); ctx.lineTo(kx + Math.cos(ka) * 1.6, by + 16 + Math.sin(ka) * 1.6); ctx.stroke();
+    });
+    ctx.fillStyle = '#031a26';                                 // coin slot kick plate
+    ctx.fillRect(bx + 8, by + 21, 16, 5);
+    ctx.fillStyle = '#1fd0e0';
+    ctx.fillRect(bx + 14, by + 22.5, 4, 1.5);
+    const glowR = getGlowSprite(44, 'rgba(60,230,255,ALPHA)');   // soft screen glow on the floor
+    ctx.save();
+    ctx.globalAlpha = 0.22 + 0.06 * Math.sin(time * 2.1);
+    ctx.drawImage(glowR, cx - 34, by + 4, 68, 56);
     ctx.restore();
   }
 
