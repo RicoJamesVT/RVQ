@@ -1548,6 +1548,14 @@ const MINIGAME_ACTIONS = {
   // plays with no connection and no extra files. See openReverbReefApp()/
   // createReverbReefOverlay() below.
   reverbreef: () => openReverbReefApp(),
+  // Spot the Difference -- hip-hop history spot-the-difference game (six
+  // scenes, difficulty modes, scoring, hints, trivia) on an arcade cabinet
+  // inside SPEAKING VOLUMES in the skatepark (see the `speakingvolumes`
+  // shop's `minigames` list + drawSpeakingVolumesInterior()). Fully
+  // self-contained: the page is inlined below as SPOT_DIFF_HTML, so it plays
+  // with no connection and no extra files. See openSpotDiffApp()/
+  // createSpotDiffOverlay() below.
+  spotdiff: () => openSpotDiffApp(),
   // Dust Racing -- a top-down arcade racer (Catmull-Rom dirt track, dust/
   // tire-mark trails, a short-burst nitro boost, 7 AI racers), tucked
   // inside JOHNNY'S FUN PARK right alongside Digger and Johnny Slides (see
@@ -10450,6 +10458,7 @@ window.addEventListener('keydown', (e) => {
     if (k === 'escape' && state === 'humbleTreasuresSplash') { state = humbleTreasuresSplashReturnState; }
     if (k === 'escape' && state === 'dustRacingApp') { closeDustRacingApp(); }
     if (k === 'escape' && state === 'cbPressApp') { closeCBPrintsPressApp(); }
+    if (k === 'escape' && state === 'spotDiffApp') { closeSpotDiffApp(); }
     if (k === 'escape' && state === 'connectFourApp') { closeConnectFourApp(); }
     if (k === 'escape' && state === 'syrupRoadsApp') { closeSyrupRoadsApp(); }
     if (k === 'escape' && state === 'scoopBeatsApp') { closeScoopBeatsApp(); }
@@ -13741,6 +13750,16 @@ const shops = {
     // Five crates: the skatepark's third record (Loud & Clear) plus four
     // junk crates (see SPEAKING_VOLUMES_JUNK above).
     crates: [ { record: 'vol' }, { svSeed: 0 }, { svSeed: 1 }, { svSeed: 2 }, { svSeed: 3 } ],
+    // (8,8) = the Spot the Difference arcade cabinet (see `minigames` below
+    // and the cabinet painted in drawSpeakingVolumesInterior()): a solid
+    // tile dressed up by the painter, on open floor right of the door
+    // (6,9)/spawn (6.5,7.5) -- clear of all five crates, the counter (row 3),
+    // the shelves, the loose stacks and the new-arrivals bin (10,8). Approach
+    // from (8,7) above, (7,8) left or (9,8) right.
+    blockTiles: [[8, 8]],
+    minigames: [
+      { id: 'spotdiff', tx: 8, ty: 8, label: 'PLAY SPOT THE DIFFERENCE' },
+    ],
   }),
   // CB PRINTS -- the skatepark's fourth building: a small, artsy independent
   // screen printing shop owned and run by BONTA, the master screen printer
@@ -14025,7 +14044,7 @@ const player = {
   tempItem: null, tempItemTimer: 0,
 };
 const collected = new Set();
-let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | danceParty | portal | fifa | minigame | hotkeys | crate | photo | lab | labLocked | shopBackLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | qsdBalanceApp | vinylSnakeApp | waveformApp | bayouBreakApp | freqAltarApp | reverbReefApp | drumPatternDocApp | gatorJamSlamApp | swampCaveApp | vocalChopBoothApp | vtDirtApp | penaltyKingsApp | digDashApp | digOnApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | diggerApp | hyperSwimApp | linusTugApp | connectFourApp | syrupRoadsApp | scoopBeatsApp | clawMachineApp | kangaidenVideo | kangaidenSplash | kangaidenApp | hiphopLibraryApp | truthKnocksVideo | truthKnocksSplash | truthKnocksApp | johnnySlidesVideo | johnnySlidesSplash | johnnySlidesApp | humbleTreasuresVideo | humbleTreasuresSplash | humbleTreasuresApp | dustRacingApp | cbPressApp | arkaiikImpactApp | precisionPointsApp
+let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | danceParty | portal | fifa | minigame | hotkeys | crate | photo | lab | labLocked | shopBackLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | qsdBalanceApp | vinylSnakeApp | waveformApp | bayouBreakApp | freqAltarApp | reverbReefApp | drumPatternDocApp | gatorJamSlamApp | swampCaveApp | vocalChopBoothApp | vtDirtApp | penaltyKingsApp | digDashApp | digOnApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | diggerApp | hyperSwimApp | linusTugApp | connectFourApp | syrupRoadsApp | scoopBeatsApp | clawMachineApp | kangaidenVideo | kangaidenSplash | kangaidenApp | hiphopLibraryApp | truthKnocksVideo | truthKnocksSplash | truthKnocksApp | johnnySlidesVideo | johnnySlidesSplash | johnnySlidesApp | humbleTreasuresVideo | humbleTreasuresSplash | humbleTreasuresApp | dustRacingApp | cbPressApp | spotDiffApp | arkaiikImpactApp | precisionPointsApp
 // State to snap back to when the [H] hotkeys popup is closed -- currently
 // always 'play' since that's the only state H can be opened from, but kept
 // as its own var in case another state wants to offer the popup later.
@@ -14720,7 +14739,7 @@ const music = {
 // enter/exit call sites, so it can't drift out of sync no matter which
 // of the several ways the player backs out of the lab popup (keyboard
 // [X], on-screen [X] button, closing the instrument iframe, etc.).
-const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'qsdBalanceApp', 'vinylSnakeApp', 'waveformApp', 'bayouBreakApp', 'freqAltarApp', 'reverbReefApp', 'drumPatternDocApp', 'gatorJamSlamApp', 'swampCaveApp', 'vocalChopBoothApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'digOnApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'johnnySlidesApp', 'humbleTreasuresApp', 'dustRacingApp', 'cbPressApp', 'hyperSwimApp', 'linusTugApp', 'connectFourApp', 'syrupRoadsApp', 'scoopBeatsApp', 'clawMachineApp', 'kangaidenVideo', 'kangaidenApp', 'hiphopLibraryApp', 'arkaiikImpactApp', 'precisionPointsApp', 'j2sProSkaterApp', 'danceParty', 'truthKnocksVideo', 'truthKnocksApp', 'johnnySlidesVideo', 'humbleTreasuresVideo']);
+const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'qsdBalanceApp', 'vinylSnakeApp', 'waveformApp', 'bayouBreakApp', 'freqAltarApp', 'reverbReefApp', 'drumPatternDocApp', 'gatorJamSlamApp', 'swampCaveApp', 'vocalChopBoothApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'digOnApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'johnnySlidesApp', 'humbleTreasuresApp', 'dustRacingApp', 'cbPressApp', 'spotDiffApp', 'hyperSwimApp', 'linusTugApp', 'connectFourApp', 'syrupRoadsApp', 'scoopBeatsApp', 'clawMachineApp', 'kangaidenVideo', 'kangaidenApp', 'hiphopLibraryApp', 'arkaiikImpactApp', 'precisionPointsApp', 'j2sProSkaterApp', 'danceParty', 'truthKnocksVideo', 'truthKnocksApp', 'johnnySlidesVideo', 'humbleTreasuresVideo']);
 function syncMusicDuck() {
   const minigameDucked = state === 'minigame' && activeMinigame && activeMinigame.musicDucked;
   music.duck(DUCKED_STATES.has(state) || !!minigameDucked);
@@ -19798,6 +19817,256 @@ function closeReverbReefApp(fromPopState) {
   }
 }
 
+// Spot the Difference -- "HIP-HOP HISTORY: SPOT THE DIFFERENCE" (six original
+// hip-hop scenes, Easy/Medium/Hard hit zones, scoring, hints, trivia, saved
+// best score), set up as an arcade cabinet on the floor of SPEAKING VOLUMES
+// in the skatepark (see the `speakingvolumes` shop's `minigames` list +
+// drawSpeakingVolumesInterior()). Fully self-contained and offline: the whole
+// page is inlined below as SPOT_DIFF_HTML and loaded through iframe.srcdoc, so
+// there is no extra file to ship, nothing to fetch, and no network call
+// anywhere (all artwork is drawn on <canvas>, sounds are WebAudio beeps). Same
+// "own DOM/iframe overlay" shape as Reverb Reef just above. See
+// openSpotDiffApp()/createSpotDiffOverlay() below.
+const SPOT_DIFF_HTML = [
+  "<!doctype html>",
+  "<html lang=\"en\">",
+  "<head>",
+  "<meta charset=\"utf-8\">",
+  "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover\">",
+  "<meta name=\"theme-color\" content=\"#100e14\">",
+  "<title>Hip-Hop History \u2014 Spot the Difference V2</title>",
+  "<style>",
+  ":root{--bg:#100e14;--panel:#201b27;--panel2:#2a2331;--ink:#f9f1e4;--muted:#b9adbd;--gold:#ffd15c;--pink:#ff4d86;--teal:#55e0d0;--line:#514258}",
+  "*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 50% -15%,#493047 0,#17131c 45%,var(--bg) 80%);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,sans-serif;padding:env(safe-area-inset-top) 12px env(safe-area-inset-bottom)}",
+  "button,input{font:inherit}button{cursor:pointer;border:0;border-radius:10px;padding:10px 14px;font-weight:900;background:var(--gold);color:#17121b;box-shadow:0 3px 0 #9c6c27;touch-action:manipulation}button:active{transform:translateY(2px);box-shadow:0 1px 0 #9c6c27}button.secondary{background:#342a3b;color:var(--ink);border:1px solid #5b4964;box-shadow:0 3px 0 #17121b}button.pink{background:var(--pink);box-shadow:0 3px 0 #922448}",
+  "header,main{max-width:1240px;margin:auto}header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 3px 10px}.logo{font-weight:1000;line-height:.88;font-size:clamp(20px,3vw,34px);letter-spacing:1px;text-transform:uppercase;text-shadow:3px 3px 0 #e94e80}.logo span{display:block;color:var(--gold);font-size:10px;letter-spacing:3px;margin-top:8px;text-shadow:none}.header-buttons{display:flex;gap:7px;flex-wrap:wrap}.header-buttons button{font-size:12px;padding:8px 10px}",
+  ".hero{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:8px 3px 14px}.hero h1{font-size:clamp(25px,4vw,42px);line-height:.95;margin:0;text-transform:uppercase;letter-spacing:-1px}.hero p{margin:8px 0 0;color:var(--muted);font-size:13px}.stats{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}.stat{background:#201b27;border:1px solid var(--line);border-radius:10px;padding:8px 12px;text-align:center;min-width:76px}.stat small{display:block;color:var(--muted);font-size:9px;letter-spacing:1.4px;font-weight:900}.stat b{color:var(--gold);font-size:19px}",
+  ".layout{display:grid;grid-template-columns:minmax(0,1fr) 245px;gap:12px;align-items:start}.game{background:linear-gradient(145deg,#241e2b,#17141c);border:1px solid #55445c;border-radius:16px;padding:11px;box-shadow:0 15px 45px #0006;min-width:0}.scene-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:2px 3px 10px}.scene-bar h2{font-size:clamp(16px,2.4vw,23px);line-height:1;margin:0;text-transform:uppercase}.scene-bar p{margin:5px 0 0;color:var(--muted);font-size:11px}.chip{white-space:nowrap;border:1px solid #67506b;color:var(--teal);font-size:10px;letter-spacing:1px;font-weight:900;border-radius:7px;padding:7px 9px}",
+  ".boards{display:grid;grid-template-columns:1fr 1fr;gap:9px}.board{position:relative;background:#0b0910;border:2px solid #55445c;border-radius:9px;overflow:hidden;min-width:0}.board label{position:absolute;z-index:2;left:7px;top:7px;background:#100e14dc;border-radius:5px;padding:4px 7px;font-size:9px;font-weight:1000;letter-spacing:1.3px;pointer-events:none}.board canvas{display:block;width:100%;height:auto;aspect-ratio:4/3;touch-action:manipulation;cursor:crosshair}.board.cleared{border-color:var(--teal)}.board.cleared:after{content:'\u2713';position:absolute;right:7px;top:7px;background:var(--teal);color:#101014;border-radius:5px;padding:3px 7px;font-weight:1000}",
+  ".game-controls{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px}.progress{display:flex;align-items:center;gap:5px;color:var(--muted);font-size:11px;font-weight:800}.dot{height:9px;width:9px;border-radius:50%;background:#5b4a62}.dot.hit{background:var(--teal);box-shadow:0 0 8px #55e0d055}.actions{display:flex;gap:7px;flex-wrap:wrap}.actions button{font-size:12px;padding:9px 11px}.message{font-size:12px;color:var(--gold);font-weight:800;min-height:21px;margin:9px 3px 0}",
+  ".sidebar{display:flex;flex-direction:column;gap:10px}.sidecard{background:#211b27;border:1px solid var(--line);border-radius:14px;padding:13px}.sidecard h3{font-size:13px;text-transform:uppercase;letter-spacing:.8px;margin:0 0 10px}.sidecard p{font-size:12px;line-height:1.5;color:var(--muted);margin:7px 0}.difficulty{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px}.difficulty button{font-size:10px;padding:8px 4px;background:#33283a;color:#eee;border:1px solid #56445d;box-shadow:none}.difficulty button.active{background:var(--pink);color:#190f16;border-color:#ff8fb4}.scene-list{display:flex;flex-direction:column;gap:5px;max-height:290px;overflow:auto}.scene-btn{text-align:left;font-size:11px;padding:8px 9px;background:#302638;color:#eee;border:1px solid #4b3b52;box-shadow:none}.scene-btn.active{background:var(--gold);color:#1b1420;border-color:#ffe29b}.scene-btn span{opacity:.7;font-size:9px;display:block;margin-top:2px}",
+  ".trivia{border-left:3px solid var(--pink);padding-left:9px}.trivia strong{font-size:12px;color:var(--gold)}.trivia p{margin:5px 0}.footer{max-width:1240px;margin:13px auto 22px;color:#a99daf;font-size:11px;line-height:1.5;padding:0 3px}.import-row{display:flex;gap:6px;flex-wrap:wrap}.import-row button{font-size:11px;padding:8px 9px}.fileinput{display:none}",
+  ".overlay{position:fixed;inset:0;background:#09070de8;z-index:10;display:flex;align-items:center;justify-content:center;padding:16px}.modal{width:min(510px,100%);background:#231c2a;border:1px solid #735574;border-radius:18px;padding:23px;box-shadow:0 20px 90px #000;text-align:center}.modal h2{font-size:clamp(27px,6vw,38px);line-height:.95;margin:0 0 12px;color:var(--gold);text-transform:uppercase}.modal p{font-size:13px;line-height:1.65;color:#e0d3e2}.modal-actions{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:15px}.hidden{display:none!important}",
+  "@media(max-width:850px){.layout{grid-template-columns:1fr}.sidebar{display:grid;grid-template-columns:1fr 1fr}.scene-list{max-height:180px}}",
+  "@media(max-width:560px){body{padding-left:6px;padding-right:6px}header{padding-top:8px}.header-buttons button{padding:7px;font-size:10px}.hero{align-items:flex-start;flex-direction:column}.stats{justify-content:flex-start}.boards{gap:5px}.game{padding:6px}.scene-bar{padding-bottom:7px}.board label{left:4px;top:4px;font-size:7px;padding:3px 4px}.sidebar{grid-template-columns:1fr}.sidecard{padding:11px}.scene-list{max-height:none}.actions button{font-size:11px;padding:8px}.stat{min-width:68px}.stat b{font-size:17px}}",
+  "@media(orientation:landscape) and (max-height:520px){header{padding:5px}.hero{margin:3px 3px 7px}.hero p{display:none}.game{padding:6px}.scene-bar{padding-bottom:5px}.boards{max-width:1000px;margin:auto}.board canvas{max-height:60vh}.sidebar{grid-template-columns:1fr 1fr}.sidecard{padding:8px}.scene-list{max-height:120px}.footer{margin:8px auto}}",
+  "</style>",
+  "</head>",
+  "<body>",
+  "<header><div class=\"logo\">HIP-HOP HISTORY<span>SPOT THE DIFFERENCE \u00b7 VOLUME 02</span></div><div class=\"header-buttons\"><button class=\"secondary\" id=\"soundBtn\">\u266b SOUND OFF</button><button class=\"secondary\" id=\"helpBtn\">HOW TO PLAY</button></div></header>",
+  "<main>",
+  "<section class=\"hero\"><div><h1>Flip the frame.</h1><p>Explore hip-hop culture through eras, artwork, and trivia.</p></div><div class=\"stats\"><div class=\"stat\"><small>SCORE</small><b id=\"score\">00000</b></div><div class=\"stat\"><small>BEST</small><b id=\"best\">00000</b></div><div class=\"stat\"><small>FOUND</small><b id=\"found\">0 / 5</b></div><div class=\"stat\"><small>TIME</small><b id=\"time\">00:00</b></div></div></section>",
+  "<div class=\"layout\"><section class=\"game\"><div class=\"scene-bar\"><div><h2 id=\"sceneTitle\">Block Party: The Park Jam</h2><p id=\"sceneDesc\">A neighborhood jam is warming up.</p></div><div class=\"chip\" id=\"tag\">OLD SCHOOL</div></div>",
+  "<div class=\"boards\"><div class=\"board\" id=\"boardA\"><label>ORIGINAL MIX</label><canvas id=\"a\" width=\"640\" height=\"480\"></canvas></div><div class=\"board\" id=\"boardB\"><label>REMIXED VERSION</label><canvas id=\"b\" width=\"640\" height=\"480\"></canvas></div></div>",
+  "<div class=\"game-controls\"><div class=\"progress\" id=\"progress\"></div><div class=\"actions\"><button class=\"secondary\" id=\"hint\">HINT \u00b7 \u221210 PTS</button><button class=\"secondary\" id=\"restart\">RESTART</button><button id=\"next\">NEXT SCENE \u2192</button></div></div><div class=\"message\" id=\"message\" aria-live=\"polite\">Find five differences. Tap either picture to mark one.</div>",
+  "</section>",
+  "<aside class=\"sidebar\">",
+  "<div class=\"sidecard\"><h3>Choose your difficulty</h3><div class=\"difficulty\" id=\"difficulty\"><button data-d=\"easy\" class=\"active\">EASY</button><button data-d=\"medium\">MEDIUM</button><button data-d=\"hard\">HARD</button></div><p id=\"difficultyText\">Easy: larger hit zones and more points for quick finds.</p></div>",
+  "<div class=\"sidecard\"><h3>Hip-hop eras</h3><div class=\"scene-list\" id=\"sceneList\"></div></div>",
+  "<div class=\"sidecard\"><h3>Crate-digger trivia</h3><div class=\"trivia\"><strong id=\"triviaTitle\">DID YOU KNOW?</strong><p id=\"trivia\">Hip-hop culture grew from block parties, DJs, MCs, dancers, and writers building a scene together.</p></div><button class=\"secondary\" id=\"newTrivia\" style=\"margin-top:7px;width:100%\">NEXT TRIVIA</button></div>",
+  "<div class=\"sidecard\"><h3>Use your own artwork</h3><p>Load two images you own or have permission to use for a custom comparison. The built-in scenes remain available.</p><div class=\"import-row\"><button class=\"secondary\" id=\"loadLeft\">LOAD ORIGINAL</button><button class=\"secondary\" id=\"loadRight\">LOAD REMIX</button></div><input type=\"file\" accept=\"image/*\" class=\"fileinput\" id=\"fileLeft\"><input type=\"file\" accept=\"image/*\" class=\"fileinput\" id=\"fileRight\"><p id=\"customStatus\">Custom pair not loaded.</p></div>",
+  "</aside></div>",
+  "</main>",
+  "<div class=\"footer\">V2 includes six original hip-hop-inspired scenes, difficulty modes, trivia, scoring, saved best score, hints, and custom image-pair support. The built-in artwork is original and inspired by hip-hop culture; it does not reproduce famous copyrighted album covers or photographs. For recognizable cover art or archival photos, load images you own or are licensed to use.</div>",
+  "<div class=\"overlay\" id=\"modal\"><div class=\"modal\"><h2 id=\"modalTitle\">Respect the culture.<br>Study the details.</h2><p id=\"modalText\">A hip-hop history-inspired spot-the-difference game. Explore six original scenes, learn a little trivia, and build your high score. Compare the Original Mix and Remixed Version and find five changes in each scene.</p><div class=\"modal-actions\"><button id=\"modalPrimary\">START DIGGING</button><button class=\"secondary\" id=\"modalClose\">CLOSE</button></div></div></div>",
+  "<script>",
+  "(()=>{'use strict';",
+  "const W=640,H=480,$=id=>document.getElementById(id),ca=$('a'),cb=$('b'),A=ca.getContext('2d'),B=cb.getContext('2d');",
+  "const scenes=[",
+  "{title:'Block Party: The Park Jam',desc:'A neighborhood jam is warming up.',tag:'OLD SCHOOL',trivia:'Hip-hop emerged in the Bronx in the 1970s, with DJs, MCs, breakdancers, and graffiti writers shaping a culture.',changes:[{x:.16,y:.22,r:.052,h:'Look at the sun in the upper-left sky.'},{x:.46,y:.56,r:.06,h:'Inspect the speaker stack.'},{x:.77,y:.34,r:.05,h:'Something is floating above the crowd.'},{x:.29,y:.75,r:.05,h:'Check the dancer\u2019s shoes.'},{x:.85,y:.76,r:.06,h:'Look at the record crate.'}],kind:0},",
+  "{title:'Subway Writers: Moving Canvas',desc:'A train rolls past a wall of color.',tag:'GRAFFITI ERA',trivia:'Graffiti writing became one of hip-hop\u2019s most visible art forms, turning trains and walls into moving or public canvases.',changes:[{x:.16,y:.2,r:.05,h:'Look at the moon over the rooftops.'},{x:.5,y:.35,r:.06,h:'Check the central wall lettering.'},{x:.72,y:.6,r:.055,h:'One train window is different.'},{x:.25,y:.8,r:.05,h:'Look near the spray cans.'},{x:.86,y:.2,r:.05,h:'Check the bird in the sky.'}],kind:1},",
+  "{title:'Golden-Era Crate Dig',desc:'Dusty sleeves, deep cuts, and hidden samples.',tag:'CRATE DIGGER',trivia:'Sampling turns fragments of earlier recordings into new musical ideas; crate-digging is the hunt for records with useful sounds and surprises.',changes:[{x:.16,y:.2,r:.05,h:'Look at the poster on the wall.'},{x:.5,y:.78,r:.05,h:'Check the label on the foreground record.'},{x:.77,y:.19,r:.05,h:'Look at the hanging lamp.'},{x:.32,y:.56,r:.05,h:'Check the sticker on the record bin.'},{x:.86,y:.7,r:.05,h:'Inspect the sleeve at the right.'}],kind:2},",
+  "{title:'Turntablist Showdown',desc:'Two decks, a mixer, and hands moving fast.',tag:'SCRATCH MODE',trivia:'Turntablism treats turntables as instruments. Scratching, beat juggling, and precise cueing became signature DJ techniques.',changes:[{x:.13,y:.3,r:.05,h:'Look at the left stage light.'},{x:.22,y:.65,r:.05,h:'Check the left record deck.'},{x:.5,y:.68,r:.05,h:'Inspect the mixer controls.'},{x:.86,y:.3,r:.05,h:'Look at the star-shaped light.'},{x:.56,y:.76,r:.05,h:'Check near the DJ\u2019s shoe.'}],kind:3},",
+  "{title:'Basement Beat Lab',desc:'Late night, dusty sampler, loop on repeat.',tag:'BOOM BAP',trivia:'Boom bap is associated with punchy kick-and-snare patterns and a rugged, sample-forward sound, though the style spans many variations.',changes:[{x:.13,y:.15,r:.05,h:'Look at the wall clock.'},{x:.36,y:.53,r:.05,h:'Check the sampler pads.'},{x:.36,y:.18,r:.05,h:'Inspect the studio poster.'},{x:.84,y:.52,r:.05,h:'Look at the mug on the desk.'},{x:.27,y:.81,r:.05,h:'Trace the cables on the floor.'}],kind:4},",
+  "{title:'Independent Record Shop',desc:'Local gems, hand-written tags, and community.',tag:'INDIE SPIRIT',trivia:'Independent labels and local record shops have long helped scenes grow by connecting artists, listeners, DJs, and collectors.',changes:[{x:.5,y:.14,r:.05,h:'Read the shop sign.'},{x:.28,y:.68,r:.05,h:'A sleeve on the middle shelf changed.'},{x:.76,y:.39,r:.05,h:'Look at the plant by the window.'},{x:.87,y:.58,r:.05,h:'Check the stool near the counter.'},{x:.16,y:.8,r:.05,h:'Look for the sticker on the crate.'}],kind:5}",
+  "];",
+  "let idx=0,found=new Set(),miss=0,score=0,penalty=0,started=Date.now(),sound=false,customA=null,customB=null,customMode=false,roundWon=false,difficulty='easy',hinted=new Set();",
+  "const bestKey='hhHistoryBestV2';let best=0;try{best=Number(localStorage.getItem(bestKey)||0)||0}catch(e){best=0}",
+  "const palette=['#f5c858','#e84d7b','#56d7c7','#8c78d8','#f0e6cf'];",
+  "function rect(c,x,y,w,h,r,col,stroke){c.beginPath();c.roundRect(x,y,w,h,r);c.fillStyle=col;c.fill();if(stroke){c.lineWidth=3;c.strokeStyle=stroke;c.stroke()}}",
+  "function circ(c,x,y,r,col,stroke){c.beginPath();c.arc(x,y,r,0,Math.PI*2);c.fillStyle=col;c.fill();if(stroke){c.lineWidth=3;c.strokeStyle=stroke;c.stroke()}}",
+  "function ln(c,x,y,X,Y,col,w=4){c.beginPath();c.moveTo(x,y);c.lineTo(X,Y);c.lineWidth=w;c.lineCap='round';c.strokeStyle=col;c.stroke()}",
+  "function txt(c,t,x,y,size,col,align='left'){c.fillStyle=col;c.font=`900 ${size}px Impact, \"Arial Black\", sans-serif`;c.textAlign=align;c.fillText(t,x,y)}",
+  "function star(c,x,y,r,col){c.beginPath();for(let i=0;i<10;i++){let a=-Math.PI/2+i*Math.PI/5,q=i%2?r*.45:r;c.lineTo(x+Math.cos(a)*q,y+Math.sin(a)*q)}c.closePath();c.fillStyle=col;c.fill()}",
+  "function grain(c){for(let i=0;i<170;i++){c.fillStyle=i%2?'#fff1':'#09061210';c.fillRect(i*83%W,i*47%H,2,2)}}",
+  "function draw(c,s,remix){",
+  " c.clearRect(0,0,W,H);c.fillStyle=['#f2a45b','#8bb9bc','#d8b77f','#211d37','#505963','#c9b48b'][s.kind];c.fillRect(0,0,W,H);grain(c);",
+  " if(s.kind===0){",
+  "  c.fillStyle='#d36750';c.fillRect(0,300,W,180);c.fillStyle='#e5ac6b';c.fillRect(0,290,W,15);",
+  "  for(let i=0;i<8;i++){let x=i*86-10,h=70+(i*37)%100;c.fillStyle='#483d4b';c.fillRect(x,290-h,65,h);for(let j=0;j<3;j++)for(let k=0;k<2;k++){c.fillStyle='#f1c36a';c.fillRect(x+10+j*17,300-h+k*24,7,10)}}",
+  "  circ(c,105,98,39,remix?'#ff4d86':'#ffe6a0');if(remix)star(c,105,98,16,'#fff0bd');else for(let i=0;i<6;i++)ln(c,105+i*2,49,105+i*2,39,'#ffe9ac',3);",
+  "  rect(c,258,220,145,83,9,'#353740','#171820');circ(c,290,259,23,'#858d94','#151820');circ(c,368,259,23,'#858d94','#151820');rect(c,320,238,24,28,3,remix?'#e94e7b':'#e1c15d');txt(c,'BOOM',330,293,12,'#f4e5ba','center');",
+  "  circ(c,177,248,18,'#7b4937');rect(c,157,266,43,65,8,'#2e5481');ln(c,163,285,133,260,'#7b4937',12);ln(c,194,286,220,252,'#7b4937',12);ln(c,168,329,152,372,'#26252d',14);ln(c,190,329,211,367,'#26252d',14);ln(c,145,374,165,374,'#f0d6ac',9);ln(c,207,369,229,369,remix?'#e94e7b':'#f0d6ac',9);",
+  "  circ(c,488,151,15,remix?'#e94e7b':'#55e0d0');ln(c,488,166,488,195,'#705041',3);if(remix)star(c,488,151,8,'#fff0a0');",
+  "  rect(c,433,328,103,52,3,'#4c3031','#d19b58');for(let i=0;i<3;i++)ln(c,445+i*30,334,445+i*30,375,'#c08b55',2);if(remix){circ(c,485,354,9,'#55e0d0');rect(c,355,235,24,18,3,'#f6e5a0');}",
+  " }else if(s.kind===1){",
+  "  c.fillStyle='#444d5a';c.fillRect(0,245,W,235);c.fillStyle='#202431';c.fillRect(0,360,W,120);for(let x=0;x<W;x+=70){rect(c,x,80,5,180,1,'#68707a');ln(c,x,80,x+24,60,'#59616c',4)}",
+  "  circ(c,98,100,25,remix?'#ff4d86':'#f4d16e');txt(c,'HIP',320,135,51,'#e95082','center');txt(c,remix?'FUNK':'HOP',320,192,51,remix?'#f5d05e':'#58d8c9','center');",
+  "  rect(c,22,244,596,164,18,'#497e90','#18232e');c.fillStyle='#c9c9b9';c.fillRect(22,290,596,11);for(let x=48;x<600;x+=82)rect(c,x,265,58,67,5,remix&&x===458?'#e94e77':'#273b50','#b8d1c9');",
+  "  c.fillStyle='#dfb45c';c.fillRect(22,386,596,19);for(let x=50;x<610;x+=35)circ(c,x,423,7,'#171b24');",
+  "  circ(c,160,290,15,'#8b5b42');rect(c,144,306,32,48,6,'#e2b951');ln(c,150,352,145,384,'#262a35',9);ln(c,170,352,182,382,'#262a35',9);ln(c,176,321,200,303,'#8b5b42',8);rect(c,196,352,25,34,3,remix?'#53e0d2':'#e94e77','#26212a');",
+  "  circ(c,remix?551:563,78,8,'#fff2c2');if(remix){rect(c,435,278,58,47,5,'#e94e77');circ(c,98,100,8,'#55e0d0');}",
+  " }else if(s.kind===2){",
+  "  c.fillStyle='#8a644f';c.fillRect(0,0,W,250);c.fillStyle='#634536';c.fillRect(0,250,W,230);for(let x=0;x<W;x+=35)ln(c,x,0,x,250,'#d5b17b33',2);",
+  "  rect(c,42,42,112,120,4,remix?'#e94e77':'#3b5863','#f0d29a');txt(c,'FRESH',98,85,19,'#f7e6bd','center');txt(c,'CUTS',98,110,19,'#f7e6bd','center');",
+  "  for(let b=0;b<3;b++){let x=35+b*195;rect(c,x,260,175,150,5,'#a86c42','#422f2b');for(let i=0;i<7;i++){c.save();c.translate(x+15+i*20,260);c.rotate((i%3-1)*.08);rect(c,0,0,15,115,2,palette[(i+b)%5],'#362a2d');c.restore()} }",
+  "  ln(c,475,0,475,65,'#322b2b',5);circ(c,475,83,28,remix?'#53e0d2':'#f2cb6e');circ(c,475,83,14,'#fff0b0');circ(c,320,390,64,'#1c2027','#d4c4a0');circ(c,320,390,43,'#333743','#767d87');circ(c,320,390,13,remix?'#e94e77':'#d8b456');circ(c,320,390,4,'#17151b');txt(c,'SIDE A',320,455,15,'#f4d8a1','center');",
+  "  if(remix){rect(c,236,265,18,25,3,'#e94e77');circ(c,475,83,12,'#e94e77');}",
+  " }else if(s.kind===3){",
+  "  c.fillStyle='#191729';c.fillRect(0,0,W,H);for(let i=0;i<30;i++)circ(c,i*79%640,i*43%220,1+i%3,'#f5d9ff');",
+  "  c.globalAlpha=.18;c.fillStyle='#f4d45c';c.beginPath();c.moveTo(75,35);c.lineTo(0,290);c.lineTo(260,290);c.fill();c.fillStyle='#e94e77';c.beginPath();c.moveTo(555,25);c.lineTo(390,290);c.lineTo(640,290);c.fill();c.globalAlpha=1;",
+  "  txt(c,'DJ BATTLE',320,100,44,'#f5d45f','center');for(let x of [75,385]){rect(c,x,250,180,115,8,'#262a36','#a7a4b5');circ(c,x+66,305,48,'#10131c','#777f8d');circ(c,x+66,305,32,'#252a35','#565d6b');circ(c,x+66,305,8,remix&&x===75?'#53e0d0':'#e94e77')}",
+  "  rect(c,275,270,90,90,6,'#424451','#d2c9d6');for(let i=0;i<3;i++){ln(c,290+i*25,280,290+i*25,348,'#aaa8b6',2);for(let j=0;j<3;j++)circ(c,290+i*25,287+j*20,4,(i+j)%2?'#e94e77':'#53e0d2')}",
+  "  circ(c,320,170,25,'#8e563e');rect(c,289,196,62,80,9,'#e94e77');ln(c,300,220,265,250,'#8e563e',13);ln(c,345,220,377,248,'#8e563e',13);ln(c,304,276,292,330,'#171923',15);ln(c,337,276,350,330,'#171923',15);star(c,80,160,23,remix?'#53e0d2':'#f7e4a2');star(c,550,150,18,'#f7e4a2');if(remix){rect(c,308,294,14,26,3,'#f5d45f');ln(c,350,330,366,330,'#e94e77',9)}",
+  " }else if(s.kind===4){",
+  "  c.fillStyle='#44434b';c.fillRect(0,0,W,H);for(let y=0;y<245;y+=28)for(let x=(y%56?0:25);x<W;x+=75)rect(c,x,y,68,22,3,'#55515a','#39343a');",
+  "  rect(c,35,35,100,70,5,'#d8c6a3','#24232a');circ(c,85,70,25,'#ede1c7','#34303a');ln(c,85,70,85,51,'#302b31',3);ln(c,85,70,101,77,'#302b31',3);rect(c,165,45,125,82,3,remix?'#53e0d2':'#d9b95c','#17161b');txt(c,remix?'FUNK':'BEATS',227,95,28,'#25222a','center');",
+  "  rect(c,30,275,580,42,5,'#684632','#30231e');rect(c,50,315,20,120,3,'#49342b');rect(c,570,315,20,120,3,'#49342b');rect(c,115,210,235,92,8,'#22252c','#8c8b8e');",
+  "  for(let r=0;r<3;r++)for(let col=0;col<6;col++)rect(c,130+col*34,222+r*22,23,15,3,(r+col)%3===0?'#e94e77':(r+col)%3===1?'#53d7cc':'#e3c45e','#12131a');",
+  "  rect(c,405,155,80,115,5,'#25252b','#b9a99a');circ(c,445,194,25,'#101116','#6e727c');circ(c,445,194,10,'#545967');circ(c,445,237,12,'#101116');rect(c,505,245,66,52,7,'#a76c4c','#4b3027');txt(c,'MUG',538,277,12,'#f5d8b5','center');ln(c,70,390,260,390,'#19191f',5);ln(c,260,390,305,355,'#19191f',5);ln(c,305,355,390,390,'#19191f',5);circ(c,538,245,7,remix?'#e94e77':'#f2d6aa');if(remix){rect(c,197,244,23,15,3,'#f5d45f');circ(c,85,70,8,'#e94e77');}",
+  " }else{",
+  "  c.fillStyle='#e1c99b';c.fillRect(0,0,W,H);c.fillStyle='#567362';c.fillRect(0,280,W,200);rect(c,45,35,550,60,8,remix?'#e94e77':'#25232c','#d6b35f');txt(c,remix?'LOCAL SOUNDS':'INDEPENDENT SOUNDS',320,74,29,'#f5d99c','center');rect(c,55,120,300,140,6,'#8db8b1','#3e4a4b');for(let x=75;x<340;x+=42)ln(c,x,130,x,250,'#d5e6d7',3);",
+  "  for(let y of [300,365,430]){rect(c,40,y,560,14,2,'#754b35');for(let i=0;i<15;i++){let x=48+i*36;rect(c,x,y-48,29,46,2,palette[i%5],'#332a2b');ln(c,x+6,y-38,x+23,y-38,'#fff2c8',2)}}",
+  "  rect(c,465,170,42,65,4,remix?'#e94e77':'#bd704d','#5b3930');for(let i=0;i<5;i++)ln(c,485,190,460+i*13,150+i%2*14,'#2f6b46',5);rect(c,530,265,65,13,3,'#d9b45f');ln(c,540,278,535,320,'#4b382e',6);ln(c,585,278,590,320,'#4b382e',6);if(remix){rect(c,84,315,29,33,2,'#53e0d2');circ(c,485,190,7,'#e94e77');ln(c,540,278,550,320,'#e94e77',6)}",
+  " }",
+  " c.strokeStyle='#fff4db55';c.lineWidth=4;c.strokeRect(2,2,W-4,H-4);",
+  "}",
+  "function drawAll(){if(customMode&&customA&&customB){paintImage(A,customA);paintImage(B,customB)}else{draw(A,scenes[idx],false);draw(B,scenes[idx],true)}$('sceneTitle').textContent=customMode?'CUSTOM ARTWORK PAIR':scenes[idx].title;$('sceneDesc').textContent=customMode?'Find five differences in your own image pair.':scenes[idx].desc;$('tag').textContent=customMode?'YOUR ART':scenes[idx].tag;$('trivia').textContent=customMode?'Custom image mode: only use artwork you own or have permission to use.':scenes[idx].trivia;$('triviaTitle').textContent=customMode?'ARTIST NOTE':'DID YOU KNOW?';renderSceneList();ui()}",
+  "function paintImage(c,img){c.clearRect(0,0,W,H);let scale=Math.max(W/img.width,H/img.height),w=img.width*scale,h=img.height*scale;c.drawImage(img,(W-w)/2,(H-h)/2,w,h);c.strokeStyle='#fff4db55';c.lineWidth=4;c.strokeRect(2,2,W-4,H-4)}",
+  "function renderSceneList(){$('sceneList').innerHTML=scenes.map((s,i)=>`<button class=\"scene-btn ${!customMode&&i===idx?'active':''}\" data-scene=\"${i}\">${String(i+1).padStart(2,'0')} \u00b7 ${s.title}<span>${s.tag}</span></button>`).join('');document.querySelectorAll('[data-scene]').forEach(b=>b.onclick=()=>loadScene(+b.dataset.scene))}",
+  "function ui(){$('score').textContent=String(score).padStart(5,'0');$('best').textContent=String(best).padStart(5,'0');$('found').textContent=`${found.size} / 5`;$('progress').innerHTML=Array.from({length:5},(_,i)=>`<span class=\"dot ${found.has(i)?'hit':''}\"></span>`).join('')+`<span style=\"margin-left:5px\">${roundWon?'SCENE CLEARED':'FIND FIVE'}</span>`;$('boardA').classList.toggle('cleared',roundWon);$('boardB').classList.toggle('cleared',roundWon)}",
+  "function loadScene(n){idx=n;customMode=false;found=new Set();hinted=new Set();miss=0;penalty=0;started=Date.now();roundWon=false;$('message').textContent='Find five differences. Tap either picture to mark one.';drawAll()}",
+  "function radius(){return difficulty==='easy'?1.55:difficulty==='medium'?1.15:.82}",
+  "function handle(ev,canvas){if(!$('modal').classList.contains('hidden'))return;ev.preventDefault();let r=canvas.getBoundingClientRect(),x=(ev.clientX-r.left)/r.width,y=(ev.clientY-r.top)/r.height;if(customMode){$('message').textContent='Custom image comparison is view-only; use built-in scenes for clickable difference targets.';return}",
+  " let choices=scenes[idx].changes.map((d,i)=>({d,i,dist:Math.hypot(x-d.x,y-d.y)})).filter(q=>!found.has(q.i)&&q.dist<q.d.r*radius()).sort((p,q)=>p.dist-q.dist);",
+  " if(choices.length){let {d,i}=choices[0];found.add(i);let bonus=Math.max(20,120-Math.floor((Date.now()-started)/1000)*2);score+=bonus;if(sound)beep(600+found.size*100,.09);mark(d);$('message').textContent=`Nice find! +${bonus} points. ${found.size===5?'Scene cleared!':''}`;if(found.size===5){roundWon=true;score+=150;roundWon=true;$('message').textContent='SCENE CLEARED! +150 bonus points. Keep digging.';if(sound)beep(880,.2);if(score>best){best=score;try{localStorage.setItem(bestKey,String(best))}catch(e){}}showModal('Scene cleared!','You found all five differences. A 150-point completion bonus has been added. Ready for the next era?','NEXT SCENE \u2192')}ui()}",
+  " else{miss++;score=Math.max(0,score-5);$('message').textContent='No difference there. \u22125 points \u2014 keep scanning.';if(sound)beep(170,.08);ui()}}",
+  "function mark(d){[A,B].forEach(c=>{c.beginPath();c.arc(d.x*W,d.y*H,25,0,Math.PI*2);c.strokeStyle='#55e0d0';c.lineWidth=5;c.stroke();c.beginPath();c.arc(d.x*W,d.y*H,32,0,Math.PI*2);c.strokeStyle='#55e0d077';c.lineWidth=2;c.stroke()})}",
+  "function beep(f,d){try{let ac=new(window.AudioContext||window.webkitAudioContext)(),o=ac.createOscillator(),g=ac.createGain();o.frequency.value=f;o.connect(g);g.connect(ac.destination);g.gain.value=.045;o.start();g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+d);o.stop(ac.currentTime+d);o.onended=()=>ac.close()}catch(e){}}",
+  "function fmt(n){return `${String(Math.floor(n/60)).padStart(2,'0')}:${String(n%60).padStart(2,'0')}`}",
+  "function showModal(title,body,primary){$('modalTitle').textContent=title;$('modalText').textContent=body;$('modalPrimary').textContent=primary||'BACK TO GAME';$('modal').classList.remove('hidden')}",
+  "function next(){if(!roundWon){$('message').textContent='Find all five differences to clear this scene. You can also choose another era.';return}loadScene((idx+1)%scenes.length);$('modal').classList.add('hidden')}",
+  "ca.addEventListener('pointerdown',e=>handle(e,ca));cb.addEventListener('pointerdown',e=>handle(e,cb));",
+  "$('hint').onclick=()=>{if(customMode){$('message').textContent='Hints are available for the built-in scenes.';return}let d=scenes[idx].changes.find((q,i)=>!found.has(i));if(!d){$('message').textContent='You found them all!';return}score=Math.max(0,score-10);penalty+=10;let i=scenes[idx].changes.indexOf(d);hinted.add(i);$('message').textContent='HINT: '+d.h;$('score').textContent=String(score).padStart(5,'0');if(sound)beep(450,.1);ui()};",
+  "$('restart').onclick=()=>customMode?($('message').textContent='Load another pair or select a built-in scene.'):loadScene(idx);",
+  "$('next').onclick=()=>{if(roundWon)next();else $('message').textContent='Clear this scene first to unlock the next-scene button.'};",
+  "$('difficulty').querySelectorAll('button').forEach(b=>b.onclick=()=>{difficulty=b.dataset.d;$('difficulty').querySelectorAll('button').forEach(x=>x.classList.toggle('active',x===b));$('difficultyText').textContent=difficulty==='easy'?'Easy: larger hit zones and more points for quick finds.':difficulty==='medium'?'Medium: tighter hit zones for a more focused hunt.':'Hard: small hit zones. Accuracy is everything.'});",
+  "$('soundBtn').onclick=()=>{sound=!sound;$('soundBtn').textContent='\u266b SOUND '+(sound?'ON':'OFF');if(sound)beep(560,.1)};",
+  "$('helpBtn').onclick=()=>showModal('How to play','Compare the Original Mix and Remixed Version. Tap/click near a change in either picture. Find five to clear a scene. Easy, Medium, and Hard change how precise your taps must be. Correct finds award points; misses and hints cost points. Your best score is saved in this browser.','BACK TO GAME');",
+  "$('modalClose').onclick=()=>$('modal').classList.add('hidden');$('modalPrimary').onclick=()=>{if($('modalPrimary').textContent.includes('NEXT'))next();else $('modal').classList.add('hidden')};",
+  "$('newTrivia').onclick=()=>{if(customMode)return;let s=scenes[idx];$('trivia').textContent=s.trivia;$('triviaTitle').textContent='DID YOU KNOW?'};",
+  "function loadFile(which,file){if(!file)return;let url=URL.createObjectURL(file),img=new Image();img.onload=()=>{if(which==='a')customA=img;else customB=img;if(customA&&customB){customMode=true;found=new Set();roundWon=false;started=Date.now();$('customStatus').textContent='Both images loaded. Built-in scene differences are disabled in custom mode.';$('message').textContent='Custom image pair loaded. Compare your images side-by-side.';drawAll()}else $('customStatus').textContent=(which==='a'?'Original':'Remix')+' loaded. Choose the other image to begin.';URL.revokeObjectURL(url)};img.onerror=()=>{$('customStatus').textContent='Could not load that image. Try another file.';URL.revokeObjectURL(url)};img.src=url}",
+  "$('loadLeft').onclick=()=>$('fileLeft').click();$('loadRight').onclick=()=>$('fileRight').click();$('fileLeft').onchange=e=>loadFile('a',e.target.files[0]);$('fileRight').onchange=e=>loadFile('b',e.target.files[0]);",
+  "setInterval(()=>{$('time').textContent=fmt(Math.floor((Date.now()-started)/1000)+penalty)},500);",
+  "loadScene(0);",
+  "window.addEventListener('keydown',e=>{if(e.key==='Escape'){try{parent.postMessage({spotDiff:'close'},'*')}catch(x){}}});",
+  "})();",
+  "</script>",
+  "</body></html>"
+].join('\n');
+let spotDiffOverlayEl = null, spotDiffOverlayFrame = null;
+let spotDiffReturnState = 'play';
+let spotDiffHistoryPushed = false; // mirrors reverbReefHistoryPushed -- see openSpotDiffApp()/closeSpotDiffApp()
+
+function createSpotDiffOverlay() {
+  const style = document.createElement('style');
+  style.textContent = `
+    #spotDiffApp {
+      position: fixed; inset: 0; z-index: 1000;
+      background: #000;
+      display: none; flex-direction: column;
+    }
+    #spotDiffApp.open { display: flex; }
+    #spotDiffApp .sd-bar {
+      flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 10px 14px;
+      background: linear-gradient(#3a2540, #1a1220);
+      border-bottom: 2px solid #ffd15c;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    }
+    #spotDiffApp .sd-title {
+      color: #fff3d6; font: bold 14px monospace; letter-spacing: 0.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #spotDiffApp .sd-close {
+      flex: 0 0 auto; cursor: pointer;
+      background: rgba(255,209,92,0.15);
+      border: 1.5px solid rgba(255,209,92,0.9);
+      color: #fff3d6; border-radius: 8px;
+      padding: 7px 16px; font: bold 13px monospace;
+      -webkit-user-select: none; user-select: none;
+    }
+    #spotDiffApp .sd-close:active { background: rgba(255,209,92,0.45); }
+    #spotDiffApp iframe {
+      flex: 1 1 auto; width: 100%; border: 0; background: #100e14;
+    }
+  `;
+  document.head.appendChild(style);
+
+  spotDiffOverlayEl = document.createElement('div');
+  spotDiffOverlayEl.id = 'spotDiffApp';
+
+  const bar = document.createElement('div');
+  bar.className = 'sd-bar';
+  const title = document.createElement('div');
+  title.className = 'sd-title';
+  title.textContent = 'SPOT THE DIFFERENCE';
+  const closeBtn = document.createElement('div');
+  closeBtn.className = 'sd-close';
+  closeBtn.textContent = '\u2190 BACK TO SPEAKING VOLUMES';
+  bindTap(closeBtn, closeSpotDiffApp);
+  bar.appendChild(title);
+  bar.appendChild(closeBtn);
+
+  spotDiffOverlayFrame = document.createElement('iframe');
+  spotDiffOverlayFrame.setAttribute('allow', 'autoplay');
+
+  spotDiffOverlayEl.appendChild(bar);
+  spotDiffOverlayEl.appendChild(spotDiffOverlayFrame);
+  document.body.appendChild(spotDiffOverlayEl);
+
+  window.addEventListener('message', (e) => {
+    if (!spotDiffOverlayFrame || e.source !== spotDiffOverlayFrame.contentWindow) return;
+    if (e.data && e.data.spotDiff === 'close' && state === 'spotDiffApp') closeSpotDiffApp();
+  });
+}
+createSpotDiffOverlay();
+
+// Opens the Spot the Difference overlay and switches state to 'spotDiffApp'.
+// Called from MINIGAME_ACTIONS.spotdiff (E on the cabinet, or tapping its
+// floating sign), same entry point every other mini-game uses.
+function openSpotDiffApp() {
+  spotDiffReturnState = state;
+  spotDiffOverlayFrame.srcdoc = SPOT_DIFF_HTML;
+  spotDiffOverlayEl.classList.add('open');
+  state = 'spotDiffApp';
+  spotDiffOverlayFrame.addEventListener('load', () => {
+    try { spotDiffOverlayFrame.contentWindow.focus(); } catch (e) { /* a tap will focus it */ }
+  }, { once: true });
+  // Same throwaway-history-entry trick as openReverbReefApp(), so the
+  // browser/OS back gesture closes the overlay instead of leaving the game.
+  history.pushState({ spotDiffApp: true }, '');
+  spotDiffHistoryPushed = true;
+}
+
+// Tears the iframe back down and returns to ordinary gameplay in SPEAKING
+// VOLUMES. fromPopState is true when triggered by the browser's back button
+// (whose history entry is already consumed), so we must not call
+// history.back() again in that case.
+function closeSpotDiffApp(fromPopState) {
+  spotDiffOverlayEl.classList.remove('open');
+  spotDiffOverlayFrame.removeAttribute('srcdoc');
+  spotDiffOverlayFrame.src = 'about:blank';
+  reclaimGameFocus(spotDiffOverlayFrame);
+  state = spotDiffReturnState;
+  if (!fromPopState && spotDiffHistoryPushed) {
+    spotDiffHistoryPushed = false;
+    history.back();
+  } else {
+    spotDiffHistoryPushed = false;
+  }
+}
+
 // The Drum Pattern Doc -- MRKBH's crate of 16th-note breakdowns (genre
 // grooves, Afro-Cuban patterns, classic breakbeats), set up inside THE
 // SOUL SHACK (see the `soulshack` shop's `minigames` list), right
@@ -22228,6 +22497,8 @@ window.addEventListener('popstate', () => {
     closeDustRacingApp(true);
   } else if (state === 'cbPressApp') {
     closeCBPrintsPressApp(true);
+  } else if (state === 'spotDiffApp') {
+    closeSpotDiffApp(true);
   } else if (state === 'connectFourApp') {
     closeConnectFourApp(true);
   } else if (state === 'syrupRoadsApp') {
@@ -22263,7 +22534,7 @@ canvas.addEventListener('pointerdown', (e) => {
     const vx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const vy = (e.clientY - rect.top) * (canvas.height / rect.height);
     handleLabTap(vx, vy);
-  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'reverbReefApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'humbleTreasuresApp' || state === 'dustRacingApp' || state === 'cbPressApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'scoopBeatsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp' || state === 'arkaiikImpactApp' || state === 'precisionPointsApp' || state === 'j2sProSkaterApp') {
+  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'reverbReefApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'humbleTreasuresApp' || state === 'dustRacingApp' || state === 'cbPressApp' || state === 'spotDiffApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'scoopBeatsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp' || state === 'arkaiikImpactApp' || state === 'precisionPointsApp' || state === 'j2sProSkaterApp') {
     // The DOM overlay sits on top of (and outside) the canvas while an
     // instrument/the chess app/the beat bot/the organ/mini golf/the
     // blackbook/Gator Grooves/Vinyl Snake/Bayou Break Station/Gator Jam
@@ -22857,6 +23128,13 @@ function update(dt) {
     // buyPressed is still consumed here too so the on-screen [X] touch
     // button works while the press is open.
     if (buyPressed) closeCBPrintsPressApp();
+  } else if (state === 'spotDiffApp') {
+    // Same reasoning as 'cbPressApp' just above: the DOM overlay (see
+    // createSpotDiffOverlay()) owns input while Spot the Difference is
+    // loaded -- its own back button and [Esc] handle closing it directly.
+    // buyPressed is still consumed here so the on-screen [X] touch button
+    // works while it's open.
+    if (buyPressed) closeSpotDiffApp();
   } else if (state === 'hyperSwimApp') {
     // Same reasoning as 'labApp'/'chessApp'/.../'diggerApp' just above: the
     // DOM overlay (see createHyperSwimOverlay()) owns input while Hyper
@@ -24112,7 +24390,7 @@ function render(time) {
     drawSplash();
     return;
   }
-  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'reverbReefApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'humbleTreasuresApp' || state === 'dustRacingApp' || state === 'cbPressApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'scoopBeatsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp' || state === 'arkaiikImpactApp' || state === 'precisionPointsApp' || state === 'j2sProSkaterApp') {
+  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'reverbReefApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'humbleTreasuresApp' || state === 'dustRacingApp' || state === 'cbPressApp' || state === 'spotDiffApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'scoopBeatsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp' || state === 'arkaiikImpactApp' || state === 'precisionPointsApp' || state === 'j2sProSkaterApp') {
     // Same reasoning as the labApp overlay: a DOM element (the <video>,
     // see createCharacterIntroOverlay(), the chess <iframe>, see
     // createChessOverlay(), the beat bot <iframe>, see
@@ -31559,6 +31837,71 @@ function drawSpeakingVolumesInterior(time) {
   drawLeaningVinylStack(5 * TILE + 30, 5 * TILE + 10, 5, 0);
   drawLeaningVinylStack(7 * TILE + 6, 5 * TILE + 18, 4, 2);
   drawLeaningVinylStack(6 * TILE + 16, 7 * TILE + 26, 3, 1);
+
+  // --- Spot the Difference arcade cabinet on tile (8,8): a plum-and-gold
+  // upright (solid blockTile dressed up here) whose screen shows two
+  // side-by-side mini scenes, one of them with a blinking "difference", plus a
+  // magnifying glass sweeping the panel and a flashing "SPOT IT" marquee.
+  {
+    const bx = 8 * TILE, by = 8 * TILE, cx = bx + 16;
+    ctx.fillStyle = '#4a3a3c';                                 // cover the wall-tile texture
+    ctx.fillRect(bx, by, 32, 32);
+    ctx.fillStyle = 'rgba(0,0,0,0.28)';                        // floor shadow
+    ctx.beginPath(); ctx.ellipse(cx, by + 29, 17, 4.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#2a1a30';                                 // cabinet body
+    ctx.fillRect(bx + 4, by - 16, 24, 44);
+    ctx.fillStyle = '#6a3d78';                                 // lit side panel
+    ctx.fillRect(bx + 4, by - 16, 3, 44);
+    ctx.strokeStyle = '#ffd15c'; ctx.lineWidth = 1.5;
+    ctx.strokeRect(bx + 4.75, by - 15.25, 22.5, 42.5);
+    const blinkS = Math.floor(time * 2.4) % 2 === 0;
+    ctx.fillStyle = blinkS ? '#ffd15c' : '#d9a93e';            // marquee
+    ctx.fillRect(bx + 7, by - 13, 18, 7);
+    ctx.fillStyle = '#2a1a30';
+    ctx.font = 'bold 5px monospace';
+    ctx.fillText('SPOT IT', cx, by - 8.5);
+    ctx.fillStyle = '#17131c';                                 // screen bezel
+    ctx.fillRect(bx + 8, by - 3, 16, 16);
+    // screen: two mini scenes (original left, remix right)
+    const sceneCols = ['#f2a45b', '#e84d7b'];
+    [bx + 9, bx + 16.5].forEach((sx, si) => {
+      ctx.fillStyle = '#d36750';
+      ctx.fillRect(sx, by - 1.5, 6.5, 13);
+      ctx.fillStyle = '#483d4b';                               // skyline
+      ctx.fillRect(sx + 0.5, by + 4, 1.6, 7);
+      ctx.fillRect(sx + 2.6, by + 2.5, 1.6, 8.5);
+      ctx.fillRect(sx + 4.6, by + 5, 1.4, 6);
+      ctx.fillStyle = '#ffe6a0';                               // sun
+      ctx.beginPath(); ctx.arc(sx + 3.2, by + 1.5, 1.3, 0, Math.PI * 2); ctx.fill();
+      if (si === 1) {                                          // the blinking difference
+        ctx.fillStyle = blinkS ? sceneCols[1] : '#ffe6a0';
+        ctx.beginPath(); ctx.arc(sx + 3.2, by + 1.5, 1.3, 0, Math.PI * 2); ctx.fill();
+      }
+    });
+    ctx.fillStyle = 'rgba(255,255,255,0.18)';                  // screen glare
+    ctx.fillRect(bx + 9, by - 2, 2, 5);
+    // magnifying glass sweeping across the screen
+    const mx = cx + Math.sin(time * 1.4) * 4.5, my = by + 5 + Math.cos(time * 1.1) * 2.5;
+    ctx.strokeStyle = '#55e0d0'; ctx.lineWidth = 1.1;
+    ctx.beginPath(); ctx.arc(mx, my, 2.6, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(mx + 1.9, my + 1.9); ctx.lineTo(mx + 4, my + 4); ctx.stroke();
+    ctx.fillStyle = '#1a2a38';                                 // control panel
+    ctx.fillRect(bx + 6, by + 13, 20, 6);
+    [['#ffd447', 0], ['#55e0d0', 1], ['#ff6f9c', 2]].forEach(([kc, ki]) => {
+      const kx = bx + 10.5 + ki * 5.5;
+      ctx.fillStyle = kc;
+      ctx.beginPath(); ctx.arc(kx, by + 16, 1.7, 0, Math.PI * 2); ctx.fill();
+    });
+    ctx.fillStyle = '#150d1a';                                 // coin slot kick plate
+    ctx.fillRect(bx + 8, by + 21, 16, 5);
+    ctx.fillStyle = '#ffd15c';
+    ctx.fillRect(bx + 14, by + 22.5, 4, 1.5);
+    const glowS = getGlowSprite(44, 'rgba(255,209,92,ALPHA)');  // soft screen glow on the floor
+    ctx.save();
+    ctx.globalAlpha = 0.2 + 0.06 * Math.sin(time * 2.1);
+    ctx.drawImage(glowS, cx - 34, by + 4, 68, 56);
+    ctx.restore();
+  }
   ctx.restore();
 }
 
