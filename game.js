@@ -1548,6 +1548,17 @@ const MINIGAME_ACTIONS = {
   // plays with no connection and no extra files. See openReverbReefApp()/
   // createReverbReefOverlay() below.
   reverbreef: () => openReverbReefApp(),
+  // Beat Brewing -- "brew a beer, brew a beat": a four-stage brewing game
+  // (MASH = circular stirring that drives the kick, HOP = call-and-response
+  // hop tapping that drives the hats, FERMENT = sliding the yeast between
+  // bass-note bands, POUR = a hold-and-release pint pour that lands the
+  // drop) on a copper brew station inside FOAM BREWERS in the skatepark (see
+  // the `foambrewers` shop's `minigames` list + drawFoamBrewersInterior()).
+  // Same fully self-contained shape as Reverb Reef: the page is inlined below
+  // as BEAT_BREWING_HTML, every sound is synthesized live with Web Audio, and
+  // it plays with touch, mouse or keyboard in portrait or landscape. See
+  // openBeatBrewingApp()/createBeatBrewingOverlay() below.
+  beatbrewing: () => openBeatBrewingApp(),
   // Spot the Difference -- hip-hop history spot-the-difference game (six
   // scenes, difficulty modes, scoring, hints, trivia) on an arcade cabinet
   // inside SPEAKING VOLUMES in the skatepark (see the `speakingvolumes`
@@ -10431,6 +10442,7 @@ window.addEventListener('keydown', (e) => {
     if (k === 'escape' && state === 'bayouBreakApp') { closeBayouBreakApp(); }
     if (k === 'escape' && state === 'freqAltarApp') { closeFrequencyAltarApp(); }
     if (k === 'escape' && state === 'reverbReefApp') { closeReverbReefApp(); }
+    if (k === 'escape' && state === 'beatBrewingApp') { closeBeatBrewingApp(); }
     if (k === 'escape' && state === 'drumPatternDocApp') { closeDrumPatternDocApp(); }
     if (k === 'escape' && state === 'gatorJamSlamApp') { closeGatorJamSlamApp(); }
     if (k === 'escape' && state === 'swampCaveApp') { closeSwampCaveApp(); }
@@ -13664,7 +13676,12 @@ const shops = {
     foamBrewers: true,
     recordPlayerTiles: [[5, 2], [7, 2]],
     // speaker stacks flanking the booth (drawn in drawFoamBrewersInterior())
-    blockTiles: [[4, 1], [4, 2], [8, 1], [8, 2]],
+    // (11,2) = the Beat Brewing station (see `minigames` below and the
+    // copper brew console painted in drawFoamBrewersInterior()): one more
+    // solid tile dressed up by the painter, in the back-right corner under
+    // the tanks and clear of the counter (row 3, cols 4-9), THE GHOST (9,5),
+    // the barrel table (10,7) and the door (6,9)/spawn (6.5,7.5).
+    blockTiles: [[4, 1], [4, 2], [8, 1], [8, 2], [11, 2]],
     // two barrel high-tops out on the dance floor, clear of the crates
     // (1,4)/(1,6)/(12,4)/(12,6), the counter (row 3), and the door (6,9)
     extraTables: [[3, 7], [10, 7]],
@@ -13681,6 +13698,11 @@ const shops = {
     // Four crates: the skatepark's second record (Nitro Pour) plus three
     // eccentric-local-tunes junk crates (see FOAM_JUNK above).
     crates: [ { record: 'foam' }, { foamSeed: 0 }, { foamSeed: 1 }, { foamSeed: 2 } ],
+    // BEAT BREWING -- brew-a-beer-brew-a-beat station at (11,2); stand at
+    // (11,3) facing up. See MINIGAME_ACTIONS.beatbrewing/openBeatBrewingApp().
+    minigames: [
+      { id: 'beatbrewing', tx: 11, ty: 2, label: 'PLAY BEAT BREWING' },
+    ],
     // THE GHOST -- a gold-chained emcee holding the mic out on the dance
     // floor at (9,5): clear of the counter (row 3) and tap tower (9,3), the
     // crates (1,4)/(1,6)/(12,4)/(12,6), the barrel tables (3,7)/(10,7), and
@@ -14044,7 +14066,7 @@ const player = {
   tempItem: null, tempItemTimer: 0,
 };
 const collected = new Set();
-let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | danceParty | portal | fifa | minigame | hotkeys | crate | photo | lab | labLocked | shopBackLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | qsdBalanceApp | vinylSnakeApp | waveformApp | bayouBreakApp | freqAltarApp | reverbReefApp | drumPatternDocApp | gatorJamSlamApp | swampCaveApp | vocalChopBoothApp | vtDirtApp | penaltyKingsApp | digDashApp | digOnApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | diggerApp | hyperSwimApp | linusTugApp | connectFourApp | syrupRoadsApp | scoopBeatsApp | clawMachineApp | kangaidenVideo | kangaidenSplash | kangaidenApp | hiphopLibraryApp | truthKnocksVideo | truthKnocksSplash | truthKnocksApp | johnnySlidesVideo | johnnySlidesSplash | johnnySlidesApp | humbleTreasuresVideo | humbleTreasuresSplash | humbleTreasuresApp | dustRacingApp | cbPressApp | spotDiffApp | arkaiikImpactApp | precisionPointsApp
+let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | danceParty | portal | fifa | minigame | hotkeys | crate | photo | lab | labLocked | shopBackLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | qsdBalanceApp | vinylSnakeApp | waveformApp | bayouBreakApp | freqAltarApp | reverbReefApp | beatBrewingApp | drumPatternDocApp | gatorJamSlamApp | swampCaveApp | vocalChopBoothApp | vtDirtApp | penaltyKingsApp | digDashApp | digOnApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | diggerApp | hyperSwimApp | linusTugApp | connectFourApp | syrupRoadsApp | scoopBeatsApp | clawMachineApp | kangaidenVideo | kangaidenSplash | kangaidenApp | hiphopLibraryApp | truthKnocksVideo | truthKnocksSplash | truthKnocksApp | johnnySlidesVideo | johnnySlidesSplash | johnnySlidesApp | humbleTreasuresVideo | humbleTreasuresSplash | humbleTreasuresApp | dustRacingApp | cbPressApp | spotDiffApp | arkaiikImpactApp | precisionPointsApp
 // State to snap back to when the [H] hotkeys popup is closed -- currently
 // always 'play' since that's the only state H can be opened from, but kept
 // as its own var in case another state wants to offer the popup later.
@@ -14739,7 +14761,7 @@ const music = {
 // enter/exit call sites, so it can't drift out of sync no matter which
 // of the several ways the player backs out of the lab popup (keyboard
 // [X], on-screen [X] button, closing the instrument iframe, etc.).
-const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'qsdBalanceApp', 'vinylSnakeApp', 'waveformApp', 'bayouBreakApp', 'freqAltarApp', 'reverbReefApp', 'drumPatternDocApp', 'gatorJamSlamApp', 'swampCaveApp', 'vocalChopBoothApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'digOnApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'johnnySlidesApp', 'humbleTreasuresApp', 'dustRacingApp', 'cbPressApp', 'spotDiffApp', 'hyperSwimApp', 'linusTugApp', 'connectFourApp', 'syrupRoadsApp', 'scoopBeatsApp', 'clawMachineApp', 'kangaidenVideo', 'kangaidenApp', 'hiphopLibraryApp', 'arkaiikImpactApp', 'precisionPointsApp', 'j2sProSkaterApp', 'danceParty', 'truthKnocksVideo', 'truthKnocksApp', 'johnnySlidesVideo', 'humbleTreasuresVideo']);
+const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'qsdBalanceApp', 'vinylSnakeApp', 'waveformApp', 'bayouBreakApp', 'freqAltarApp', 'reverbReefApp', 'beatBrewingApp', 'drumPatternDocApp', 'gatorJamSlamApp', 'swampCaveApp', 'vocalChopBoothApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'digOnApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'johnnySlidesApp', 'humbleTreasuresApp', 'dustRacingApp', 'cbPressApp', 'spotDiffApp', 'hyperSwimApp', 'linusTugApp', 'connectFourApp', 'syrupRoadsApp', 'scoopBeatsApp', 'clawMachineApp', 'kangaidenVideo', 'kangaidenApp', 'hiphopLibraryApp', 'arkaiikImpactApp', 'precisionPointsApp', 'j2sProSkaterApp', 'danceParty', 'truthKnocksVideo', 'truthKnocksApp', 'johnnySlidesVideo', 'humbleTreasuresVideo']);
 function syncMusicDuck() {
   const minigameDucked = state === 'minigame' && activeMinigame && activeMinigame.musicDucked;
   music.duck(DUCKED_STATES.has(state) || !!minigameDucked);
@@ -19817,6 +19839,935 @@ function closeReverbReefApp(fromPopState) {
   }
 }
 
+// Beat Brewing -- "BREW A BEER, BREW A BEAT" (four stages per batch: MASH =
+// stir the kettle in time to drive the kick; HOP ECHO = listen, then tap the
+// hop pattern back to drive the hats; FERMENT = slide the yeast onto the lit
+// bass-note band; POUR = hold on OPEN, release on SHUT to land the drop),
+// three batches (Brown Ale / IPA / Stout) at rising tempos, a tasting
+// playback of the track you actually brewed, and saved best scores. Set up as
+// a copper brew station inside FOAM BREWERS in the skatepark (see the
+// `foambrewers` shop's `minigames` list + drawFoamBeatBrewStation()). Same
+// "full-screen DOM overlay with an <iframe>" shape as Reverb Reef: the page is
+// INLINED below as BEAT_BREWING_HTML and loaded through iframe.srcdoc, so
+// there is nothing to fetch and no network call anywhere; all sound is
+// synthesized with the Web Audio API. Plays with touch, mouse or keyboard, and
+// the canvas re-lays itself out on resize, so it works in desktop windows and
+// in mobile portrait and landscape. [Esc] inside the iframe posts a message
+// back (keys typed there never reach this page).
+const BEAT_BREWING_HTML = `<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Beat Brewing</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+html,body{margin:0;height:100%;background:#1b0f08;color:#fff1d6;font:700 14px/1.35 ui-monospace,Menlo,Consolas,monospace;overflow:hidden;touch-action:manipulation;overscroll-behavior:none}
+.scr{position:fixed;inset:0;display:none}
+.scr.on{display:block}
+#menu,#res{overflow-y:auto;-webkit-overflow-scrolling:touch;background:radial-gradient(ellipse at 50% 0%,#5a3414 0%,#2a170a 55%,#140b06 100%)}
+.wrap{max-width:720px;margin:0 auto;padding:12px 14px calc(18px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:10px}
+h1{margin:6px 0 0;text-align:center;font-size:clamp(26px,7vw,46px);letter-spacing:3px;color:#ffd88a;text-shadow:0 0 14px #e8933a,0 3px 0 #5a3418}
+h1.sm{font-size:clamp(20px,5.5vw,32px)}
+.sub{margin:0;text-align:center;color:#f0c27a;font-weight:600}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px}
+.card,.btn{font:inherit;color:#fff1d6;cursor:pointer;border:2px solid #e8933a;background:rgba(60,30,10,.82);border-radius:12px;padding:12px 14px;text-align:left}
+.card{display:flex;flex-direction:column;gap:5px;box-shadow:0 0 16px rgba(232,147,58,.22)}
+.card b{font-size:16px;letter-spacing:1px;color:#ffd88a}.card span{font-weight:600;color:#e6c08a;font-size:12px}.card em{font-style:normal;color:#ffb347;font-size:13px}
+.card:active,.btn:active{transform:scale(.97);background:rgba(232,147,58,.35)}
+.btn{text-align:center;padding:11px 16px;letter-spacing:1px}.btn.big{font-size:17px;padding:14px;background:rgba(232,147,58,.3)}.btn.alt{border-color:#8a6a4a}
+.row{display:flex;gap:8px;flex-wrap:wrap}.row .btn{flex:1 1 120px}
+details{border:2px solid rgba(232,147,58,.5);border-radius:12px;padding:10px 14px;background:rgba(20,10,5,.5)}
+summary{cursor:pointer;color:#ffd88a;letter-spacing:1px}
+details p{margin:8px 0 0;font-weight:600;color:#f0d6aa}details b{color:#ffb347}
+.board{border:2px solid #e8933a;border-radius:12px;background:rgba(20,10,5,.6);padding:12px;display:flex;flex-direction:column;gap:8px}
+.bar{display:flex;align-items:center;gap:8px;font-size:12px}.bar span{flex:0 0 118px}.bar i{flex:1;height:10px;background:rgba(255,255,255,.12);border-radius:5px;overflow:hidden}
+.bar u{display:block;height:100%;background:linear-gradient(90deg,#e8933a,#ffd24a)}.bar b{flex:0 0 28px;text-align:right;color:#ffd88a}
+.stats{display:flex;justify-content:space-around;color:#ffd88a;border-top:1px dashed rgba(255,200,120,.4);padding-top:8px}
+.stars{text-align:center;font-size:34px;color:#ffd24a;letter-spacing:4px;text-shadow:0 0 12px #e8933a}
+.rev{margin:0;text-align:center;color:#f0d6aa;font-weight:600}
+.lts{display:flex;gap:6px;justify-content:center}.lt{padding:5px 10px;border-radius:8px;border:2px solid #6a4a2a;color:#8a6a4a;font-size:12px}.lt.on{background:#ffb347;color:#1a0d05;border-color:#ffd88a}
+#play{background:#140b06}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+#quit{position:absolute;left:8px;top:6px;width:38px;height:38px;border-radius:10px;border:2px solid #e8933a;background:rgba(20,10,5,.8);color:#ffd88a;font:800 16px monospace;cursor:pointer;z-index:3;padding:0}
+@media (orientation:landscape) and (max-height:520px){h1{margin:0;font-size:26px}.wrap{gap:7px;padding-top:8px}.card{padding:8px 12px}}
+</style></head><body>
+<div id="menu" class="scr on"><div class="wrap">
+<h1>BEAT BREWING</h1>
+<p class="sub">Brew a beer. Brew a beat. Same batch.</p>
+<div id="cards" class="cards"></div>
+<details><summary>HOW TO BREW</summary>
+<p><b>1 MASH</b> &ndash; drag circles to follow the glowing grain (or arrow keys like a stick). Locked in = hard kick.</p>
+<p><b>2 HOP</b> &ndash; listen to the hop pattern, then tap it back in time (tap screen or Space).</p>
+<p><b>3 FERMENT</b> &ndash; slide the yeast up and down to the lit note (drag, or Up/Down keys).</p>
+<p><b>4 POUR</b> &ndash; hold on OPEN, release on SHUT to land the drop (hold screen or Space).</p>
+<p>Every stage adds a layer to your beat, so sloppy brewing sounds sloppy. Taste it at the end!</p></details>
+</div></div>
+<div id="res" class="scr"></div>
+<div id="play" class="scr"><canvas id="cv"></canvas><button id="quit" aria-label="Quit batch">&#10005;</button></div>
+<script>
+(function(){
+'use strict';
+function $(s){return document.querySelector(s)}
+function clamp(v,a,b){return v<a?a:v>b?b:v}
+function lerp(a,b,t){return a+(b-a)*t}
+var TAU=Math.PI*2;
+function angDiff(a,b){var d=(a-b)%TAU;if(d>Math.PI)d-=TAU;if(d<-Math.PI)d+=TAU;return d}
+
+/* ------------------------------------------------------------ data */
+var BATCHES=[
+ {name:'BOOM BAP BROWN ALE',bpm:88,lap:8,tol:0.75,hopTol:0.30,pourTol:0.60,
+  hop:[[0,2,4],[0,3,6],[1,4,6]],bass:[0,0,2,2,3,3,2,0],blurb:'Slow, dusty and smooth. A friendly first batch.'},
+ {name:'WEST COAST WOBBLE IPA',bpm:98,lap:6,tol:0.60,hopTol:0.24,pourTol:0.42,
+  hop:[[0,2,3,6],[1,2,4,7],[0,3,4,6]],bass:[0,2,3,1,0,4,3,2],blurb:'Hoppy and bouncy. Syncopation ahead.'},
+ {name:'NITRO POUR STOUT',bpm:108,lap:4,tol:0.50,hopTol:0.19,pourTol:0.30,
+  hop:[[0,1,3,4,6],[0,2,3,5,7],[1,2,4,5,7]],bass:[0,3,1,4,2,0,3,1],blurb:'Fast, thick and tight. For head brewers only.'}
+];
+var NOTE=['A','C','D','E','G'],FREQ=[55,65.41,73.42,82.41,98];
+var BKEY='beatBrewingBest';
+
+/* ------------------------------------------------------------ audio */
+var AC=null,master=null,noiseBuf=null;
+function initAudio(){
+ if(!AC){
+  var C=window.AudioContext||window.webkitAudioContext;if(!C)return false;
+  AC=new C();
+  var comp=AC.createDynamicsCompressor();comp.threshold.value=-14;comp.ratio.value=4;
+  master=AC.createGain();master.gain.value=0.85;master.connect(comp);comp.connect(AC.destination);
+  noiseBuf=AC.createBuffer(1,AC.sampleRate,AC.sampleRate);
+  var d=noiseBuf.getChannelData(0);for(var i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+ }
+ if(AC.state==='suspended')AC.resume();
+ return true;
+}
+function env(g,t,a,peak,d){
+ g.gain.setValueAtTime(0.0001,t);
+ g.gain.exponentialRampToValueAtTime(Math.max(peak,0.0002),t+a);
+ g.gain.exponentialRampToValueAtTime(0.0001,t+a+d);
+}
+function kick(t,v){
+ if(!AC||v<0.02)return;
+ var o=AC.createOscillator(),g=AC.createGain();o.type='sine';
+ o.frequency.setValueAtTime(155,t);o.frequency.exponentialRampToValueAtTime(42,t+0.13);
+ env(g,t,0.004,v,0.34);o.connect(g);g.connect(master);o.start(t);o.stop(t+0.4);
+}
+function nz(t,v,type,hz,q,dur){
+ if(!AC||v<0.01)return;
+ var s=AC.createBufferSource();s.buffer=noiseBuf;
+ var f=AC.createBiquadFilter();f.type=type;f.frequency.value=hz;f.Q.value=q;
+ var g=AC.createGain();env(g,t,0.002,v,dur);
+ s.connect(f);f.connect(g);g.connect(master);s.start(t,Math.random()*0.5,dur+0.05);
+}
+function hat(t,v,open){nz(t,v*0.5,'highpass',7500,0.7,open?0.22:0.05)}
+function snare(t,v){
+ if(!AC||v<0.02)return;
+ nz(t,v*0.7,'bandpass',1900,0.8,0.16);
+ var o=AC.createOscillator(),g=AC.createGain();o.type='triangle';o.frequency.setValueAtTime(220,t);o.frequency.exponentialRampToValueAtTime(150,t+0.08);
+ env(g,t,0.003,v*0.5,0.1);o.connect(g);g.connect(master);o.start(t);o.stop(t+0.15);
+}
+function clap(t,v){nz(t,v*0.6,'bandpass',1400,1.1,0.03);nz(t+0.011,v*0.6,'bandpass',1400,1.1,0.03);nz(t+0.022,v*0.7,'bandpass',1300,1.1,0.2)}
+function crash(t,v){nz(t,v*0.5,'highpass',5000,0.5,0.9)}
+function tick(t,accent,v){
+ if(!AC)return;
+ var o=AC.createOscillator(),g=AC.createGain();o.type='square';o.frequency.value=accent?1500:1000;
+ env(g,t,0.001,(v||0.22)*(accent?1.3:1),0.05);o.connect(g);g.connect(master);o.start(t);o.stop(t+0.08);
+}
+function pop(t,v){
+ if(!AC)return;
+ var o=AC.createOscillator(),g=AC.createGain();o.type='sine';
+ o.frequency.setValueAtTime(380,t);o.frequency.exponentialRampToValueAtTime(900,t+0.07);
+ env(g,t,0.003,v||0.2,0.08);o.connect(g);g.connect(master);o.start(t);o.stop(t+0.12);
+}
+function cue(t,f,v){
+ if(!AC)return;
+ var o=AC.createOscillator(),g=AC.createGain();o.type='sine';o.frequency.value=f;
+ env(g,t,0.01,v,0.35);o.connect(g);g.connect(master);o.start(t);o.stop(t+0.5);
+}
+function bass(t,f,dur,v,sour){
+ if(!AC||v<0.02)return;
+ var g=AC.createGain(),lp=AC.createBiquadFilter();lp.type='lowpass';lp.Q.value=5;
+ lp.frequency.setValueAtTime(f*8,t);lp.frequency.exponentialRampToValueAtTime(f*2.2,t+dur);
+ var o=AC.createOscillator();o.type='sawtooth';o.frequency.value=f;
+ var o2=AC.createOscillator();o2.type='sine';o2.frequency.value=f/2;
+ env(g,t,0.01,v,dur);
+ o.connect(lp);o2.connect(lp);lp.connect(g);g.connect(master);
+ var oo=[o,o2];
+ if(sour){
+  o.detune.value=(Math.random()<0.5?-1:1)*(28+Math.random()*25);
+  var o3=AC.createOscillator();o3.type='sawtooth';o3.frequency.value=f*1.0595;o3.connect(lp);oo.push(o3);
+ }
+ oo.forEach(function(x){x.start(t);x.stop(t+dur+0.1)});
+}
+function loopNoise(freq,q,type){
+ if(!AC)return null;
+ var s=AC.createBufferSource();s.buffer=noiseBuf;s.loop=true;
+ var f=AC.createBiquadFilter();f.type=type;f.frequency.value=freq;f.Q.value=q;
+ var g=AC.createGain();g.gain.value=0;s.connect(f);f.connect(g);g.connect(master);s.start();
+ return {s:s,f:f,g:g,o:null};
+}
+function killVoice(v){
+ if(!v||!AC)return;
+ try{v.g.gain.setTargetAtTime(0,AC.currentTime,0.03);v.s.stop(AC.currentTime+0.25)}catch(e){}
+ if(v.o){try{v.o.stop(AC.currentTime+0.25)}catch(e){}}
+}
+
+/* ------------------------------------------------------------ transport */
+var T={on:false,bpm:90,bd:0.6,sd:0.15,t0:0,step:0,cb:null,timer:null};
+function startTransport(bpm,cb){
+ stopTransport();
+ T.bpm=bpm;T.bd=60/bpm;T.sd=T.bd/4;T.t0=AC.currentTime+0.2;T.step=0;T.cb=cb;T.on=true;
+ T.timer=setInterval(pump,25);pump();
+}
+function stopTransport(){T.on=false;if(T.timer){clearInterval(T.timer);T.timer=null}}
+function pump(){
+ if(!T.on||!AC)return;
+ while(T.t0+T.step*T.sd<AC.currentTime+0.12){
+  var st=T.step;T.step++;
+  try{T.cb(st,T.t0+st*T.sd)}catch(e){}
+ }
+}
+function nowBeat(){
+ if(!AC)return 0;
+ var lat=0;try{lat=AC.outputLatency||AC.baseLatency||0}catch(e){}
+ return (AC.currentTime-lat-T.t0)/T.bd;
+}
+
+/* ------------------------------------------------------------ state */
+var cv=$('#cv'),ctx=cv.getContext('2d'),W=300,H=300;
+var F={x:0,y:0,w:300,h:200,cx:150,cy:100,m:200,bot:70};
+var bgc=null;
+var scr='menu',G=null,S=null,keysDown={},fxs=[];
+var STAGES=[];
+
+function show(id){
+ scr=id==='play'?'play':id;
+ ['menu','res','play'].forEach(function(n){$('#'+n).classList.toggle('on',n===id)});
+}
+function loadBest(){var b={};try{b=JSON.parse(localStorage.getItem(BKEY)||'{}')||{}}catch(e){}return b}
+function saveBest(i,sc){var b=loadBest();if(!(b[i]>=sc)){b[i]=sc;try{localStorage.setItem(BKEY,JSON.stringify(b))}catch(e){}}}
+function starsFor(s){return s<35?1:s<55?2:s<72?3:s<88?4:5}
+function starStr(n){var s='';for(var i=0;i<5;i++)s+=i<n?'&#9733;':'&#9734;';return s}
+
+/* ------------------------------------------------------------ canvas helpers */
+function circ(x,y,r){ctx.beginPath();ctx.arc(x,y,Math.max(0.01,r),0,TAU)}
+function rrect(x,y,w,h,r){r=Math.min(r,w/2,h/2);ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath()}
+function txt(s,x,y,size,col,al,stroke){
+ ctx.font='800 '+Math.round(size)+'px ui-monospace,Menlo,Consolas,monospace';
+ ctx.textAlign=al||'center';ctx.textBaseline='middle';
+ if(stroke){ctx.lineWidth=Math.max(2,size*0.2);ctx.strokeStyle=stroke;ctx.lineJoin='round';ctx.strokeText(s,x,y)}
+ ctx.fillStyle=col;ctx.fillText(s,x,y);
+}
+function wrapLines(text,maxW,size){
+ ctx.font='700 '+size+'px ui-monospace,Menlo,Consolas,monospace';
+ var words=text.split(' '),lines=[],cur='';
+ for(var i=0;i<words.length;i++){
+  var t=cur?cur+' '+words[i]:words[i];
+  if(ctx.measureText(t).width>maxW&&cur){lines.push(cur);cur=words[i]}else cur=t;
+ }
+ lines.push(cur);return lines;
+}
+function mix(c1,c2,t){
+ return 'rgb('+Math.round(lerp(c1[0],c2[0],t))+','+Math.round(lerp(c1[1],c2[1],t))+','+Math.round(lerp(c1[2],c2[2],t))+')';
+}
+function ft(s,x,y,col,size){if(G)G.texts.push({s:s,x:x,y:y,col:col,size:size||22,age:0})}
+function burst(x,y,col,n,spd){
+ for(var i=0;i<n;i++){var a=Math.random()*TAU,v=(0.4+Math.random())*(spd||90);fxs.push({x:x,y:y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-30,age:0,life:0.5+Math.random()*0.4,col:col,r:2+Math.random()*2.5})}
+}
+
+function resize(){
+ var dpr=Math.min(2,window.devicePixelRatio||1);
+ W=window.innerWidth||300;H=window.innerHeight||300;
+ cv.style.width=W+'px';cv.style.height=H+'px';
+ cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);
+ ctx.setTransform(dpr,0,0,dpr,0,0);
+ var bot=clamp(H*0.15,58,96);if(W>H*1.4)bot=clamp(H*0.19,50,66);
+ F.bot=bot;F.x=0;F.y=48;F.w=W;F.h=Math.max(80,H-48-bot);F.cx=W/2;F.cy=F.y+F.h/2;F.m=Math.min(F.w,F.h);
+ bgc=document.createElement('canvas');bgc.width=Math.round(W*dpr);bgc.height=Math.round(H*dpr);
+ var b=bgc.getContext('2d');b.setTransform(dpr,0,0,dpr,0,0);
+ var g=b.createLinearGradient(0,0,0,H);g.addColorStop(0,'#2e1a0d');g.addColorStop(1,'#140b06');
+ b.fillStyle=g;b.fillRect(0,0,W,H);
+ b.strokeStyle='rgba(255,200,120,0.05)';b.lineWidth=1;
+ var bw=52,bh=24;
+ for(var y=0,row=0;y<H;y+=bh,row++){
+  b.beginPath();b.moveTo(0,y+0.5);b.lineTo(W,y+0.5);
+  for(var x=(row%2)*bw/2;x<W;x+=bw){b.moveTo(x+0.5,y);b.lineTo(x+0.5,y+bh)}
+  b.stroke();
+ }
+}
+window.addEventListener('resize',resize);
+window.addEventListener('orientationchange',function(){setTimeout(resize,120);setTimeout(resize,500)});
+
+function drawBG(beat){
+ ctx.drawImage(bgc,0,0,W,H);
+ var bp=Math.pow(1-(((beat%1)+1)%1),3);
+ var g=ctx.createRadialGradient(F.cx,F.cy,10,F.cx,F.cy,F.m*0.9);
+ g.addColorStop(0,'rgba(255,170,60,'+(0.10+0.07*bp).toFixed(3)+')');g.addColorStop(1,'rgba(255,170,60,0)');
+ ctx.fillStyle=g;ctx.fillRect(0,F.y,W,F.h);
+ var n=Math.floor(W/34),cols=['255,210,120','255,140,160','140,220,255','190,255,150'];
+ for(var i=0;i<=n;i++){
+  var x=(i+0.5)*W/(n+1),y=F.y+3+Math.sin(i/(n+1)*Math.PI)*5;
+  var tw=0.6+0.4*Math.sin(beat*2.2+i*1.7);
+  ctx.fillStyle='rgba('+cols[i%4]+','+(0.16*tw).toFixed(3)+')';circ(x,y,5);ctx.fill();
+  ctx.fillStyle='rgba('+cols[i%4]+','+(0.55+0.4*tw).toFixed(3)+')';circ(x,y,1.8);ctx.fill();
+ }
+}
+
+/* ------------------------------------------------------------ stage 1: MASH (stir) */
+var S0={
+ key:'mash',name:'MASH',len:16,
+ hint:'STIR THE MASH: drag circles around the kettle (or use the arrow keys like a stick) and keep the paddle on the glowing grain as it orbits. Stay locked in and the kick hits hard.',
+ init:function(){
+  S={pa:-Math.PI/2,want:null,hold:false,sync:0,acc:0,w:0,ok:[],ta:-Math.PI/2,last:-Math.PI/2,sw:loopNoise(900,1.2,'bandpass')};
+ },
+ down:function(x,y){S.hold=true;this.move(x,y)},
+ move:function(x,y){if(!S.hold)return;var dx=x-F.cx,dy=y-F.cy;if(dx*dx+dy*dy>81)S.want=Math.atan2(dy,dx)},
+ up:function(){S.hold=false;S.want=null},
+ press:function(){},release:function(){},key:function(){},
+ update:function(dt,sb){
+  var kx=((keysDown.arrowright||keysDown.d)?1:0)-((keysDown.arrowleft||keysDown.a)?1:0);
+  var ky=((keysDown.arrowdown||keysDown.s)?1:0)-((keysDown.arrowup||keysDown.w)?1:0);
+  var want=S.want;if(want===null&&(kx||ky))want=Math.atan2(ky,kx);
+  if(want!==null){var d=angDiff(want,S.pa),mx=16*dt;S.pa+=clamp(d,-mx,mx)}
+  S.ta=-Math.PI/2+TAU*Math.max(sb,0)/G.B.lap;
+  var err=angDiff(S.ta,S.pa),s=clamp(1-Math.abs(err)/(G.B.tol*1.7),0,1);
+  if(sb>=0&&sb<this.len){S.acc+=s*dt;S.w+=dt}
+  S.sync+=(s-S.sync)*Math.min(1,dt*7);
+  var sp=Math.abs(angDiff(S.pa,S.last))/Math.max(dt,0.001);S.last=S.pa;
+  if(S.sw&&AC){S.sw.g.gain.setTargetAtTime(Math.min(0.1,sp*0.018),AC.currentTime,0.05);S.sw.f.frequency.value=500+Math.min(sp,8)*150}
+ },
+ step:function(step,time,sb){
+  var rs=step-16;
+  if(rs%4===0){kick(time,0.2+0.9*S.sync);S.ok[rs/4]=S.sync>0.5}
+  if(rs%4===2)hat(time,0.14,false);
+  if(rs%16===4||rs%16===12)snare(time,0.55*S.sync);
+ },
+ live:function(){return S.w>0?S.acc/S.w:0},
+ finish:function(){killVoice(S.sw);G.q.mash=S.w>0?S.acc/S.w:0;G.fl.mash=S.ok},
+ draw:function(sb,beat){
+  var R=F.m*0.40,cx=F.cx,cy=F.cy,bp=Math.pow(1-(((beat%1)+1)%1),3),pr=R*(1+0.025*bp*S.sync);
+  ctx.fillStyle='rgba(0,0,0,0.35)';ctx.beginPath();ctx.ellipse(cx,cy+pr*1.08,pr*0.95,pr*0.12,0,0,TAU);ctx.fill();
+  var cg=ctx.createRadialGradient(cx-pr*0.3,cy-pr*0.3,pr*0.2,cx,cy,pr*1.1);cg.addColorStop(0,'#e8933a');cg.addColorStop(1,'#7a3f16');
+  ctx.fillStyle=cg;circ(cx,cy,pr*1.1);ctx.fill();
+  ctx.fillStyle='#3a1d0a';circ(cx,cy,pr*0.96);ctx.fill();
+  var wg=ctx.createRadialGradient(cx,cy,pr*0.1,cx,cy,pr*0.94);wg.addColorStop(0,'#f0b23c');wg.addColorStop(1,'#a8601c');
+  ctx.fillStyle=wg;circ(cx,cy,pr*0.93);ctx.fill();
+  ctx.lineCap='round';
+  for(var k=0;k<5;k++){
+   ctx.strokeStyle='rgba(255,230,170,'+(0.10+0.04*k).toFixed(3)+')';ctx.lineWidth=3;
+   var a0=S.pa*1.3+k*1.3;ctx.beginPath();ctx.arc(cx,cy,pr*(0.2+0.14*k),a0,a0+1.5);ctx.stroke();
+  }
+  var orr=pr*0.72;
+  ctx.setLineDash([6,8]);ctx.strokeStyle='rgba(255,240,200,0.35)';ctx.lineWidth=2;circ(cx,cy,orr);ctx.stroke();ctx.setLineDash([]);
+  ctx.strokeStyle=mix([255,120,90],[120,230,100],S.sync);ctx.globalAlpha=0.45;ctx.lineWidth=Math.max(8,pr*0.11);
+  ctx.beginPath();ctx.arc(cx,cy,orr,S.ta-G.B.tol,S.ta+G.B.tol);ctx.stroke();ctx.globalAlpha=1;
+  ctx.strokeStyle='rgba(255,245,200,0.25)';ctx.lineWidth=4;ctx.beginPath();ctx.arc(cx,cy,orr,S.ta-1.1,S.ta-0.05);ctx.stroke();
+  var gx=cx+Math.cos(S.ta)*orr,gy=cy+Math.sin(S.ta)*orr;
+  var gl=ctx.createRadialGradient(gx,gy,0,gx,gy,pr*0.2);gl.addColorStop(0,'rgba(255,240,150,0.9)');gl.addColorStop(1,'rgba(255,240,150,0)');
+  ctx.fillStyle=gl;circ(gx,gy,pr*0.2);ctx.fill();
+  ctx.fillStyle='#ffe58a';ctx.strokeStyle='#8a5a10';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(gx,gy,pr*0.055,pr*0.085,S.ta,0,TAU);ctx.fill();ctx.stroke();
+  var px=cx+Math.cos(S.pa)*pr*0.88,py=cy+Math.sin(S.pa)*pr*0.88;
+  ctx.strokeStyle='#5a3418';ctx.lineWidth=Math.max(5,pr*0.07);ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(px,py);ctx.stroke();
+  ctx.strokeStyle='#b87a3e';ctx.lineWidth=Math.max(3,pr*0.04);ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(px,py);ctx.stroke();
+  ctx.save();ctx.translate(px,py);ctx.rotate(S.pa);ctx.fillStyle='#c8924f';ctx.strokeStyle='#4a2a10';ctx.lineWidth=2;
+  rrect(-pr*0.05,-pr*0.13,pr*0.2,pr*0.26,4);ctx.fill();ctx.stroke();ctx.restore();
+  ctx.fillStyle='#3a1d0a';circ(cx,cy,pr*0.07);ctx.fill();
+  ctx.strokeStyle=mix([255,110,90],[130,235,110],S.sync);ctx.lineWidth=5;circ(cx,cy,pr*1.13);ctx.stroke();
+  txt(S.sync>0.7?'LOCKED IN':S.sync>0.35?'CLOSE':'CATCH THE GRAIN',cx,cy+pr*1.3>F.y+F.h-8?F.y+F.h-8:cy+pr*1.3,Math.max(11,F.m*0.045),mix([255,150,120],[150,240,120],S.sync),'center','#1a0d05');
+ }
+};
+
+/* ------------------------------------------------------------ stage 2: HOP ECHO */
+var S1={
+ key:'hop',name:'HOP',len:24,
+ hint:'HOP ECHO: LISTEN to the hop drops on the ring, then TAP (screen or Space) to drop them back in the same spots. Tight timing means a bigger aroma.',
+ init:function(){
+  S={ex:[],extra:[0,0,0],press:0,parts:[],marks:[]};
+  for(var r=0;r<3;r++)G.B.hop[r].forEach(function(slot){S.ex.push({r:r,slot:slot,t:r*8+4+slot*0.5,res:null,s:0})});
+ },
+ down:function(){this.press()},move:function(){},up:function(){},release:function(){},key:function(k,dn){if(dn&&(k===' '||k==='enter'))this.press()},
+ press:function(){
+  if(!AC)return;
+  hat(AC.currentTime+0.001,0.9,false);S.press=1;
+  for(var i=0;i<5;i++)S.parts.push({x:(Math.random()-0.5)*14,y:0,vy:60+Math.random()*60,age:0});
+  var tb=nowBeat()-4;if(tb<-0.6||tb>25)return;
+  var best=null,bd=9,tol=G.B.hopTol;
+  S.ex.forEach(function(e){if(e.res===null){var d=Math.abs(e.t-tb);if(d<bd){bd=d;best=e}}});
+  if(best&&bd<=tol){
+   best.res='hit';best.s=1-0.65*bd/tol;
+   ft(bd<tol*0.35?'PERFECT':'GOOD',F.cx,F.cy-F.m*0.5,bd<tol*0.35?'#8dff7a':'#ffe27a',Math.max(16,F.m*0.07));
+  }else{
+   var r2=Math.floor((tb-3.6)/8),w2=tb-3.6-8*r2;
+   if(r2>=0&&r2<=2&&w2<4.4){S.extra[r2]++;ft('EXTRA',F.cx,F.cy-F.m*0.5,'#ff8a7a',Math.max(14,F.m*0.06))}
+  }
+ },
+ update:function(dt,sb){
+  S.press=Math.max(0,S.press-dt*5);
+  var tol=G.B.hopTol;S.ex.forEach(function(e){if(e.res===null&&sb>e.t+tol){e.res='miss';e.s=0}});
+  S.parts.forEach(function(p){p.age+=dt;p.y+=p.vy*dt});S.parts=S.parts.filter(function(p){return p.age<0.5});
+ },
+ step:function(step,time,sb){
+  var rs=step-16;if(rs<0||rs>=96)return;
+  var r=Math.floor(rs/32),w=rs%32;
+  if(w<16&&w%2===0&&G.B.hop[r].indexOf(w/2)>=0)hat(time,0.85,false);
+  if(rs%4===0)tick(time,false,0.16);
+ },
+ live:function(){var n=0,t=0;S.ex.forEach(function(e){if(e.res!==null){n++;t+=e.s}});return n?t/n:0},
+ finish:function(){
+  var tot=0;
+  for(var r=0;r<3;r++){
+   var its=S.ex.filter(function(e){return e.r===r}),sum=0;its.forEach(function(e){sum+=e.s});
+   tot+=clamp(sum/its.length-0.07*S.extra[r],0,1);
+  }
+  G.q.hop=tot/3;
+  G.fl.hop=S.ex.filter(function(e){return e.r===2}).map(function(e){return {slot:e.slot,s:e.s}});
+ },
+ draw:function(sb,beat){
+  var R=F.m*0.40,cx=F.cx,cy=F.cy,r=clamp(Math.floor(sb/8),0,2),w=sb<0?0:sb-8*r,listen=sb<0||w<4,B=G.B;
+  var hide=G.bi>0&&!listen;
+  ctx.fillStyle='rgba(0,0,0,0.28)';circ(cx,cy,R*0.98);ctx.fill();
+  ctx.strokeStyle='rgba(255,225,170,0.28)';ctx.lineWidth=3;circ(cx,cy,R*0.82);ctx.stroke();
+  var sr=R*0.12,pat=B.hop[r];
+  for(var i=0;i<8;i++){
+   var a=-Math.PI/2+i*TAU/8,x=cx+Math.cos(a)*R*0.82,y=cy+Math.sin(a)*R*0.82,act=pat.indexOf(i)>=0;
+   ctx.lineWidth=2;ctx.strokeStyle=i%2===0?'rgba(255,225,170,0.6)':'rgba(255,225,170,0.3)';circ(x,y,sr);ctx.stroke();
+   if(sb>=0&&listen&&act){
+    var d=(w%4)-i*0.5,pulse=d>=0&&d<0.35?1-d/0.35:0;
+    ctx.fillStyle='rgb(255,'+Math.round(190+40*pulse)+',74)';circ(x,y,sr*(0.9+0.4*pulse));ctx.fill();
+    if(pulse>0){ctx.strokeStyle='rgba(255,240,170,'+pulse.toFixed(2)+')';ctx.lineWidth=3;circ(x,y,sr*(1.3+pulse));ctx.stroke()}
+   }else if(!listen&&!hide&&act){ctx.fillStyle='rgba(255,201,74,0.3)';circ(x,y,sr*0.8);ctx.fill()}
+  }
+  S.ex.forEach(function(e){
+   if(e.r!==r||listen&&sb>=0&&e.res===null)return;
+   var a=-Math.PI/2+e.slot*TAU/8,x=cx+Math.cos(a)*R*0.82,y=cy+Math.sin(a)*R*0.82;
+   if(e.res==='hit'){ctx.fillStyle='#7bd45a';circ(x,y,sr*0.95);ctx.fill();ctx.strokeStyle='#e8ffd8';ctx.lineWidth=3;circ(x,y,sr*1.2);ctx.stroke()}
+   else if(e.res==='miss'){ctx.strokeStyle='#ff6a5a';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(x-sr*.6,y-sr*.6);ctx.lineTo(x+sr*.6,y+sr*.6);ctx.moveTo(x+sr*.6,y-sr*.6);ctx.lineTo(x-sr*.6,y+sr*.6);ctx.stroke()}
+  });
+  var ph=-Math.PI/2+TAU*((w%4)/4);
+  ctx.strokeStyle=listen?'#7ee6ff':'#ffb347';ctx.lineWidth=4;ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(cx+Math.cos(ph)*R*0.28,cy+Math.sin(ph)*R*0.28);ctx.lineTo(cx+Math.cos(ph)*R*0.7,cy+Math.sin(ph)*R*0.7);ctx.stroke();
+  ctx.fillStyle=listen?'#7ee6ff':'#ffb347';circ(cx+Math.cos(ph)*R*0.7,cy+Math.sin(ph)*R*0.7,6);ctx.fill();
+  var off=S.press*R*0.05,hp=R*0.3;
+  ctx.fillStyle='#8a8f98';ctx.strokeStyle='#2a2d33';ctx.lineWidth=3;
+  ctx.beginPath();ctx.moveTo(cx-hp,cy-hp*0.7+off);ctx.lineTo(cx+hp,cy-hp*0.7+off);ctx.lineTo(cx+hp*0.3,cy+hp*0.7+off);ctx.lineTo(cx-hp*0.3,cy+hp*0.7+off);ctx.closePath();ctx.fill();ctx.stroke();
+  ctx.fillStyle='#b8e068';
+  S.parts.forEach(function(p){circ(cx+p.x,cy+hp*0.7+p.y,3);ctx.fill()});
+  txt('TAP',cx,cy-hp*0.1+off,Math.max(12,R*0.14),'#1a1d22');
+  var by=Math.max(F.y+12,cy-R*1.08);
+  txt(listen?'LISTEN':(hide?'YOUR TURN (FROM MEMORY)':'YOUR TURN'),cx,by,Math.max(14,F.m*0.06),listen?'#7ee6ff':'#ffb347','center','#1a0d05');
+  for(var k=0;k<3;k++){
+   var dx=cx+(k-1)*Math.max(24,F.m*0.1),dy=Math.min(F.y+F.h-10,cy+R*1.1);
+   ctx.fillStyle=k<r||sb>=24?'#7bd45a':(k===r?'#ffb347':'rgba(255,255,255,0.25)');circ(dx,dy,Math.max(5,F.m*0.022));ctx.fill();
+  }
+ }
+};
+
+/* ------------------------------------------------------------ stage 3: FERMENT */
+function ferLayout(){
+ var tw=Math.min(F.w*0.46,220),wide=F.w>F.h*1.25,bh=F.h*0.9/5;
+ return {bh:bh,top:F.y+F.h*0.05,w:tw,x:wide?F.cx+F.w*0.1-tw/2:F.cx-tw/2,wide:wide};
+}
+function ferBandY(L,b){return L.top+(4-b+0.5)*L.bh}
+var S2={
+ key:'ferm',name:'FERMENT',len:16,
+ hint:'FERMENT: slide the yeast to the lit note on the thermometer (drag up and down, or use the Up/Down keys) and hold it there. Match every note to keep the bass clean.',
+ init:function(){S={band:0,y:null,inn:[0,0,0,0,0,0,0,0],tot:[0,0,0,0,0,0,0,0],drag:false,bub:[]}},
+ down:function(x,y){S.drag=true;this.move(x,y)},
+ move:function(x,y){if(!S.drag)return;var L=ferLayout();S.band=clamp(Math.floor((1-(y-L.top)/(L.bh*5))*5),0,4)},
+ up:function(){S.drag=false},press:function(){},release:function(){},
+ key:function(k,dn){if(!dn)return;if(k==='arrowup'||k==='w')S.band=Math.min(4,S.band+1);if(k==='arrowdown'||k==='s')S.band=Math.max(0,S.band-1)},
+ update:function(dt,sb){
+  var L=ferLayout(),by=ferBandY(L,S.band);S.y=S.y===null?by:lerp(S.y,by,Math.min(1,dt*14));
+  if(sb>=0&&sb<this.len){
+   var i=Math.floor(sb/2);if(sb-2*i>=0.5){S.tot[i]+=dt;if(S.band===G.B.bass[i])S.inn[i]+=dt}
+  }
+  if(Math.random()<dt*(2+6*this.live())){S.bub.push({x:Math.random(),y:1,v:0.25+Math.random()*0.3})}
+  S.bub.forEach(function(b){b.y-=b.v*dt});S.bub=S.bub.filter(function(b){return b.y>0});
+ },
+ step:function(step,time,sb){
+  var rs=step-16;if(rs%4!==0)return;
+  var bi=rs/4,ni=Math.floor(bi/2),tgt=G.B.bass[ni],hit=S.band===tgt;
+  bass(time,FREQ[S.band],T.bd*0.9,hit?0.85:0.6,!hit);
+  if(bi%2===0)cue(time,FREQ[tgt]*2,0.16);
+ },
+ live:function(){var a=0,t=0;for(var i=0;i<8;i++){a+=S.inn[i];t+=S.tot[i]}return t>0?a/t:0},
+ finish:function(){
+  var ok=[],sum=0;
+  for(var i=0;i<8;i++){var a=S.tot[i]>0?S.inn[i]/S.tot[i]:0;sum+=a;ok[i]=a>0.6}
+  G.q.ferm=sum/8;G.fl.ferm=ok;
+ },
+ draw:function(sb,beat){
+  var L=ferLayout(),B=G.B,ti=clamp(Math.floor(sb/2),0,7),tgt=B.bass[ti],nxt=B.bass[Math.min(7,ti+1)];
+  if(sb<0){ti=0;tgt=B.bass[0]}
+  var bp=Math.pow(1-(((beat%1)+1)%1),3);
+  if(L.wide){
+   var fx=F.cx-F.w*0.2,fw=Math.min(F.w*0.22,170),ftp=F.y+F.h*0.08,fh=F.h*0.8;
+   ctx.fillStyle='#9aa3ad';ctx.strokeStyle='#2a2f36';ctx.lineWidth=3;
+   rrect(fx-fw/2,ftp+fh*0.1,fw,fh*0.55,fw*0.2);ctx.fill();ctx.stroke();
+   ctx.beginPath();ctx.moveTo(fx-fw/2,ftp+fh*0.65);ctx.lineTo(fx+fw/2,ftp+fh*0.65);ctx.lineTo(fx,ftp+fh*0.95);ctx.closePath();ctx.fill();ctx.stroke();
+   ctx.fillStyle='#e0a030';rrect(fx-fw*0.38,ftp+fh*0.28,fw*0.76,fh*0.3,6);ctx.fill();
+   S.bub.forEach(function(b){ctx.fillStyle='rgba(255,240,180,0.7)';circ(fx-fw*0.3+b.x*fw*0.6,ftp+fh*0.28+b.y*fh*0.3,3);ctx.fill()});
+   txt('FERMENTER',fx,ftp+fh*0.04,Math.max(11,F.m*0.045),'#f4d8a0');
+  }
+  ctx.fillStyle='#e9dfcf';ctx.strokeStyle='#2a1a0d';ctx.lineWidth=4;
+  rrect(L.x-8,L.top-6,L.w+16,L.bh*5+12,18);ctx.fill();ctx.stroke();
+  for(var b=0;b<5;b++){
+   var y=L.top+(4-b)*L.bh,isT=b===tgt&&sb>=0&&sb<16,isN=b===nxt&&nxt!==tgt&&sb>=0&&sb<16;
+   ctx.fillStyle=b%2?'#d8ccb8':'#cfc2ab';rrect(L.x,y+2,L.w,L.bh-4,10);ctx.fill();
+   if(isT||(sb<0&&b===tgt)){
+    ctx.fillStyle='rgba(255,170,40,'+(0.75+0.2*bp).toFixed(2)+')';rrect(L.x,y+2,L.w,L.bh-4,10);ctx.fill();
+    ctx.strokeStyle='#fff3b8';ctx.lineWidth=3;rrect(L.x,y+2,L.w,L.bh-4,10);ctx.stroke();
+   }else if(isN){ctx.setLineDash([6,5]);ctx.strokeStyle='#e0902a';ctx.lineWidth=3;rrect(L.x+2,y+4,L.w-4,L.bh-8,9);ctx.stroke();ctx.setLineDash([])}
+   txt(NOTE[b],L.x+L.w*0.2,y+L.bh/2,Math.min(L.bh*0.5,30),'#3a2412');
+   txt(Math.round(FREQ[b])+' Hz',L.x+L.w*0.68,y+L.bh/2,Math.min(L.bh*0.28,15),'#6a4a2a');
+  }
+  var inT=S.band===tgt,my=S.y===null?ferBandY(L,S.band):S.y,mx=L.x+L.w*0.5,mr=Math.min(L.bh*0.36,26);
+  ctx.fillStyle=inT&&sb>=0?'#8be05a':'#e8785a';ctx.strokeStyle='#1a0d05';ctx.lineWidth=3;circ(mx,my,mr*(1+0.06*bp));ctx.fill();ctx.stroke();
+  ctx.fillStyle='#fff';circ(mx-mr*0.35,my-mr*0.15,mr*0.22);ctx.fill();circ(mx+mr*0.35,my-mr*0.15,mr*0.22);ctx.fill();
+  ctx.fillStyle='#1a0d05';circ(mx-mr*0.32,my-mr*0.12,mr*0.1);ctx.fill();circ(mx+mr*0.38,my-mr*0.12,mr*0.1);ctx.fill();
+  ctx.strokeStyle='#1a0d05';ctx.lineWidth=2;ctx.beginPath();
+  if(inT)ctx.arc(mx,my+mr*0.15,mr*0.3,0.15,Math.PI-0.15);else ctx.arc(mx,my+mr*0.5,mr*0.3,Math.PI+0.2,TAU-0.2);ctx.stroke();
+  if(!L.wide){txt('NOTE '+(sb<0?1:ti+1)+'/8',F.cx,Math.min(F.y+F.h-4,L.top+L.bh*5+16),Math.max(11,F.m*0.04),'#f4d8a0')}
+  else txt('NOTE '+(sb<0?1:ti+1)+'/8',L.x+L.w/2,L.top+L.bh*5+16,Math.max(11,F.m*0.04),'#f4d8a0');
+ }
+};
+
+/* ------------------------------------------------------------ stage 4: POUR (the drop) */
+var S3={
+ key:'pour',name:'POUR',len:24,
+ hint:'POUR THE PINT: HOLD (screen or Space) when the OPEN flag arrives, and RELEASE exactly on SHUT. Release on the beat and you get the drop.',
+ init:function(){S={k:0,pour:false,L:0,ts:0,res:[],block:false,v:null,rs:null,flash:0}},
+ down:function(){this.press()},move:function(){},up:function(){this.release()},
+ key:function(k,dn){if(k!==' '&&k!=='enter')return;if(dn)this.press();else this.release()},
+ press:function(){
+  if(!AC||S.block||S.pour)return;
+  var sb=nowBeat()-4;if(sb<0||sb>=24)return;
+  var k=Math.floor(sb/8);if(S.res[k]!==undefined)return;
+  S.k=k;S.pour=true;S.ts=sb;
+  S.v=loopNoise(2200,0.8,'bandpass');
+  if(S.v){S.v.g.gain.setTargetAtTime(0.09,AC.currentTime,0.04);
+   var o=AC.createOscillator();o.type='sawtooth';o.frequency.value=120;var g=AC.createGain();g.gain.value=0.0;
+   var lp=AC.createBiquadFilter();lp.type='lowpass';lp.frequency.value=900;o.connect(lp);lp.connect(g);g.connect(master);o.start();g.gain.setTargetAtTime(0.05,AC.currentTime,0.1);
+   S.v.o=o;S.v.og=g;}
+ },
+ release:function(forced){
+  if(!AC)return;
+  if(!S.pour){return}
+  S.pour=false;
+  var k=S.k,te=nowBeat()-4;if(forced)te=forced;
+  var tol=G.B.pourTol,qs=clamp(1-Math.abs(S.ts-(8*k+2))/tol,0,1),qe=clamp(1-Math.abs(te-(8*k+6))/tol,0,1),q=(qs+qe)/2;
+  S.res[k]=q;
+  if(S.v&&S.v.og){try{S.v.og.gain.setTargetAtTime(0,AC.currentTime,0.03);S.v.o.stop(AC.currentTime+0.2)}catch(e){}}
+  killVoice(S.v);S.v=null;
+  var t=AC.currentTime+0.005;
+  kick(t,0.4+0.7*q);clap(t,0.3+0.7*q);
+  if(q>0.8){crash(t,0.9);bass(t,55,0.6,0.9,false)}
+  S.flash=1;
+  var lbl=q>0.85?'PERFECT DROP':(S.L>1.12?'SPILLED!':(S.L<0.9?'SHORT POUR':(q>0.55?'NICE POUR':'OFF BEAT')));
+  ft(lbl,F.cx,F.cy-F.h*0.05,q>0.85?'#8dff7a':(q>0.55?'#ffe27a':'#ff8a7a'),Math.max(18,F.m*0.08));
+  burst(F.cx,F.cy,q>0.85?'#ffe27a':'#ffb347',q>0.85?26:10,120);
+ },
+ update:function(dt,sb){
+  if(sb>=0){
+   var k=clamp(Math.floor(sb/8),0,2);
+   if(sb>=24){}
+   else if(k!==S.k||(S.pour&&Math.floor(sb/8)!==Math.floor(S.ts/8))){
+    if(S.pour){this.release(8*(S.k+1));S.block=true}
+    if(S.res[S.k]===undefined){S.res[S.k]=0;ft('NO POUR',F.cx,F.cy,'#ff8a7a',20)}
+    S.k=k;S.L=0;
+   }
+  }
+  if(S.pour){
+   S.L+=dt/(4*T.bd);
+   if(S.v&&S.v.o)S.v.o.frequency.value=120+S.L*420;
+   if(S.L>=1.35){this.release();S.block=true}
+  }else if(S.L>0&&S.res[S.k]===undefined)S.L=Math.max(0,S.L-dt*0.2);
+  S.flash=Math.max(0,S.flash-dt*3);
+  if(!P.down&&!keysDown[' ']&&!keysDown.enter)S.block=false;
+ },
+ step:function(){},
+ live:function(){var n=0,t=0;S.res.forEach(function(q){if(q!==undefined){n++;t+=q}});return n?t/n:0},
+ finish:function(){
+  if(S.pour)this.release();
+  killVoice(S.v);
+  var t=0;for(var i=0;i<3;i++){if(S.res[i]===undefined)S.res[i]=0;t+=S.res[i]}
+  G.q.pour=t/3;G.fl.pour=S.res;
+ },
+ draw:function(sb,beat){
+  var k=sb<0?0:clamp(Math.floor(sb/8),0,2),lb=sb<0?0:sb-8*k;
+  if(sb>=24){k=2;lb=8}
+  var gh=F.h*0.62,gw=Math.min(gh*0.55,F.w*0.42),gb=F.y+F.h*0.80,gt=gb-gh,cx=F.cx;
+  var botw=gw*0.78,ih=gh*0.94;
+  ctx.fillStyle='#8a929c';ctx.strokeStyle='#2a2f36';ctx.lineWidth=3;
+  rrect(cx-gw*0.7,F.y+F.h*0.02,gw*1.4,F.h*0.07,8);ctx.fill();ctx.stroke();
+  rrect(cx-gw*0.06,F.y+F.h*0.08,gw*0.12,F.h*0.06,3);ctx.fill();ctx.stroke();
+  var open=S.pour,hy=F.y+F.h*0.055;
+  ctx.fillStyle=open?'#ffb347':'#c0392b';rrect(cx+gw*0.4,hy-F.h*0.07,gw*0.14,F.h*0.12,6);ctx.fill();ctx.stroke();
+  var liqTop=gb-Math.min(ih*0.86*S.L,ih*1.0);
+  if(S.pour&&S.L>0){
+   ctx.fillStyle='#f0a830';var sw=Math.max(4,gw*0.05)+Math.sin(beat*20)*1.5;
+   ctx.fillRect(cx-sw/2,F.y+F.h*0.14,sw,Math.max(0,liqTop-(F.y+F.h*0.14)));
+  }
+  ctx.save();
+  ctx.beginPath();ctx.moveTo(cx-gw/2,gt);ctx.lineTo(cx+gw/2,gt);ctx.lineTo(cx+botw/2,gb);ctx.lineTo(cx-botw/2,gb);ctx.closePath();
+  ctx.fillStyle='rgba(220,235,245,0.10)';ctx.fill();ctx.clip();
+  if(S.L>0){
+   var lg=ctx.createLinearGradient(0,liqTop,0,gb);lg.addColorStop(0,'#f6b83a');lg.addColorStop(1,'#a8601c');
+   ctx.fillStyle=lg;ctx.fillRect(cx-gw/2,liqTop,gw,gb-liqTop);
+   var fh=ih*(0.05+(S.pour?0.03:0));ctx.fillStyle='#fff6e0';ctx.fillRect(cx-gw/2,liqTop-fh,gw,fh);
+   for(var i=0;i<9;i++){var by=gb-((beat*0.6+i*0.37)%1)*(gb-liqTop);ctx.fillStyle='rgba(255,240,190,0.5)';circ(cx-gw*0.3+((i*53)%10)/10*gw*0.6,by,2);ctx.fill()}
+  }
+  ctx.restore();
+  var ly=gb-ih*0.86;
+  ctx.setLineDash([8,6]);ctx.strokeStyle='#8dff7a';ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(cx-gw*0.62,ly);ctx.lineTo(cx+gw*0.62,ly);ctx.stroke();ctx.setLineDash([]);
+  txt('FILL',cx+gw*0.62+4,ly,Math.max(10,F.m*0.035),'#8dff7a','left');
+  if(S.L>1.15&&liqTop-ih*0.05<gt){ctx.fillStyle='#fff6e0';rrect(cx-gw*0.58,gt-8,gw*0.16,gh*0.3,8);ctx.fill();rrect(cx+gw*0.42,gt-8,gw*0.16,gh*0.22,8);ctx.fill()}
+  ctx.strokeStyle='#e8f2f8';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(cx-gw/2,gt);ctx.lineTo(cx-botw/2,gb);ctx.lineTo(cx+botw/2,gb);ctx.lineTo(cx+gw/2,gt);ctx.stroke();
+  if(S.flash>0){ctx.fillStyle='rgba(255,240,180,'+(S.flash*0.35).toFixed(2)+')';ctx.fillRect(0,F.y,W,F.h)}
+  var pr=lb<1.7?'GET READY':(lb<2.6&&S.res[k]===undefined&&!S.pour?'OPEN!':(S.pour?'HOLD...':(lb>=5.4&&lb<6.5&&S.pour?'SHUT!':'')));
+  if(S.pour&&lb>=5.2&&lb<6.6)pr='SHUT!';
+  if(S.res[k]!==undefined&&lb<8)pr='';
+  if(sb>=0&&sb<24&&pr)txt(pr,cx,gb-ih*0.45,Math.max(18,F.m*0.09),pr==='SHUT!'?'#ff8a7a':'#fff3b8','center','#1a0d05');
+  var tw=Math.min(F.w*0.86,460),x0=cx-tw/2,ty=F.y+F.h*0.93;
+  ctx.fillStyle='rgba(255,255,255,0.14)';rrect(x0,ty-5,tw,10,5);ctx.fill();
+  for(var b=0;b<=8;b++){ctx.fillStyle='rgba(255,255,255,0.3)';ctx.fillRect(x0+tw*b/8-1,ty-8,2,16)}
+  var ox=x0+tw*2/8,sx=x0+tw*6/8;
+  ctx.fillStyle='rgba(120,230,100,0.4)';ctx.fillRect(ox,ty-5,sx-ox,10);
+  ctx.fillStyle='#7bd45a';ctx.fillRect(ox-2,ty-14,4,28);ctx.fillStyle='#ff6a5a';ctx.fillRect(sx-2,ty-14,4,28);
+  txt('OPEN',ox,ty-22,Math.max(10,F.m*0.035),'#7bd45a');txt('SHUT',sx,ty-22,Math.max(10,F.m*0.035),'#ff6a5a');
+  ctx.fillStyle='#fff';circ(x0+tw*clamp(lb,0,8)/8,ty,7);ctx.fill();
+  for(var p=0;p<3;p++){
+   var px=cx-gw*0.9+p*Math.max(22,F.m*0.09)-Math.max(22,F.m*0.09)*0,py=F.y+F.h*0.2,r=S.res[p];
+   if(F.w<F.h)px=F.x+16+p*Math.max(22,F.m*0.09);else px=F.x+20+p*Math.max(24,F.m*0.09);
+   var sz=Math.max(8,F.m*0.035);
+   ctx.strokeStyle='#e8f2f8';ctx.lineWidth=2;ctx.fillStyle=r===undefined?'rgba(255,255,255,0.1)':(r>0.7?'#f6b83a':(r>0.35?'#c88a28':'#7a5a30'));
+   ctx.beginPath();ctx.moveTo(px-sz,py-sz*1.4);ctx.lineTo(px+sz,py-sz*1.4);ctx.lineTo(px+sz*0.75,py+sz*1.4);ctx.lineTo(px-sz*0.75,py+sz*1.4);ctx.closePath();ctx.fill();ctx.stroke();
+  }
+ }
+};
+STAGES=[S0,S1,S2,S3];
+
+/* ------------------------------------------------------------ game flow */
+var P={down:false,x:0,y:0};
+
+function backing(step,time,sb){
+ var si=G.si,rs=step-16;
+ if(si>=1&&rs%4===0)kick(time,0.3+0.55*G.q.mash);
+ if(si>=2&&rs%2===0){
+  var slot=(rs%16)/2;
+  if(G.B.hop[2].indexOf(slot)>=0)hat(time,0.2+0.5*G.q.hop,false);
+ }
+ if(si>=3&&rs%4===0){
+  var ni=Math.floor(rs/4/2)%8;
+  bass(time,FREQ[G.B.bass[ni]],T.bd*0.9,0.25+0.5*G.q.ferm,false);
+ }
+}
+function onStep(step,time){
+ if(!G||G.phase==='done'||G.phase==='idle')return;
+ var sb=step/4-4;
+ if(sb<0){if(step%4===0)tick(time,step===0,0.3);return}
+ if(G.phase!=='run'&&G.phase!=='count')return;
+ G.st.step(step,time,sb);backing(step,time,sb);
+}
+function startBatch(bi){
+ if(!initAudio())return;
+ show('play');resize();stopTransport();
+ G={bi:bi,B:BATCHES[bi],si:-1,q:{mash:0,hop:0,ferm:0,pour:0},fl:{mash:[],hop:[],ferm:[],pour:[]},phase:'idle',texts:[],doneUntil:0};
+ fxs=[];nextStage();
+}
+function nextStage(){
+ G.si++;
+ if(G.si>=4){finishBatch();return}
+ G.st=STAGES[G.si];G.phase='count';G.st.init();
+ startTransport(G.B.bpm,onStep);
+}
+function finishStage(){
+ var st=G.st;st.finish();G.phase='done';G.doneUntil=performance.now()+1700;
+ stopTransport();
+ if(AC)kick(AC.currentTime+0.02,0.7);
+}
+function toMenu(){
+ stopTransport();
+ if(S){killVoice(S.sw);killVoice(S.v)}
+ G=null;buildMenu();show('menu');
+}
+function pct(q){return Math.round(clamp(q,0,1)*100)}
+
+/* ------------------------------------------------------------ HUD */
+function drawHUD(sb){
+ var st=G.st,x0=52,pw=(W-x0-8)/4,fs=clamp(pw/8.5,9,13);
+ for(var i=0;i<4;i++){
+  var on=i===G.si,done=i<G.si||(i===G.si&&G.phase==='done');
+  ctx.fillStyle=on?'#ffb347':(done?'#6b8f3a':'rgba(255,255,255,0.12)');rrect(x0+i*pw+2,6,pw-4,24,8);ctx.fill();
+  txt(STAGES[i].name,x0+i*pw+pw/2,18,fs,on||done?'#1a0d05':'rgba(255,240,210,0.75)');
+ }
+ var prog=G.phase==='done'?1:clamp(sb/st.len,0,1);
+ ctx.fillStyle='rgba(255,255,255,0.14)';rrect(8,36,W-16-56,7,3);ctx.fill();
+ ctx.fillStyle='#ffb347';rrect(8,36,Math.max(7,(W-16-56)*prog),7,3);ctx.fill();
+ var lv=st.live();
+ txt(pct(lv)+'%',W-8,39.5,12,mix([255,130,100],[140,240,120],lv),'right');
+}
+function drawHint(){
+ var by=H-F.bot+4,bh=F.bot-10,fs=15,lines;
+ for(;fs>=10;fs--){lines=wrapLines(G.st.hint,W-36,fs);if(lines.length*fs*1.3+8<=bh)break}
+ ctx.fillStyle='rgba(20,10,5,0.72)';rrect(8,by,W-16,bh,10);ctx.fill();
+ ctx.strokeStyle='rgba(255,179,71,0.5)';ctx.lineWidth=1.5;rrect(8,by,W-16,bh,10);ctx.stroke();
+ var lh=fs*1.3,y=by+bh/2-(lines.length-1)*lh/2;
+ for(var i=0;i<lines.length;i++)txt(lines[i],W/2,y+i*lh,fs,'#fff1d6');
+}
+function verdict(q){return q>=0.9?'PERFECT!':q>=0.75?'GREAT!':q>=0.55?'GOOD':'ROUGH'}
+
+/* ------------------------------------------------------------ frame loop */
+var lastTs=0,lights={kick:0,hat:0,bass:0,clap:0};
+function frame(ts){
+ requestAnimationFrame(frame);
+ var dt=Math.min(0.05,Math.max(0.001,(ts-lastTs)/1000||0.016));lastTs=ts;
+ if(scr==='res'){updateLights();return}
+ if(scr!=='play'||!G||!G.st)return;
+ var beat=nowBeat(),sb=beat-4,st=G.st;
+ if(G.phase==='count'&&sb>=0)G.phase='run';
+ if(G.phase==='count'||G.phase==='run'){
+  st.update(dt,sb);
+  if(G.phase==='run'&&sb>=st.len)finishStage();
+ }else if(G.phase==='done'&&performance.now()>G.doneUntil){nextStage();if(!G)return}
+ if(!G||!G.st)return;
+ st=G.st;
+ drawBG(beat);
+ st.draw(G.phase==='done'?st.len:sb,beat);
+ fxs.forEach(function(p){p.age+=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=240*dt});
+ fxs=fxs.filter(function(p){return p.age<p.life});
+ fxs.forEach(function(p){ctx.globalAlpha=1-p.age/p.life;ctx.fillStyle=p.col;circ(p.x,p.y,p.r);ctx.fill()});ctx.globalAlpha=1;
+ G.texts.forEach(function(t){t.age+=dt;t.y-=28*dt});G.texts=G.texts.filter(function(t){return t.age<1.1});
+ G.texts.forEach(function(t){ctx.globalAlpha=clamp(1.1-t.age,0,1);txt(t.s,t.x,t.y,t.size,t.col,'center','#1a0d05')});ctx.globalAlpha=1;
+ drawHUD(sb);drawHint();
+ if(G.phase==='count'){
+  var n=clamp(Math.floor(beat)+1,1,4);
+  ctx.fillStyle='rgba(20,10,5,0.35)';ctx.fillRect(0,F.y,W,F.h);
+  txt('STAGE '+(G.si+1)+': '+st.name,F.cx,F.y+F.h*0.16,Math.max(16,F.m*0.075),'#ffb347','center','#1a0d05');
+  var fr=1-(((beat%1)+1)%1);
+  txt(String(n),F.cx,F.cy,Math.max(40,F.m*0.3)*(0.9+0.2*fr),'rgba(255,241,214,'+(0.6+0.4*fr).toFixed(2)+')','center','#1a0d05');
+ }
+ if(G.phase==='done'){
+  var q=G.q[st.key];
+  ctx.fillStyle='rgba(20,10,5,0.55)';ctx.fillRect(0,F.y,W,F.h);
+  txt(st.name+' '+pct(q)+'%',F.cx,F.cy-F.m*0.06,Math.max(22,F.m*0.1),'#fff1d6','center','#1a0d05');
+  txt(verdict(q),F.cx,F.cy+F.m*0.08,Math.max(20,F.m*0.09),mix([255,150,110],[150,240,120],q),'center','#1a0d05');
+ }
+}
+requestAnimationFrame(frame);
+
+/* ------------------------------------------------------------ input */
+function ptOf(e){var r=cv.getBoundingClientRect();return {x:(e.clientX-r.left)*(W/r.width),y:(e.clientY-r.top)*(H/r.height)}}
+function live(){return G&&G.st&&(G.phase==='run'||G.phase==='count')}
+cv.addEventListener('pointerdown',function(e){
+ e.preventDefault();initAudio();try{cv.setPointerCapture(e.pointerId)}catch(x){}
+ var p=ptOf(e);P.down=true;P.x=p.x;P.y=p.y;if(live())G.st.down(p.x,p.y);
+});
+cv.addEventListener('pointermove',function(e){
+ if(!P.down)return;e.preventDefault();var p=ptOf(e);P.x=p.x;P.y=p.y;if(live())G.st.move(p.x,p.y);
+});
+function pup(e){if(!P.down)return;P.down=false;if(G&&G.st)G.st.up()}
+cv.addEventListener('pointerup',pup);cv.addEventListener('pointercancel',pup);
+cv.addEventListener('contextmenu',function(e){e.preventDefault()});
+window.addEventListener('keydown',function(e){
+ var k=(e.key||'').toLowerCase();
+ if(k==='escape'){try{parent.postMessage({beatBrewing:'close'},'*')}catch(x){}return}
+ if(scr!=='play'||!G)return;
+ if(['arrowup','arrowdown','arrowleft','arrowright',' ','w','a','s','d','enter'].indexOf(k)>=0)e.preventDefault();
+ if(e.repeat)return;
+ keysDown[k]=true;if(live())G.st.key(k,true);
+});
+window.addEventListener('keyup',function(e){
+ var k=(e.key||'').toLowerCase();keysDown[k]=false;
+ if(G&&G.st&&live())G.st.key(k,false);
+});
+window.addEventListener('blur',function(){keysDown={}});
+document.addEventListener('visibilitychange',function(){if(document.hidden){if(scr==='play')toMenu();else stopTaste()}});
+$('#quit').addEventListener('click',toMenu);
+
+/* ------------------------------------------------------------ menu */
+function buildMenu(){
+ var best=loadBest(),h='';
+ BATCHES.forEach(function(b,i){
+  var s=best[i];
+  h+='<button class="card" data-i="'+i+'"><b>'+b.name+'</b><span>'+b.bpm+' BPM &middot; '+b.blurb+'</span><em>'+(s>=0?starStr(starsFor(s))+' &nbsp;BEST '+s:'NOT BREWED YET')+'</em></button>';
+ });
+ $('#cards').innerHTML=h;
+ var cs=document.querySelectorAll('#cards .card');
+ for(var i=0;i<cs.length;i++)cs[i].addEventListener('click',function(){startBatch(+this.getAttribute('data-i'))});
+}
+
+/* ------------------------------------------------------------ results + tasting */
+var taste=false;
+function tasteStep(step,time){
+ if(!G)return;
+ var beat=Math.floor(step/4),sub=step%4,b16=beat%16,q=G.q,B=G.B;
+ if(sub===0){
+  var ok=G.fl.mash[b16]!==false&&G.fl.mash[b16]!==undefined;
+  if(ok||Math.random()<0.3+0.5*q.mash){kick(time,ok?0.9:0.4);lights.kick=time}
+  if(b16%4===1||b16%4===3){var c=0.3+0.6*q.pour;clap(time,c);lights.clap=time}
+  if(b16===0&&q.pour>0.65){crash(time,0.7)}
+  if(b16%2===0){
+   var ni=Math.floor(b16/2),good=G.fl.ferm[ni]===true,note=good?B.bass[ni]:(B.bass[ni]+1)%5;
+   bass(time,FREQ[note],T.bd*1.8,good?0.8:0.6,!good);lights.bass=time;
+  }
+ }
+ if(step%2===0){
+  var slot=(step%16)/2;
+  G.fl.hop.forEach(function(h){if(h.slot===slot&&h.s>0.3){hat(time,0.3+0.5*h.s,false);lights.hat=time}});
+ }
+}
+function startTaste(){
+ if(!G||!initAudio())return;
+ taste=true;startTransport(G.B.bpm,tasteStep);
+ var b=$('#rTaste');if(b)b.innerHTML='&#9632; STOP';
+}
+function stopTaste(){
+ taste=false;stopTransport();
+ var b=$('#rTaste');if(b)b.innerHTML='&#9654; TASTE THE BEAT';
+}
+function updateLights(){
+ if(!AC)return;
+ var now=AC.currentTime;
+ ['kick','hat','bass','clap'].forEach(function(k){
+  var el=$('#l_'+k);if(!el)return;
+  var d=now-lights[k];el.className='lt'+(taste&&d>=0&&d<0.16?' on':'');
+ });
+}
+function finishBatch(){
+ stopTransport();
+ var q=G.q,total=Math.round((0.25*q.mash+0.2*q.hop+0.3*q.ferm+0.25*q.pour)*100);
+ saveBest(G.bi,total);
+ var n=starsFor(total),ranks=['HOME BREWER','TAPROOM REGULAR','HEAD BREWER','BEAT BREWER','BREWMASTER OF THE BEAT'];
+ var weak=['mash','hop','ferm','pour'].reduce(function(a,b){return q[a]<=q[b]?a:b});
+ var rev={mash:'The body was thin. Stay locked on the grain and the kick will thump.',
+  hop:'The hops were out of step. Listen close to the ring, then answer it back.',
+  ferm:'The yeast wandered off-key. Keep it on the lit note.',
+  pour:'The pour missed the beat. Open on OPEN, shut on SHUT.'};
+ var good=total>=88?'Pure liquid rhythm. The whole taproom is nodding along.':rev[weak];
+ var abv=(4.2+total/100*4.6).toFixed(1),ibu=Math.round(10+q.hop*55);
+ function bar(l,v){return '<div class="bar"><span>'+l+'</span><i><u style="width:'+pct(v)+'%"></u></i><b>'+pct(v)+'</b></div>'}
+ var next=G.bi<BATCHES.length-1;
+ $('#res').innerHTML='<div class="wrap"><h1 class="sm">'+G.B.name+'</h1><div class="stars">'+starStr(n)+'</div><p class="sub">'+ranks[n-1]+' &middot; SCORE '+total+'</p>'
+  +'<div class="board">'+bar('MASH (KICK)',q.mash)+bar('HOPS (HATS)',q.hop)+bar('FERMENT (BASS)',q.ferm)+bar('POUR (DROP)',q.pour)
+  +'<div class="stats"><span>ABV '+abv+'%</span><span>IBU '+ibu+'</span><span>'+G.B.bpm+' BPM</span></div></div>'
+  +'<p class="rev">&ldquo;'+good+'&rdquo;</p>'
+  +'<div class="lts"><span id="l_kick" class="lt">KICK</span><span id="l_hat" class="lt">HATS</span><span id="l_bass" class="lt">BASS</span><span id="l_clap" class="lt">CLAP</span></div>'
+  +'<button id="rTaste" class="btn big">&#9654; TASTE THE BEAT</button>'
+  +'<div class="row"><button id="rAgain" class="btn">BREW AGAIN</button>'+(next?'<button id="rNext" class="btn">NEXT BATCH</button>':'')+'<button id="rMenu" class="btn alt">MENU</button></div></div>';
+ show('res');
+ var bi=G.bi;
+ $('#rTaste').addEventListener('click',function(){taste?stopTaste():startTaste()});
+ $('#rAgain').addEventListener('click',function(){stopTaste();startBatch(bi)});
+ if(next)$('#rNext').addEventListener('click',function(){stopTaste();startBatch(bi+1)});
+ $('#rMenu').addEventListener('click',function(){stopTaste();toMenu()});
+}
+
+buildMenu();resize();
+})();
+</script></body></html>
+`;
+let beatBrewingOverlayEl = null, beatBrewingOverlayFrame = null;
+let beatBrewingReturnState = 'play';
+let beatBrewingHistoryPushed = false; // mirrors reverbReefHistoryPushed -- see openBeatBrewingApp()/closeBeatBrewingApp()
+
+function createBeatBrewingOverlay() {
+  const style = document.createElement('style');
+  style.textContent = `
+    #beatBrewingApp {
+      position: fixed; inset: 0; z-index: 1000;
+      background: #000;
+      display: none; flex-direction: column;
+    }
+    #beatBrewingApp.open { display: flex; }
+    #beatBrewingApp .bb-bar {
+      flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 8px 14px;
+      background: linear-gradient(#6a3a14, #2a170a);
+      border-bottom: 2px solid #e8933a;
+      padding-top: calc(8px + env(safe-area-inset-top, 0px));
+      padding-left: calc(14px + env(safe-area-inset-left, 0px));
+      padding-right: calc(14px + env(safe-area-inset-right, 0px));
+    }
+    #beatBrewingApp .bb-title {
+      color: #ffd88a; font: bold 14px monospace; letter-spacing: 0.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #beatBrewingApp .bb-close {
+      flex: 0 0 auto; cursor: pointer;
+      background: rgba(232,147,58,0.18);
+      border: 1.5px solid rgba(232,147,58,0.95);
+      color: #ffd88a; border-radius: 8px;
+      padding: 7px 16px; font: bold 13px monospace;
+      -webkit-user-select: none; user-select: none;
+    }
+    #beatBrewingApp .bb-close:active { background: rgba(232,147,58,0.5); }
+    #beatBrewingApp iframe {
+      flex: 1 1 auto; width: 100%; min-height: 0; border: 0; background: #140b06;
+    }
+  `;
+  document.head.appendChild(style);
+
+  beatBrewingOverlayEl = document.createElement('div');
+  beatBrewingOverlayEl.id = 'beatBrewingApp';
+
+  const bar = document.createElement('div');
+  bar.className = 'bb-bar';
+  const title = document.createElement('div');
+  title.className = 'bb-title';
+  title.textContent = 'BEAT BREWING';
+  const closeBtn = document.createElement('div');
+  closeBtn.className = 'bb-close';
+  closeBtn.textContent = '\u2190 BACK TO FOAM';
+  bindTap(closeBtn, closeBeatBrewingApp);
+  bar.appendChild(title);
+  bar.appendChild(closeBtn);
+
+  beatBrewingOverlayFrame = document.createElement('iframe');
+  beatBrewingOverlayFrame.setAttribute('allow', 'autoplay');
+
+  beatBrewingOverlayEl.appendChild(bar);
+  beatBrewingOverlayEl.appendChild(beatBrewingOverlayFrame);
+  document.body.appendChild(beatBrewingOverlayEl);
+
+  window.addEventListener('message', (e) => {
+    if (!beatBrewingOverlayFrame || e.source !== beatBrewingOverlayFrame.contentWindow) return;
+    if (e.data && e.data.beatBrewing === 'close' && state === 'beatBrewingApp') closeBeatBrewingApp();
+  });
+}
+createBeatBrewingOverlay();
+
+// Opens the Beat Brewing overlay and switches state to 'beatBrewingApp'.
+// Called from MINIGAME_ACTIONS.beatbrewing (E on the station, or tapping its
+// floating sign), same entry point every other mini-game uses.
+function openBeatBrewingApp() {
+  beatBrewingReturnState = state;
+  beatBrewingOverlayFrame.srcdoc = BEAT_BREWING_HTML;
+  beatBrewingOverlayEl.classList.add('open');
+  state = 'beatBrewingApp';
+  beatBrewingOverlayFrame.addEventListener('load', () => {
+    try { beatBrewingOverlayFrame.contentWindow.focus(); } catch (e) { /* a tap will focus it */ }
+  }, { once: true });
+  // Same throwaway-history-entry trick as openReverbReefApp(), so the
+  // browser/OS back gesture closes the overlay instead of leaving the game.
+  history.pushState({ beatBrewingApp: true }, '');
+  beatBrewingHistoryPushed = true;
+}
+
+// Tears the iframe back down (which also stops all audio) and returns to
+// ordinary gameplay in FOAM BREWERS. fromPopState mirrors
+// closeReverbReefApp()'s parameter.
+function closeBeatBrewingApp(fromPopState) {
+  beatBrewingOverlayEl.classList.remove('open');
+  beatBrewingOverlayFrame.removeAttribute('srcdoc');
+  beatBrewingOverlayFrame.src = 'about:blank';
+  reclaimGameFocus(beatBrewingOverlayFrame);
+  state = beatBrewingReturnState;
+  if (!fromPopState && beatBrewingHistoryPushed) {
+    beatBrewingHistoryPushed = false;
+    history.back();
+  } else {
+    beatBrewingHistoryPushed = false;
+  }
+}
+
 // Spot the Difference -- "HIP-HOP HISTORY: SPOT THE DIFFERENCE" (six original
 // hip-hop scenes, Easy/Medium/Hard hit zones, scoring, hints, trivia, saved
 // best score), set up as an arcade cabinet on the floor of SPEAKING VOLUMES
@@ -22459,6 +23410,8 @@ window.addEventListener('popstate', () => {
     closeFrequencyAltarApp(true);
   } else if (state === 'reverbReefApp') {
     closeReverbReefApp(true);
+  } else if (state === 'beatBrewingApp') {
+    closeBeatBrewingApp(true);
   } else if (state === 'drumPatternDocApp') {
     closeDrumPatternDocApp(true);
   } else if (state === 'gatorJamSlamApp') {
@@ -22534,7 +23487,7 @@ canvas.addEventListener('pointerdown', (e) => {
     const vx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const vy = (e.clientY - rect.top) * (canvas.height / rect.height);
     handleLabTap(vx, vy);
-  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'reverbReefApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'humbleTreasuresApp' || state === 'dustRacingApp' || state === 'cbPressApp' || state === 'spotDiffApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'scoopBeatsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp' || state === 'arkaiikImpactApp' || state === 'precisionPointsApp' || state === 'j2sProSkaterApp') {
+  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'reverbReefApp' || state === 'beatBrewingApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'humbleTreasuresApp' || state === 'dustRacingApp' || state === 'cbPressApp' || state === 'spotDiffApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'scoopBeatsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp' || state === 'arkaiikImpactApp' || state === 'precisionPointsApp' || state === 'j2sProSkaterApp') {
     // The DOM overlay sits on top of (and outside) the canvas while an
     // instrument/the chess app/the beat bot/the organ/mini golf/the
     // blackbook/Gator Grooves/Vinyl Snake/Bayou Break Station/Gator Jam
@@ -22933,6 +23886,12 @@ function update(dt) {
     // is still consumed here so the on-screen [X] touch button works while
     // it's open.
     if (buyPressed) closeReverbReefApp();
+  } else if (state === 'beatBrewingApp') {
+    // Same reasoning as 'reverbReefApp' just above: the DOM overlay (see
+    // createBeatBrewingOverlay()) owns input while Beat Brewing is loaded --
+    // its own back button and [Esc] handle closing it directly. buyPressed
+    // is still consumed here so the on-screen [X] touch button works.
+    if (buyPressed) closeBeatBrewingApp();
   } else if (state === 'freqAltarApp') {
     // Same reasoning as 'labApp'/'chessApp'/'beatBotApp'/'organApp'/
     // 'minigolfApp'/'blackbookApp'/'crocSwampApp'/'vinylSnakeApp'/
@@ -24390,7 +25349,7 @@ function render(time) {
     drawSplash();
     return;
   }
-  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'reverbReefApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'humbleTreasuresApp' || state === 'dustRacingApp' || state === 'cbPressApp' || state === 'spotDiffApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'scoopBeatsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp' || state === 'arkaiikImpactApp' || state === 'precisionPointsApp' || state === 'j2sProSkaterApp') {
+  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'reverbReefApp' || state === 'beatBrewingApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'humbleTreasuresApp' || state === 'dustRacingApp' || state === 'cbPressApp' || state === 'spotDiffApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'scoopBeatsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp' || state === 'arkaiikImpactApp' || state === 'precisionPointsApp' || state === 'j2sProSkaterApp') {
     // Same reasoning as the labApp overlay: a DOM element (the <video>,
     // see createCharacterIntroOverlay(), the chess <iframe>, see
     // createChessOverlay(), the beat bot <iframe>, see
@@ -31371,6 +32330,7 @@ function drawFoamBrewersInterior(time) {
   drawFoamNeon(292, 6, time);
   drawFoamTank(344, 4, 28, 60, time, 2.6);
   drawFoamTank(376, 4, 28, 60, time, 3.9);
+  drawFoamBeatBrewStation(11 * TILE, 2 * TILE, time);
 
   // --- the bar (counter table spans row 3, cols 4-9): pints, a beer
   // flight in front of Fattie B, and a chrome tap tower at the right end
@@ -31471,6 +32431,51 @@ function drawFoamBrewersInterior(time) {
     ctx.fillText(i % 2 === 0 ? '\u266A' : '\u266B', nx, ny);
   }
   ctx.globalAlpha = 1;
+}
+
+// BEAT BREWING station on tile (11,2): a copper brew kettle on a stand with
+// a glowing EQ screen, a pressure gauge and a little "BEAT BREW" plate.
+// Called from drawFoamBrewersInterior().
+function drawFoamBeatBrewStation(bx, by, time) {
+  const cx = bx + 16;
+  ctx.fillStyle = '#6a4426';                                   // cover the wall-tile texture
+  ctx.fillRect(bx, by, 32, 32);
+  ctx.fillStyle = 'rgba(0,0,0,0.28)';                          // floor shadow
+  ctx.beginPath(); ctx.ellipse(cx, by + 29, 16, 4, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#2a1a0e';                                   // stand legs
+  ctx.fillRect(bx + 5, by + 22, 3, 7); ctx.fillRect(bx + 24, by + 22, 3, 7);
+  const kg = ctx.createLinearGradient(bx + 3, 0, bx + 29, 0);  // copper kettle body
+  kg.addColorStop(0, '#8a4a1a'); kg.addColorStop(0.35, '#e8933a'); kg.addColorStop(1, '#7a3f16');
+  ctx.fillStyle = kg;
+  ctx.beginPath(); ctx.moveTo(bx + 5, by + 2); ctx.lineTo(bx + 27, by + 2);
+  ctx.quadraticCurveTo(bx + 31, by + 12, bx + 27, by + 23); ctx.lineTo(bx + 5, by + 23);
+  ctx.quadraticCurveTo(bx + 1, by + 12, bx + 5, by + 2); ctx.fill();
+  ctx.strokeStyle = '#3a1d0a'; ctx.lineWidth = 1.2; ctx.stroke();
+  ctx.fillStyle = '#c9772a';                                   // dome lid + vent pipe
+  ctx.beginPath(); ctx.ellipse(cx, by + 2, 11, 3.5, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#8a4a1a'; ctx.fillRect(cx - 1.5, by - 5, 3, 7);
+  const st = (time * 0.8) % 1;                                 // steam puff
+  ctx.fillStyle = 'rgba(255,255,255,' + (0.35 * (1 - st)).toFixed(3) + ')';
+  ctx.beginPath(); ctx.arc(cx + Math.sin(time * 2) * 2, by - 7 - st * 7, 2 + st * 2.5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#10141a';                                   // EQ screen
+  ctx.fillRect(bx + 8, by + 8, 16, 9);
+  for (let i = 0; i < 5; i++) {
+    const h = 1.5 + (Math.sin(time * 5 + i * 1.7) * 0.5 + 0.5) * 6;
+    ctx.fillStyle = i % 2 ? '#ffd447' : '#ff9a3c';
+    ctx.fillRect(bx + 9.5 + i * 2.9, by + 16.5 - h, 2, h);
+  }
+  ctx.fillStyle = '#f4ecd8';                                   // plate + gauge
+  ctx.fillRect(bx + 9, by + 18.5, 14, 3.5);
+  ctx.fillStyle = '#3a1d0a'; ctx.font = 'bold 3px monospace'; ctx.textAlign = 'center';
+  ctx.fillText('BEAT BREW', cx, by + 21.3);
+  ctx.fillStyle = '#e8e2d0';
+  ctx.beginPath(); ctx.arc(bx + 6.5, by + 14, 2.2, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#a02020'; ctx.lineWidth = 0.8;
+  const ga = -2.2 + Math.sin(time * 3) * 0.6;
+  ctx.beginPath(); ctx.moveTo(bx + 6.5, by + 14); ctx.lineTo(bx + 6.5 + Math.cos(ga) * 1.8, by + 14 + Math.sin(ga) * 1.8); ctx.stroke();
+  const gl = getGlowSprite(44, 'rgba(255,170,60,ALPHA)');      // warm glow on the floor
+  ctx.save(); ctx.globalAlpha = 0.2 + 0.06 * Math.sin(time * 2.4);
+  ctx.drawImage(gl, cx - 34, by + 6, 68, 56); ctx.restore();
 }
 
 // A stainless-steel fermentation tank: domed top, banded barrel, conical
