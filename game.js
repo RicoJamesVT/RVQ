@@ -11046,6 +11046,15 @@ sinnnImg.src = 'assets/sinnn.png';
 const bigRyeImg = new Image();
 bigRyeImg.src = 'assets/bigrye.png';
 
+// EMMA -- a local skater and total animal lover, hanging out inside TALENT
+// (LEVEL 3, SKATEPARK) with her French Bulldog puppy DUGGIE. One pre-drawn
+// image holds both of them (backwards black cap, long brown hair, blue
+// tie-dye tee, cut-off denim shorts, blue high-tops, deck under one arm,
+// Duggie sitting at her side). Same shop-npc treatment as SINNN/BIG RYE
+// (see SHOP_NPC_IMAGES below).
+const emmaImg = new Image();
+emmaImg.src = 'assets/emma.png';
+
 // ES-K -- veteran Burlington hip hop producer, beatmaker, and all-around
 // good human, posted up inside BURLINGTON RECORDS out in the swamp. Same
 // pre-drawn treatment as the rest of the shop npcs above.
@@ -13964,6 +13973,24 @@ const shops = {
         'Four crates in here: thrash, hardcore, skate punk and crossover. Every record in there has been in a skate video or somebody\'s garage. No hidden gem today, but dig loud anyway.',
         'Support your local shop, film your friends, and look out for the next kid. That\'s the whole business plan.',
       ] },
+    // EMMA (+ her French Bulldog puppy DUGGIE, same sprite) -- a local skater
+    // and animal lover hanging out on the shop floor at (9,5). Tile is clear
+    // of the counter (row 3), the crates (1,4)/(1,6)/(12,4)/(12,6), the zine
+    // stand (6,5), the funbox (3-4,6), the ramps, the kicker (8-9,7), the
+    // spawn (6.5,7.5) and the door (6,9). Full pre-drawn image, feet on the
+    // floor line -- see SHOP_NPC_IMAGES/drawShopImageNpcs.
+    npcs: [
+      { id: 'emma', tx: 9, ty: 5, name: 'EMMA', sprite: 'emma', spriteH: 84,
+        lines: [
+          'Hey! I\'m Emma. I skate the park most days -- and this is Duggie, my French Bulldog puppy. Say hi, he\'s dying for it.',
+          'Duggie\'s the best thing that ever happened to me. He rides in my backpack to the park, naps under the quarter pipe, and thinks every kid who walks in is here just to meet him.',
+          '*Duggie flops onto his back for belly rubs.* Okay, you officially passed the vibe check.',
+          'I\'m kind of an animal person in general. If it has fur, feathers or scales, I\'m already making friends with it. Ask me about the Swamp Dog sometime.',
+          'Music-wise I\'ll listen to anything -- punk, hip hop, reggae, folk, whatever\'s in the crates. It\'s all good if it makes you want to roll.',
+          'Right now though? Noah Kahan, on repeat. Stick Season, Northern Attitude, the whole Vermont-heartbreak playlist. Skating laps to it hits different.',
+          'Liggy keeps this place feeling like home. Good board, good dog, good tunes -- honestly, what else do you need?',
+        ] },
+    ],
     // Four junk crates, one per plaque (see TALENT_JUNK above).
     crates: [ { talentSeed: 0 }, { talentSeed: 1 }, { talentSeed: 2 }, { talentSeed: 3 } ],
     // Zine stand holding the SKATEBOARDING & HIP-HOP CULTURE reader, tx/ty (6, 5):
@@ -36211,7 +36238,7 @@ function drawKeeper(k) {
 // anchored to the tile's floor line — no procedural fallback, since there's
 // no simple shape that stands in for this art; it just waits for the image
 // to finish loading.
-const SHOP_NPC_IMAGES = { kanga: kangaImg, truth: truthImg, bill: billImg, rza: rzaImg, gza: gzaImg, zach: zachImg, humble: humbleImg, hicks: hicksImg, mavstar: mavstarImg, boxguts: boxgutsImg, trav: travImg, sinnn: sinnnImg, bigrye: bigRyeImg, esk: esKImg, krishna: krishnaImg, arkaiik: arkaiikImg, ghost: ghostImg, hagen: hagenImg, precisemc: preciseMcImg, wish: wishImg };
+const SHOP_NPC_IMAGES = { kanga: kangaImg, truth: truthImg, bill: billImg, rza: rzaImg, gza: gzaImg, zach: zachImg, humble: humbleImg, hicks: hicksImg, mavstar: mavstarImg, boxguts: boxgutsImg, trav: travImg, sinnn: sinnnImg, bigrye: bigRyeImg, emma: emmaImg, esk: esKImg, krishna: krishnaImg, arkaiik: arkaiikImg, ghost: ghostImg, hagen: hagenImg, precisemc: preciseMcImg, wish: wishImg };
 
 function drawShopImageNpcs(map) {
   if (!map.npcs) return;
