@@ -1676,6 +1676,10 @@ const MINIGAME_ACTIONS = {
   // is no extra file to ship and no network call anywhere. See
   // openWishJamApp()/createWishJamOverlay() below.
   wishjam: () => openWishJamApp(),
+  // SKATEBOARDING & HIP-HOP CULTURE reader -- a zine stand inside TALENT (LEVEL 3,
+  // SKATEPARK), see TALENT's `minigames` list. Opens an offline, fully inlined
+  // reading page; see openSkateHipHopReaderApp()/createSkateHipHopReaderOverlay().
+  skatehiphopreader: () => openSkateHipHopReaderApp(),
   // LET'S SKATE billboard -- a big blinking sign out on the grass below the
   // plaza of LEVEL 3 (SKATEPARK), see the skatepark map's `minigames` list
   // and `skateBillboard` in makeSkatepark() / drawMinigameSkateBillboard().
@@ -10474,6 +10478,7 @@ window.addEventListener('keydown', (e) => {
     if (k === 'escape' && state === 'arkaiikImpactApp') { closeArkaiikImpactApp(); }
     if (k === 'escape' && state === 'precisionPointsApp') { closePrecisionPointsApp(); }
     if (k === 'escape' && state === 'wishJamApp') { closeWishJamApp(); }
+    if (k === 'escape' && state === 'skateHipHopReaderApp') { closeSkateHipHopReaderApp(); }
     if (k === 'escape' && state === 'j2sProSkaterApp') { closeJ2sProSkaterApp(); }
     if (k === 'escape' && state === 'j2sProSkaterSplash') { state = j2sProSkaterSplashReturnState; }
     if (k === 'escape' && state === 'diggerApp') { closeDiggerApp(); }
@@ -11321,18 +11326,21 @@ function makeOverworld() {
     // dogRow moved off 23 -> 6: the new stadium footprint (rows 17-23) now
     // sits on top of the old dog lane.
     ambient: { bikeRows: [9], walkerRow: 12, dogRow: 6 },
-    // Autumn palette -- it's fall in Vermont, so Burlington's grass gets just
-    // a touch of dry/golden warmth and the trees on the Main Map stay mostly
-    // green with only a hint of turning color (a light touch of early fall,
-    // not the full reds/oranges/yellows). Same palette shape as the swamp's
+    // FULL AUTUMN palette -- peak Vermont foliage. The grass is dry and
+    // golden-brown, every tree drawn via drawTree() gets a per-tree mix of
+    // crimson / orange / pumpkin / gold / russet (see AUTUMN_TREE_SETS),
+    // leaf litter is scattered across the ground (drawTiles()) and leaves
+    // drift down over the map (drawAutumnLeaves()). `autumn: true` is what
+    // switches all of that on. Same palette shape as the swamp's
     // (groundA/groundB/groundDot for the ground fill + speckle, water/
     // waterHi for the river, trunk/leafDark/leafMid/leafLight for every
     // tree drawn via drawTree()) -- see drawTiles()/drawTree() for how
     // each field is read, with a green fallback if a map has no palette.
     palette: {
-      groundA: '#6f8a4a', groundB: '#5f7c3f', groundDot: '#a9903a',
-      water: '#2f5a86', waterHi: '#4878aa',
-      trunk: '#5a3a20', leafDark: '#4a7a2e', leafMid: '#7a9a3a', leafLight: '#c9a838',
+      autumn: true,
+      groundA: '#9a8a42', groundB: '#86743a', groundDot: '#d28a2c',
+      water: '#35607f', waterHi: '#5f8aa8',
+      trunk: '#4a2e1a', leafDark: '#a8481c', leafMid: '#d9741e', leafLight: '#f2b13a',
     },
     // A soccer ball sitting out on the Vermont Green FC pitch, inside the
     // stadium bowl carved out above (STADIUM_X/Y/W/H) -- tx/ty (19, 19) is
@@ -12535,6 +12543,27 @@ function makeSkatepark() {
       // see openJ2sProSkaterSplash()/openJ2sProSkaterApp().
       { id: 'j2sproskater', tx: BB_X + 3, ty: BB_Y, label: "LET'S SKATE", icon: 'skatebillboard',
         alsoTiles: bbTiles.filter(([x, y]) => !(x === BB_X + 3 && y === BB_Y)) },
+      // DANCE PARTY -- the same boombox as the one out on the grass in Level 1
+      // BURLINGTON, set on the open grass in the east margin below the taco
+      // truck. (47, 26) is a plain '.' grass tile: clear of the walkway ring
+      // (cols 43-44 on this row), the taco truck (rows 20-22), the trees,
+      // dig-spot crates and the other mini-game markers, and reachable from
+      // the ring. `icon: 'boombox'` reuses drawMinigameBoombox(), and the
+      // `danceparty` id reuses MINIGAME_ACTIONS.danceparty -> startDanceParty():
+      // [E] (or a tap) plays danceparty.mp3/.ogg/.wav once while the vinyl
+      // cascade takes over the screen, then hands control back to the park.
+      { id: 'danceparty', tx: 47, ty: 26, label: 'START A DANCE PARTY', icon: 'boombox' },
+      // THE HIP HOP LIBRARY -- the same little plywood info kiosk as in Level 1
+      // BURLINGTON and Level 2 (the swamp), set out on the open concrete on the
+      // right side of the plaza. (39, 21) is a flat 'k' tile with plain
+      // concrete on every side: clear of the big bowl (cols 20-31 on this
+      // row), the grind rails (row 20 cols 33-35, row 22 cols 33-36), the
+      // stair/ledge blocks (rows 24-26), the dig-spot crates and the other
+      // mini-game markers, and reachable from the walkway ring on its east
+      // side. `icon: 'hiphopkiosk'` -- see drawMinigameHipHopKiosk(). Reuses
+      // MINIGAME_ACTIONS.hiphoplibrary -> openHipHopLibraryApp() (the exact
+      // same standalone app/overlay as the other two levels).
+      { id: 'hiphoplibrary', tx: 39, ty: 21, label: 'THE HIP HOP LIBRARY', icon: 'hiphopkiosk' },
     ],
     skateBillboard: { x: BB_X, y: BB_Y, w: BB_W, h: BB_H },
     andyAdogSign: { x: SIGN_X, y: SIGN_Y, w: SIGN_W, h: SIGN_H },
@@ -13937,6 +13966,14 @@ const shops = {
       ] },
     // Four junk crates, one per plaque (see TALENT_JUNK above).
     crates: [ { talentSeed: 0 }, { talentSeed: 1 }, { talentSeed: 2 }, { talentSeed: 3 } ],
+    // Zine stand holding the SKATEBOARDING & HIP-HOP CULTURE reader, tx/ty (6, 5):
+    // open floor in the middle of the shop, clear of the counter (row 3), the
+    // crates (1,4)/(1,6)/(12,4)/(12,6), the funbox (3-4,6), the ramps, the kicker
+    // (8-9,7), the spawn (6.5,7.5) and the door (6,9). See
+    // MINIGAME_ACTIONS.skatehiphopreader/openSkateHipHopReaderApp().
+    minigames: [
+      { id: 'skatehiphopreader', tx: 6, ty: 5, label: 'READ: SKATE x HIP-HOP', icon: 'zinestand' },
+    ],
   }),
   // ECHO CENTER -- the skatepark's fifth building: an aquarium full of
   // amazing underwater animals, run by CHAMP, the friendly Loch Ness-type
@@ -14119,7 +14156,7 @@ const player = {
   tempItem: null, tempItemTimer: 0,
 };
 const collected = new Set();
-let state = 'splash'; // splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | danceParty | portal | fifa | minigame | hotkeys | crate | photo | lab | labLocked | shopBackLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | qsdBalanceApp | vinylSnakeApp | waveformApp | bayouBreakApp | freqAltarApp | reverbReefApp | beatBrewingApp | drumPatternDocApp | gatorJamSlamApp | swampCaveApp | vocalChopBoothApp | vtDirtApp | penaltyKingsApp | digDashApp | digOnApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | diggerApp | hyperSwimApp | linusTugApp | connectFourApp | syrupRoadsApp | scoopBeatsApp | clawMachineApp | kangaidenVideo | kangaidenSplash | kangaidenApp | hiphopLibraryApp | truthKnocksVideo | truthKnocksSplash | truthKnocksApp | johnnySlidesVideo | johnnySlidesSplash | johnnySlidesApp | humbleTreasuresVideo | humbleTreasuresSplash | humbleTreasuresApp | dustRacingApp | cbPressApp | spotDiffApp | arkaiikImpactApp | precisionPointsApp | wishJamApp
+let state = 'splash'; // skateHipHopReaderApp (TALENT reader overlay) | splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | danceParty | portal | fifa | minigame | hotkeys | crate | photo | lab | labLocked | shopBackLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | qsdBalanceApp | vinylSnakeApp | waveformApp | bayouBreakApp | freqAltarApp | reverbReefApp | beatBrewingApp | drumPatternDocApp | gatorJamSlamApp | swampCaveApp | vocalChopBoothApp | vtDirtApp | penaltyKingsApp | digDashApp | digOnApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | diggerApp | hyperSwimApp | linusTugApp | connectFourApp | syrupRoadsApp | scoopBeatsApp | clawMachineApp | kangaidenVideo | kangaidenSplash | kangaidenApp | hiphopLibraryApp | truthKnocksVideo | truthKnocksSplash | truthKnocksApp | johnnySlidesVideo | johnnySlidesSplash | johnnySlidesApp | humbleTreasuresVideo | humbleTreasuresSplash | humbleTreasuresApp | dustRacingApp | cbPressApp | spotDiffApp | arkaiikImpactApp | precisionPointsApp | wishJamApp
 // State to snap back to when the [H] hotkeys popup is closed -- currently
 // always 'play' since that's the only state H can be opened from, but kept
 // as its own var in case another state wants to offer the popup later.
@@ -14814,7 +14851,7 @@ const music = {
 // enter/exit call sites, so it can't drift out of sync no matter which
 // of the several ways the player backs out of the lab popup (keyboard
 // [X], on-screen [X] button, closing the instrument iframe, etc.).
-const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'qsdBalanceApp', 'vinylSnakeApp', 'waveformApp', 'bayouBreakApp', 'freqAltarApp', 'reverbReefApp', 'beatBrewingApp', 'drumPatternDocApp', 'gatorJamSlamApp', 'swampCaveApp', 'vocalChopBoothApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'digOnApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'johnnySlidesApp', 'humbleTreasuresApp', 'dustRacingApp', 'cbPressApp', 'spotDiffApp', 'hyperSwimApp', 'linusTugApp', 'connectFourApp', 'syrupRoadsApp', 'scoopBeatsApp', 'clawMachineApp', 'kangaidenVideo', 'kangaidenApp', 'hiphopLibraryApp', 'arkaiikImpactApp', 'precisionPointsApp', 'wishJamApp', 'j2sProSkaterApp', 'danceParty', 'truthKnocksVideo', 'truthKnocksApp', 'johnnySlidesVideo', 'humbleTreasuresVideo']);
+const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'qsdBalanceApp', 'vinylSnakeApp', 'waveformApp', 'bayouBreakApp', 'freqAltarApp', 'reverbReefApp', 'beatBrewingApp', 'drumPatternDocApp', 'gatorJamSlamApp', 'swampCaveApp', 'vocalChopBoothApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'digOnApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'johnnySlidesApp', 'humbleTreasuresApp', 'dustRacingApp', 'cbPressApp', 'spotDiffApp', 'hyperSwimApp', 'linusTugApp', 'connectFourApp', 'syrupRoadsApp', 'scoopBeatsApp', 'clawMachineApp', 'kangaidenVideo', 'kangaidenApp', 'hiphopLibraryApp', 'arkaiikImpactApp', 'precisionPointsApp', 'wishJamApp', 'skateHipHopReaderApp', 'j2sProSkaterApp', 'danceParty', 'truthKnocksVideo', 'truthKnocksApp', 'johnnySlidesVideo', 'humbleTreasuresVideo']);
 function syncMusicDuck() {
   const minigameDucked = state === 'minigame' && activeMinigame && activeMinigame.musicDucked;
   music.duck(DUCKED_STATES.has(state) || !!minigameDucked);
@@ -22144,6 +22181,118 @@ function closeWishJamApp(fromPopState) {
   }
 }
 
+// SKATEBOARDING & HIP-HOP CULTURE -- a read-and-explore encyclopedia-style
+// page that lives inside TALENT (LEVEL 3, SKATEPARK) on a little zine stand in
+// the middle of the shop floor (see TALENT's `minigames` list and
+// drawMinigameZineStand()). Same "full-screen DOM overlay with an <iframe>"
+// pattern as WISH JAM above, and just as offline-proof: the entire page is
+// inlined below as SKATE_HIPHOP_READER_HTML and loaded through iframe.srcdoc,
+// so there is no extra file to ship and no network call. Its contents links
+// scroll in-page; its external reference links only open when online (offline
+// they show a small "needs a connection" note instead of navigating the
+// iframe away). [Esc] inside the iframe posts a message back (keys typed
+// there never reach this page).
+const SKATE_HIPHOP_READER_HTML = "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<meta name=\"description\" content=\"An encyclopedia-style overview of the historical and cultural connections between skateboarding and hip-hop.\">\n<title>Skateboarding and Hip-Hop Culture \u2014 Cultural Overview<\/title>\n<style>\n:root{--ink:#202122;--muted:#54595d;--line:#a2a9b1;--link:#0645ad;--paper:#fff;--soft:#f8f9fa;--accent:#3366cc}\n*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.65 system-ui,-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif}\na{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}header{border-bottom:1px solid var(--line);padding:20px max(22px,calc((100% - 1180px)/2));background:var(--soft)}\n.brand{font-family:Georgia,serif;font-size:1.05rem;color:var(--muted);letter-spacing:.02em}.brand strong{color:var(--ink);font-weight:600}\n.shell{max-width:1180px;margin:auto;padding:28px 22px 70px;display:grid;grid-template-columns:220px minmax(0,1fr);gap:38px}\nnav{align-self:start;position:sticky;top:18px;border:1px solid #eaecf0;background:#fff;padding:16px;border-radius:4px;font-size:.92rem}\nnav h2{font:600 1rem Georgia,serif;margin:0 0 10px;border-bottom:1px solid #eaecf0;padding-bottom:8px}nav ol{margin:0;padding-left:20px}nav li{margin:5px 0}\nmain{min-width:0}h1,h2,h3{font-family:Georgia,\"Times New Roman\",serif;line-height:1.25;font-weight:500}h1{font-size:2.25rem;margin:0 0 8px}h2{font-size:1.55rem;border-bottom:1px solid var(--line);padding-bottom:7px;margin:34px 0 14px}h3{font-size:1.18rem;margin:23px 0 7px}.subtitle{color:var(--muted);margin:0 0 22px}.notice{border:1px solid #c8ccd1;background:var(--soft);padding:12px 15px;font-size:.92rem;margin:18px 0 22px}.lead{font-size:1.07rem}.infobox{float:right;width:min(310px,43%);margin:0 0 20px 24px;border:1px solid var(--line);background:var(--soft);padding:14px;font-size:.92rem}.infobox h2{font:600 1.08rem Georgia,serif;text-align:center;border:0;margin:0 0 10px;padding:0}.infobox dl{display:grid;grid-template-columns:100px 1fr;gap:6px 10px;margin:0}.infobox dt{font-weight:650}.infobox dd{margin:0}.caption{font-size:.82rem;color:var(--muted);text-align:center;margin-top:9px}.tagline{font:italic 1rem Georgia,serif;text-align:center;color:#54595d;border-top:1px solid #eaecf0;padding-top:10px;margin-top:12px}p{margin:0 0 15px}sup a{font-size:.78rem}.timeline{border-left:3px solid #c8ccd1;margin:16px 0 22px 8px;padding-left:18px}.era{margin:0 0 17px}.era strong{display:block}.related{background:var(--soft);border:1px solid #eaecf0;padding:14px 17px}.refs{padding-left:24px}.refs li{padding:0 0 10px;overflow-wrap:anywhere}.footer{border-top:1px solid var(--line);margin-top:35px;padding-top:15px;color:var(--muted);font-size:.85rem}.smallcaps{text-transform:uppercase;letter-spacing:.08em;font-size:.74rem;color:var(--muted)}\n@media(max-width:780px){.shell{grid-template-columns:1fr;gap:22px;padding-top:20px}nav{position:static;order:0}main{order:1}.infobox{float:none;width:100%;margin:0 0 20px}h1{font-size:1.9rem}}\n@media print{nav{display:none}.shell{display:block;max-width:none}a{color:inherit;text-decoration:none}.infobox{break-inside:avoid}}\n<\/style>\n<\/head>\n<body>\n<header><div class=\"brand\"><strong>Culture Atlas<\/strong> &nbsp; / &nbsp; Independent reference page<\/div><\/header>\n<div class=\"shell\">\n<nav aria-label=\"Contents\"><h2>Contents<\/h2><ol>\n<li><a href=\"#overview\">Overview<\/a><\/li><li><a href=\"#origins\">Different origins, shared conditions<\/a><\/li><li><a href=\"#nyc\">New York convergence<\/a><\/li><li><a href=\"#music\">Music and skate videos<\/a><\/li><li><a href=\"#style\">Fashion, graphics and identity<\/a><\/li><li><a href=\"#spaces\">The city as a canvas<\/a><\/li><li><a href=\"#people\">People and representation<\/a><\/li><li><a href=\"#mainstream\">Mainstream visibility<\/a><\/li><li><a href=\"#differences\">Differences and tensions<\/a><\/li><li><a href=\"#legacy\">Legacy<\/a><\/li><li><a href=\"#references\">References<\/a><\/li>\n<\/ol><\/nav>\n<main>\n<div class=\"smallcaps\">Cultural history \u00b7 Music \u00b7 Street sports<\/div>\n<h1>Skateboarding and Hip-Hop Culture<\/h1>\n<p class=\"subtitle\">Historical connections, shared aesthetics, and cross-cultural influence<\/p>\n<aside class=\"infobox\">\n<h2>Skateboarding and hip-hop<\/h2>\n<dl>\n<dt>Relationship<\/dt><dd>Cross-pollination between youth cultures<\/dd>\n<dt>Key period<\/dt><dd>Late 1980s onward; especially 1990s New York<\/dd>\n<dt>Shared settings<\/dt><dd>Streets, plazas, parks, music venues and independent shops<\/dd>\n<dt>Shared media<\/dt><dd>Photography, graffiti, magazines, VHS, music videos and online clips<\/dd>\n<dt>Related fields<\/dt><dd>Streetwear, DJ culture, graphic design, filmmaking<\/dd>\n<\/dl>\n<div class=\"tagline\">Two practices shaped by rhythm, style, space and self-expression.<\/div>\n<\/aside>\n<section id=\"overview\">\n<h2>Overview<\/h2>\n<p class=\"lead\"><b>Skateboarding and hip-hop culture<\/b> have influenced one another through music, fashion, visual art, street life and independent media. Their connection became especially visible in the late 1980s and 1990s, when street skateboarding and hip-hop scenes overlapped in cities such as New York and San Francisco. Skate videos increasingly used rap soundtracks; skaters and rappers shared clothing and graphic styles; and young people moved between skate spots, record stores, parties, galleries and music venues.<sup><a href=\"#ref1\">[1]<\/a><\/sup><sup><a href=\"#ref2\">[2]<\/a><\/sup><\/p>\n<p>The relationship is not exclusive or universal. Skateboarding has long been associated with surfing, punk, hardcore, metal, funk and many other musical traditions. Hip-hop, meanwhile, emerged from specific Black and Latino communities and includes MCing, DJing, breaking, graffiti and broader cultural practices. The connection between the two is best understood as an evolving exchange\u2014not as evidence that either culture originated from the other.<\/p>\n<\/section>\n<section id=\"origins\">\n<h2>Different origins, shared conditions<\/h2>\n<p>Modern skateboarding developed in California in the mid-20th century, with roots in surfing and later in freestyle, pool and ramp skating. Hip-hop emerged in the Bronx in New York City during the 1970s, shaped by Black, Puerto Rican and Caribbean American communities, block parties, DJ techniques, MCing, breaking and graffiti. Their beginnings were geographically and historically distinct.<sup><a href=\"#ref3\">[3]<\/a><\/sup><sup><a href=\"#ref4\">[4]<\/a><\/sup><\/p>\n<p>Over time, both became participatory cultures in which people could develop a recognizable style without needing formal institutions. Skaters learned through practice, watching peers and filming tricks. Hip-hop practitioners developed skills through cyphers, parties, DJ sets, writing, recording and local scenes. In both, reputation was often built through creativity, persistence, knowledge and contributions to a community.<\/p>\n<p>Both cultures also made use of spaces that were not designed specifically for them. Skaters transformed stairs, handrails, ledges and plazas into places to practice. Hip-hop artists used parks, community rooms, sidewalks and available sound equipment to create gatherings and performances. This did not mean the cultures were identical, but it gave them overlapping ways of making culture in public.<\/p>\n<\/section>\n<section id=\"nyc\">\n<h2>New York and the convergence of the late 1980s and 1990s<\/h2>\n<p>Downtown Manhattan became an important meeting point for skateboarding and hip-hop during the late 1980s and early 1990s. Skaters, graffiti writers, DJs, rappers, photographers and filmmakers encountered one another in the same urban networks. The documentary <i>All the Streets Are Silent: The Convergence of Hip Hop and Skateboarding (1987\u20131997)<\/i> explores this period and the shared visual language that emerged from it.<sup><a href=\"#ref1\">[1]<\/a><\/sup><\/p>\n<p>New York skate crews and brands helped make this connection visible. Zoo York, founded by skaters with ties to graffiti and downtown street culture, drew on the city's subway-writing, skateboarding and hip-hop environments. Skaters such as Harold Hunter became memorable figures in the overlap between downtown skateboarding and hip-hop. The scene was not a single unified movement; it was a network of people whose interests and friendships crossed cultural boundaries.<\/p>\n<p>The city itself mattered. Dense streets and public plazas brought different communities into close contact, while restrictions on skating and the policing of public space gave some participants a shared experience of being treated as disruptive or out of place. These common pressures could create solidarity, even as each culture retained its own history and internal differences.<\/p>\n<\/section>\n<section id=\"music\">\n<h2>Music and skate videos<\/h2>\n<p>Music became one of the most direct bridges between the cultures. Skate videos combine movement, editing and soundtrack into a short portrait of a skater's personality. As home video cameras and VHS circulation spread, independent skate companies and crews could produce and distribute their own films. These videos functioned as entertainment, informal instruction and a way for geographically distant skaters to discover new styles.<sup><a href=\"#ref5\">[5]<\/a><\/sup><\/p>\n<p>Early skate soundtracks often leaned toward punk and hardcore, but the musical palette broadened. Funk, soul, jazz, alternative rock and hip-hop all became part of skate-video history. In the 1990s, videos featuring music from Bay Area rap groups\u2014including Hieroglyphics-related artists and Souls of Mischief\u2014helped connect skateboarding with regional hip-hop scenes. Soundtrack choices could become associated with particular teams, cities or editing styles.<sup><a href=\"#ref6\">[6]<\/a><\/sup><\/p>\n<p>Hip-hop production techniques also resonated with skate-video editing. A trick sequence can be structured like a beat: build-up, repetition, pause, impact and release. Scratches, loops, breaks and sharply cut samples suit the stop-start motion of tricks and the rhythm of a filmed line. This is an aesthetic parallel rather than a claim that skate editing directly derives from hip-hop music.<\/p>\n<p>As online video replaced much of the VHS-era distribution, the exchange continued through edits, social media clips, music videos and artist collaborations. The soundtrack remains a way for a skater or filmer to communicate taste and identity, not merely provide background noise.<\/p>\n<\/section>\n<section id=\"style\">\n<h2>Fashion, graphics and identity<\/h2>\n<p>Both cultures helped shape streetwear, but their styles were never fixed. Skateboarding's practical clothing\u2014durable pants, roomy shirts, sneakers and caps\u2014overlapped at different times with hip-hop silhouettes and sportswear. In the 1990s and beyond, baggy clothing, team jerseys, hoodies, workwear and skate shoes could appear in both scenes. The meaning of a garment depended on place, era and the people wearing it.<\/p>\n<p>Graphic design was another point of contact. Skate decks, wheels, stickers, T-shirts and magazine ads became portable canvases for illustration, lettering and identity. Graffiti-influenced lettering, bold logos, mascot characters, hand-drawn marks and DIY photocopied graphics appeared across street-oriented products. Hip-hop's visual arts traditions were an important influence on some skate brands, while skate companies developed their own irreverent and often abrasive design language.<\/p>\n<p>Both scenes also valued individual taste and customization: a deck covered in stickers, a hand-painted board, a mixtape, a homemade video, a tag or a carefully assembled outfit could communicate affiliations and personal style. Commercial brands later turned many of these visual codes into products, creating an ongoing tension between grassroots expression and marketing.<\/p>\n<\/section>\n<section id=\"spaces\">\n<h2>The city as a canvas<\/h2>\n<p>Street skateboarding reframes ordinary architecture as a field of possibilities. A ledge, stair set, bench or plaza may become a site for technical experimentation and filming. Graffiti and hip-hop likewise made the city a place for visual and musical expression, although the practices have different methods, histories and relationships to property and public space.<\/p>\n<p>This shared attention to urban space helps explain why skateboarding and hip-hop often appear together in photography, films and design. Both can document a neighborhood from the point of view of the people who use it, rather than from the perspective of official planning or tourism. At the same time, skating can damage property and graffiti can raise legal and community conflicts; describing the creative use of public space does not erase those disagreements.<\/p>\n<\/section>\n<section id=\"people\">\n<h2>People, race and representation<\/h2>\n<p>The overlap created room for people who did not fit narrow ideas of what a skater or hip-hop fan was supposed to look like. Black and Latino skaters, including figures such as Harold Hunter and later Stevie Williams, became visible within scenes that were often marketed and remembered through predominantly white skate imagery. Research on skateboarding has examined how race, class and commercial representation shape who is recognized as authentic or central to the culture.<sup><a href=\"#ref7\">[7]<\/a><\/sup><\/p>\n<p>Hip-hop's influence was not simply a matter of borrowing music or clothes. For some skaters, it offered a way to express identity and connect skating to the neighborhoods and communities they came from. Still, neither culture should be treated as monolithic: race, gender, class, geography and generation shape participation in different ways. Women and girls, for example, have contributed to both cultures while frequently receiving less attention in mainstream histories and media.<\/p>\n<\/section>\n<section id=\"mainstream\">\n<h2>Mainstream visibility and commercialization<\/h2>\n<p>By the 1990s, skateboarding's growing media profile and hip-hop's expanding commercial reach brought both cultures to wider audiences. Music videos, fashion campaigns, magazines, sneaker releases and celebrity appearances made the overlap increasingly visible. Later, rappers publicly embraced skateboarding, skaters collaborated with musicians, and brands marketed products to audiences spanning both scenes.<\/p>\n<p>Mainstream recognition brought resources, visibility and new opportunities, but it also raised questions about authenticity and appropriation. An independent scene can value experimentation and community reputation, while a corporation may prioritize recognizable imagery and sales. Scholars of skateboarding have described the tension between subcultural values and the commercial systems that grow around them.<sup><a href=\"#ref8\">[8]<\/a><\/sup><\/p>\n<p>That tension does not make every collaboration inauthentic. Artists, skaters, filmmakers and designers may use commercial platforms to fund their work or reach new audiences. The important distinction is between a living cultural exchange and the superficial use of cultural symbols without meaningful connection to the people who created them.<\/p>\n<\/section>\n<section id=\"differences\">\n<h2>Differences and tensions<\/h2>\n<p>Despite their overlap, skateboarding and hip-hop are not interchangeable. Skateboarding is a physical practice and sport with its own technical disciplines, equipment and histories. Hip-hop is a broad cultural movement with musical, dance, visual-art and social dimensions. A person may be deeply involved in one without participating in the other.<\/p>\n<p>Their musical relationship is also varied. Punk and hardcore remain central to many skate scenes, while others gravitate toward rap, soul, electronic music or no particular genre. Hip-hop artists have embraced skateboarding in different ways, from genuine long-term participation to occasional visual references. Any broad account should leave room for local differences rather than presenting one style as universal.<\/p>\n<\/section>\n<section id=\"legacy\">\n<h2>Legacy<\/h2>\n<p>The connection between skateboarding and hip-hop is now visible across music, streetwear, graphic design, filmmaking and online culture. Its significance lies less in a single origin story than in the ways people carried ideas between scenes: a rap track in a skate part, a graffiti-inspired deck graphic, a skater in a music video, a neighborhood crew filming its own work, or friends meeting through shared public spaces.<\/p>\n<p>Both cultures demonstrate how creative communities can develop distinctive languages outside traditional institutions, then influence global popular culture. Their histories also show that cultural exchange is most meaningful when it acknowledges the specific people, places and traditions involved.<\/p>\n<\/section>\n<section class=\"related\">\n<h2>See also<\/h2>\n<ul>\n<li><a href=\"https://en.wikipedia.org/wiki/Hip-hop_culture\">Hip-hop culture<\/a><\/li>\n<li><a href=\"https://en.wikipedia.org/wiki/Street_skateboarding\">Street skateboarding<\/a><\/li>\n<li><a href=\"https://en.wikipedia.org/wiki/Graffiti\">Graffiti<\/a><\/li>\n<li><a href=\"https://en.wikipedia.org/wiki/Streetwear\">Streetwear<\/a><\/li>\n<li><a href=\"https://en.wikipedia.org/wiki/Skate_video\">Skate video<\/a><\/li>\n<\/ul>\n<\/section>\n<section id=\"references\">\n<h2>References and further reading<\/h2>\n<ol class=\"refs\">\n<li id=\"ref1\"> <i>All the Streets Are Silent: The Convergence of Hip Hop and Skateboarding (1987\u20131997)<\/i>, official film website. <a href=\"https://www.allthestreetsaresilent.com/\">allthestreetsaresilent.com<\/a>.<\/li>\n<li id=\"ref2\">PBS, <i>The Surprising Origins of Streetwear<\/i>, series episode exploring the parallel development and eventual overlap of hip-hop and skate culture. <a href=\"https://www.pbs.org/video/the-surprising-origins-of-streetwear-llrzyu/\">PBS video<\/a>.<\/li>\n<li id=\"ref3\">HISTORY, \u201cWho Invented Skateboarding?\u201d Background on skateboarding's development and its youth-culture associations. <a href=\"https://www.history.com/articles/skateboarding-origins-california\">HISTORY<\/a>.<\/li>\n<li id=\"ref4\">\u201cHip-hop culture,\u201d overview of the movement's elements and historical development. <a href=\"https://en.wikipedia.org/wiki/Hip-hop_culture\">Wikipedia<\/a>.<\/li>\n<li id=\"ref5\">\u201cRecording the Ride,\u201d exhibition recap on the development and circulation of skate videos. <a href=\"https://vimeo.com/1082510887\">Vimeo<\/a>.<\/li>\n<li id=\"ref6\">TransWorld SKATEboarding, \u201cThe Chronological History of Skateboard Video Soundtracks,\u201d including the 1990s Bay Area hip-hop period. <a href=\"https://www.skateboarding.com/news/the-chronological-history-of-skateboard-video-soundtracks\">TransWorld SKATEboarding<\/a>.<\/li>\n<li id=\"ref7\">\u201cRacial diversity in skateboarding: destabilising whiteness, decentring heartlands,\u201d <i>Sport in Society<\/i> (2023). <a href=\"https://www.tandfonline.com/doi/full/10.1080/17430437.2023.2208079\">Taylor &amp; Francis<\/a>.<\/li>\n<li id=\"ref8\">\u00c5sa B\u00e4ckstr\u00f6m and Shane Blackman, \u201cSkateboarding: From Urban Spaces to Subcultural Olympians,\u201d <i>Young<\/i> (2022). <a href=\"https://journals.sagepub.com/doi/10.1177/11033088221081944\">SAGE Journals<\/a>.<\/li>\n<\/ol>\n<\/section>\n<div class=\"footer\">This is an independent, encyclopedia-style educational page, not a Wikipedia article and not affiliated with the Wikimedia Foundation. It is designed as a self-contained HTML document; external reference links require an internet connection.<\/div>\n<\/main>\n<\/div>\n<style>#gtoast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#12151c;color:#fbe600;border:2px solid #55bbee;padding:10px 16px;border-radius:8px;font:bold 13px monospace;z-index:99;display:none;max-width:90%;text-align:center}<\/style>\n<div id=\"gtoast\" role=\"status\"><\/div>\n<script>\n(function(){\n  var tt;\n  function toast(m){var t=document.getElementById('gtoast');t.textContent=m;t.style.display='block';clearTimeout(tt);tt=setTimeout(function(){t.style.display='none';},2600);}\n  document.addEventListener('keydown',function(e){\n    if(e.key==='Escape'){try{parent.postMessage({skateHipHopReader:'close'},'*');}catch(x){}}\n  });\n  document.addEventListener('click',function(e){\n    var a=e.target.closest&&e.target.closest('a');\n    if(!a)return;\n    var h=a.getAttribute('href')||'';\n    e.preventDefault();\n    if(h.charAt(0)==='#'){var t=document.getElementById(h.slice(1));if(t)t.scrollIntoView({behavior:'smooth',block:'start'});return;}\n    if(navigator.onLine===false){toast('That link needs an internet connection.');return;}\n    window.open(a.href,'_blank','noopener');\n  });\n  window.addEventListener('load',function(){try{window.focus();}catch(x){}});\n})();\n<\/script>\n<\/body>\n<\/html>";
+let skateHipHopReaderOverlayEl = null, skateHipHopReaderOverlayFrame = null;
+let skateHipHopReaderReturnState = 'play';
+let skateHipHopReaderHistoryPushed = false; // mirrors wishJamHistoryPushed -- see openSkateHipHopReaderApp()/closeSkateHipHopReaderApp()
+
+function createSkateHipHopReaderOverlay() {
+  const style = document.createElement('style');
+  style.textContent = `
+    #skateHipHopReaderApp {
+      position: fixed; inset: 0; z-index: 1000;
+      background: #000;
+      display: none; flex-direction: column;
+    }
+    #skateHipHopReaderApp.open { display: flex; }
+    #skateHipHopReaderApp .shr-bar {
+      flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 10px 14px;
+      background: linear-gradient(#1a1f2b, #12151c);
+      border-bottom: 2px solid #55bbee;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    }
+    #skateHipHopReaderApp .shr-title {
+      color: #fbe600; font: bold 14px monospace; letter-spacing: 0.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #skateHipHopReaderApp .shr-close {
+      flex: 0 0 auto; cursor: pointer;
+      background: rgba(85,187,238,0.15);
+      border: 1.5px solid rgba(85,187,238,0.9);
+      color: #eaf6ff; border-radius: 8px;
+      padding: 7px 16px; font: bold 13px monospace;
+      -webkit-user-select: none; user-select: none;
+    }
+    #skateHipHopReaderApp .shr-close:active { background: rgba(85,187,238,0.45); }
+    #skateHipHopReaderApp iframe {
+      flex: 1 1 auto; width: 100%; border: 0; background: #fff;
+    }
+  `;
+  document.head.appendChild(style);
+
+  skateHipHopReaderOverlayEl = document.createElement('div');
+  skateHipHopReaderOverlayEl.id = 'skateHipHopReaderApp';
+
+  const bar = document.createElement('div');
+  bar.className = 'shr-bar';
+  const title = document.createElement('div');
+  title.className = 'shr-title';
+  title.textContent = 'SKATEBOARDING & HIP-HOP CULTURE \u2014 TALENT READING LIST';
+  const closeBtn = document.createElement('div');
+  closeBtn.className = 'shr-close';
+  closeBtn.textContent = '\u2190 BACK TO THE SHOP';
+  bindTap(closeBtn, closeSkateHipHopReaderApp);
+  bar.appendChild(title);
+  bar.appendChild(closeBtn);
+
+  skateHipHopReaderOverlayFrame = document.createElement('iframe');
+
+  skateHipHopReaderOverlayEl.appendChild(bar);
+  skateHipHopReaderOverlayEl.appendChild(skateHipHopReaderOverlayFrame);
+  document.body.appendChild(skateHipHopReaderOverlayEl);
+
+  window.addEventListener('message', (e) => {
+    if (!skateHipHopReaderOverlayFrame || e.source !== skateHipHopReaderOverlayFrame.contentWindow) return;
+    if (e.data && e.data.skateHipHopReader === 'close' && state === 'skateHipHopReaderApp') closeSkateHipHopReaderApp();
+  });
+}
+createSkateHipHopReaderOverlay();
+
+// Opens the reader overlay and switches state to 'skateHipHopReaderApp'.
+// Called from MINIGAME_ACTIONS.skatehiphopreader (E on the zine stand, or
+// tapping its floating sign).
+function openSkateHipHopReaderApp() {
+  skateHipHopReaderReturnState = state;
+  skateHipHopReaderOverlayFrame.srcdoc = SKATE_HIPHOP_READER_HTML;
+  skateHipHopReaderOverlayEl.classList.add('open');
+  state = 'skateHipHopReaderApp';
+  skateHipHopReaderOverlayFrame.addEventListener('load', () => {
+    try { skateHipHopReaderOverlayFrame.contentWindow.focus(); } catch (e) { /* a tap will focus it */ }
+  }, { once: true });
+  history.pushState({ skateHipHopReaderApp: true }, '');
+  skateHipHopReaderHistoryPushed = true;
+}
+
+// Tears the iframe back down and returns to ordinary gameplay in TALENT.
+// fromPopState: true when triggered by the browser's back button (history
+// entry already consumed), so we must not call history.back() again.
+function closeSkateHipHopReaderApp(fromPopState) {
+  skateHipHopReaderOverlayEl.classList.remove('open');
+  skateHipHopReaderOverlayFrame.removeAttribute('srcdoc');
+  skateHipHopReaderOverlayFrame.src = 'about:blank';
+  reclaimGameFocus(skateHipHopReaderOverlayFrame);
+  state = skateHipHopReaderReturnState;
+  if (!fromPopState && skateHipHopReaderHistoryPushed) {
+    skateHipHopReaderHistoryPushed = false;
+    history.back();
+  } else {
+    skateHipHopReaderHistoryPushed = false;
+  }
+}
+
+
 // ARKAIIK IMPACT -- a skateboard painting studio (pick ink, drag to paint a
 // deck, stickers, eraser, undo, export a PNG) set out on the concrete plaza
 // of LEVEL 3 (SKATEPARK), triggered by a floating paint brush (see the
@@ -23646,6 +23795,8 @@ window.addEventListener('popstate', () => {
     closePrecisionPointsApp(true);
   } else if (state === 'wishJamApp') {
     closeWishJamApp(true);
+  } else if (state === 'skateHipHopReaderApp') {
+    closeSkateHipHopReaderApp(true);
   } else if (state === 'j2sProSkaterApp') {
     closeJ2sProSkaterApp(true);
   }
@@ -23663,7 +23814,7 @@ canvas.addEventListener('pointerdown', (e) => {
     const vx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const vy = (e.clientY - rect.top) * (canvas.height / rect.height);
     handleLabTap(vx, vy);
-  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'reverbReefApp' || state === 'beatBrewingApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'humbleTreasuresApp' || state === 'dustRacingApp' || state === 'cbPressApp' || state === 'spotDiffApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'scoopBeatsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp' || state === 'arkaiikImpactApp' || state === 'precisionPointsApp' || state === 'wishJamApp' || state === 'j2sProSkaterApp') {
+  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'reverbReefApp' || state === 'beatBrewingApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'humbleTreasuresApp' || state === 'dustRacingApp' || state === 'cbPressApp' || state === 'spotDiffApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'scoopBeatsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp' || state === 'arkaiikImpactApp' || state === 'precisionPointsApp' || state === 'wishJamApp' || state === 'skateHipHopReaderApp' || state === 'j2sProSkaterApp') {
     // The DOM overlay sits on top of (and outside) the canvas while an
     // instrument/the chess app/the beat bot/the organ/mini golf/the
     // blackbook/Gator Grooves/Vinyl Snake/Bayou Break Station/Gator Jam
@@ -24175,6 +24326,10 @@ function update(dt) {
     // buyPressed is still consumed here so the on-screen [X] touch button
     // works while it's open.
     if (buyPressed) closePrecisionPointsApp();
+  } else if (state === 'skateHipHopReaderApp') {
+    // Same reasoning as 'wishJamApp' below: the DOM overlay owns input; the
+    // on-screen [X] touch button still closes it.
+    if (buyPressed) closeSkateHipHopReaderApp();
   } else if (state === 'wishJamApp') {
     // Same reasoning as 'precisionPointsApp' just above: the DOM overlay (see
     // createWishJamOverlay()) owns input while WISH JAM is loaded -- its own
@@ -24904,6 +25059,78 @@ function drawMinigameHipHopKiosk(wx, wy, time, seed, label) {
 
   return { cx, cy, hw: postW / 2 + 14, hh: postH / 2 + 34 };
 }
+
+// Mini-game marker used when a map entry sets `icon: 'zinestand'` (currently
+// just the SKATEBOARDING & HIP-HOP CULTURE reader inside TALENT) -- same
+// bob/label/hitbox contract as drawMinigameHipHopKiosk()/
+// drawMinigameBasketball(). Drawn as a little wooden floor easel holding an
+// open zine in TALENT's sky-blue and yellow, with a tiny skateboard and a
+// music note on the cover and a stack of spare zines on the shelf below.
+function drawMinigameZineStand(wx, wy, time, seed, label) {
+  const s = MINIGAME_OBJECT_SCALE;
+  const bob = Math.sin(time * 0.003 + seed) * 2;
+  const cx = wx, cy = wy - 14 + bob;
+  const W = 30 * s, H = 36 * s;
+  const BL = '#55bbee', YL = '#fbe600', DK = '#12151c';
+
+  // contact shadow on the floor
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.beginPath();
+  ctx.ellipse(wx, wy + 8, W * 0.62, W * 0.2, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // easel legs
+  ctx.strokeStyle = '#5c4326';
+  ctx.lineWidth = 2.4 * s;
+  ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(cx - W * 0.34, cy + H * 0.1); ctx.lineTo(cx - W * 0.5, wy + 8); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx + W * 0.34, cy + H * 0.1); ctx.lineTo(cx + W * 0.5, wy + 8); ctx.stroke();
+  ctx.lineCap = 'butt';
+
+  // lower shelf with a stack of spare zines
+  ctx.fillStyle = '#8a6a42';
+  ctx.fillRect(cx - W * 0.5, cy + H * 0.34, W, 4 * s);
+  ctx.fillStyle = PAPER_ZINE;
+  ctx.fillRect(cx - W * 0.34, cy + H * 0.34 - 4 * s, W * 0.48, 4 * s);
+  ctx.fillStyle = YL;
+  ctx.fillRect(cx - W * 0.3, cy + H * 0.34 - 7 * s, W * 0.4, 3 * s);
+
+  // zine body: dark backing, yellow cover, blue band
+  ctx.fillStyle = DK;
+  ctx.fillRect(cx - W / 2 - 1.5, cy - H / 2 - 1.5, W + 3, H * 0.84 + 3);
+  ctx.fillStyle = YL;
+  ctx.fillRect(cx - W / 2, cy - H / 2, W, H * 0.84);
+  ctx.fillStyle = BL;
+  ctx.fillRect(cx - W / 2, cy - H / 2, W, 8 * s);
+  ctx.fillStyle = DK;
+  ctx.font = `bold ${Math.round(5 * s + 1)}px monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillText('SKATE x HIP-HOP', cx, cy - H / 2 + 6 * s);
+
+  // tiny skateboard on the cover
+  const by = cy + 2 * s;
+  ctx.fillStyle = DK;
+  ctx.beginPath(); ctx.roundRect(cx - W * 0.34, by - 2 * s, W * 0.68, 4 * s, 2 * s); ctx.fill();
+  ctx.fillStyle = '#e03b8b';
+  ctx.beginPath(); ctx.arc(cx - W * 0.2, by + 4 * s, 2 * s, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + W * 0.2, by + 4 * s, 2 * s, 0, Math.PI * 2); ctx.fill();
+  // music note
+  ctx.fillStyle = DK;
+  ctx.fillRect(cx + W * 0.08, by - 12 * s, 1.6 * s, 9 * s);
+  ctx.beginPath(); ctx.ellipse(cx + W * 0.05, by - 3 * s, 2.6 * s, 1.8 * s, -0.4, 0, Math.PI * 2); ctx.fill();
+  ctx.fillRect(cx + W * 0.08, by - 12 * s, 5 * s, 2 * s);
+
+  // floating label -- flashes between the label and the tap hint
+  const flashOnLabel = Math.floor(time / 1400) % 2 === 0;
+  ctx.fillStyle = YL;
+  ctx.font = `bold ${Math.round(9 * s)}px monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillText(flashOnLabel ? (label || 'READ') : 'TAP TO READ', cx, cy - H / 2 - 8 * s);
+
+  return { cx, cy, hw: W / 2 + 14, hh: H / 2 + 28 };
+}
+const PAPER_ZINE = '#f2ead6';
+
 
 // Alternate mini-game marker used when a map entry sets `icon: 'basketball'`
 // (currently just PRECISION POINTS, at center court of the skatepark's
@@ -25637,7 +25864,7 @@ function render(time) {
     drawSplash();
     return;
   }
-  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'reverbReefApp' || state === 'beatBrewingApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'humbleTreasuresApp' || state === 'dustRacingApp' || state === 'cbPressApp' || state === 'spotDiffApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'scoopBeatsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp' || state === 'arkaiikImpactApp' || state === 'precisionPointsApp' || state === 'wishJamApp' || state === 'j2sProSkaterApp') {
+  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'reverbReefApp' || state === 'beatBrewingApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'humbleTreasuresApp' || state === 'dustRacingApp' || state === 'cbPressApp' || state === 'spotDiffApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'scoopBeatsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp' || state === 'arkaiikImpactApp' || state === 'precisionPointsApp' || state === 'wishJamApp' || state === 'skateHipHopReaderApp' || state === 'j2sProSkaterApp') {
     // Same reasoning as the labApp overlay: a DOM element (the <video>,
     // see createCharacterIntroOverlay(), the chess <iframe>, see
     // createChessOverlay(), the beat bot <iframe>, see
@@ -25707,6 +25934,7 @@ function render(time) {
     else if (map.skatepark) drawSkateparkDecorations(time, map, camX, camY);
     else drawTownDecorations(time);
     drawAmbient();
+    if (map.palette && map.palette.autumn) drawAutumnLeaves(time, camX, camY);
   }
   if (map.darkClub) drawNectarsInterior(time);
   if (map.pizzaShop) drawJuniorsInterior(time);
@@ -25761,6 +25989,8 @@ function render(time) {
         ? drawMinigameBasketball(wx, wy, time, seed, mg.label)
         : mg.icon === 'wishjam'
         ? drawMinigameWishJam(wx, wy, time, seed, mg.label)
+        : mg.icon === 'zinestand'
+        ? drawMinigameZineStand(wx, wy, time, seed, mg.label)
         : mg.icon === 'skatebillboard'
         ? drawMinigameSkateBillboard(wx, wy, time, seed, mg.label)
         : drawMinigameArcadeSign(wx, wy, time, seed, mg.label);
@@ -25835,10 +26065,20 @@ function drawTiles(map, time, camX = 0, camY = 0) {
         if (h % 5 === 0) {
           // small grass tuft (stem + lighter tip) instead of a flat dot
           const tx2 = px + (h % 20), ty2 = py + (h % 22);
-          ctx.fillStyle = p ? p.leafDark : '#2e6428';
+          ctx.fillStyle = (p && p.autumn) ? '#6e5426' : p ? p.leafDark : '#2e6428';
           ctx.fillRect(tx2, ty2, 2, 4);
           ctx.fillStyle = p ? p.groundDot : '#54a046';
           ctx.fillRect(tx2, ty2 - 1, 2, 2);
+        }
+        if (p && p.autumn && ch !== 'r' && ch !== '~' && h % 3 === 0) {
+          // autumn leaf litter: a couple of fallen leaves per tile
+          const lc = AUTUMN_LEAF_COLORS[(h >> 3) % AUTUMN_LEAF_COLORS.length];
+          ctx.fillStyle = lc;
+          ctx.fillRect(px + ((h >> 5) % 24), py + ((h >> 9) % 24), 4, 3);
+          if (h % 2 === 0) {
+            ctx.fillStyle = AUTUMN_LEAF_COLORS[(h >> 6) % AUTUMN_LEAF_COLORS.length];
+            ctx.fillRect(px + ((h >> 11) % 26), py + ((h >> 14) % 26), 3, 3);
+          }
         }
       } else {
         ctx.fillStyle = map.floor;
@@ -26442,12 +26682,25 @@ function drawLabBeacon(time) {
   ctx.restore();
 }
 
+// Fall foliage mixes for drawTree() on autumn maps: [dark, mid, light, fleck].
+const AUTUMN_TREE_SETS = [
+  ['#a23a1c', '#d9541e', '#f2a33a', '#c4302b'],  // fiery orange-red
+  ['#8e1f1f', '#c4302b', '#e8643a', '#f2a33a'],  // crimson maple
+  ['#b8860b', '#e0b02a', '#f7da5a', '#d9741e'],  // golden birch/aspen
+  ['#9a4a14', '#d4761e', '#f0b24a', '#c4302b'],  // pumpkin
+  ['#6b3a1a', '#a8561f', '#d98a3a', '#e0b02a'],  // russet oak
+  ['#7a1f2a', '#b52e3a', '#e2653c', '#f7da5a'],  // deep red
+];
+
 function drawTree(px, py, map) {
   const p = map && map.palette;
+  const autumn = !!(p && p.autumn);
+  const th = autumn ? hash2(px >> 5, py >> 5) : 0;
+  const aset = autumn ? AUTUMN_TREE_SETS[th % AUTUMN_TREE_SETS.length] : null;
   const trunk = p ? p.trunk : '#6a4a2a';
-  const leafDark = p ? p.leafDark : '#2e6428';
-  const leafMid = p ? p.leafMid : '#38782e';
-  const leafLight = p ? p.leafLight : '#4a9038';
+  const leafDark = aset ? aset[0] : p ? p.leafDark : '#2e6428';
+  const leafMid = aset ? aset[1] : p ? p.leafMid : '#38782e';
+  const leafLight = aset ? aset[2] : p ? p.leafLight : '#4a9038';
   const outline = '#16110a';
 
   // ground shadow
@@ -26476,6 +26729,45 @@ function drawTree(px, py, map) {
   ctx.fillRect(px + 10, py + 4, 8, 6);
   ctx.fillStyle = 'rgba(0,0,0,0.15)';
   ctx.fillRect(px + 4, py + 18, 24, 4);
+  if (aset) {
+    // mixed-color flecks so each canopy looks like a patchwork of turning leaves
+    ctx.fillStyle = aset[3];
+    ctx.fillRect(px + 6 + (th % 5), py + 12, 4, 3);
+    ctx.fillRect(px + 17 + (th % 4), py + 6, 4, 3);
+    ctx.fillRect(px + 20, py + 14 + (th % 3), 4, 3);
+    ctx.fillStyle = aset[2];
+    ctx.fillRect(px + 5, py + 16, 3, 3);
+    ctx.fillRect(px + 21, py + 10, 3, 3);
+    // fallen-leaf pile at the base of the trunk
+    ctx.fillStyle = aset[1];
+    ctx.fillRect(px + 4, py + 28, 5, 2);
+    ctx.fillRect(px + 22, py + 27, 6, 2);
+    ctx.fillStyle = aset[2];
+    ctx.fillRect(px + 8, py + 30, 4, 2);
+    ctx.fillRect(px + 19, py + 30, 3, 2);
+    ctx.fillStyle = aset[3];
+    ctx.fillRect(px + 13, py + 31, 4, 1);
+  }
+}
+
+// Drifting autumn leaves + a faint warm golden-hour wash, drawn in world
+// space over the Burlington map only (see render(): map.palette.autumn).
+// Deterministic per-leaf motion from `time` -- no state, no allocations.
+const AUTUMN_LEAF_COLORS = ['#d9541e', '#c4302b', '#e0b02a', '#f2a33a', '#a8561f', '#f7da5a'];
+function drawAutumnLeaves(time, camX, camY) {
+  ctx.fillStyle = 'rgba(255,150,40,0.07)';
+  ctx.fillRect(camX, camY, VIEW_W, VIEW_H);
+  for (let i = 0; i < 44; i++) {
+    const seed = i * 12.9898;
+    const speed = 22 + (i % 5) * 9;
+    const y = ((time * speed + i * 83) % (VIEW_H + 40)) - 20;
+    const sway = Math.sin(time * (0.9 + (i % 4) * 0.25) + seed) * 22;
+    const x = ((i * 131 + time * 14) % (VIEW_W + 60)) - 30 + sway;
+    const flip = Math.sin(time * 3 + seed) > 0;
+    ctx.fillStyle = AUTUMN_LEAF_COLORS[i % AUTUMN_LEAF_COLORS.length];
+    if (flip) ctx.fillRect(camX + x, camY + y, 5, 3);
+    else ctx.fillRect(camX + x + 1, camY + y - 1, 3, 5);
+  }
 }
 
 // Plaza concrete for the skatepark: a flat grey slab with expansion joints
