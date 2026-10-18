@@ -1108,6 +1108,47 @@ const SWAMP_NEWS = [
     body: 'Editors confirm today\'s front page was filled entirely with pond ripples, one gator sighting, and a strong opinion about mosquitoes.' },
 ];
 
+// Fake front-page stories for the skatepark's newsstands -- same Onion-style
+// silliness as VERMONT_NEWS / SWAMP_NEWS above, re-themed around the plaza,
+// the bowls and rails, the lake out past the promenade, the basketball court
+// and the taco truck. Keep these harmless and generic, no real people, same
+// as the other two sets.
+const SKATE_NEWS_PAPER = 'THE KICKFLIP COURIER';
+const SKATE_NEWS = [
+  { headline: 'LOCAL SKATER LANDS TRICK ON TENTH TRY, ASKS CROWD TO PRETEND THEY SAW THE FIRST NINE',
+    body: 'Bystanders agreed instantly. A spokesperson for the plaza confirmed the concrete has "seen worse and said nothing."' },
+  { headline: 'BIG BOWL REPORTS RECORD WEEK FOR PEOPLE STANDING AT THE EDGE, THINKING ABOUT IT',
+    body: 'Park staff estimate the average skater spent eleven minutes at the lip, nodding slowly, before deciding to go get a snack instead.' },
+  { headline: 'GRIND RAIL WAXED SO HARD IT NOW LOOKS LIKE A SLIP-AND-SLIDE',
+    body: 'Regulars say the rail is \"extremely fast\" and \"a little personal.\" Wax supplies at the park are reported to be at an all-time low.' },
+  { headline: 'SAILBOAT DRIFTS PAST PROMENADE, PASSENGERS WAVE AT SKATERS, SKATERS WAVE BACK WITH BOARDS',
+    body: 'Lake officials describe the exchange as \"the friendliest thing to happen on the water all week.\"' },
+  { headline: 'TACO TRUCK ALL STARS ANNOUNCES RECORD LINE, LINE UNBOTHERED',
+    body: 'Customers waiting for tacos were seen practicing kickflips in place, \"just to stay loose,\" according to one very patient witness.' },
+  { headline: 'BASKETBALL COURT HOSTS FIRST ALL-SKATEBOARD PICKUP GAME, NOBODY CAN DRIBBLE',
+    body: 'The game ended 4 to 3 after forty minutes. Both teams called it \"a win for the sport\" and then immediately sat down.' },
+  { headline: 'PIGEON CLAIMS BEST SPOT ON THE PLAZA, REFUSES TO RELOCATE FOR ANY TRICK',
+    body: 'Skaters have reportedly begun landing around the pigeon \"out of respect and also because it will not move.\"' },
+  { headline: 'PLAZA CONCRETE VOTED \"SMOOTHEST IN THE STATE\" BY PANEL OF PEOPLE WHO FELL ON IT',
+    body: 'The panel noted the surface was \"great for rolling\" and \"also, in fairness, very concrete.\"' },
+  { headline: 'ANOTHER LOCAL BAND SOUNDS \"PRETTY GOOD, ACTUALLY\" FROM A BOOMBOX NEAR THE FENCE',
+    body: 'The boombox, playing at full volume since noon, has become an unofficial park announcement system for whatever is happening.' },
+  { headline: 'STAIR SET REVEALS IT HAS ONLY EVER HAD FOUR STAIRS, SKATERS REMAIN DEEPLY IMPRESSED',
+    body: 'A local trick enthusiast said it \"felt like a lot more\" when bailing, which witnesses described as \"mostly true.\"' },
+  { headline: 'LOCAL DIG SPOT CRATE STUFFED WITH RECORDS NOBODY EVER MEANT TO BUY',
+    body: 'Park diggers report the crate is \"mostly gold, some mystery, one record that is just applause.\" They are still digging.' },
+  { headline: 'WATERFRONT BREEZE BLOWS HAT OFF SKATER, HAT SKATES AWAY ON ITS OWN',
+    body: 'Witnesses describe the hat as \"suspiciously good\" at staying upright. It was last seen heading for the lake with confidence.' },
+  { headline: 'PARK REGULAR SPOTTED IN SAME HOODIE FOR FOURTH SEASON, HOODIE NOW \"MOSTLY CONCRETE DUST\"',
+    body: 'The owner called the hoodie \"seasoned, not dirty.\" Nearby benches agreed, mostly out of politeness.' },
+  { headline: 'YOUNG SKATER LEARNS TO DROP IN, THEN IMMEDIATELY ASKS TO DO IT AGAIN',
+    body: 'Park regulars, who all remember their own first drop-in, gave a quiet, collective, ceremonial nod from the side of the bowl.' },
+  { headline: 'LAKE CHAMPLAIN MONSTER REPORTEDLY WATCHES PARK FROM A DISTANCE, SEEMS INTERESTED IN KICKFLIPS',
+    body: 'Anonymous sources say the creature \"tilted its head\" at a particularly clean heelflip. The monster has declined to comment.' },
+  { headline: 'COURIER ANNOUNCES IT IS, ONCE AGAIN, OUT OF ACTUAL NEWS',
+    body: 'Editors confirm today\'s front page was filled entirely with wheel sounds, one lake observation, and a strong opinion about tacos.' },
+];
+
 // ---------------------------------------------------------------- input
 const keys = {};
 
@@ -12614,6 +12655,21 @@ function makeSkatepark() {
     // above): that key is the interior-shop flag checked by render().
     tlExterior: { x: TAL_X, y: TAL_Y, w: TAL_W, h: TAL_H, doorX: TAL_DOOR_X, doorY: TAL_DOOR_Y },
     returnPortal: { x: RETURN_PORTAL_X, y: RETURN_PORTAL_Y },
+    // Five newsstands scattered around the park's open grass, spread across
+    // the west edge, the southwest corner, the north lawn, the east margin
+    // and the southeast corner so a stand is never far from wherever the
+    // player is skating. Each sits on a plain '.' grass tile whose full 3x3
+    // neighborhood is walkable (no trees, buildings, plaza features, crates,
+    // doors or mini-game markers), at least 3 tiles from every door, dig-spot
+    // crate and mini-game marker, and clear of the taco truck's buy point --
+    // verified against the deterministic grid this function builds.
+    newsstands: [
+      { id: 'news1', tx: 2,  ty: 19 }, // west edge, just above TALENT
+      { id: 'news2', tx: 7,  ty: 27 }, // southwest lawn, below TALENT
+      { id: 'news3', tx: 30, ty: 13 }, // north lawn, below the promenade
+      { id: 'news4', tx: 45, ty: 18 }, // east margin, near the dig spot crate
+      { id: 'news5', tx: 40, ty: 32 }, // southeast corner, off the ring
+    ],
     spawn: { x: 3.5, y: 10.5 }, // tile coords, on the promenade just inside the portal
     palette: {
       groundA: '#6f9450', groundB: '#5f8446', groundDot: '#8fb060',
@@ -15222,11 +15278,14 @@ function doInteract() {
     dialog = { name: n.name, lines: resolveLines(n.lines), i: 0 };
     state = 'dialog';
   } else if (target.type === 'newspaper') {
-    // swamp newsstands carry the local swamp-themed paper; every other
-    // outdoor map still gets the town's Green Mountain Bugle.
-    const swamp = maps[player.map] && maps[player.map].swamp;
-    const paperName = swamp ? SWAMP_NEWS_PAPER : VERMONT_NEWS_PAPER;
-    const stories = swamp ? SWAMP_NEWS : VERMONT_NEWS;
+    // each outdoor map carries its own local paper: the swamp gets the
+    // Swamp Gazette, the skatepark gets the Kickflip Courier, and every
+    // other outdoor map (Burlington) still gets the Green Mountain Bugle.
+    const curMap = maps[player.map] || {};
+    const paperName = curMap.swamp ? SWAMP_NEWS_PAPER
+      : curMap.skatepark ? SKATE_NEWS_PAPER : VERMONT_NEWS_PAPER;
+    const stories = curMap.swamp ? SWAMP_NEWS
+      : curMap.skatepark ? SKATE_NEWS : VERMONT_NEWS;
     const story = stories[Math.floor(Math.random() * stories.length)];
     dialog = { name: paperName, lines: [story.headline, story.body], i: 0 };
     state = 'dialog';
@@ -27285,6 +27344,7 @@ function drawSkateparkDecorations(time, map, camX, camY) {
   if (map.basketballCourt) drawBasketballCourt(map.basketballCourt, camX, camY);
   if (map.tacoTruck) drawTacoTruck(time, map, camX, camY);
   if (map.andyAdogSign) drawAndyAdogSign(map, camX, camY);
+  drawNewsstands();
 }
 
 // ANDY A_DOG WILLIAMS SKATEPARK sign -- a big park sign on the grass along the
@@ -27576,6 +27636,9 @@ function drawSwampDecorations(time, map, camX, camY) {
   drawTruthLabPoolGarden(time);
   // JOHNNY'S POOL's patio + barbecue area -- see drawJohnnysPoolPatio().
   drawJohnnysPoolPatio(time);
+  // Newsstands -- same sprite the town uses; the swamp's five stands were
+  // wired up for interaction but nothing drew them out here until now.
+  drawNewsstands();
 }
 
 // JOHNNY'S POOL patio + barbecue area -- purely cosmetic dressing on the
