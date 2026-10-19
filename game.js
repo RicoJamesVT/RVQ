@@ -708,9 +708,8 @@ const WORLD_DEFS = {
   },
   // The skatepark -- LEVEL 3. Map is built (see makeSkatepark()) but the
   // player can't get there yet, so it stays `locked: true` and out of the
-  // Crate tabs. No records/beat yet -- worldDef() falls back to town's beat
-  // if the player ever stands here. Fill these in and drop `locked` when the
-  // level opens up.
+  // Crate tabs. It has its own 5 records and its own beat (below); drop
+  // `locked` when the level opens up.
   skatepark: {
     name: 'Skatepark',
     locked: true,
@@ -744,6 +743,25 @@ const WORLD_DEFS = {
                flavor: 'Cut from a hydrophone tape lowered into Lake Champlain. Something enormous hums a slow vocal line under the ripples, and every groove sounds underwater.' },
     },
     padOrder: ['grip', 'foam', 'vol', 'print', 'sonar'],
+    // Skatepark's beat: a driving, skate-punk-flavored 104 BPM -- faster than
+    // town (92) and the swamp (78), with its own syncopated "double-kick"
+    // drum pattern (kicks on 0/2/8/11, a ghost snare on step 15, open hat
+    // late on step 6), a straight-eighths sawtooth bass (town = square,
+    // swamp = triangle) that churns on E, square-wave off-beat power-chord
+    // stabs on every "and" of the beat (E-B-E open fifth, not town's
+    // A-minor triad or the swamp's quartal stack), rising square-wave vox
+    // in thirds (E-F#, then G#-B), and a bright sawtooth lead riff in E
+    // major pentatonic that leaps up an octave-ish then tumbles back down.
+    // Key (E), tempo, waveforms, drum feel AND melodic shape all differ from
+    // both other worlds, so it can't be mistaken for either one.
+    beat: {
+      bpm: 104,
+      kickSteps: [0, 2, 8, 11], snareSteps: [4, 12, 15], hatOpenStep: 6,
+      bassWave: 'sawtooth', bassPattern: [[0,40,1],[2,40,1],[4,43,1],[6,40,1],[8,45,1],[10,45,1],[12,43,1],[14,47,1]],
+      hornWave: 'square',   hornSteps: [2, 6, 10, 14], hornNotes: [64, 71, 76],
+      voxWave: 'square',    voxSteps: [0, 8], voxNotesEven: [64, 66], voxNotesOdd: [68, 71],
+      leadWave: 'sawtooth', leadNotes: [71, 76, 78, 76, 83, 81, 78, 76],
+    },
   },
   // ADD MORE WORLDS HERE, e.g.:
   // subway: {
@@ -11015,6 +11033,16 @@ ricoLabSplashImg.src = 'assets/rico_lab_splash.png';
 const ricoBeatLabWelcomeImg = new Image();
 ricoBeatLabWelcomeImg.src = 'assets/beat_lab_welcome.png';
 
+// One-time "you now have access to SANTOS' STU!" announcement, shown right
+// after the record-found splash (drawRecordCard()) the moment that pickup
+// completes LEVEL 3 (SKATEPARK) -- see the 'record' state handling in the
+// input loop and drawSantosStuUnlock(). Same local-asset, same-origin
+// approach as every other splash (works offline). The art itself carries the
+// "you now have access" message and the "head to the portal behind FOAM"
+// pointer. Save the splash as assets/santos_stu_splash.png.
+const santosStuSplashImg = new Image();
+santosStuSplashImg.src = 'assets/santos_stu_splash.png';
+
 // The 4 instrument bays, top to bottom, matching the boxes drawn on the
 // right-hand side of rico_lab_splash.png. bx0/bx1/by0/by1 are fractions of
 // the splash image's own width/height (independent of how it's scaled to
@@ -12566,11 +12594,22 @@ function makeSkatepark() {
   const RETURN_PORTAL_X = 0, RETURN_PORTAL_Y = 10;
   g[RETURN_PORTAL_Y][RETURN_PORTAL_X] = 'Q';
 
+  // --- SANTOS' STU PORTAL -- the east end of the promenade, on the boardwalk
+  // running along the back of ECHO CENTER and FOAM BREWERS (row 10, right
+  // edge of the map; mirrors the return portal at the west end). 'I' is a
+  // walkable tile that is drawn as plain promenade paving until the
+  // skatepark's 5 records are all found (completedWorlds.has('skatepark')),
+  // then as an open, glowing portal door -- see drawSantosStuPortalDoor() and
+  // checkSantosStuPortal(). Stepping on it hands off to enterSantosStu().
+  const SANTOS_PORTAL_X = W - 1, SANTOS_PORTAL_Y = 10;
+  g[SANTOS_PORTAL_Y][SANTOS_PORTAL_X] = 'I';
+
   const waterTiles = [];
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (g[y][x] === '~') waterTiles.push({ x, y });
 
   return {
     id: 'skatepark', world: 'skatepark', w: W, h: H, grid: g, outside: true,
+    santosStuPortal: { x: SANTOS_PORTAL_X, y: SANTOS_PORTAL_Y },
     buildings, doors: {}, crates, npcs: [], riverTiles: waterTiles,
     skatepark: true,
     // ARKAIIK IMPACT -- a skateboard painting studio, triggered by a floating
@@ -14396,6 +14435,7 @@ function finishLevelIntro() {
 // recording where drawLabPopup() last drew the splash art so taps can be
 // mapped back onto one of the 4 boxes.
 let activeLabDoor = null; // { x, y } tile the player walked into to open the lab popup
+let activeSantosPortal = null; // { x, y } tile the player walked into to enter SANTOS' STU
 // A shop's own locked "back room" door (see makeShop()'s backDoorTile opt),
 // mirrors activeLabDoor/activePortal above -- records the tile the player
 // walked into so closing the locked popup can nudge them back off of it.
@@ -15012,6 +15052,7 @@ function movePlayer(dt) {
 
   checkPortal(map);
   checkSwampPortal(map);
+  checkSantosStuPortal(map);
   checkLabDoor(map);
   checkShopBackDoor(map);
 }
@@ -15056,6 +15097,29 @@ function checkSwampPortal(map) {
     player.y = 1.6 * TILE; // one tile south of the town portal, same push-off-the-door offset every other transition uses
     saveGame();
   }
+}
+
+// SANTOS' STU portal -- an 'I' tile at the east end of the skatepark
+// promenade (see makeSkatepark()). Dormant (just paving) until the
+// skatepark's 5 records are found; after that, walking onto it enters
+// SANTOS' STU via enterSantosStu().
+function checkSantosStuPortal(map) {
+  if (map.id !== 'skatepark' || !completedWorlds.has('skatepark')) return;
+  const tx = Math.floor(player.x / TILE), ty = Math.floor(player.y / TILE);
+  if (map.grid[ty] && map.grid[ty][tx] === 'I') {
+    activeSantosPortal = { x: tx, y: ty };
+    enterSantosStu();
+  }
+}
+
+// ENTRY POINT for SANTOS' STU. The studio itself isn't built yet, so for now
+// this just opens a "coming soon" popup (state 'santosStuPortal'; closing it
+// pushes the player back off the doorway). When the studio exists, replace
+// the body with the real transition -- e.g. register the map and set
+// player.map/x/y like the other doors, or open its overlay/app -- and wire
+// the return trip to land at (maps.skatepark.santosStuPortal.x - 1, .y).
+function enterSantosStu() {
+  state = 'santosStuPortal';
 }
 
 // Rico's Lab door: walking onto an 'L' tile opens the instrument picker
@@ -24366,13 +24430,29 @@ function update(dt) {
         // "BEAT COMPLETE!" win screen, so the player hears about it right
         // away instead of having to stumble onto the newly-unlocked 'L'
         // door on their own.
-        state = (currentWorldId() === 'town') ? 'labUnlock' : 'win';
+        // Likewise, finishing LEVEL 3 (SKATEPARK) unlocks SANTOS' STU: show
+        // its splash first (it points at the new portal behind FOAM), then
+        // the usual win screen.
+        const doneWorld = currentWorldId();
+        state = (doneWorld === 'town') ? 'labUnlock'
+              : (doneWorld === 'skatepark') ? 'santosStuUnlock'
+              : 'win';
         saveGame(); // silent autosave checkpoint
       }
       else state = 'play';
     }
   } else if (state === 'labUnlock') {
     if (interactPressed) state = 'win';
+  } else if (state === 'santosStuUnlock') {
+    if (interactPressed) state = 'win';
+  } else if (state === 'santosStuPortal') {
+    // Popup shown on the SANTOS' STU portal until the studio itself is built
+    // -- see checkSantosStuPortal()/enterSantosStu(). [E]/[X]/tap closes it
+    // and steps the player back off the doorway.
+    if (interactPressed || buyPressed) {
+      state = 'play';
+      if (activeSantosPortal) { pushOffDoor(maps[player.map], activeSantosPortal); activeSantosPortal = null; }
+    }
   } else if (state === 'vinylNinjaSplash') {
     // Splash before the actual Vinyl Ninja iframe -- see
     // drawVinylNinjaSplash()/openVinylNinjaSplash() and
@@ -26468,6 +26548,8 @@ function render(time) {
   if (state === 'dialog') drawDialog();
   if (state === 'record') drawRecordCard();
   if (state === 'labUnlock') drawLabUnlock();
+  if (state === 'santosStuUnlock') drawSantosStuUnlock();
+  if (state === 'santosStuPortal') drawSantosStuPortalPopup();
   if (state === 'vinylNinjaSplash') drawVinylNinjaSplash();
   if (state === 'kangaidenSplash') drawKangaidenSplash();
   if (state === 'truthKnocksSplash') drawTruthKnocksSplash();
@@ -26561,6 +26643,7 @@ function drawTiles(map, time, camX = 0, camY = 0) {
         case 'P': drawPortalDoor(px, py, tx, ty, time); break;
         case 'L': drawLabDoor(px, py, tx, ty, time); break;
         case 'Q': drawSwampPortalDoor(px, py, tx, ty, time); break;
+        case 'I': drawSantosStuPortalDoor(px, py, tx, ty, time, h); break;
         case '~': {
           const p = map.palette;
           ctx.fillStyle = p ? p.water : '#3060b0';
@@ -26850,6 +26933,74 @@ function drawSwampPortalDoor(px, py, tx, ty, time) {
   ctx.font = 'bold 14px monospace';
   ctx.textAlign = 'center';
   ctx.fillText('\u25CF', cx, py - TILE + 22);
+  ctx.restore();
+}
+
+// SANTOS' STU portal door ('I' tile, east end of the skatepark promenade).
+// Before the skatepark is completed it is simply promenade paving (same look
+// as the 'p' tile) so nothing gives it away; once completedWorlds has
+// 'skatepark' it becomes an open archway in the splash art's black/lime
+// green/brass palette, taller than a tile like the other portals, with a
+// pulsing glow and a music-note flourish.
+function drawSantosStuPortalDoor(px, py, tx, ty, time, h) {
+  // promenade paving underneath (matches case 'p' in drawTiles)
+  ctx.fillStyle = (h % 5 === 0) ? '#c2bcae' : '#cbc5b7';
+  ctx.fillRect(px, py, TILE, TILE);
+  ctx.fillStyle = 'rgba(0,0,0,0.09)';
+  ctx.fillRect(px, py + 15, TILE, 1);
+  ctx.fillRect(px, py + 31, TILE, 1);
+  const bx = (ty % 2 === 0) ? 10 : 22;
+  ctx.fillRect(px + bx, py, 1, 15);
+  ctx.fillRect(px + ((bx + 16) % 32), py + 16, 1, 15);
+
+  if (!completedWorlds.has('skatepark')) return;
+
+  const t = time || 0;
+  const cx = px + TILE / 2, cy = py + TILE / 2;
+  const pulse = 0.5 + 0.5 * Math.sin(t * 2.4 + tx * 3 + ty);
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(px - 6, py - TILE - 4, TILE + 12, TILE * 2 + 8);
+  ctx.clip();
+
+  // outer glow -- lime green with a warm brass edge
+  const grd = ctx.createRadialGradient(cx, cy, 2, cx, cy, TILE * 1.05);
+  grd.addColorStop(0, `rgba(120,230,70,${0.6 + pulse * 0.3})`);
+  grd.addColorStop(0.55, 'rgba(120,150,50,0.45)');
+  grd.addColorStop(1, 'rgba(14,16,8,0)');
+  ctx.fillStyle = grd;
+  ctx.fillRect(px - 6, py - TILE - 4, TILE + 12, TILE * 2 + 8);
+
+  // dark studio-door frame with brass trim
+  ctx.fillStyle = '#16140f';
+  ctx.fillRect(px + 1, py - TILE + 4, TILE - 2, TILE * 2 - 4);
+  ctx.fillStyle = '#c9962f';
+  ctx.fillRect(px + 1, py - TILE + 4, TILE - 2, 3);
+  ctx.fillRect(px + 1, py + TILE - 7, TILE - 2, 3);
+  ctx.fillRect(px + 1, py - TILE + 4, 2, TILE * 2 - 4);
+  ctx.fillRect(px + TILE - 3, py - TILE + 4, 2, TILE * 2 - 4);
+  ctx.fillStyle = '#26301a';
+  ctx.fillRect(px + 4, py - TILE + 9, TILE - 8, TILE * 2 - 16);
+
+  // swirling portal core, lime/brass
+  ctx.fillStyle = 'rgba(14,22,8,0.9)';
+  ctx.beginPath();
+  ctx.ellipse(cx, py + TILE - 12, 10, 16, 0, 0, Math.PI * 2);
+  ctx.fill();
+  for (let i = 0; i < 3; i++) {
+    const a = t * 1.6 + i * (Math.PI * 2 / 3);
+    ctx.fillStyle = i % 2 === 0 ? '#7be046' : '#e0b040';
+    ctx.beginPath();
+    ctx.ellipse(cx + Math.cos(a) * 4, py + TILE - 12 + Math.sin(a) * 9, 3, 6, a, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // music note above the door -- marks it as an actual, working door
+  ctx.fillStyle = Math.floor(t * 2.4) % 2 ? '#f4ecd8' : '#7be046';
+  ctx.font = 'bold 14px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('♫', cx, py - TILE + 22);
   ctx.restore();
 }
 
@@ -37226,6 +37377,70 @@ function drawLabUnlock() {
   ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#e0b040' : '#f4ecd8';
   ctx.font = 'bold 16px monospace';
   ctx.fillText('- PRESS E TO CONTINUE -', VIEW_W / 2, VIEW_H - 18);
+}
+
+// Drawn the instant the pickup of LEVEL 3's last record unlocks SANTOS' STU
+// (see the 'record'/'santosStuUnlock' state handling in the input loop).
+// Same scale-to-fit splash + blinking continue prompt as drawLabUnlock() --
+// the art carries the message and the "portal behind FOAM" pointer.
+function drawSantosStuUnlock() {
+  ctx.fillStyle = 'rgba(8,6,12,0.6)';
+  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
+  if (santosStuSplashImg.complete && santosStuSplashImg.naturalWidth) {
+    const iw = santosStuSplashImg.naturalWidth, ih = santosStuSplashImg.naturalHeight;
+    const scale = Math.min(VIEW_W / iw, VIEW_H / ih);
+    const dw = iw * scale, dh = ih * scale;
+    const dx = (VIEW_W - dw) / 2, dy = (VIEW_H - dh) / 2;
+    ctx.drawImage(santosStuSplashImg, dx, dy, dw, dh);
+  } else {
+    // fallback text-only version, in case the art hasn't loaded in yet
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#7be046';
+    ctx.font = 'bold 22px monospace';
+    ctx.fillText("YOU NOW HAVE ACCESS TO SANTOS' STU!", VIEW_W / 2, VIEW_H / 2 - 24);
+    ctx.fillStyle = '#f4ecd8';
+    ctx.font = '16px monospace';
+    const lines = wrapLinesCentered(
+      "Head over to the portal behind 'FOAM' to step into Santos' Stu!",
+      VIEW_W - 160
+    );
+    lines.forEach((l, i) => ctx.fillText(l, VIEW_W / 2, VIEW_H / 2 + 12 + i * 22));
+  }
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#e0b040' : '#f4ecd8';
+  ctx.font = 'bold 16px monospace';
+  ctx.fillText('- PRESS E TO CONTINUE -', VIEW_W / 2, VIEW_H - 18);
+}
+
+// Placeholder popup for the SANTOS' STU portal (see enterSantosStu()) --
+// same box look as drawPortalPopup(), minus the art.
+function drawSantosStuPortalPopup() {
+  ctx.fillStyle = 'rgba(8,6,12,0.6)';
+  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
+  const boxW = VIEW_W - 120, boxX = 60;
+  const bodyFont = '20px monospace', lineH = 25;
+  ctx.font = bodyFont;
+  const lines = wrapLinesCentered("SANTOS' STU is being wired up. The tape's rolling soon - check back later homie!", boxW - 48);
+  const boxH = Math.max(128, 30 + lines.length * lineH + 34);
+  const boxY = (VIEW_H - boxH) / 2;
+
+  ctx.fillStyle = 'rgba(10,8,14,0.94)';
+  ctx.fillRect(boxX, boxY, boxW, boxH);
+  ctx.strokeStyle = '#7be046';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(boxX + 2, boxY + 2, boxW - 4, boxH - 4);
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#f4ecd8';
+  ctx.font = bodyFont;
+  lines.forEach((l, i) => ctx.fillText(l, VIEW_W / 2, boxY + 30 + i * lineH));
+
+  ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#e0b040' : '#f4ecd8';
+  ctx.font = 'bold 18px monospace';
+  ctx.fillText('Press [E] or tap screen to return', VIEW_W / 2, boxY + boxH - 16);
 }
 
 // The instrument picker shown once Rico's Lab is unlocked. Mirrors
