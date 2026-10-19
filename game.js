@@ -10517,6 +10517,7 @@ window.addEventListener('keydown', (e) => {
     // consumes to close the instrument overlay; [Esc] is the one extra key
     // worth adding here since browsers treat it as the natural "close".
     if (k === 'escape' && state === 'labApp') { closeInstrument(); }
+    if (k === 'escape' && state === 'santosStu') { exitSantosStu(); }
     if (k === 'escape' && state === 'chessApp') { closeChessApp(); }
     if (k === 'escape' && state === 'sunnySideDinerApp') { closeSunnySideDinerApp(); }
     if (k === 'escape' && state === 'beatBotApp') { closeBeatBotApp(); }
@@ -11058,6 +11059,31 @@ const LAB_OPTIONS = [
     bx0: 0.7910, bx1: 0.9701, by0: 0.5566, by1: 0.7178 },
   { id: 'eq', name: "RICO'S EQ", path: 'instruments/rico-eq/index.html',
     bx0: 0.7910, bx1: 0.9701, by0: 0.7422, by1: 0.8838 },
+];
+
+// SANTOS' STU -- the studio behind the SKATEPARK portal (see
+// enterSantosStu()). Same idea as LAB_OPTIONS: 6 buttons along the bottom of
+// assets/santos-stu-splash-wbuttons.png (1536x1024). bx0/bx1/by0/by1 are
+// fractions of the splash image's own width/height. Each button launches a
+// standalone instrument app in the same DOM/iframe overlay Rico's Lab uses.
+// `path` stays null until that app has been added -- a null path just lights
+// the button up and shows a "coming soon" toast. When an app is ready, set
+// its `path` (e.g. 'instruments/santos-guitar-dashboard/index.html').
+const santosStuStudioImg = new Image();
+santosStuStudioImg.src = 'assets/santos-stu-splash-wbuttons.png';
+const STU_OPTIONS = [
+  { id: 'guitarDashboard', name: 'GUITAR DASHBOARD', path: null,
+    bx0: 0.0443, bx1: 0.2096, by0: 0.7598, by1: 0.9355 },
+  { id: 'guitarPicker',    name: 'GUITAR PICKER',    path: null,
+    bx0: 0.2188, bx1: 0.3451, by0: 0.7598, by1: 0.9355 },
+  { id: 'guitarTuner',     name: 'GUITAR TUNER',     path: null,
+    bx0: 0.3548, bx1: 0.4948, by0: 0.7598, by1: 0.9355 },
+  { id: 'santosDrumKit',   name: 'SANTOS DRUM KIT',  path: null,
+    bx0: 0.5052, bx1: 0.6510, by0: 0.7598, by1: 0.9355 },
+  { id: 'fretRep',         name: 'FRET REP',         path: null,
+    bx0: 0.6608, bx1: 0.8021, by0: 0.7598, by1: 0.9355 },
+  { id: 'skankRiot',       name: 'SKANK RIOT',       path: null,
+    bx0: 0.8151, bx1: 0.9583, by0: 0.7598, by1: 0.9355 },
 ];
 
 // Easter-egg splash shown when the player types "fifa" on a keyboard (see
@@ -14455,6 +14481,11 @@ const SHOP_BACK_ROOMS = {
 let labIndex = 0;
 let labLayout = null; // { originX, originY, scale, imgW, imgH } of the drawn lab splash art
 let activeLabApp = null; // id of the instrument currently loaded in the DOM overlay, or null
+let labReturnState = 'lab'; // where closeInstrument() lands: 'lab' (Rico's Lab picker) or 'santosStu' (Santos' Stu picker)
+let stuIndex = 0;            // keyboard/tap-selected button (0-5) on the SANTOS' STU splash
+let stuLayout = null;        // { originX, originY, scale, imgW, imgH, fallback } of the drawn Santos' Stu splash
+let stuLitUntil = [0, 0, 0, 0, 0, 0]; // performance.now() ms each button stays "flash lit" after being triggered
+let stuExitRect = null;      // { x, y, w, h } on-screen EXIT button hit-box, set while drawing
 let labHistoryPushed = false; // true while an extra history entry is sitting under an open instrument (see openInstrument/closeInstrument)
 
 // ---------------------------------------------------------------- save / load
@@ -15001,7 +15032,7 @@ const music = {
 // enter/exit call sites, so it can't drift out of sync no matter which
 // of the several ways the player backs out of the lab popup (keyboard
 // [X], on-screen [X] button, closing the instrument iframe, etc.).
-const DUCKED_STATES = new Set(['lab', 'labApp', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'qsdBalanceApp', 'vinylSnakeApp', 'waveformApp', 'bayouBreakApp', 'freqAltarApp', 'reverbReefApp', 'beatBrewingApp', 'drumPatternDocApp', 'gatorJamSlamApp', 'swampCaveApp', 'vocalChopBoothApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'digOnApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'johnnySlidesApp', 'humbleTreasuresApp', 'dustRacingApp', 'cbPressApp', 'spotDiffApp', 'guitarApp', 'hyperSwimApp', 'linusTugApp', 'connectFourApp', 'syrupRoadsApp', 'scoopBeatsApp', 'clawMachineApp', 'kangaidenVideo', 'kangaidenApp', 'hiphopLibraryApp', 'arkaiikImpactApp', 'precisionPointsApp', 'wishJamApp', 'skateHipHopReaderApp', 'travSkatesApp', 'j2sProSkaterApp', 'danceParty', 'truthKnocksVideo', 'truthKnocksApp', 'johnnySlidesVideo', 'humbleTreasuresVideo']);
+const DUCKED_STATES = new Set(['lab', 'labApp', 'santosStu', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'qsdBalanceApp', 'vinylSnakeApp', 'waveformApp', 'bayouBreakApp', 'freqAltarApp', 'reverbReefApp', 'beatBrewingApp', 'drumPatternDocApp', 'gatorJamSlamApp', 'swampCaveApp', 'vocalChopBoothApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'digOnApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'johnnySlidesApp', 'humbleTreasuresApp', 'dustRacingApp', 'cbPressApp', 'spotDiffApp', 'guitarApp', 'hyperSwimApp', 'linusTugApp', 'connectFourApp', 'syrupRoadsApp', 'scoopBeatsApp', 'clawMachineApp', 'kangaidenVideo', 'kangaidenApp', 'hiphopLibraryApp', 'arkaiikImpactApp', 'precisionPointsApp', 'wishJamApp', 'skateHipHopReaderApp', 'travSkatesApp', 'j2sProSkaterApp', 'danceParty', 'truthKnocksVideo', 'truthKnocksApp', 'johnnySlidesVideo', 'humbleTreasuresVideo']);
 function syncMusicDuck() {
   const minigameDucked = state === 'minigame' && activeMinigame && activeMinigame.musicDucked;
   music.duck(DUCKED_STATES.has(state) || !!minigameDucked);
@@ -15112,14 +15143,24 @@ function checkSantosStuPortal(map) {
   }
 }
 
-// ENTRY POINT for SANTOS' STU. The studio itself isn't built yet, so for now
-// this just opens a "coming soon" popup (state 'santosStuPortal'; closing it
-// pushes the player back off the doorway). When the studio exists, replace
-// the body with the real transition -- e.g. register the map and set
-// player.map/x/y like the other doors, or open its overlay/app -- and wire
-// the return trip to land at (maps.skatepark.santosStuPortal.x - 1, .y).
+// ENTRY POINT for SANTOS' STU. Walking onto the portal opens the studio
+// splash (state 'santosStu') -- 6 instrument buttons, drawn/handled like
+// Rico's Lab (see drawSantosStuPopup()/handleStuTap()). Leaving the studio
+// (exitSantosStu()) drops the player one tile west of the portal door on the
+// SKATEPARK map, same push-off every other door uses.
 function enterSantosStu() {
-  state = 'santosStuPortal';
+  stuIndex = 0;
+  state = 'santosStu';
+}
+
+// Back out of SANTOS' STU to the SKATEPARK map, just off the portal door.
+function exitSantosStu() {
+  state = 'play';
+  if (activeSantosPortal) {
+    pushOffDoor(maps[player.map], activeSantosPortal);
+    activeSantosPortal = null;
+  }
+  saveGame(); // silent autosave checkpoint, same as every other door transition
 }
 
 // Rico's Lab door: walking onto an 'L' tile opens the instrument picker
@@ -15946,7 +15987,7 @@ function createTouchControls() {
       // directly, the same way the keydown listener does for a physical
       // keyboard — held/synthetic key state alone never reaches update()'s
       // selectMove check.
-      if (state === 'select' || state === 'title' || state === 'history') {
+      if (state === 'select' || state === 'title' || state === 'history' || state === 'santosStu') {
         if (k === 'arrowleft') selectMove = -1;
         if (k === 'arrowright') selectMove = 1;
       }
@@ -16117,7 +16158,7 @@ function syncTrickBtn() {
 // -- same trick as the rest of the game's UI (touch controls, the
 // responsive canvas sizing) building its own DOM/CSS at runtime instead of
 // depending on markup living in index.html.
-let labOverlayEl = null, labOverlayFrame = null, labOverlayTitle = null;
+let labOverlayEl = null, labOverlayFrame = null, labOverlayTitle = null, labOverlayCloseBtn = null;
 
 function createLabAppOverlay() {
   const style = document.createElement('style');
@@ -16165,6 +16206,7 @@ function createLabAppOverlay() {
   closeBtn.className = 'rla-close';
   closeBtn.textContent = '\u2190 BACK TO THE LAB';
   bindTap(closeBtn, closeInstrument);
+  labOverlayCloseBtn = closeBtn;
   bar.appendChild(labOverlayTitle);
   bar.appendChild(closeBtn);
 
@@ -24071,6 +24113,12 @@ function finishCharacterIntro() {
 // state to 'labApp'. Called both from update() (E on a keyboard-selected
 // box) and handleLabTap() (tapping a box directly).
 function openInstrument(opt) {
+  // Rico's Lab picks always return to the lab; openStuInstrument() sets
+  // labReturnState to 'santosStu' just before calling in here.
+  if (labOverlayCloseBtn) {
+    labOverlayCloseBtn.textContent = labReturnState === 'santosStu'
+      ? '\u2190 BACK TO SANTOS\' STU' : '\u2190 BACK TO THE LAB';
+  }
   activeLabApp = opt.id;
   labOverlayTitle.textContent = opt.name;
   labOverlayFrame.src = opt.path;
@@ -24099,7 +24147,8 @@ function closeInstrument(fromPopState) {
   labOverlayFrame.src = 'about:blank';
   reclaimGameFocus(labOverlayFrame);
   activeLabApp = null;
-  state = 'lab';
+  state = (labReturnState === 'santosStu') ? 'santosStu' : 'lab';
+  labReturnState = 'lab';
   if (!fromPopState && labHistoryPushed) {
     labHistoryPushed = false;
     history.back();
@@ -24225,6 +24274,11 @@ canvas.addEventListener('pointerdown', (e) => {
     const vx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const vy = (e.clientY - rect.top) * (canvas.height / rect.height);
     handleLabTap(vx, vy);
+  } else if (state === 'santosStu') {
+    const rect = canvas.getBoundingClientRect();
+    const vx = (e.clientX - rect.left) * (canvas.width / rect.width);
+    const vy = (e.clientY - rect.top) * (canvas.height / rect.height);
+    handleStuTap(vx, vy);
   } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'reverbReefApp' || state === 'beatBrewingApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'humbleTreasuresApp' || state === 'dustRacingApp' || state === 'cbPressApp' || state === 'spotDiffApp' || state === 'guitarApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'scoopBeatsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp' || state === 'arkaiikImpactApp' || state === 'precisionPointsApp' || state === 'wishJamApp' || state === 'skateHipHopReaderApp' || state === 'travSkatesApp' || state === 'j2sProSkaterApp') {
     // The DOM overlay sits on top of (and outside) the canvas while an
     // instrument/the chess app/the beat bot/the organ/mini golf/the
@@ -24296,6 +24350,43 @@ function handleLabTap(vx, vy) {
   if (idx === -1) return;
   labIndex = idx;
   openInstrument(LAB_OPTIONS[idx]);
+}
+
+// Triggers one of the 6 SANTOS' STU buttons: flash-lights it, then either
+// opens its instrument app in the shared overlay (path set) or shows a
+// "coming soon" toast (path still null). Called from the keyboard (E on the
+// selected button) and handleStuTap() (tapping a button directly).
+function openStuInstrument(idx) {
+  const opt = STU_OPTIONS[idx];
+  if (!opt) return;
+  stuIndex = idx;
+  stuLitUntil[idx] = performance.now() + 450;
+  if (opt.path) {
+    labReturnState = 'santosStu';
+    openInstrument(opt);
+  } else {
+    toast = { text: opt.name + ' - coming soon!', t: 1.6 };
+  }
+}
+
+// Maps a tap/click in view coordinates to the EXIT button or one of the 6
+// STU_OPTIONS buttons, using the layout drawSantosStuPopup() recorded the
+// last time it drew. Taps outside the buttons do nothing.
+function handleStuTap(vx, vy) {
+  if (stuExitRect && vx >= stuExitRect.x && vx <= stuExitRect.x + stuExitRect.w &&
+      vy >= stuExitRect.y && vy <= stuExitRect.y + stuExitRect.h) {
+    exitSantosStu();
+    return;
+  }
+  if (!stuLayout) return;
+  const { originX, originY, scale, imgW, imgH } = stuLayout;
+  const ix = (vx - originX) / scale, iy = (vy - originY) / scale;
+  if (ix < 0 || ix > imgW || iy < 0 || iy > imgH) return;
+  const fx = ix / imgW, fy = iy / imgH;
+  const idx = STU_OPTIONS.findIndex((o) =>
+    fx >= o.bx0 && fx <= o.bx1 && fy >= o.by0 && fy <= o.by1);
+  if (idx === -1) return;
+  openStuInstrument(idx);
 }
 
 // ---------------------------------------------------------------- update
@@ -24549,6 +24640,18 @@ function update(dt) {
       state = 'play';
       if (activeLabDoor) { pushOffDoor(maps[player.map], activeLabDoor); activeLabDoor = null; }
     }
+  } else if (state === 'santosStu') {
+    // SANTOS' STU picker: left/right (or up/down) cycles the 6 buttons, E
+    // triggers the selected one, X / Esc (or the on-screen EXIT button) goes
+    // back out to the SKATEPARK map.
+    const mv = selectMove || menuMove;
+    if (mv) {
+      stuIndex = (stuIndex + mv + STU_OPTIONS.length) % STU_OPTIONS.length;
+      selectMove = 0;
+      menuMove = 0;
+    }
+    if (interactPressed) openStuInstrument(stuIndex);
+    else if (buyPressed) exitSantosStu();
   } else if (state === 'labApp') {
     // The DOM overlay (see createLabAppOverlay()) owns input while an
     // instrument is loaded -- its own close button and [Esc] handle
@@ -26562,6 +26665,7 @@ function render(time) {
   if (state === 'labLocked') drawLabLockedPopup();
   if (state === 'shopBackLocked') drawShopBackLockedPopup();
   if (state === 'lab') drawLabPopup(time);
+  if (state === 'santosStu') drawSantosStuPopup(time);
   if (state === 'hotkeys') drawHotkeysPopup();
   if (state === 'crate') drawCrate();
   if (state === 'fifa') drawFifaPopup();
@@ -37516,6 +37620,94 @@ function drawLabPopup(time) {
   ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#e0b040' : '#f4ecd8';
   ctx.font = 'bold 16px monospace';
   ctx.fillText('- TAP AN INSTRUMENT, OR USE \u25b2 \u25bc AND E -  [X] LEAVE', VIEW_W / 2, VIEW_H - 20);
+}
+
+// The SANTOS' STU studio splash. Same approach as drawLabPopup(): draw the
+// art scaled to fit, record where it landed as stuLayout so taps map back
+// onto the 6 buttons, then paint light-up effects over them -- a soft
+// ambient glow on every button, a brighter pulsing frame on the selected
+// one, and a quick white-hot flash on whichever was just triggered. Also
+// draws an on-screen EXIT button (top-left) that returns to the SKATEPARK.
+function drawSantosStuPopup(time) {
+  ctx.fillStyle = 'rgb(8,6,12)';
+  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+  const now = performance.now();
+
+  if (santosStuStudioImg.complete && santosStuStudioImg.naturalWidth) {
+    const iw = santosStuStudioImg.naturalWidth, ih = santosStuStudioImg.naturalHeight;
+    const scale = Math.min(VIEW_W / iw, VIEW_H / ih);
+    const dw = iw * scale, dh = ih * scale;
+    const originX = (VIEW_W - dw) / 2, originY = (VIEW_H - dh) / 2;
+    stuLayout = { originX, originY, scale, imgW: iw, imgH: ih, fallback: false };
+    ctx.drawImage(santosStuStudioImg, originX, originY, dw, dh);
+
+    STU_OPTIONS.forEach((opt, i) => {
+      const bx = originX + opt.bx0 * dw, by = originY + opt.by0 * dh;
+      const bw = (opt.bx1 - opt.bx0) * dw, bh = (opt.by1 - opt.by0) * dh;
+      const flash = Math.max(0, (stuLitUntil[i] - now) / 450);
+      if (flash > 0) {
+        // just triggered: bright warm flood over the whole button
+        ctx.fillStyle = `rgba(255,214,120,${(0.55 * flash).toFixed(2)})`;
+        ctx.fillRect(bx, by, bw, bh);
+      }
+      if (i === stuIndex) {
+        ctx.strokeStyle = Math.floor(time * 2.4) % 2 ? '#e0b040' : '#f4ecd8';
+        ctx.lineWidth = 4;
+        ctx.strokeRect(bx + 2, by + 2, bw - 4, bh - 4);
+        ctx.save();
+        ctx.shadowColor = '#e0b040';
+        ctx.shadowBlur = 18;
+        ctx.strokeRect(bx + 2, by + 2, bw - 4, bh - 4);
+        ctx.restore();
+        ctx.fillStyle = `rgba(255,200,90,${(0.10 + 0.08 * Math.sin(time * 5)).toFixed(2)})`;
+        ctx.fillRect(bx, by, bw, bh);
+      } else {
+        const p = 0.30 + 0.30 * Math.sin(time * 1.6 + i * 1.1);
+        ctx.strokeStyle = `rgba(160,200,90,${p.toFixed(2)})`;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(bx + 2, by + 2, bw - 4, bh - 4);
+      }
+    });
+  } else {
+    // fallback until the art loads (or if it's missing): 6 plain buttons
+    stuLayout = { originX: 0, originY: 0, scale: 1, imgW: VIEW_W, imgH: VIEW_H, fallback: true };
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#7be046';
+    ctx.font = 'bold 28px monospace';
+    ctx.fillText("SANTOS' STU", VIEW_W / 2, 60);
+    STU_OPTIONS.forEach((opt, i) => {
+      const x = VIEW_W * (opt.bx0), w = VIEW_W * (opt.bx1 - opt.bx0);
+      const y = VIEW_H * opt.by0, h = VIEW_H * (opt.by1 - opt.by0);
+      const flash = Math.max(0, (stuLitUntil[i] - now) / 450);
+      ctx.fillStyle = flash > 0 ? `rgba(255,214,120,${(0.4 + 0.5 * flash).toFixed(2)})`
+        : (i === stuIndex ? 'rgba(224,176,64,0.35)' : 'rgba(90,120,60,0.22)');
+      ctx.fillRect(x, y, w, h);
+      ctx.strokeStyle = i === stuIndex ? '#e0b040' : 'rgba(160,200,90,0.5)';
+      ctx.lineWidth = i === stuIndex ? 4 : 2;
+      ctx.strokeRect(x + 2, y + 2, w - 4, h - 4);
+      ctx.fillStyle = '#f4ecd8';
+      ctx.font = 'bold 12px monospace';
+      ctx.fillText(opt.name, x + w / 2, y + h / 2 + 4);
+    });
+  }
+
+  // on-screen EXIT button (top-left corner of the view)
+  const ex = 12, ey = 12, ew = 150, eh = 36;
+  stuExitRect = { x: ex, y: ey, w: ew, h: eh };
+  ctx.fillStyle = 'rgba(10,8,14,0.82)';
+  ctx.fillRect(ex, ey, ew, eh);
+  ctx.strokeStyle = '#e0b040';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(ex + 1, ey + 1, ew - 2, eh - 2);
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#f4ecd8';
+  ctx.font = 'bold 15px monospace';
+  ctx.fillText('\u2190 EXIT [X]', ex + ew / 2, ey + 24);
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = Math.floor(now / 400) % 2 ? '#e0b040' : '#f4ecd8';
+  ctx.font = 'bold 14px monospace';
+  ctx.fillText('- TAP AN INSTRUMENT, OR USE \u25c0 \u25b6 AND E -  [X] EXIT TO SKATEPARK', VIEW_W / 2, VIEW_H - 8);
 }
 
 // [H] hot-keys popup -- reachable any time during gameplay (see the
