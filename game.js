@@ -12638,6 +12638,16 @@ function makeSkatepark() {
   const SANTOS_PORTAL_X = W - 1, SANTOS_PORTAL_Y = 10;
   g[SANTOS_PORTAL_Y][SANTOS_PORTAL_X] = 'I';
 
+  // --- LOCKED PIER PORTAL -- a placeholder 'P' portal door at the far (top)
+  // end of the right-hand dock, the one reaching furthest up into the lake
+  // (PIERS[1]: columns 38-40, rows 1-8; middle column 39, top row 1). Works
+  // exactly like the locked 'P' doors on the BURLINGTON main map: walking onto
+  // it pops the "more lands are being created -- check back later" splash (see
+  // checkPortal()/drawPortalPopup()) and closing it nudges the player back
+  // down the pier.
+  const PIER_PORTAL_X = PIERS[1][0] + 1, PIER_PORTAL_Y = PIERS[1][1];
+  g[PIER_PORTAL_Y][PIER_PORTAL_X] = 'P';
+
   const waterTiles = [];
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (g[y][x] === '~') waterTiles.push({ x, y });
 
@@ -24634,6 +24644,7 @@ function update(dt) {
         else if (activePortal.x === m.w - 1) pushX = -1;
         else if (activePortal.y === 0) pushY = 1;
         else if (activePortal.y === m.h - 1) pushY = -1;
+        else pushY = 1; // not on a map edge (e.g. the skatepark pier portal): step one tile south, back down the dock
         player.x = (activePortal.x + pushX + 0.5) * TILE;
         player.y = (activePortal.y + pushY + 0.5) * TILE;
         activePortal = null;
@@ -26764,7 +26775,21 @@ function drawTiles(map, time, camX = 0, camY = 0) {
           break;
         }
         case '#': drawTree(px, py, map); break;
-        case 'P': drawPortalDoor(px, py, tx, ty, time); break;
+        case 'P':
+          if (map.skatepark) {
+            // portal on the lake pier: lay the dock planks under the door
+            // (the outdoor ground fill above would otherwise show grass)
+            ctx.fillStyle = '#5a4326';
+            ctx.fillRect(px, py, TILE, TILE);
+            ctx.fillStyle = '#8a6a42';
+            ctx.fillRect(px, py + 2, TILE, TILE - 4);
+            for (let i = 3; i < TILE; i += 7) ctx.fillRect(px + i, py + 2, 2, TILE - 4);
+            ctx.fillStyle = 'rgba(0,0,0,0.2)';
+            ctx.fillRect(px, py, TILE, 2);
+            ctx.fillRect(px, py + TILE - 2, TILE, 2);
+          }
+          drawPortalDoor(px, py, tx, ty, time);
+          break;
         case 'L': drawLabDoor(px, py, tx, ty, time); break;
         case 'Q': drawSwampPortalDoor(px, py, tx, ty, time); break;
         case 'I': drawSantosStuPortalDoor(px, py, tx, ty, time, h); break;
