@@ -1,0 +1,837 @@
+<!doctype html>
+<!--
+  Guitar Tuner — standalone edition
+  Original app: Copyright 2015 Google Inc. (Paul Lewis), Apache License 2.0.
+  This version removes Polymer / Babel / Gulp / App Engine and runs as a plain
+  static page with no dependencies. See LICENSE.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#263238">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Guitar Tuner">
+  <title>Guitar Tuner</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="favicon.ico">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+
+  <style>
+    @font-face { font-family: 'Roboto'; font-style: normal; font-weight: 100;
+      src: local('Roboto Thin'), local('Roboto-Thin'),
+           url(fonts/Roboto-100.woff2) format('woff2'), url(fonts/Roboto-100.woff) format('woff'); }
+    @font-face { font-family: 'Roboto'; font-style: normal; font-weight: 300;
+      src: local('Roboto Light'), local('Roboto-Light'),
+           url(fonts/Roboto-300.woff2) format('woff2'), url(fonts/Roboto-300.woff) format('woff'); }
+    @font-face { font-family: 'Roboto'; font-style: normal; font-weight: 400;
+      src: local('Roboto'), local('Roboto-Regular'),
+           url(fonts/Roboto-400.woff2) format('woff2'), url(fonts/Roboto-400.woff) format('woff'); }
+
+    :root {
+      --bg: #37474F;
+      --bg-dark: #263238;
+      --orange: #FF9800;
+      --orange-text: #F39731;
+      --green: #7ED321;
+      --muted: #90A4AE;
+      --pad-top: env(safe-area-inset-top, 0px);
+      --pad-right: env(safe-area-inset-right, 0px);
+      --pad-bottom: env(safe-area-inset-bottom, 0px);
+      --pad-left: env(safe-area-inset-left, 0px);
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    html, body {
+      margin: 0; padding: 0;
+      width: 100%; height: 100%;
+      overflow: hidden;
+      background: var(--bg-dark);
+      color: #fff;
+      font-family: 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+      font-weight: 400;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      -webkit-user-select: none; user-select: none;
+      -webkit-touch-callout: none;
+      overscroll-behavior: none;
+      touch-action: manipulation;
+    }
+
+    /* ---- Layout: portrait = stacked, landscape = side by side ---------- */
+    .main {
+      position: fixed; inset: 0;
+      height: 100vh; height: 100dvh;
+      background: var(--bg);
+      padding: var(--pad-top) var(--pad-right) var(--pad-bottom) var(--pad-left);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: clamp(8px, 2.5dvh, 28px);
+    }
+
+    .dial {
+      position: relative;
+      flex: 0 0 auto;
+      width: min(90vw, 58dvh, 520px);
+      aspect-ratio: 1 / 1;
+    }
+    .dial canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+    .readout {
+      flex: 0 0 auto;
+      display: flex; flex-direction: column; align-items: center;
+      width: min(92vw, 420px);
+    }
+
+    .indicator {
+      position: relative;
+      width: 56px; height: 56px;
+      border-radius: 50%;
+      background: #fff;
+      transition: background-color .2s;
+    }
+    .indicator svg {
+      position: absolute; left: 50%; top: 50%;
+      transform: translate(-50%, -50%);
+      opacity: 0;
+      transition: opacity .133s cubic-bezier(0,0,.21,1) 50ms;
+    }
+    .indicator .ic-up   { transform: translate(-50%, -50%) rotate(180deg); }
+    .indicator.tune-up   .ic-up,
+    .indicator.tune-down .ic-down,
+    .indicator.in-tune   .ic-tick { opacity: 1; }
+    .indicator.in-tune { box-shadow: 0 0 0 6px rgba(126, 211, 33, .35); }
+
+    .message {
+      margin-top: 10px;
+      font-size: 14px; line-height: 1;
+      color: #cfd8dc;
+      display: flex; align-items: center; justify-content: center;
+      font-variant-numeric: tabular-nums;
+    }
+    .message .freq { width: 104px; text-align: right; color: var(--orange-text); }
+    .message .divider { width: 24px; text-align: center; opacity: .6; }
+    .message .target { width: 104px; text-align: left; }
+
+    .strings {
+      margin-top: 16px;
+      display: flex; gap: 8px; justify-content: center;
+    }
+    .string-chip {
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 400; line-height: 1;
+      color: var(--muted);
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.12);
+      transition: background-color .15s, color .15s, border-color .15s, transform .15s;
+    }
+    .string-chip small { font-size: 9px; opacity: .7; margin-top: 2px; }
+    .string-chip.active { color: #fff; background: rgba(255,152,0,.9); border-color: var(--orange); transform: scale(1.1); }
+    .string-chip.active.in-tune { background: #558B2F; border-color: var(--green); }
+
+    /* Landscape: dial left, readout right. */
+    @media (orientation: landscape) {
+      .main {
+        flex-direction: row;
+        gap: clamp(16px, 5vw, 72px);
+        padding-left: calc(var(--pad-left) + 16px);
+        padding-right: calc(var(--pad-right) + 16px);
+      }
+      .dial { width: min(88dvh, 46vw, 560px); }
+      .readout { width: min(44vw, 340px); }
+    }
+    /* Very short landscape (phones): tighten the readout. */
+    @media (orientation: landscape) and (max-height: 420px) {
+      .indicator { width: 44px; height: 44px; }
+      .indicator svg { transform: translate(-50%, -50%) scale(.8); }
+      .indicator .ic-up { transform: translate(-50%, -50%) scale(.8) rotate(180deg); }
+      .message { margin-top: 8px; font-size: 13px; }
+      .strings { margin-top: 12px; gap: 6px; }
+      .string-chip { width: 34px; height: 34px; font-size: 14px; }
+    }
+    /* Short portrait (small phones / split-screen). */
+    @media (orientation: portrait) and (max-height: 560px) {
+      .dial { width: min(80vw, 50dvh); }
+      .strings { margin-top: 10px; }
+    }
+
+    /* ---- Start / status overlay --------------------------------------- */
+    .overlay {
+      position: fixed; inset: 0; z-index: 5;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 18px; padding: 24px;
+      padding-top: calc(24px + var(--pad-top)); padding-bottom: calc(24px + var(--pad-bottom));
+      background: rgba(38, 50, 56, .94);
+      text-align: center;
+      transition: opacity .3s, visibility .3s;
+    }
+    .overlay.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+    .overlay h1 { margin: 0; font-weight: 300; font-size: clamp(28px, 7vmin, 44px); letter-spacing: .5px; }
+    .overlay p  { margin: 0; max-width: 34ch; line-height: 1.5; color: #b0bec5; font-size: 15px; }
+    .overlay p.error { color: #ffab91; }
+    .start-btn {
+      appearance: none; border: 0; cursor: pointer;
+      font: inherit; font-size: 18px; font-weight: 400; letter-spacing: .5px; text-transform: uppercase;
+      color: #fff; background: var(--orange);
+      padding: 16px 36px; min-height: 52px; border-radius: 28px;
+      box-shadow: 0 4px 5px rgba(0,0,0,.14), 0 2px 9px 1px rgba(0,0,0,.12), 0 4px 2px -2px rgba(0,0,0,.2);
+      transition: transform .1s, background-color .15s;
+    }
+    .start-btn:active { transform: scale(.97); background: #F57C00; }
+    .start-btn:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+    @media (orientation: landscape) and (max-height: 420px) {
+      .overlay { gap: 10px; }
+      .overlay p { font-size: 13px; }
+      .start-btn { padding: 12px 30px; min-height: 44px; font-size: 16px; }
+    }
+
+    .toast {
+      position: fixed; z-index: 6;
+      left: calc(16px + var(--pad-left)); bottom: calc(16px + var(--pad-bottom));
+      max-width: calc(100vw - 32px);
+      background: #404040; color: #fff;
+      padding: 14px 16px; border-radius: 3px; line-height: 20px; font-size: 14px;
+      box-shadow: 0 0 2px rgba(0,0,0,.12), 0 2px 4px rgba(0,0,0,.24);
+      opacity: 0; transform: translateY(20px); pointer-events: none;
+      transition: opacity .2s, transform .3s cubic-bezier(.165,.84,.44,1);
+    }
+    .toast.visible { opacity: 1; transform: none; }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { transition-duration: 0s !important; }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="main" id="main">
+    <div class="dial" id="dial"><canvas id="pitch" aria-label="Pitch dial"></canvas></div>
+
+    <div class="readout" aria-live="polite">
+      <div class="indicator" id="indicator">
+        <svg class="ic-up" width="17" height="20" viewBox="0 0 17 20" aria-hidden="true"><path d="M7 15.586L1.414 10 0 11.414l6.643 6.644-.003.003 1.414 1.415.004-.003.003.003 1.415-1.414-.003-.002 6.643-6.644L14.7 10 9 15.7V0H7v15.586z" fill="#F39731" fill-rule="evenodd"/></svg>
+        <svg class="ic-down" width="17" height="20" viewBox="0 0 17 20" aria-hidden="true"><path d="M7 15.586L1.414 10 0 11.414l6.643 6.644-.003.003 1.414 1.415.004-.003.003.003 1.415-1.414-.003-.002 6.643-6.644L14.7 10 9 15.7V0H7v15.586z" fill="#F39731" fill-rule="evenodd"/></svg>
+        <svg class="ic-tick" width="26" height="20" viewBox="0 0 26 20" aria-hidden="true"><path d="M8.6 15.457L2.727 9.585l-2 1.985L8.6 19.443l16.9-16.9L23.514.557 8.6 15.457z" fill="#7ED321" fill-rule="evenodd"/></svg>
+      </div>
+      <div class="message">
+        <span class="freq" id="freq">-</span>
+        <span class="divider">/</span>
+        <span class="target" id="target">-</span>
+      </div>
+      <div class="strings" id="strings"></div>
+    </div>
+  </main>
+
+  <div class="overlay" id="overlay" role="dialog" aria-labelledby="ovTitle">
+    <h1 id="ovTitle">Guitar Tuner</h1>
+    <p id="ovText">Standard tuning (E A D G B E). Tap start, allow microphone access, then pluck a string.</p>
+    <button class="start-btn" id="startBtn" type="button">Start tuning</button>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  var TAU = Math.PI * 2;
+
+  /* Standard tuning, low to high. */
+  var STRINGS = [
+    { id: 'e2', label: 'E', octave: 2, hz: 82.4069 },
+    { id: 'a2', label: 'A', octave: 2, hz: 110.000 },
+    { id: 'd3', label: 'D', octave: 3, hz: 146.832 },
+    { id: 'g3', label: 'G', octave: 3, hz: 195.998 },
+    { id: 'b3', label: 'B', octave: 3, hz: 246.942 },
+    { id: 'e4', label: 'E', octave: 4, hz: 329.628 }
+  ];
+
+  var $ = function (id) { return document.getElementById(id); };
+
+  /* ---------------------------------------------------------------------
+   * Notation helpers
+   * ------------------------------------------------------------------- */
+  var NOTE_NAMES = ['A', 'B\u266D', 'B', 'C', 'C#', 'D', 'E\u266D', 'E', 'F', 'F#', 'G', 'G#'];
+  function noteName(i) { return NOTE_NAMES[i]; }
+  function octaveLabel(o) {
+    var s = (o === 1) ? 'st' : (o === 2) ? 'nd' : (o === 3) ? 'rd' : 'th';
+    return o + s + ' Octave';
+  }
+
+  /* ---------------------------------------------------------------------
+   * Toast
+   * ------------------------------------------------------------------- */
+  var toastEl = $('toast'), toastTimer = 0;
+  function toast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add('visible');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toastEl.classList.remove('visible'); }, 3000);
+  }
+
+  /* ---------------------------------------------------------------------
+   * Audio processor: microphone -> autocorrelation -> {frequency, note, octave}
+   * Algorithm is the original one (nearest-string autocorrelation).
+   * ------------------------------------------------------------------- */
+  function AudioProcessor() {
+    this.FFTSIZE = 2048;
+    this.audioContext = null;
+    this.analyser = null;
+    this.gainNode = null;
+    this.stream = null;
+    this.microphone = null;
+    this.running = false;
+    this.listeners = [];
+
+    this.lastRms = 0;
+    this.rmsThreshold = 0.006;
+    this.assessedStringsInLastFrame = false;
+    this.assessStringsUntilTime = 0;
+
+    this.tick = this.tick.bind(this);
+    this.sortByDifference = this.sortByDifference.bind(this);
+  }
+
+  AudioProcessor.prototype.onData = function (fn) { this.listeners.push(fn); };
+
+  AudioProcessor.prototype.init = function () {
+    if (this.audioContext) return;
+    var AC = window.AudioContext || window.webkitAudioContext;
+    this.audioContext = new AC();
+    this.analyser = this.audioContext.createAnalyser();
+    this.gainNode = this.audioContext.createGain();
+    this.gainNode.gain.value = 0;               // never play the mic back
+    this.analyser.fftSize = this.FFTSIZE;
+    this.analyser.smoothingTimeConstant = 0;
+    this.buffer = new Float32Array(this.analyser.fftSize);
+
+    var sr = this.audioContext.sampleRate;
+    this.strings = {};
+    STRINGS.forEach(function (s) {
+      this.strings[s.id] = { offset: Math.round(sr / s.hz), difference: 0 };
+    }, this);
+    this.stringKeys = STRINGS.map(function (s) { return s.id; });
+
+    // Make sure the correlation window never reads past the end of the
+    // buffer, whatever the device sample rate is (44.1k / 48k / 96k...).
+    var maxOffset = Math.max.apply(null, this.stringKeys.map(function (k) {
+      return this.strings[k].offset;
+    }, this)) + 11;
+    this.searchSize = Math.max(256, Math.min(this.buffer.length * 0.5,
+                                             this.buffer.length - maxOffset - 1)) | 0;
+    this.analyser.connect(this.gainNode);
+    this.gainNode.connect(this.audioContext.destination);
+  };
+
+  AudioProcessor.prototype.getStream = function () {
+    var constraints = {
+      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+    };
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      return navigator.mediaDevices.getUserMedia(constraints);
+    }
+    var legacy = navigator.getUserMedia || navigator.webkitGetUserMedia ||
+                 navigator.mozGetUserMedia || navigator.msGetUserMedia;
+    if (!legacy) return Promise.reject(new Error('unsupported'));
+    return new Promise(function (resolve, reject) {
+      legacy.call(navigator, { audio: true }, resolve, reject);
+    });
+  };
+
+  AudioProcessor.prototype.start = function () {
+    var self = this;
+    this.init();
+    var resume = (this.audioContext.state === 'suspended') ? this.audioContext.resume() : Promise.resolve();
+    return resume.then(function () { return self.getStream(); }).then(function (stream) {
+      self.stream = stream;
+      self.microphone = self.audioContext.createMediaStreamSource(stream);
+      self.microphone.connect(self.analyser);
+      self.running = true;
+      requestAnimationFrame(self.tick);
+    });
+  };
+
+  AudioProcessor.prototype.stop = function () {
+    this.running = false;
+    if (this.microphone) { try { this.microphone.disconnect(); } catch (e) {} this.microphone = null; }
+    if (this.stream) {
+      this.stream.getTracks().forEach(function (t) { t.stop(); });
+      this.stream = null;
+    }
+  };
+
+  AudioProcessor.prototype.sortByDifference = function (a, b) {
+    return this.strings[a].difference - this.strings[b].difference;
+  };
+
+  AudioProcessor.prototype.autocorrelate = function (time) {
+    var buf = this.buffer, len = buf.length, searchSize = this.searchSize;
+    var rms = 0, rmsMin = 0.008, tolerance = 0.001;
+    var prevAssessed = this.assessedStringsInLastFrame;
+    var i, o, difference;
+
+    this.analyser.getFloatTimeDomainData(buf);
+
+    for (i = 0; i < len; i++) rms += buf[i] * buf[i];
+    rms = Math.sqrt(rms / len);
+
+    if (rms < rmsMin) return 0;              // not enough signal
+
+    // Only re-assess which string is being played when the volume jumps.
+    if (rms > this.lastRms + this.rmsThreshold) this.assessStringsUntilTime = time + 250;
+
+    if (time < this.assessStringsUntilTime) {
+      this.assessedStringsInLastFrame = true;
+      for (o = 0; o < this.stringKeys.length; o++) {
+        var key = this.stringKeys[o];
+        var offset = this.strings[key].offset;
+        difference = 0;
+        if (prevAssessed === false) this.strings[key].difference = 0;
+        for (i = 0; i < searchSize; i++) difference += Math.abs(buf[i] - buf[i + offset]);
+        difference /= searchSize;
+        // Weight by offset so low strings (big offsets) aren't favoured by harmonics.
+        this.strings[key].difference += difference * offset;
+      }
+    } else {
+      this.assessedStringsInLastFrame = false;
+    }
+
+    if (prevAssessed === true && this.assessedStringsInLastFrame === false) {
+      this.stringKeys.sort(this.sortByDifference);
+    }
+
+    // Refine around the best candidate string to find the real period.
+    var searchRange = 10;
+    var assumed = this.strings[this.stringKeys[0]];
+    var actual = assumed.offset;
+    var smallest = Infinity;
+    for (var s = assumed.offset - searchRange; s < assumed.offset + searchRange; s++) {
+      difference = 0;
+      for (i = 0; i < searchSize; i++) difference += Math.abs(buf[i] - buf[i + s]);
+      difference /= searchSize;
+      if (difference < smallest) { smallest = difference; actual = s; }
+      if (difference < tolerance) { actual = s; break; }
+    }
+
+    this.lastRms = rms;
+    return this.audioContext.sampleRate / actual;
+  };
+
+  AudioProcessor.prototype.tick = function (time) {
+    if (!this.running) return;
+    requestAnimationFrame(this.tick);
+
+    var frequency = this.autocorrelate(time);
+    if (frequency === 0) return;
+
+    var semitonesFromA4 = 12 * Math.log2(frequency / 440);
+    var octave = Math.floor(4 + (9 + semitonesFromA4) / 12);
+    var note = (12 + (Math.round(semitonesFromA4) % 12)) % 12;
+
+    var detail = { frequency: frequency, octave: octave, note: note };
+    for (var i = 0; i < this.listeners.length; i++) this.listeners[i](detail);
+  };
+
+  /* ---------------------------------------------------------------------
+   * Dial visualiser (canvas). Original geometry, scaled to any size.
+   * ------------------------------------------------------------------- */
+  function Visualizer(canvas, container) {
+    this.canvas = canvas;
+    this.container = container;
+    this.ctx = canvas.getContext('2d');
+    this.surround = document.createElement('canvas');
+    this.surroundCtx = this.surround.getContext('2d');
+    this.prerendered = false;
+
+    this.dialAngle = TAU;
+    this.realDialAngle = TAU;
+    this.note = 'C';
+    this.octave = '4th Octave';
+    this.width = 0; this.height = 0; this.dpr = 1;
+
+    this.draw = this.draw.bind(this);
+    this.resize = this.resize.bind(this);
+
+    var c = this.ctx;
+    this.gradDialShadow = c.createLinearGradient(0, 0, 55, 55);
+    this.gradDialShadow.addColorStop(0, 'rgba(0,0,0,0.3)');
+    this.gradDialShadow.addColorStop(1, 'rgba(0,0,0,0)');
+
+    this.gradLeft = c.createLinearGradient(-16, 0, 0, 0);
+    this.gradLeft.addColorStop(0, 'rgba(0,0,0,0)');
+    this.gradLeft.addColorStop(1, 'rgba(0,0,0,0.2)');
+    this.gradRight = c.createLinearGradient(0, 0, 16, 0);
+    this.gradRight.addColorStop(0, 'rgba(0,0,0,0.2)');
+    this.gradRight.addColorStop(1, 'rgba(0,0,0,0)');
+
+    window.addEventListener('resize', this.resize);
+    window.addEventListener('orientationchange', this.resize);
+    if (window.ResizeObserver) new ResizeObserver(this.resize).observe(container);
+
+    this.resize();
+    requestAnimationFrame(this.draw);
+  }
+
+  Visualizer.prototype.resize = function () {
+    var w = this.container.clientWidth, h = this.container.clientHeight;
+    if (!w || !h) return;
+    var dpr = window.devicePixelRatio || 1;
+    if (w === this.width && h === this.height && dpr === this.dpr) return;
+    this.width = w; this.height = h; this.dpr = dpr;
+    this.canvas.width = Math.round(w * dpr);
+    this.canvas.height = Math.round(h * dpr);
+    this.prerendered = false;
+  };
+
+  Visualizer.prototype.setData = function (d) {
+    var angle = (Math.log2(d.frequency / 440) * TAU - Math.PI * 0.5) % TAU;
+    var diff = (angle - this.realDialAngle) % TAU;
+    if (Math.abs(diff) > Math.PI) diff = (diff + TAU) % TAU;   // take the short way round
+    this.realDialAngle += diff;
+    this.note = noteName(d.note);
+    this.octave = octaveLabel(d.octave);
+  };
+
+  Visualizer.prototype.prerender = function (radius, radiusInner, k) {
+    this.prerendered = true;
+    var sc = this.surroundCtx, w = this.width, h = this.height, dpr = this.dpr;
+    var step = TAU / 12;
+
+    this.surround.width = Math.round(w * dpr);
+    this.surround.height = Math.round(h * dpr);
+    sc.setTransform(dpr, 0, 0, dpr, 0, 0);
+    sc.clearRect(0, 0, w, h);
+
+    sc.fillStyle = '#FF9800';
+    sc.beginPath(); sc.arc(w / 2, h / 2, radius, 0, TAU); sc.closePath(); sc.fill();
+
+    sc.save();
+    sc.translate(w / 2 + 0.5, h / 2 + 0.5);
+    sc.rotate(step * -0.5);
+    sc.strokeStyle = 'rgba(0,0,0,0.1)';
+    sc.fillStyle = '#FFF';
+    sc.textBaseline = 'middle';
+    sc.textAlign = 'center';
+
+    for (var i = 0; i < 12; i++) {
+      var str = noteName((i + 3) % 12);
+      var sharp = str.length > 1;
+      var ty = -radius + (radius - radiusInner) * 0.5;
+
+      sc.save();
+      sc.beginPath();
+      sc.rotate(i * step);
+      sc.moveTo(0, -radius); sc.lineTo(0, 0);
+      sc.stroke();
+      sc.closePath();
+
+      sc.rotate(step * 0.5);
+      sc.font = 'normal 400 ' + (20 * k).toFixed(1) + 'px Roboto, "Helvetica Neue", Arial, sans-serif';
+      sc.fillText(str[0], 0, ty);
+      if (sharp) {
+        sc.save();
+        sc.translate(12 * k, ty - 6 * k);
+        sc.scale(0.7, 0.7);
+        sc.font = 'normal 400 ' + (20 * k).toFixed(1) + 'px sans-serif';
+        sc.fillText(str[1], 0, 0);
+        sc.restore();
+      }
+      sc.restore();
+    }
+    sc.restore();
+
+    // Punch out the middle so only the ring remains.
+    sc.save();
+    sc.globalCompositeOperation = 'destination-out';
+    sc.beginPath(); sc.arc(w / 2, h / 2, radiusInner, 0, TAU); sc.closePath(); sc.fill();
+    sc.restore();
+  };
+
+  Visualizer.prototype.drawDialShadow = function (radius, k) {
+    var c = this.ctx, a = this.dialAngle, r16 = 16 * k;
+    var alpha = Math.min(1, 1 - Math.pow((1 + Math.cos(a + Math.PI * 1.25)) * 0.5, 3));
+
+    c.save();
+    c.translate(this.width / 2, this.height / 2);
+
+    var pts = [
+      { x: Math.sin(a) * -r16,                       y: Math.cos(a) * r16 },
+      { x: Math.cos(a) * -r16,                       y: Math.sin(a) * -r16 },
+      { x: Math.cos(a - Math.PI * 0.25) * -r16,      y: Math.sin(a - Math.PI * 0.25) * -r16 },
+      { x: Math.cos(a) * r16,                        y: Math.sin(a) * r16 },
+      { x: Math.cos(a + Math.PI * 0.25) * r16,       y: Math.sin(a + Math.PI * 0.25) * r16 },
+      { x: Math.sin(a) * (radius - 3 * k),           y: Math.cos(a) * -(radius - 3 * k) }
+    ];
+    var last = pts.length - 1, ps = Math.sin(Math.PI * 0.25), pc = Math.cos(Math.PI * 0.25);
+    pts.sort(function (p, q) { return (p.x * pc - p.y * ps) - (q.x * pc - q.y * ps); });
+
+    c.beginPath();
+    c.moveTo(pts[0].x, pts[0].y);
+    c.lineTo(pts[last].x, pts[last].y);
+    c.lineTo(pts[last].x + this.height, pts[last].y + this.height);
+    c.lineTo(pts[0].x + this.height, pts[0].y + this.height);
+    c.closePath();
+    c.clip();
+
+    var x = Math.sin(a) * radius * 0.5, y = Math.cos(a) * radius * 0.5;
+    c.globalAlpha = alpha;
+    c.translate(x, -y);
+    c.scale(k, k);
+    c.fillStyle = this.gradDialShadow;
+    var off = -(radius * 0.5) / k - 16;
+    c.fillRect(off, off, this.width / k, this.height / k);
+    c.restore();
+  };
+
+  Visualizer.prototype.drawDial = function (radius, k) {
+    var c = this.ctx;
+    var shadowAlpha = (Math.cos(this.dialAngle - Math.PI * 0.25) + 1) * 0.5;
+
+    c.save();
+    c.translate(this.width / 2, this.height / 2);
+    c.rotate(this.dialAngle);
+    c.scale(k, k);
+    var R = radius / k;
+
+    c.beginPath();
+    c.arc(0.5, 0, 16, Math.PI * 0.5, -Math.PI);
+    c.arc(0.5, -R + 6, 3, -Math.PI, -Math.PI * 0.5);
+    c.closePath();
+    c.globalAlpha = 1; c.fillStyle = '#FFF'; c.fill();
+    c.globalAlpha = 1 - shadowAlpha; c.fillStyle = this.gradLeft; c.fill();
+
+    c.beginPath();
+    c.arc(-0.5, -R + 6, 3, -Math.PI * 0.5, 0);
+    c.arc(-0.5, 0, 16, 0, Math.PI * 0.5);
+    c.closePath();
+    c.globalAlpha = 1; c.fillStyle = '#FFF'; c.fill();
+    c.globalAlpha = shadowAlpha; c.fillStyle = this.gradRight; c.fill();
+
+    c.restore();
+  };
+
+  Visualizer.prototype.drawInner = function (radius, k) {
+    var c = this.ctx;
+    var r = Math.round(radius * 0.47);
+    var sharp = this.note.length > 1;
+    var FONT = '"Roboto", "Helvetica Neue", Arial, sans-serif';
+
+    c.save();
+    c.translate(this.width / 2, this.height / 2);
+
+    c.save();
+    c.rotate(-Math.PI * 0.25);
+    var g = c.createLinearGradient(0, 0, 0, r * 2);
+    g.addColorStop(0, 'rgba(0,0,0,0.3)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+    c.fillStyle = g;
+    c.fillRect(-r, 0, r * 2, r * 2);
+    c.restore();
+
+    c.beginPath(); c.arc(0, 0, r, 0, TAU); c.closePath();
+    c.fillStyle = '#B0BEC5'; c.fill();
+
+    c.fillStyle = '#FFF';
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
+    c.font = 'normal 100 ' + (80 * k).toFixed(1) + 'px ' + FONT;
+    c.fillText(this.note[0], 0, -8 * k);
+
+    if (sharp) {
+      c.save();
+      c.translate(32 * k, -28 * k);
+      c.scale(0.5, 0.5);
+      c.font = 'normal 100 ' + (80 * k).toFixed(1) + 'px sans-serif';
+      c.fillText(this.note[1], 0, 0);
+      c.restore();
+    }
+
+    c.globalAlpha = 0.87;
+    c.textBaseline = 'top';
+    c.font = 'normal 400 ' + (12 * k).toFixed(1) + 'px ' + FONT;
+    c.fillText(this.octave, 0, 32 * k);
+    c.restore();
+  };
+
+  Visualizer.prototype.draw = function () {
+    requestAnimationFrame(this.draw);
+    if (!this.width || !this.height) { this.resize(); return; }
+
+    var min = Math.min(this.width, this.height);
+    var radius = Math.round(min * 0.5) - 2;      // 2px margin so edges aren't clipped
+    var radiusInner = Math.round(radius - min * 0.18);
+    var k = radius / 158;                       // original design was a 316px dial
+
+    if (!this.prerendered) this.prerender(radius, radiusInner, k);
+
+    this.dialAngle += (this.realDialAngle - this.dialAngle) * 0.15;
+
+    var c = this.ctx;
+    c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    c.clearRect(0, 0, this.width, this.height);
+
+    c.drawImage(this.surround, 0, 0, this.width, this.height);
+    this.drawDialShadow(radius, k);
+    this.drawDial(radius, k);
+    this.drawInner(radius, k);
+  };
+
+  /* ---------------------------------------------------------------------
+   * Tuning instructions (up / down / in-tune indicator + frequency readout)
+   * ------------------------------------------------------------------- */
+  function Instructions() {
+    this.indicator = $('indicator');
+    this.freqEl = $('freq');
+    this.targetEl = $('target');
+    this.tolerance = 0.006;                      // ~10 cents
+    this.frequencyToRender = -1;
+    this.chips = [];
+
+    var wrap = $('strings');
+    STRINGS.forEach(function (s) {
+      var chip = document.createElement('div');
+      chip.className = 'string-chip';
+      chip.innerHTML = s.label + '<small>' + s.octave + '</small>';
+      wrap.appendChild(chip);
+      this.chips.push(chip);
+    }, this);
+  }
+
+  Instructions.prototype.update = function (d) {
+    var lin = Math.log2(d.frequency / 440);
+    var best = 0, bestAbs = Infinity, bestSigned = 0;
+
+    for (var i = 0; i < STRINGS.length; i++) {
+      var signed = lin - Math.log2(STRINGS[i].hz / 440);
+      if (Math.abs(signed) < bestAbs) { bestAbs = Math.abs(signed); bestSigned = signed; best = i; }
+    }
+
+    var ind = this.indicator;
+    ind.classList.remove('tune-up', 'tune-down', 'in-tune');
+    if (bestSigned < -this.tolerance)      ind.classList.add('tune-up');
+    else if (bestSigned > this.tolerance)  ind.classList.add('tune-down');
+    else                                   ind.classList.add('in-tune');
+    var inTune = ind.classList.contains('in-tune');
+
+    for (var j = 0; j < this.chips.length; j++) {
+      this.chips[j].classList.toggle('active', j === best);
+      this.chips[j].classList.toggle('in-tune', j === best && inTune);
+    }
+
+    if (this.frequencyToRender === -1) this.frequencyToRender = d.frequency;
+    this.frequencyToRender += (d.frequency - this.frequencyToRender) * 0.15;
+    this.freqEl.textContent = this.frequencyToRender.toFixed(2) + 'Hz';
+    this.targetEl.textContent = STRINGS[best].hz.toFixed(2) + 'Hz';
+  };
+
+  /* ---------------------------------------------------------------------
+   * Wire everything together
+   * ------------------------------------------------------------------- */
+  var overlay = $('overlay'), ovText = $('ovText'), startBtn = $('startBtn');
+  var AC = window.AudioContext || window.webkitAudioContext;
+
+  var processor = new AudioProcessor();
+  var visualizer = new Visualizer($('pitch'), $('dial'));
+  var instructions = new Instructions();
+
+  processor.onData(function (d) { visualizer.setData(d); instructions.update(d); });
+
+  // Redraw the dial once the web font is ready so the labels use Roboto.
+  if (document.fonts && document.fonts.load) {
+    Promise.all([
+      document.fonts.load('100 80px Roboto'),
+      document.fonts.load('400 20px Roboto')
+    ]).then(function () { visualizer.prerendered = false; }, function () {});
+  }
+
+  var wantRunning = false;     // user has started the tuner
+  var wakeLock = null;
+
+  function requestWakeLock() {
+    if (!('wakeLock' in navigator)) return;
+    navigator.wakeLock.request('screen').then(function (l) {
+      wakeLock = l;
+      l.addEventListener('release', function () { wakeLock = null; });
+    }, function () {});
+  }
+
+  function showOverlay(msg, isError, btnLabel) {
+    ovText.textContent = msg;
+    ovText.className = isError ? 'error' : '';
+    startBtn.textContent = btnLabel || 'Start tuning';
+    overlay.classList.remove('hidden');
+    startBtn.focus({ preventScroll: true });
+  }
+
+  function explainError(err) {
+    var name = err && err.name;
+    if (!window.isSecureContext && location.protocol !== 'file:') {
+      return 'Microphone access needs a secure connection. Open this page over https:// or from localhost.';
+    }
+    if (name === 'NotAllowedError' || name === 'SecurityError' || name === 'PermissionDeniedError') {
+      return 'Microphone permission was blocked. Allow it for this page in your browser settings, then tap Try again.';
+    }
+    if (name === 'NotFoundError' || name === 'DevicesNotFoundError' || name === 'OverconstrainedError') {
+      return 'No microphone was found. Connect one and tap Try again.';
+    }
+    if (name === 'NotReadableError' || name === 'AbortError') {
+      return 'The microphone is busy in another app. Close it and tap Try again.';
+    }
+    return 'Unable to access the microphone.';
+  }
+
+  function start() {
+    if (!AC || (!navigator.mediaDevices && !(navigator.getUserMedia || navigator.webkitGetUserMedia ||
+                                              navigator.mozGetUserMedia))) {
+      showOverlay('This browser does not support microphone tuning. Try a recent Chrome, Edge, Firefox or Safari.', true, 'Retry');
+      return;
+    }
+    startBtn.disabled = true;
+    processor.start().then(function () {
+      wantRunning = true;
+      overlay.classList.add('hidden');
+      requestWakeLock();
+    }, function (err) {
+      showOverlay(explainError(err), true, 'Try again');
+      toast('Unable to access the microphone');
+    }).then(function () { startBtn.disabled = false; });
+  }
+
+  startBtn.addEventListener('click', start);
+
+  // Release the mic when the page is hidden; take it back when it returns.
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) {
+      processor.stop();
+    } else if (wantRunning) {
+      processor.start().then(requestWakeLock, function (err) {
+        showOverlay(explainError(err), true, 'Try again');
+      });
+    }
+  });
+
+  /* Optional offline support (only when served over http(s)). */
+  if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+    navigator.serviceWorker.register('sw.js').then(function (reg) {
+      reg.onupdatefound = function () {
+        var w = reg.installing;
+        if (!w) return;
+        w.onstatechange = function () {
+          if (w.state === 'installed') {
+            toast(navigator.serviceWorker.controller ? 'App updated. Restart for the new version.'
+                                                       : 'App ready for offline use.');
+          }
+        };
+      };
+    }, function () {});
+  }
+})();
+</script>
+</body>
+</html>

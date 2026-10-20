@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#111">
+<title>SANTOS' SKANK RIOT</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>SANTOS' SKANK RIOT</h1>
+    <div class="bar">
+      <button id="mode" class="tog">MODE: PUNK</button>
+      <button id="drums" class="tog">DRUMS: OFF</button>
+      <button id="auto" class="tog">AUTO: OFF</button>
+      <button id="loop" class="tog">LOOP: REC</button>
+      <button id="bars" class="tog">BARS: 2</button>
+      <button id="clear" class="tog">CLEAR</button>
+      <label>BPM <input id="bpm" type="range" min="90" max="220" value="170"><b id="bpmv">170</b></label>
+    </div>
+  </header>
+  <main>
+    <canvas id="stage"></canvas>
+    <div id="pads"></div>
+  </main>
+  <div id="start"><div><h2>SANTOS'<br>SKANK RIOT</h2><p>Swipe across the strings.<br>Tap a chord. Turn on the drums.</p><button id="go">PLUG IN</button></div></div>
+</div>
+<script src="guitar.js"></script>
+</body>
+</html>
