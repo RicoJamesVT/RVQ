@@ -11068,21 +11068,28 @@ const LAB_OPTIONS = [
 // standalone instrument app in the same DOM/iframe overlay Rico's Lab uses.
 // `path` stays null until that app has been added -- a null path just lights
 // the button up and shows a "coming soon" toast. When an app is ready, set
-// its `path` (e.g. 'instruments/santos-guitar-dashboard/index.html').
+// its `path` to its bundled, self-contained page under instruments/ (same
+// local-file pattern as LAB_OPTIONS -- works offline). GUITAR DASHBOARD is
+// the first one in: instruments/guitar-dashboard/index.html, then GUITAR
+// PICKER: instruments/guitar-picker/index.html, then GUITAR TUNER:
+// instruments/guitar-tuner/index.html, then SANTOS DRUM KIT:
+// instruments/santos-drum-kit/index.html, then FRET REP:
+// instruments/fret-rep/index.html, then SKANK RIOT:
+// instruments/skank-riot/index.html.
 const santosStuStudioImg = new Image();
 santosStuStudioImg.src = 'assets/santos-stu-splash-wbuttons.png';
 const STU_OPTIONS = [
-  { id: 'guitarDashboard', name: 'GUITAR DASHBOARD', path: null,
+  { id: 'guitarDashboard', name: 'GUITAR DASHBOARD', path: 'instruments/guitar-dashboard/index.html',
     bx0: 0.0443, bx1: 0.2096, by0: 0.7598, by1: 0.9355 },
-  { id: 'guitarPicker',    name: 'GUITAR PICKER',    path: null,
+  { id: 'guitarPicker',    name: 'GUITAR PICKER',    path: 'instruments/guitar-picker/index.html',
     bx0: 0.2188, bx1: 0.3451, by0: 0.7598, by1: 0.9355 },
-  { id: 'guitarTuner',     name: 'GUITAR TUNER',     path: null,
+  { id: 'guitarTuner',     name: 'GUITAR TUNER',     path: 'instruments/guitar-tuner/index.html',
     bx0: 0.3548, bx1: 0.4948, by0: 0.7598, by1: 0.9355 },
-  { id: 'santosDrumKit',   name: 'SANTOS DRUM KIT',  path: null,
+  { id: 'santosDrumKit',   name: 'SANTOS DRUM KIT',  path: 'instruments/santos-drum-kit/index.html',
     bx0: 0.5052, bx1: 0.6510, by0: 0.7598, by1: 0.9355 },
-  { id: 'fretRep',         name: 'FRET REP',         path: null,
+  { id: 'fretRep',         name: 'FRET REP',         path: 'instruments/fret-rep/index.html',
     bx0: 0.6608, bx1: 0.8021, by0: 0.7598, by1: 0.9355 },
-  { id: 'skankRiot',       name: 'SKANK RIOT',       path: null,
+  { id: 'skankRiot',       name: 'SKANK RIOT',       path: 'instruments/skank-riot/index.html',
     bx0: 0.8151, bx1: 0.9583, by0: 0.7598, by1: 0.9355 },
 ];
 
