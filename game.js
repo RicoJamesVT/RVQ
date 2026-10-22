@@ -12580,6 +12580,18 @@ function makeSkatepark() {
   for (let y = TACO_Y; y < TACO_Y + TACO_H; y++)
     for (let x = TACO_X; x < TACO_X + TACO_W; x++) g[y][x] = 'q';
 
+  // --- AL'S FRENCH FRYS -- a red-and-checker food trailer parked on the open
+  // grass directly below the promenade boardwalk (tiles x 20-25, rows 12-13),
+  // between the A_DOG skatepark sign and the newsstand at (30, 13). 'q' tiles
+  // are SOLID and render as plain grass -- the trailer itself is a cosmetic
+  // sprite painted by drawAlsFrysTruck() in the decoration pass. Its serving
+  // windows face down onto the top of the walkway ring (row 14), where the
+  // 'alsfrys' entry in VENDOR_CARTS lets the player buy a bucket of fries.
+  // Every one of these tiles is plain '.' grass (no trees, crates or paths).
+  const AL_X = 20, AL_Y = 12, AL_W = 6, AL_H = 2;
+  for (let y = AL_Y; y < AL_Y + AL_H; y++)
+    for (let x = AL_X; x < AL_X + AL_W; x++) g[y][x] = 'q';
+
   // --- LET'S SKATE BILLBOARD -- a big blinking sign on the open grass just
   // below the plaza ring (7 x 3 tiles: x 23-29, rows 32-34). It launches the
   // J2S PRO SKATER mini-game (see `minigames` below). 'q' tiles are SOLID and
@@ -12718,6 +12730,7 @@ function makeSkatepark() {
     andyAdogSign: { x: SIGN_X, y: SIGN_Y, w: SIGN_W, h: SIGN_H },
     basketballCourt: { x: COURT_X, y: COURT_Y, w: COURT_W, h: COURT_H },
     tacoTruck: { x: TACO_X, y: TACO_Y, w: TACO_W, h: TACO_H },
+    alsFrysTruck: { x: AL_X, y: AL_Y, w: AL_W, h: AL_H },
     adogSkateShopDoor: { x: ADOG_DOOR_X, y: ADOG_DOOR_Y },
     foamBrewersDoor: { x: FOAM_DOOR_X, y: FOAM_DOOR_Y },
     foamBrewers: { x: FOAM_X, y: FOAM_Y, w: FOAM_W, h: FOAM_H, doorX: FOAM_DOOR_X, doorY: FOAM_DOOR_Y },
@@ -15260,6 +15273,12 @@ const VENDOR_CARTS = [
   // truck's left edge, so the buy point is that far in from tile 46, just
   // below the truck's bottom edge (row 23) -- see drawTacoTruck().
   { id: 'tacotruck', map: 'skatepark', label: 'BUY A TACO', x: 46 * TILE + 21, y: 23 * TILE + 26, radius: 46 },
+  // AL'S FRENCH FRYS -- skatepark, on the grass just below the promenade
+  // boardwalk. The trailer fills tiles (20-25, 12-13); its main serving
+  // window is centered ~88px in from the trailer's left edge, so the buy
+  // point is that far in from tile 20, just below the trailer's bottom edge
+  // (row 14, the top of the walkway ring) -- see drawAlsFrysTruck().
+  { id: 'alsfrys', map: 'skatepark', label: 'BUY A BUCKET OF FRIES', x: 20 * TILE + 88, y: 14 * TILE + 26, radius: 46 },
 ];
 
 function facingTile() {
@@ -15444,6 +15463,11 @@ function doBuy() {
     player.tempItem = 'taco';
     player.tempItemTimer = 6;
     toast = { text: 'Taco!', t: 1.2 };
+  } else if (target.data.id === 'alsfrys') {
+    // bucket of fries: held for 6 seconds, then the update loop clears it
+    player.tempItem = 'fries';
+    player.tempItemTimer = 6;
+    toast = { text: "Al's Fries!", t: 1.2 };
   }
 }
 
@@ -27698,6 +27722,7 @@ function drawSkateparkDecorations(time, map, camX, camY) {
   if (map.echoExterior) drawEchoCenterExterior(time, map);
   if (map.basketballCourt) drawBasketballCourt(map.basketballCourt, camX, camY);
   if (map.tacoTruck) drawTacoTruck(time, map, camX, camY);
+  if (map.alsFrysTruck) drawAlsFrysTruck(time, map, camX, camY);
   if (map.andyAdogSign) drawAndyAdogSign(map, camX, camY);
   drawNewsstands();
 }
@@ -27936,6 +27961,202 @@ function drawTacoTruck(time, map, camX, camY) {
   ctx.fillStyle = '#c8342c';
   ctx.font = 'bold 6px monospace';
   ctx.fillText('TACOS', 19, -21, 18);
+
+  ctx.restore();
+  ctx.textAlign = 'left';
+}
+
+// AL'S FRENCH FRYS -- a red food trailer with black-and-white checker trim,
+// parked on the grass right below the skatepark's promenade boardwalk (see
+// `alsFrysTruck` in makeSkatepark()). Modeled on the real Al's trailer: a big
+// header sign (red BURGERS / DOGS panel, a checkered center panel with the
+// slanted red "Al's" logo over a FRENCH FRYS banner, red CHICKEN / FRYS
+// panel), a silver awning over the serving windows, food pictures (hot dogs,
+// burger, fries carton) along the front, a checkered skirt, a wheel, a black
+// glass-door drink cooler on the left and a white utility box on the right.
+// Purely visual -- collision comes from the 'q' grid tiles, and the buy point
+// is the 'alsfrys' entry in VENDOR_CARTS. Local coords: (0,0) is the sprite's
+// top-left, 192px wide; ly 84 lines up with the bottom edge of the trailer's
+// tile footprint (the top of the sign pokes ~20px up over the boardwalk's
+// bottom row, like the taco truck's flag does).
+function drawAlsFrysTruck(time, map, camX, camY) {
+  const c = map.alsFrysTruck;
+  const X = c.x * TILE, Y = (c.y + c.h) * TILE - 84, W = c.w * TILE;
+  if (X > camX + VIEW_W + 40 || X + W < camX - 40 || Y > camY + VIEW_H + 40 || Y + 100 < camY - 60) return;
+  const RED = '#c8202a', DARK = '#15151a', CREAM = '#f4f2ec';
+  const checker = (x, y, w, h, s) => {
+    for (let i = 0; i * s < w; i++)
+      for (let j = 0; j * s < h; j++) {
+        ctx.fillStyle = (i + j) % 2 === 0 ? DARK : CREAM;
+        ctx.fillRect(x + i * s, y + j * s, Math.min(s, w - i * s), Math.min(s, h - j * s));
+      }
+  };
+  const outlined = (txt, x, y, maxW, fill, stroke, lw) => {
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = lw; ctx.strokeStyle = stroke;
+    ctx.strokeText(txt, x, y, maxW);
+    ctx.fillStyle = fill;
+    ctx.fillText(txt, x, y, maxW);
+  };
+  ctx.save();
+  ctx.translate(X, Y);
+  ctx.textAlign = 'center';
+
+  // ground shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.beginPath(); ctx.ellipse(96, 83, 98, 5, 0, 0, Math.PI * 2); ctx.fill();
+
+  // ---- trailer hitch + jack stand poking out at the left
+  ctx.fillStyle = '#4a4e56'; ctx.fillRect(24, 74, 10, 3); ctx.fillRect(25, 77, 2, 6);
+  ctx.fillStyle = '#2a2c32'; ctx.fillRect(23, 82, 5, 2);
+
+  // ---- black glass-door drink cooler (left, outside the trailer)
+  ctx.fillStyle = '#2f6fd0'; ctx.fillRect(1, 31, 24, 3);
+  ctx.fillStyle = '#16161a'; ctx.fillRect(1, 34, 24, 47);
+  ctx.fillStyle = '#c9e6ee'; ctx.fillRect(3, 37, 10, 41); ctx.fillRect(14, 37, 9, 41);
+  const drinkCols = ['#d8483a', '#2f9a86', '#f2c63c', '#2c70d8'];
+  for (let sh = 0; sh < 4; sh++)
+    for (let k = 0; k < 5; k++) {
+      ctx.fillStyle = drinkCols[(sh + k) % 4];
+      ctx.fillRect(4 + k * 4 + (k > 2 ? 1 : 0), 40 + sh * 9, 3, 6);
+    }
+  ctx.fillStyle = 'rgba(255,255,255,0.35)';
+  ctx.fillRect(4, 37, 2, 41); ctx.fillRect(15, 37, 2, 41);
+  ctx.fillStyle = '#9aa0a8'; ctx.fillRect(12, 50, 1, 10); ctx.fillRect(13, 50, 1, 10);
+
+  // ---- trailer body (red, with a subtle quilted diamond pattern)
+  ctx.fillStyle = RED; ctx.fillRect(30, 26, 146, 46);
+  ctx.save();
+  ctx.beginPath(); ctx.rect(30, 26, 146, 46); ctx.clip();
+  ctx.strokeStyle = 'rgba(0,0,0,0.13)'; ctx.lineWidth = 1;
+  for (let x = 22; x < 176; x += 8) {
+    ctx.beginPath(); ctx.moveTo(x, 26); ctx.lineTo(x + 46, 72); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x + 46, 26); ctx.lineTo(x, 72); ctx.stroke();
+  }
+  ctx.restore();
+  checker(30, 26, 146, 4, 4);                 // checker line under the sign
+  ctx.fillStyle = DARK; ctx.fillRect(30, 65, 146, 1);
+  checker(30, 66, 146, 6, 3);                 // checkered skirt
+  ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(30, 72, 146, 2);
+
+  // ---- main serving window (warm light + gentle flicker) with the cook
+  ctx.fillStyle = '#2a2430'; ctx.fillRect(58, 43, 64, 17);
+  const glow = 0.85 + 0.15 * Math.sin(time * 3);
+  ctx.fillStyle = `rgba(255, 207, 122, ${glow})`; ctx.fillRect(60, 45, 60, 13);
+  ctx.fillStyle = '#c9803a'; ctx.fillRect(60, 45, 60, 3);
+  ctx.fillStyle = '#e8b890'; ctx.beginPath(); ctx.arc(80, 52, 4.5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#e03030'; ctx.beginPath(); ctx.arc(80, 50.5, 5, Math.PI, 0, false); ctx.fill();   // red cap
+  ctx.fillStyle = CREAM; ctx.fillRect(74, 56, 12, 2);                                              // apron
+  ctx.fillStyle = '#9aa0a8'; ctx.fillRect(98, 54, 20, 4);                                          // fryer
+  ctx.fillStyle = '#f2c63c'; ctx.fillRect(100, 51, 6, 3); ctx.fillRect(109, 51, 6, 3);             // fry baskets
+  ctx.fillStyle = '#8a8e96'; ctx.fillRect(101, 49, 1, 2); ctx.fillRect(110, 49, 1, 2);
+  // counter ledge
+  ctx.fillStyle = '#c8ccd2'; ctx.fillRect(56, 60, 68, 3);
+  ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(56, 63, 68, 2);
+  // small paper ticket spike + little order cups on the ledge
+  ctx.fillStyle = '#f2c63c'; ctx.fillRect(64, 56, 4, 4);
+  ctx.fillStyle = '#d42a2a'; ctx.fillRect(66, 57, 1, 3);
+
+  // ---- second, smaller window (right)
+  ctx.fillStyle = '#2a2430'; ctx.fillRect(144, 43, 17, 17);
+  ctx.fillStyle = 'rgba(255, 207, 122, 0.55)'; ctx.fillRect(146, 45, 13, 13);
+  ctx.fillStyle = '#c8ccd2'; ctx.fillRect(143, 60, 19, 3);
+
+  // ---- food pictures on cream backing: hot dogs (left), burger, fries carton
+  const photoBack = (x, y, w, h) => {
+    ctx.fillStyle = '#e8dcc0'; ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = '#3a2418'; ctx.fillRect(x, y, w, 1); ctx.fillRect(x, y + h - 1, w, 1);
+    ctx.fillRect(x, y, 1, h); ctx.fillRect(x + w - 1, y, 1, h);
+  };
+  // hot dogs
+  photoBack(33, 43, 22, 20);
+  for (const dy of [47, 55]) {
+    ctx.fillStyle = '#e0a860'; ctx.beginPath(); ctx.ellipse(44, dy + 3, 9.5, 3.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#b8442a'; ctx.beginPath(); ctx.ellipse(44, dy + 2, 9, 2, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#f2c63c'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(37, dy + 2); ctx.lineTo(40, dy + 1); ctx.lineTo(43, dy + 3); ctx.lineTo(46, dy + 1); ctx.lineTo(49, dy + 3); ctx.lineTo(51, dy + 2); ctx.stroke();
+  }
+  // burger
+  photoBack(125, 43, 16, 20);
+  ctx.fillStyle = '#d99a3a'; ctx.beginPath(); ctx.arc(133, 52, 6.5, Math.PI, 0, false); ctx.fill();   // top bun
+  ctx.fillStyle = '#4aa038'; ctx.fillRect(126.5, 52, 13, 2);                                          // lettuce
+  ctx.fillStyle = '#f2c63c'; ctx.fillRect(127, 54, 12, 1.5);                                          // cheese
+  ctx.fillStyle = '#4a2a18'; ctx.fillRect(127, 55.5, 12, 3);                                          // patty
+  ctx.fillStyle = '#d99a3a'; ctx.fillRect(127, 58.5, 12, 3);                                          // bottom bun
+  // fries carton
+  photoBack(163, 43, 12, 20);
+  ctx.fillStyle = '#f2c63c';
+  for (let i = 0; i < 5; i++) ctx.fillRect(165 + i * 1.8, 46 + (i % 2) * 2, 1.5, 9);
+  ctx.fillStyle = '#d42a2a';
+  ctx.beginPath(); ctx.moveTo(164, 53); ctx.lineTo(174, 53); ctx.lineTo(173, 62); ctx.lineTo(165, 62); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = CREAM; ctx.fillRect(167, 54, 2, 8); ctx.fillRect(171, 54, 1.5, 8);
+
+  // ---- silver awning over the windows, with hanging string-light bulbs
+  ctx.fillStyle = '#b8bcc4';
+  ctx.beginPath(); ctx.moveTo(36, 31); ctx.lineTo(172, 31); ctx.lineTo(178, 41); ctx.lineTo(30, 41); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#9aa0a8';
+  for (let x = 40; x < 172; x += 8) ctx.fillRect(x, 31, 1, 10);
+  ctx.fillStyle = '#e6e8ec'; ctx.fillRect(36, 31, 136, 1);
+  ctx.fillStyle = '#6a6e76'; ctx.fillRect(30, 41, 148, 2);
+  ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.fillRect(32, 43, 144, 2);
+  for (let x = 40; x <= 168; x += 14) {
+    const tw = 0.55 + 0.45 * Math.sin(time * 3 + x * 0.6);
+    ctx.fillStyle = `rgba(255, 233, 140, ${tw})`;
+    ctx.beginPath(); ctx.arc(x, 45, 1.6, 0, Math.PI * 2); ctx.fill();
+  }
+  // awning support pole at the front-right corner
+  ctx.fillStyle = '#8a8e96'; ctx.fillRect(173, 41, 2, 41);
+  ctx.fillStyle = '#2a2c32'; ctx.fillRect(171, 81, 6, 2);
+
+  // ---- wheel (with dark wheel well), partly tucked under the skirt
+  ctx.fillStyle = '#1a161e';
+  ctx.beginPath(); ctx.arc(138, 74, 12, Math.PI, 0, false); ctx.fill();
+  ctx.fillStyle = '#1c1a20';
+  ctx.beginPath(); ctx.arc(138, 76, 9, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#9aa0a8';
+  ctx.beginPath(); ctx.arc(138, 76, 3.5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#5a5e66';
+  ctx.beginPath(); ctx.arc(138, 76, 1.4, 0, Math.PI * 2); ctx.fill();
+
+  // ---- white utility box on the right end
+  ctx.fillStyle = '#ecebe6'; ctx.fillRect(178, 44, 13, 37);
+  ctx.fillStyle = '#c8ccd2'; ctx.fillRect(178, 44, 13, 3);
+  ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.fillRect(188, 47, 3, 34);
+  ctx.fillStyle = '#6a6e76';
+  for (let i = 0; i < 3; i++) ctx.fillRect(181, 52 + i * 3, 7, 1);
+  ctx.fillStyle = '#9aa0a8'; ctx.fillRect(180, 66, 4, 2);
+
+  // ---- header sign: red BURGERS/DOGS panel, checker center logo, red CHICKEN/FRYS panel
+  ctx.fillStyle = RED; ctx.fillRect(30, 6, 46, 20);
+  ctx.fillRect(132, 6, 44, 20);
+  ctx.fillStyle = '#6a0e14';
+  ctx.fillRect(30, 6, 46, 1); ctx.fillRect(132, 6, 44, 1);
+  ctx.fillRect(30, 6, 1, 20); ctx.fillRect(175, 6, 1, 20);
+  ctx.font = 'bold 8px "Arial Black", Impact, sans-serif';
+  outlined('BURGERS', 53, 16, 40, '#ffffff', '#5a0a10', 2);
+  outlined('DOGS', 53, 25, 40, '#ffffff', '#5a0a10', 2);
+  outlined('CHICKEN', 154, 16, 40, '#ffffff', '#5a0a10', 2);
+  outlined('FRYS', 154, 25, 40, '#ffffff', '#5a0a10', 2);
+  // center panel: checker frame, raised a little above the side panels
+  checker(72, 0, 64, 27, 4);
+  ctx.fillStyle = RED; ctx.fillRect(76, 4, 56, 19);
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(76, 4, 56, 1);
+  // slanted "Al's" logo: yellow + black offset shadow, white outline, red fill
+  ctx.save();
+  ctx.translate(104, 17);
+  ctx.transform(1, 0, -0.22, 1, 0, 0);
+  ctx.font = 'italic 900 16px Impact, "Arial Black", sans-serif';
+  ctx.fillStyle = '#15151a'; ctx.fillText("Al's", 2.5, 2.5);
+  ctx.fillStyle = '#f2c63c'; ctx.fillText("Al's", 1.2, 1.2);
+  outlined("Al's", 0, 0, 40, RED, '#ffffff', 2.5);
+  ctx.restore();
+  // FRENCH FRYS banner
+  ctx.fillStyle = '#f2c63c'; ctx.fillRect(78, 19, 52, 7);
+  ctx.fillStyle = DARK; ctx.fillRect(78, 19, 52, 1); ctx.fillRect(78, 25, 52, 1);
+  ctx.font = 'bold 6px "Arial Black", Impact, sans-serif';
+  outlined('FRENCH FRYS', 104, 25, 48, RED, '#15151a', 1);
+  // sign shadow onto the trailer top
+  ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(30, 26, 42, 1); ctx.fillRect(136, 26, 40, 1);
 
   ctx.restore();
   ctx.textAlign = 'left';
@@ -37169,6 +37390,8 @@ function drawPlayer(time) {
     drawPlayerSwampJuice(spriteTopY);
   } else if (player.tempItem === 'taco') {
     drawPlayerTaco(spriteTopY);
+  } else if (player.tempItem === 'fries') {
+    drawPlayerFries(spriteTopY);
   } else {
     if (player.holdingCoffee) drawPlayerColdBrew(spriteTopY);
     if (player.holdingTea) drawPlayerIcedTea(spriteTopY);
@@ -37311,6 +37534,45 @@ function drawPlayerTaco(spriteTopY) {
   ctx.stroke();
   ctx.fillStyle = 'rgba(255,255,255,0.35)';
   ctx.fillRect(hx - 5, hy + 5, 1, 3);
+}
+
+// A red-and-white paper bucket piled high with golden french fries, held at
+// Rico's side -- bought from AL'S FRENCH FRYS (see VENDOR_CARTS/doBuy()).
+// Same hand position as the other held items.
+function drawPlayerFries(spriteTopY) {
+  const hx = player.x + (player.dir === 'left' ? -13 : 13), hy = spriteTopY + SPR_H * 0.5;
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx.fillRect(hx - 6, hy + 13, 12, 2);
+  // fries poking out of the top (drawn first so the bucket covers their ends)
+  const fryCols = ['#f2c63c', '#e8b030', '#f7d658'];
+  for (let i = 0; i < 7; i++) {
+    ctx.fillStyle = fryCols[i % 3];
+    ctx.fillRect(Math.round(hx - 5 + i * 1.7), hy - 8 + (i % 3) * 2 - (i === 3 ? 2 : 0), 2, 10);
+  }
+  // bucket
+  ctx.fillStyle = '#d42a2a';
+  ctx.beginPath();
+  ctx.moveTo(hx - 6, hy);
+  ctx.lineTo(hx + 6, hy);
+  ctx.lineTo(hx + 4.5, hy + 13);
+  ctx.lineTo(hx - 4.5, hy + 13);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#f4f2ec';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(hx - 2.5, hy + 1); ctx.lineTo(hx - 2, hy + 12);
+  ctx.moveTo(hx + 2.5, hy + 1); ctx.lineTo(hx + 2, hy + 12);
+  ctx.stroke();
+  // yellow label + rim
+  ctx.fillStyle = '#f2c63c';
+  ctx.fillRect(hx - 3, hy + 4, 6, 4);
+  ctx.fillStyle = '#d42a2a';
+  ctx.fillRect(hx - 1, hy + 5, 2, 2);
+  ctx.fillStyle = '#f4f2ec';
+  ctx.fillRect(hx - 6.5, hy - 1, 13, 2);
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  ctx.fillRect(hx - 5, hy + 8, 1, 3);
 }
 
 // ---------------------------------------------------------------- UI
