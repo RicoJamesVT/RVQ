@@ -779,5 +779,6 @@ window.addEventListener('keydown',()=>startUp(),{once:true});
 window.__sk={get level(){if(!analyser)return 0;analyser.getByteFrequencyData(freqData);let s=0;for(const v of freqData)s+=v;return s/freqData.length},Z,INST,play,hitZone,setMode,get ctx(){return ctx},get state(){return{energy,funk,rs,gMode,loopLen:loop.len,loopN:loop.ev.length,parts:parts.length}},layout};
 })();
 </script>
+<script src="../../lib/gamepad-bridge.js"></script>
 </body>
 </html>

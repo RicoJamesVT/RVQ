@@ -1,6 +1,36 @@
 (() => {
 'use strict';
 
+// ---- gamepad plumbing for every embedded mini-game ------------------------
+// (a) Chrome only exposes the Gamepad API to an iframe whose `allow`
+//     attribute includes "gamepad" (and a file:// / Electron build makes every
+//     iframe cross-origin, so this matters even more there). Every overlay sets
+//     its own allow list, so append "gamepad" to all of them in one place.
+// (b) The inlined srcdoc apps (Reverb Reef, Beat Brewing, Spot the Difference,
+//     Guitar, Wish Jam, ...) have no <script> tag for lib/gamepad-bridge.js, so
+//     inject it when one finishes loading. Page-based apps include it directly.
+(function installGamepadIframePlumbing() {
+  const origSetAttribute = Element.prototype.setAttribute;
+  Element.prototype.setAttribute = function (name, value) {
+    if (this instanceof HTMLIFrameElement && String(name).toLowerCase() === 'allow' && !/\bgamepad\b/.test(String(value))) {
+      value = (value ? String(value) + '; ' : '') + 'gamepad';
+    }
+    return origSetAttribute.call(this, name, value);
+  };
+  document.addEventListener('load', (e) => {
+    const f = e.target;
+    if (!(f instanceof HTMLIFrameElement) || !f.hasAttribute('srcdoc')) return;
+    try {
+      const d = f.contentDocument;
+      if (!d || !d.body || d.getElementById('rvq-gp-bridge')) return;
+      const s = d.createElement('script');
+      s.id = 'rvq-gp-bridge';
+      s.src = 'lib/gamepad-bridge.js';
+      d.body.appendChild(s);
+    } catch (_) { /* cross-origin: nothing to inject */ }
+  }, true);
+})();
+
 // ---------------------------------------------------------------- brand intro video (M85 Games)
 // This is the very first thing the script does -- before the constants
 // below, before canvas/ctx setup, before the startup splash art even
@@ -10621,6 +10651,10 @@ const GAMEPAD_BUTTON_KEY = {
   9: 'h',         // Start -- hot keys / menu (also pages the title & history screens)
   10: 'k',        // Left stick click -- quicksave
   11: 'n',        // Right stick click -- new/continue dig choice
+  7: 't',         // RT -- Turbo Taunt / skate trick
+  20: 'g',        // Right stick up -- Photo Mode
+  21: 'r',        // Right stick down -- Graffiti tag
+  22: 'm',        // Right stick left -- mute
   12: 'arrowup',
   13: 'arrowdown',
   14: 'arrowleft',
@@ -10637,18 +10671,31 @@ function synthKeyEvent(type, key) {
 // single-player game with no local co-op.
 function pollGamepad() {
   if (!navigator.getGamepads) return;
-  const gp = navigator.getGamepads()[0];
+  // First connected pad (not just slot 0 -- a second controller or a
+  // virtual device can occupy slot 0 on some machines).
+  let gp = null;
+  for (const g of navigator.getGamepads()) { if (g && g.connected) { gp = g; break; } }
   if (!gp) return;
 
   // Left stick tilt counts the same as holding the matching d-pad
   // direction, so either one drives movement and menu navigation.
   const ax = gp.axes[0] || 0, ay = gp.axes[1] || 0;
+  const rx = gp.axes[2] || 0, ry = gp.axes[3] || 0;
   const stickPressed = {
     14: ax < -GAMEPAD_DEADZONE, // left
     15: ax > GAMEPAD_DEADZONE,  // right
     12: ay < -GAMEPAD_DEADZONE, // up
     13: ay > GAMEPAD_DEADZONE,  // down
+    20: ry < -0.6,              // right stick up
+    21: ry > 0.6,               // right stick down
+    22: rx < -0.6,              // right stick left
   };
+
+  // While a mini-game iframe is open the page inside owns the controller
+  // (lib/gamepad-bridge.js). Forwarding stick/buttons here as well would
+  // double-fire (e.g. B would also close the overlay), so the overworld only
+  // listens for SELECT/BACK, which always exits back to the world.
+  const inApp = /App$/.test(state);
 
   for (const idxStr in GAMEPAD_BUTTON_KEY) {
     const idx = Number(idxStr);
@@ -10658,8 +10705,10 @@ function pollGamepad() {
     // .value -- fall back to that so LT/RT (indices 6/7) still register.
     const pressed = !!(btn && (btn.pressed || btn.value > 0.5)) || !!stickPressed[idx];
     const wasPressed = !!gpPrevPressed[idx];
-    if (pressed && !wasPressed) synthKeyEvent('keydown', key);
-    else if (!pressed && wasPressed) synthKeyEvent('keyup', key);
+    if (!inApp || idx === 8) {
+      if (pressed && !wasPressed) synthKeyEvent('keydown', key);
+      else if (!pressed && wasPressed) synthKeyEvent('keyup', key);
+    }
     gpPrevPressed[idx] = pressed;
   }
 }

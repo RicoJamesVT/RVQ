@@ -76,4 +76,5 @@ g.imageSmoothingEnabled=false;if(img.complete)g.drawImage(img,-w/2,-h,w,h);g.res
 requestAnimationFrame(loop);
 // Esc while this iframe has focus never reaches the parent game's key handler, so ask it to close us.
 addEventListener('keydown',e=>{if(e.code=='Escape'){try{parent.postMessage({ricoLinusTug:'close'},'*')}catch(_){}}});
-</script></body></html>
+</script><script src="../../lib/gamepad-bridge.js"></script>
+</body></html>

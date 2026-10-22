@@ -1,7 +1,7 @@
 // Bump this string every time you deploy new levels/features/assets.
 // Bumping it is what makes the service worker fetch fresh files and
 // evict the old cache — that's the whole "auto update" mechanism.
-const CACHE_VERSION = 'rvq-v5';
+const CACHE_VERSION = 'rvq-v6';
 
 const APP_SHELL = [
   './',
@@ -17,6 +17,8 @@ const APP_SHELL = [
   // here alongside the app shell guarantees it's already on disk before the
   // player ever needs it, connection or not.
   './lib/three.min.js',
+  // Shared controller layer used by every instrument/mini-game iframe.
+  './lib/gamepad-bridge.js',
   // These instrument pages are self-contained apps loaded into an <iframe>
   // on demand (see openChessApp()/openInstrument()/openBeatBotApp()/
   // openOrganApp()/openMiniGolfApp() in game.js). They'd otherwise only be
