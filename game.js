@@ -736,13 +736,12 @@ const WORLD_DEFS = {
       leadWave: 'triangle', leadNotes: [62, 65, 67, 65, 62, 58, 62, 65],
     },
   },
-  // The skatepark -- LEVEL 3. Map is built (see makeSkatepark()) but the
-  // player can't get there yet, so it stays `locked: true` and out of the
-  // Crate tabs. It has its own 5 records and its own beat (below); drop
-  // `locked` when the level opens up.
+  // The skatepark -- LEVEL 3. Now open: reached through the portal door on
+  // the east end of the Main Map in BURLINGTON (see checkSwampPortal()), so
+  // it's no longer `locked` and shows up as its own tab in the Crate. It has
+  // its own 5 records and its own beat (below).
   skatepark: {
     name: 'Skatepark',
-    locked: true,
     // First record of the level, hidden in A_DOG SKATE SHOP (see the
     // `adogskateshop` shop below / ADOG_CLEAR_* in makeSkatepark()). The
     // second, Nitro Pour, is hidden in FOAM BREWERS (see the `foambrewers`
@@ -10884,6 +10883,13 @@ level1IntroImg.src = 'assets/level1_intro_splash.png';
 const level2IntroImg = new Image();
 level2IntroImg.src = 'assets/level2_intro_splash.png';
 
+// Full-art "LEVEL 3" card shown by drawLevelIntro() the moment the player
+// walks through the SKATEPARK portal on the east end of the Main Map's Main
+// Street -- same same-origin local-asset pattern as level1IntroImg/
+// level2IntroImg above, so it plays identically online or offline.
+const level3IntroImg = new Image();
+level3IntroImg.src = 'assets/level3_intro_splash.png';
+
 // "KANGA'S WAX NINJA" key-art splash shown by drawVinylNinjaSplash() the
 // moment the player steps up to the samurai sword out in the swamp, before
 // Vinyl Ninja's own DOM/iframe overlay opens. Same same-origin local-asset
@@ -11384,12 +11390,14 @@ function makeOverworld() {
 
   // Portal doors on the east, north & south edges of the map. They sit
   // right on Main Street (row 9) / the vertical cross-street (column 19),
-  // so all three read as a natural continuation of a road. The east and
-  // south ones are still placeholders — walking into one pops the "more
-  // lands coming" splash (see checkPortal()/drawPortalPopup()). The north
-  // one is the real, working portal into THE SWAMP (LEVEL 2) — see the 'Q'
-  // tile handling in checkSwampPortal()/drawSwampPortalDoor().
-  g[9][W - 1] = 'P';
+  // so all three read as a natural continuation of a road. The south one
+  // is still a placeholder — walking into it pops the "more lands coming"
+  // splash (see checkPortal()/drawPortalPopup()). The north one is the
+  // real, working portal into THE SWAMP (LEVEL 2) and the east one is the
+  // real, working portal into THE SKATEPARK (LEVEL 3) — both are 'Q' tiles,
+  // told apart by position in checkSwampPortal() and drawn with their own
+  // look (drawSwampPortalDoor() / drawSkateparkPortalDoor()).
+  g[9][W - 1] = 'Q';
   g[0][19] = 'Q';
   g[H - 1][19] = 'P';
   // Rico's Lab door — the west end of Main Street, a stone's throw from
@@ -12394,12 +12402,11 @@ function makeJohnnysPool() {
 // A_DOG SKATE SHOP (the shop def in `shops` below) for the tribute to the
 // man himself.
 //
-// NOT CONNECTED TO ANYTHING YET (same as the swamp was while under
-// construction): no `transitions` entry and no portal on the swamp side
-// leads here, and WORLD_DEFS.skatepark is `locked: true`, so the player
-// can't reach it and it stays out of the Crate. To open it up later, add a
-// 'Q' tile on the swamp, wire it to this map's `returnPortal`/`spawn`, and
-// drop `locked` from WORLD_DEFS.skatepark once it has records.
+// NOW OPEN: the portal door at the east end of the Main Map's Main Street in
+// BURLINGTON (a 'Q' tile, see makeOverworld()/checkSwampPortal()) leads here,
+// dropping the player next to this map's `returnPortal` on the west edge of
+// the promenade, and WORLD_DEFS.skatepark is no longer `locked`, so it shows
+// up as its own tab in the Crate.
 //
 // Legend (new tiles; the rest are the shared ones):
 //   '~' lake water (solid)        'f' waterfront railing (solid)
@@ -12684,7 +12691,8 @@ function makeSkatepark() {
   ];
   for (const [cx, cy, d] of outdoorCrateDefs) { g[cy][cx] = 'c'; crates[key(cx, cy)] = d; }
 
-  // return portal (west end of the promenade) -- not wired to anything yet
+  // return portal (west end of the promenade) -- leads back to the east
+  // end of Main Street in town (see checkSwampPortal())
   const RETURN_PORTAL_X = 0, RETURN_PORTAL_Y = 10;
   g[RETURN_PORTAL_Y][RETURN_PORTAL_X] = 'Q';
 
@@ -14317,7 +14325,7 @@ for (const [id, d] of Object.entries(doors)) {
   transitions[id + ':' + key(6, 9)] = { map: 'town', x: d.doorX + 0.5, y: d.doorY + 1.6 };
 }
 const swamp = makeSwamp();
-const skatepark = makeSkatepark(); // LEVEL 3 -- built but not reachable yet (no transitions/portal lead here)
+const skatepark = makeSkatepark(); // LEVEL 3 -- reached via the east portal on the town's Main Street (see checkSwampPortal())
 // A_DOG SKATE SHOP door wiring -- same pattern as GUT HUT/etc. in
 // makeSwamp() above. This just connects the shop door to its own room; it
 // has nothing to do with reaching LEVEL 3 itself, which still has no
@@ -15193,7 +15201,25 @@ function checkPortal(map) {
 function checkSwampPortal(map) {
   const tx = Math.floor(player.x / TILE), ty = Math.floor(player.y / TILE);
   if (!(map.grid[ty] && map.grid[ty][tx] === 'Q')) return;
-  if (map.id === 'town') {
+  if (map.id === 'town' && tx === map.w - 1) {
+    // East end of Main Street -> THE SKATEPARK (LEVEL 3). Same flow as the
+    // swamp portal below: LEVEL 3 splash, then drop the player just east of
+    // the skatepark's return portal on its west edge.
+    showLevelIntro('skatepark', () => {
+      const rp = maps.skatepark.returnPortal;
+      player.map = 'skatepark';
+      player.x = (rp.x + 1.5) * TILE; // one tile east of the return portal, off the 'Q' tile
+      player.y = (rp.y + 0.5) * TILE;
+      state = 'play';
+      saveGame(); // silent autosave checkpoint, same as every ordinary door transition
+    });
+  } else if (map.id === 'skatepark') {
+    // Return trip: straight back to town, one tile west of the east portal.
+    player.map = 'town';
+    player.x = (maps.town.w - 1.5) * TILE;
+    player.y = 9.5 * TILE;
+    saveGame();
+  } else if (map.id === 'town') {
     showLevelIntro('swamp', () => {
       const rp = maps.swamp.returnPortal;
       player.map = 'swamp';
@@ -26864,7 +26890,10 @@ function drawTiles(map, time, camX = 0, camY = 0) {
           drawPortalDoor(px, py, tx, ty, time);
           break;
         case 'L': drawLabDoor(px, py, tx, ty, time); break;
-        case 'Q': drawSwampPortalDoor(px, py, tx, ty, time); break;
+        case 'Q':
+          if (map.skatepark || (map.id === 'town' && tx === map.w - 1)) drawSkateparkPortalDoor(px, py, tx, ty, time);
+          else drawSwampPortalDoor(px, py, tx, ty, time);
+          break;
         case 'I': drawSantosStuPortalDoor(px, py, tx, ty, time, h); break;
         case '~': {
           const p = map.palette;
@@ -27152,6 +27181,60 @@ function drawSwampPortalDoor(px, py, tx, ty, time) {
   // as an actual, working door into a musical world, same idea as the lab
   // door's music note
   ctx.fillStyle = Math.floor(t * 2.2) % 2 ? '#f4ecd8' : '#a8e078';
+  ctx.font = 'bold 14px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('\u25CF', cx, py - TILE + 22);
+  ctx.restore();
+}
+
+// The real, working portal between town and THE SKATEPARK (LEVEL 3). Same
+// taller-than-a-tile archway as drawSwampPortalDoor(), but dressed in the
+// skatepark's palette -- concrete frame, orange trim and a cyan/orange swirl
+// (matching the graffiti on the level's splash art) -- so it reads as its own
+// door at a glance. Used for the 'Q' tile at the east end of Main Street in
+// town and for the return portal on the skatepark's west edge.
+function drawSkateparkPortalDoor(px, py, tx, ty, time) {
+  const t = time || 0;
+  const cx = px + TILE / 2, cy = py + TILE / 2;
+  const pulse = 0.5 + 0.5 * Math.sin(t * 2.2 + tx * 3 + ty);
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(px - 6, py - TILE - 4, TILE + 12, TILE * 2 + 8);
+  ctx.clip();
+
+  // outer glow -- cyan with a warm edge
+  const grd = ctx.createRadialGradient(cx, cy, 2, cx, cy, TILE * 1.05);
+  grd.addColorStop(0, `rgba(90,226,240,${0.6 + pulse * 0.3})`);
+  grd.addColorStop(0.55, 'rgba(255,140,60,0.42)');
+  grd.addColorStop(1, 'rgba(10,18,24,0)');
+  ctx.fillStyle = grd;
+  ctx.fillRect(px - 6, py - TILE - 4, TILE + 12, TILE * 2 + 8);
+
+  // concrete archway frame with orange trim
+  ctx.fillStyle = '#2a2c34';
+  ctx.fillRect(px + 1, py - TILE + 4, TILE - 2, TILE * 2 - 4);
+  ctx.fillStyle = '#ff8a3c';
+  ctx.fillRect(px + 1, py - TILE + 4, TILE - 2, 3);
+  ctx.fillRect(px + 1, py + TILE - 7, TILE - 2, 3);
+  ctx.fillStyle = '#3c3f4a';
+  ctx.fillRect(px + 4, py - TILE + 9, TILE - 8, TILE * 2 - 16);
+
+  // swirling portal core, cyan/orange
+  ctx.fillStyle = 'rgba(8,20,26,0.9)';
+  ctx.beginPath();
+  ctx.ellipse(cx, py + TILE - 12, 10, 16, 0, 0, Math.PI * 2);
+  ctx.fill();
+  for (let i = 0; i < 3; i++) {
+    const a = t * 1.6 + i * (Math.PI * 2 / 3);
+    ctx.fillStyle = i % 2 === 0 ? '#5ae2f0' : '#ff8a3c';
+    ctx.beginPath();
+    ctx.ellipse(cx + Math.cos(a) * 4, py + TILE - 12 + Math.sin(a) * 9, 3, 6, a, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // vinyl-record glyph, same "real door" marker the swamp portal uses
+  ctx.fillStyle = Math.floor(t * 2.2) % 2 ? '#f4ecd8' : '#5ae2f0';
   ctx.font = 'bold 14px monospace';
   ctx.textAlign = 'center';
   ctx.fillText('\u25CF', cx, py - TILE + 22);
@@ -30861,6 +30944,7 @@ function drawPlantPot(x, y) {
 // ---------------------------------------------------------------- town decorations
 function drawTownDecorations(time) {
   drawSwampPortalArrows(time);
+  drawSkateparkPortalArrows(time);
   drawLabCarpet(time);
   drawGreenDoorArtArea();
   drawWallPainter(time);
@@ -30917,6 +31001,44 @@ function drawSwampPortalArrows(time) {
   // church, which sits a little further south at rows 6-8 on this same
   // column (CHURCH_X/Y/W/H in makeOverworld).
   drawSwampPortalArrow(19 * TILE + TILE / 2, 2 * TILE, time);
+}
+
+// A single pulsing right-pointing arrow, drawn centered on world-space point
+// (px, py). Used by drawSkateparkPortalArrows() below to flag the new
+// SKATEPARK portal -- same bob/pulse as drawSwampPortalArrow(), but pointing
+// east and in the skatepark's cyan/orange colors.
+function drawSkateparkPortalArrow(px, py, time, phase) {
+  const t = time || 0;
+  const bob = Math.sin(t * 3 + (phase || 0)) * 3;
+  const cx = px + bob; // bobs toward the door
+  ctx.save();
+  ctx.globalAlpha = 0.8 + 0.2 * Math.sin(t * 3 + (phase || 0));
+  ctx.fillStyle = '#5ae2f0';
+  ctx.strokeStyle = '#a14a12';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(cx + 12, py);
+  ctx.lineTo(cx - 6, py - 11);
+  ctx.lineTo(cx - 6, py - 5);
+  ctx.lineTo(cx - 16, py - 5);
+  ctx.lineTo(cx - 16, py + 5);
+  ctx.lineTo(cx - 6, py + 5);
+  ctx.lineTo(cx - 6, py + 11);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+}
+
+// Two pulsing arrow markers planted on Main Street (row 9) pointing east
+// toward the new SKATEPARK portal at the right edge of the Main Map -- so a
+// level 3 that just opened up is obvious even to a player who never wanders
+// that far east on their own. Purely cosmetic decoration, same as
+// drawSwampPortalArrows().
+function drawSkateparkPortalArrows(time) {
+  const y = 9 * TILE + TILE / 2;
+  drawSkateparkPortalArrow(34.5 * TILE, y, time, 0);
+  drawSkateparkPortalArrow(36.5 * TILE, y, time, 0.8);
 }
 
 // Little curbside newspaper boxes scattered around town. Purely a sprite;
@@ -39206,10 +39328,10 @@ function drawLevelIntro(time) {
   const num = levelNumberFor(levelIntroWorldId);
 
   // Level 1 gets the full-art Burlington card, Level 2 gets the full-art
-  // Swamp card; every other world (should one ever route through
+  // Swamp card, Level 3 gets the full-art Skate Park card; every other world (should one ever route through
   // showLevelIntro() without a matching image) falls back to the plain
   // carved-text card below.
-  const fullArtImg = num === 1 ? level1IntroImg : num === 2 ? level2IntroImg : null;
+  const fullArtImg = num === 1 ? level1IntroImg : num === 2 ? level2IntroImg : num === 3 ? level3IntroImg : null;
   if (fullArtImg && fullArtImg.complete && fullArtImg.naturalWidth) {
     const iw = fullArtImg.naturalWidth, ih = fullArtImg.naturalHeight;
     const scale = Math.max(VIEW_W / iw, VIEW_H / ih);
