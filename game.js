@@ -30906,18 +30906,17 @@ function drawSwampPortalArrow(px, py, time) {
   ctx.restore();
 }
 
-// Two pulsing arrow markers planted along the vertical cross-street
+// A single pulsing arrow marker planted on the vertical cross-street
 // (column 19), pointing straight up toward the new swamp portal at the top
 // of the Main Map (row 0) -- so a level 2 that just opened up is obvious
 // even to a player who never wanders that far north on their own. Purely
 // cosmetic decoration, same as the rest of drawTownDecorations() -- no
 // interact logic of their own.
 function drawSwampPortalArrows(time) {
-  // Rows 2 and 4 -- just south of the portal (row 0) and well clear of the
+  // Row 2 -- just south of the portal (row 0) and well clear of the
   // church, which sits a little further south at rows 6-8 on this same
   // column (CHURCH_X/Y/W/H in makeOverworld).
   drawSwampPortalArrow(19 * TILE + TILE / 2, 2 * TILE, time);
-  drawSwampPortalArrow(19 * TILE + TILE / 2, 4 * TILE, time);
 }
 
 // Little curbside newspaper boxes scattered around town. Purely a sprite;
