@@ -12333,6 +12333,7 @@ function makeShop(id, opts) {
     tinyThai: opts.tinyThai || false,
     monkeyHouse: opts.monkeyHouse || false,
     bellevue: opts.bellevue || false,
+    miseryLoves: opts.miseryLoves || false,
     plantShop: opts.plantShop || false,
     soulShack: opts.soulShack || false,
     foamBrewers: opts.foamBrewers || false,
@@ -13125,6 +13126,46 @@ function makeWinooski() {
   for (let y = BV_Y + BV_H; y <= BV_Y + BV_H + 4; y++)
     for (let x = BV_X; x < BV_X + BV_W; x++) if (g[y][x] === '#') g[y][x] = '.';
   fillRect(BV_DOOR_X, BV_DOOR_Y + 1, BV_DOOR_X + 1, BV_DOOR_Y + 4, 'p', ['.']);
+  // --- MISERY LOVES CO. -- rustic-chic comfort-food + craft-cocktail spot (Winooski
+  // Market), on the north-east lawn east of BELLEVUE, 5x4 tiles (x 50-54, rows 4-7).
+  // Same solid-walls-plus-one-door construction as the other Winooski buildings, but
+  // the door sits on the LEFT (bottom row, 2nd tile -> x 51) like the real storefront.
+  // A short paved walk (x 51-52, rows 8-9) runs down to the east road, and one picnic
+  // table ('x') sits out front for the patio. The lot is tree-free; the yard is
+  // cleared anyway so nothing boxes in the player on exit.
+  const ML_X = 50, ML_Y = 4, ML_W = 5, ML_H = 4;
+  const ML_DOOR_X = ML_X + 1, ML_DOOR_Y = ML_Y + ML_H - 1;
+  for (let y = ML_Y; y < ML_Y + ML_H; y++)
+    for (let x = ML_X; x < ML_X + ML_W; x++) g[y][x] = 'w';
+  g[ML_DOOR_Y][ML_DOOR_X] = 'D';
+  for (let y = ML_Y + ML_H; y <= ML_Y + ML_H + 2; y++)
+    for (let x = ML_X; x < ML_X + ML_W; x++) if (g[y][x] === '#') g[y][x] = '.';
+  fillRect(ML_DOOR_X, ML_DOOR_Y + 1, ML_DOOR_X + 1, ML_DOOR_Y + 2, 'p', ['.']);
+  if (g[ML_Y + ML_H + 1][ML_X + 4] === '.') g[ML_Y + ML_H + 1][ML_X + 4] = 'x';
+  // --- THE MILL -- the big red-brick Champlain Mill that runs along the river
+  // just past the bridge, on the land side of the waterfront walkway. It is NOT
+  // enterable (no door, no 'D' tile) -- just solid scenery that makes the town
+  // read as Winooski. Built from a corner TOWER (x 24-26, 7 rows tall, right
+  // beside the bridge) plus three 5-wide brick WINGS (x 27-41, 5 rows tall).
+  // The walkway climbs toward the east, so each wing's bottom edge is set to sit
+  // flush on the highest walkway tile under it; any gap between a wing and the
+  // walkway is paved over so the mill meets the path like the real riverside
+  // terrace. Carved AFTER the tree/bench passes so its footprint wins. Drawn by
+  // drawMillWing() (see drawBuildings()).
+  const millBuildings = [];
+  for (const [mx, mw, kind] of [[24, 3, 'tower'], [27, 5, 'wing'], [32, 5, 'wing'], [37, 5, 'wing']]) {
+    let top = Infinity;
+    for (let x = mx; x < mx + mw; x++) { const yt = walkTop(x); if (yt > 0) top = Math.min(top, yt); }
+    const mh = kind === 'tower' ? 7 : 5;
+    const bottom = top - 1, my = bottom - mh + 1;
+    for (let y = my; y <= bottom; y++) for (let x = mx; x < mx + mw; x++) g[y][x] = 'w';
+    for (let x = mx; x < mx + mw; x++) {          // paved apron down to the walkway
+      const yt = walkTop(x);
+      for (let y = bottom + 1; y < yt; y++) if (g[y][x] === '.' || g[y][x] === '#') g[y][x] = 'p';
+    }
+    millBuildings.push({ x: mx, y: my, w: mw, h: mh, name: 'CHAMPLAIN MILL', mill: kind,
+      wall: '#b04e2b', roof: '#2d7468', doorX: -1 });   // red brick + green copper trim (see paintMillWing)
+  }
   const winBuildings = [{
     x: AR_X, y: AR_Y, w: AR_W, h: AR_H, name: 'AUTUMN RECORDS',
     wall: '#a94f2a', roof: '#241a15', doorX: AR_DOOR_X,   // red brick + dark carved-wood trim (see drawAutumnRecordsExterior)
@@ -13137,7 +13178,10 @@ function makeWinooski() {
   }, {
     x: BV_X, y: BV_Y, w: BV_W, h: BV_H, name: 'BELLEVUE',
     wall: '#1f9d93', roof: '#17181c', doorX: BV_DOOR_X,   // teal siding + black parapet (see drawBellevueExterior)
-  }];
+  }, {
+    x: ML_X, y: ML_Y, w: ML_W, h: ML_H, name: 'MISERY LOVES CO.',
+    wall: '#9b4b38', roof: '#14110f', doorX: ML_DOOR_X,   // red brick + black trim (see drawMiseryLovesExterior)
+  }, ...millBuildings];
 
   // --- painted road details (precomputed pixel-space marks; drawn by drawWinooskiDecorations)
   const PX = TILE;
@@ -13199,6 +13243,7 @@ function makeWinooski() {
     tinyThaiDoor: { x: TT_DOOR_X, y: TT_DOOR_Y },
     monkeyHouseDoor: { x: MH_DOOR_X, y: MH_DOOR_Y },
     bellevueDoor: { x: BV_DOOR_X, y: BV_DOOR_Y },
+    miseryLovesDoor: { x: ML_DOOR_X, y: ML_DOOR_Y },
     // Drawing data for drawWinooskiDecorations()/drawWinooskiOverhead() -- everything in world pixels.
     winooski: {
       dashes, crosswalks, lamps, deckSamples, deckWidth: DECK_W * PX,
@@ -14614,6 +14659,37 @@ const shops = {
       ] },
     crates: [],
   }),
+  // MISERY LOVES CO. -- rustic-chic comfort-food + craft-cocktail spot (Winooski Market),
+  // on the Winooski north-east lawn (see makeWinooski()). `miseryLoves: true` gets its own
+  // interior (drawMiseryLovesInterior): exposed red brick, Edison string lights, a chalkboard
+  // menu, a back-bar with bottle shelves + taps, a wood bar with a brass foot rail, bistro
+  // tables and a pantry shelf. Solid props are plain tiles the painter dresses up:
+  // row 1 is walled off (back wall); blockTiles = pantry shelf (1,2)(1,3), back-bar cabinet
+  // (8,2)(9,2), potted topiary (12,8); the bar is the counter row y=3 over x 8..12 with the
+  // bartender at (10,2); extraTables = four bistro tables (3,5)(3,7)(10,6)(10,8). All clear
+  // of the door (6,9) and spawn (6.5,7.5). No crates: it's a restaurant, nothing to dig.
+  // The bartender's name/lines are generic placeholders until a character is set.
+  miseryloves: makeShop('miseryloves', {
+    world: 'winooski',
+    floor: '#6b4a30', plank: '#58391f', wallColor: '#8a3d2e',
+    miseryLoves: true,
+    noCounterTable: false,
+    tableRange: { start: 8, end: 12 },
+    blockTiles: [
+      [1, 1], [2, 1], [3, 1], [4, 1], [5, 1], [6, 1], [7, 1], [8, 1], [9, 1], [10, 1], [11, 1], [12, 1],
+      [1, 2], [1, 3], [8, 2], [9, 2], [12, 8],
+    ],
+    extraTables: [[3, 5], [3, 7], [10, 6], [10, 8]],
+    keeper: { x: 10, y: 2, name: 'BARTENDER', shirt: '#2b3236', skin: '#d9a47a',
+      lines: [
+        'Welcome to Misery Loves Co. Grab a seat anywhere -- the good stools go fast.',
+        'Comfort food, but we mess with it. Mac and cheese with a crust, fried chicken with a kick, tots with way too much on them.',
+        'Craft cocktails are my side of the bar. Tell me what you like and I\'ll build you something. Smoky, sour, boozy, bright.',
+        'Fun fact: the market next door and this place are the same family. Good food runs in the block.',
+        'That chalkboard changes more than the weather does. If a special sells out, it\'s gone.',
+      ] },
+    crates: [],
+  }),
   // CB PRINTS -- the skatepark's fourth building: a small, artsy independent
   // screen printing shop owned and run by BONTA, the master screen printer
   // in the area, who always backs the hip hop scene -- connecting artists
@@ -14904,6 +14980,9 @@ transitions['monkeyhouse:' + key(6, 9)] = { map: 'winooski', x: winooski.monkeyH
 // BELLEVUE door wiring (Winooski, LEVEL 4) -- same pattern as THE MONKEY HOUSE above.
 transitions['winooski:' + key(winooski.bellevueDoor.x, winooski.bellevueDoor.y)] = { map: 'bellevue', x: 6.5, y: 7.5 };
 transitions['bellevue:' + key(6, 9)] = { map: 'winooski', x: winooski.bellevueDoor.x + 0.5, y: winooski.bellevueDoor.y + 1.6 };
+// MISERY LOVES CO. door wiring (Winooski, LEVEL 4) -- same pattern as BELLEVUE above.
+transitions['winooski:' + key(winooski.miseryLovesDoor.x, winooski.miseryLovesDoor.y)] = { map: 'miseryloves', x: 6.5, y: 7.5 };
+transitions['miseryloves:' + key(6, 9)] = { map: 'winooski', x: winooski.miseryLovesDoor.x + 0.5, y: winooski.miseryLovesDoor.y + 1.6 };
 const maps = { town, ...shops, swamp, skatepark, winooski };
 
 // Reshuffles, within EACH location that has one, which of that location's
@@ -27244,6 +27323,7 @@ function render(time) {
   if (map.tinyThai) drawTinyThaiInterior(time);
   if (map.monkeyHouse) drawMonkeyHouseInterior(time);
   if (map.bellevue) drawBellevueInterior(time);
+  if (map.miseryLoves) drawMiseryLovesInterior(time);
   if (map.poolParty) drawJohnnysPoolInterior(time);
   if (map.keeper) drawKeeper(map.keeper);
   drawShopImageNpcs(map);
@@ -32199,9 +32279,520 @@ function drawBellevueInterior(time) {
 
 }
 
+// ---------------------------------------------------------------- MISERY LOVES CO. (Winooski, LEVEL 4)
+// A rustic-chic comfort-food + craft-cocktail spot (Winooski Market, est. 2012), on the
+// north-east lawn next to BELLEVUE (see makeWinooski()). Outside, modeled on photos of the
+// real storefront: weathered red brick under a black cornice, a teal fascia, a black-framed
+// door on the left (46C) with a glass transom, one big black-framed window with the white
+// hand-lettered "Misery Loves Co. / est. 2012 / WINOOSKI MARKET" script, a cream pendant
+// lamp, potted succulents on a bistro stand, a hanging basket of orange mums, a wall A/C
+// unit and a swag of café string lights. Inside: exposed brick, Edison bulbs, a chalkboard
+// menu, a back-bar with bottle shelves and taps, a wood bar with a brass foot rail, bistro
+// tables, a pantry shelf and a potted topiary.
+//
+// Static art is painted once into offscreen canvases; only the string lights, the pendant
+// glow and the interior bulb glow are drawn live.
+
+function mlBulbX(i) { return 9 + 17.75 * (i + 0.5); }                       // 8 bulbs along the swag
+function mlWireY(x) { return 41 + 4 * Math.sin((((x - 9) % 17.75) + 17.75) % 17.75 / 17.75 * Math.PI); }
+
+function paintMiseryLovesExterior(c, w, h, doorLX) {
+  const BLK = '#14110f', BLK2 = '#241d18', CREAM = '#f4ecd6';
+  // ---- weathered red brick
+  c.fillStyle = '#9b4b38'; c.fillRect(0, 0, w, h);
+  for (let row = 0, y = 0; y < h; y += 6, row++) {
+    c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(0, y + 5, w, 1);
+    const off = row % 2 ? 6 : 0;
+    for (let x = -off; x < w; x += 12) {
+      c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(x + 11, y, 1, 5);
+      const hv = mhHash(x >> 2, row + 40);
+      if (hv % 5 === 0) { c.fillStyle = 'rgba(255,255,255,0.07)'; c.fillRect(x + 1, y + 1, 10, 4); }
+      else if (hv % 7 === 0) { c.fillStyle = 'rgba(0,0,0,0.12)'; c.fillRect(x + 1, y + 1, 10, 4); }
+    }
+  }
+  c.fillStyle = 'rgba(0,0,0,0.14)'; c.fillRect(0, 0, 3, h); c.fillRect(w - 3, 0, 3, h);
+
+  // ---- black cornice with recessed panels
+  c.fillStyle = BLK; c.fillRect(0, 0, w, 26);
+  c.fillStyle = '#3a312b'; c.fillRect(0, 0, w, 3);
+  for (let x = 6; x < w - 10; x += 14) {
+    c.fillStyle = BLK2; c.fillRect(x, 7, 10, 12);
+    c.fillStyle = 'rgba(255,255,255,0.05)'; c.fillRect(x, 7, 10, 2);
+  }
+  c.fillStyle = '#000'; c.fillRect(0, 24, w, 2);
+
+  // ---- teal fascia carrying the name
+  c.fillStyle = '#2b5a5c'; c.fillRect(0, 26, w, 14);
+  c.fillStyle = '#4a8a8a'; c.fillRect(0, 26, w, 1);
+  c.fillStyle = '#1d3f41'; c.fillRect(0, 38, w, 2);
+  let fs = 10;
+  c.font = '700 ' + fs + 'px Georgia, serif';
+  while (fs > 6 && c.measureText('MISERY LOVES CO.').width > w - 24) { fs--; c.font = '700 ' + fs + 'px Georgia, serif'; }
+  c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+  c.fillStyle = 'rgba(0,0,0,0.45)'; c.fillText('MISERY LOVES CO.', w / 2 + 1, 37 + 1);
+  c.fillStyle = CREAM; c.fillText('MISERY LOVES CO.', w / 2, 37);
+
+  // ---- swag wire for the string lights (bulbs are live; see drawMiseryLovesLive)
+  c.strokeStyle = BLK; c.lineWidth = 1; c.beginPath();
+  for (let x = 0; x <= w; x += 1) { const y = mlWireY(x) + 0.5; if (x === 0) c.moveTo(x, y); else c.lineTo(x, y); }
+  c.stroke();
+
+  // ---- wall A/C unit (upper left, over the door side)
+  c.fillStyle = '#0c0c0e'; c.fillRect(4, 47, 26, 16);
+  c.fillStyle = '#26282c'; c.fillRect(5, 48, 24, 14);
+  c.fillStyle = '#34373c'; c.fillRect(5, 48, 24, 2);
+  c.fillStyle = '#121316'; for (let y = 52; y < 61; y += 3) c.fillRect(7, y, 20, 1.5);
+  c.fillStyle = '#3a3d42'; c.fillRect(4, 63, 26, 2);
+
+  // ---- hanging basket of orange mums on an iron bracket
+  c.fillStyle = BLK; c.fillRect(3, 62, 2, 26); c.fillRect(3, 62, 17, 2);
+  c.strokeStyle = BLK; c.lineWidth = 1;
+  c.beginPath(); c.moveTo(19, 64); c.lineTo(10, 77); c.moveTo(19, 64); c.lineTo(26, 77); c.stroke();
+  c.fillStyle = '#2f6a2a'; c.beginPath(); c.ellipse(18, 79, 11, 4, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#5a4a3a'; c.beginPath(); c.ellipse(18, 82, 9, 4, 0, 0, Math.PI); c.fill();
+  c.fillStyle = '#3a2e24'; c.fillRect(9, 80, 18, 1);
+  for (const [dx, dy, r, col] of [[10, 75, 4, '#e8601c'], [16, 72, 4.5, '#f08a30'], [22, 74, 4, '#e8601c'], [26, 78, 3.5, '#f08a30'],
+                                  [13, 78, 3.5, '#f08a30'], [20, 77, 3.5, '#e8601c'], [8, 79, 3, '#e8601c']]) {
+    c.fillStyle = col; c.beginPath(); c.arc(dx, dy, r, 0, Math.PI * 2); c.fill();
+    c.fillStyle = 'rgba(255,230,160,0.35)'; c.beginPath(); c.arc(dx - 1, dy - 1, r * 0.4, 0, Math.PI * 2); c.fill();
+  }
+
+  // ---- the big window: black frame, warm interior glow, plant stand, bistro table
+  c.fillStyle = BLK; c.fillRect(68, 45, 86, 70);
+  c.fillStyle = '#2a221c'; c.fillRect(68, 45, 86, 2);
+  const gl = c.createLinearGradient(0, 49, 0, 111);
+  gl.addColorStop(0, '#f2b862'); gl.addColorStop(0.55, '#c9803a'); gl.addColorStop(1, '#7a4220');
+  c.fillStyle = gl; c.fillRect(72, 49, 78, 62);
+  c.fillStyle = 'rgba(60,30,14,0.35)'; c.fillRect(72, 49, 78, 6);
+  // shelves of books and jars on the far wall
+  c.fillStyle = '#4a2c18'; c.fillRect(120, 54, 28, 22);
+  for (let i = 0; i < 9; i++) { c.fillStyle = ['#8a2a2a', '#2a5a7a', '#c4a040', '#3a6a3a'][i % 4]; c.fillRect(121 + i * 3, 56 + (i % 3), 2, 14 - (i % 3)); }
+  // left: a wooden shelf unit with trailing vines
+  c.fillStyle = '#c9a060'; c.fillRect(74, 52, 3, 58); c.fillRect(88, 52, 2, 58);
+  for (let y = 62; y < 108; y += 12) { c.fillStyle = '#b08848'; c.fillRect(74, y, 16, 2); }
+  c.fillStyle = '#3f8a3a'; for (const [vx, vy] of [[80, 58], [84, 64], [78, 76], [85, 88], [80, 98]]) { c.beginPath(); c.arc(vx, vy, 2.6, 0, Math.PI * 2); c.fill(); }
+  // pendant lamp (cream cone) on a cord
+  c.fillStyle = '#2a1a10'; c.fillRect(110, 49, 1, 6);
+  c.fillStyle = '#f3dfb0'; c.beginPath(); c.moveTo(102, 62); c.lineTo(119, 62); c.lineTo(115, 55); c.lineTo(106, 55); c.closePath(); c.fill();
+  c.fillStyle = '#fff4d6'; c.fillRect(102, 61, 17, 2);
+  // brass plant stand with terracotta succulents
+  c.fillStyle = '#b08a3a'; c.fillRect(100, 84, 1, 22); c.fillRect(113, 84, 1, 22); c.fillRect(100, 84, 14, 1);
+  for (const [px, py, ph] of [[96, 80, 7], [106, 74, 8], [116, 80, 7], [104, 90, 6]]) {
+    c.fillStyle = '#c4622e'; c.fillRect(px, py, 9, ph); c.fillStyle = '#9a4a20'; c.fillRect(px, py, 9, 2);
+    c.fillStyle = '#4f9a4a'; c.beginPath(); c.moveTo(px + 1, py); c.lineTo(px + 4.5, py - 8); c.lineTo(px + 8, py); c.closePath(); c.fill();
+    c.fillStyle = '#7cc070'; c.fillRect(px + 4, py - 6, 1, 6);
+  }
+  // dark wood table + stool under it, a crate on the right, a toy cart in the corner
+  c.fillStyle = '#3a2214'; c.fillRect(98, 98, 30, 4); c.fillRect(100, 102, 3, 9); c.fillRect(123, 102, 3, 9);
+  c.fillStyle = '#d6b27a'; c.fillRect(130, 84, 18, 12); c.fillStyle = '#b8935a'; c.fillRect(130, 84, 18, 2);
+  c.fillStyle = '#2f8f5a'; c.fillRect(146, 49, 4, 62);
+  c.fillStyle = '#c4202e'; c.fillRect(134, 100, 12, 2); c.fillStyle = '#8a8d90'; c.fillRect(134, 102, 12, 7);
+  c.fillStyle = '#e0b030'; c.fillRect(137, 104, 6, 3);
+  // hand-lettered white script on the glass
+  c.textAlign = 'center';
+  let sf = 18;
+  c.font = 'italic 700 ' + sf + 'px "Brush Script MT", "Segoe Script", "Snell Roundhand", cursive';
+  while (sf > 9 && c.measureText('Misery Loves Co.').width > 70) { sf--; c.font = 'italic 700 ' + sf + 'px "Brush Script MT", "Segoe Script", "Snell Roundhand", cursive'; }
+  c.fillStyle = 'rgba(40,20,8,0.45)'; c.fillText('Misery Loves Co.', 111 + 1, 70 + 1);
+  c.fillStyle = '#fffaf0'; c.fillText('Misery Loves Co.', 111, 70);
+  c.fillStyle = '#fffaf0';
+  c.font = 'italic 600 5px Georgia, serif'; c.textAlign = 'left'; c.fillText('est. 2012', 76, 79);
+  c.font = '700 4px Arial, sans-serif'; c.textAlign = 'right'; c.fillText('WINOOSKI MARKET', 146, 79);
+  c.textAlign = 'center';
+  // glass reflection streaks
+  c.fillStyle = 'rgba(255,255,255,0.10)';
+  c.beginPath(); c.moveTo(78, 111); c.lineTo(96, 49); c.lineTo(104, 49); c.lineTo(88, 111); c.closePath(); c.fill();
+  c.beginPath(); c.moveTo(118, 111); c.lineTo(130, 49); c.lineTo(134, 49); c.lineTo(124, 111); c.closePath(); c.fill();
+  // black bulkhead + sill under the window
+  c.fillStyle = BLK; c.fillRect(66, 111, 90, h - 111);
+  c.fillStyle = '#3a312b'; c.fillRect(66, 111, 90, 3);
+  c.fillStyle = BLK2; c.fillRect(72, 118, 36, 8); c.fillRect(114, 118, 36, 8);
+  c.fillStyle = 'rgba(255,255,255,0.05)'; c.fillRect(72, 118, 36, 1); c.fillRect(114, 118, 36, 1);
+
+  // ---- the door (left): black frame, glass transom with the street number, glass door
+  const dX = doorLX + 3, dW = 26;
+  c.fillStyle = BLK; c.fillRect(dX - 3, 64, dW + 6, h - 64);
+  const tg = c.createLinearGradient(0, 68, 0, 92);
+  tg.addColorStop(0, '#e8a850'); tg.addColorStop(1, '#8a5a2a');
+  c.fillStyle = tg; c.fillRect(dX, 68, dW, 24);
+  c.fillStyle = '#3a2616'; c.fillRect(dX, 76, dW, 1); c.fillRect(dX, 84, dW, 1);
+  for (let i = 0; i < 5; i++) { c.fillStyle = ['#e8c070', '#c4622e', '#f0d8a0', '#8a4a2a', '#e0a040'][i]; c.fillRect(dX + 2 + i * 5, 79, 3, 4); c.fillRect(dX + 3 + i * 5, 70, 3, 5); }
+  c.fillStyle = '#f4ecd6'; c.font = '700 8px Arial, sans-serif'; c.textAlign = 'center';
+  c.fillText('46C', dX + dW / 2, 90);
+  c.fillStyle = BLK2; c.fillRect(dX, 92, dW, 6);
+  const dg = c.createLinearGradient(0, 98, 0, 120);
+  dg.addColorStop(0, '#6a4a2c'); dg.addColorStop(1, '#2a1a10');
+  c.fillStyle = dg; c.fillRect(dX, 98, dW, 22);
+  c.fillStyle = 'rgba(255,255,255,0.08)'; c.fillRect(dX + 3, 98, 3, 22);
+  c.fillStyle = CREAM; c.font = '700 4px Arial, sans-serif'; c.fillText('10am-7pm', dX + dW / 2 + 2, 110);
+  c.fillStyle = '#c9a04a'; c.fillRect(dX + 2, 106, 2, 8);
+  c.fillStyle = BLK2; c.fillRect(dX, 120, dW, h - 120);
+
+  // ---- foundation + mat
+  c.fillStyle = '#0e0b09'; c.fillRect(0, h - 3, w, 3);
+  c.fillStyle = '#3a2616'; c.fillRect(dX, h - 3, dW, 3);
+}
+
+let _mlExteriorCache = null;
+function drawMiseryLovesExterior(px, py, w, h, dx) {
+  const doorLX = dx - px;
+  if (!_mlExteriorCache || _mlExteriorCache.w !== w || _mlExteriorCache.h !== h || _mlExteriorCache.d !== doorLX) {
+    const cv = document.createElement('canvas');
+    cv.width = w; cv.height = h;
+    paintMiseryLovesExterior(cv.getContext('2d'), w, h, doorLX);
+    _mlExteriorCache = { cv, w, h, d: doorLX };
+  }
+  ctx.drawImage(_mlExteriorCache.cv, px, py);
+}
+
+// Live bits of the storefront: twinkling café bulbs on the swag + the pendant lamp's glow.
+function drawMiseryLovesLive(px, py, w, h) {
+  const t = performance.now() / 1000;
+  for (let i = 0; i < 8; i++) {
+    const bx = px + mlBulbX(i), by = py + mlWireY(mlBulbX(i)) + 2;
+    const a = 0.65 + 0.25 * Math.sin(t * 2.2 + i * 1.3);
+    ctx.fillStyle = 'rgba(255,214,120,' + (0.22 * a).toFixed(3) + ')';
+    ctx.beginPath(); ctx.arc(bx, by + 2, 7, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#1a1612'; ctx.fillRect(bx - 1, by - 1, 2, 2);
+    ctx.fillStyle = 'rgba(255,238,175,' + a.toFixed(3) + ')';
+    ctx.fillRect(bx - 1.5, by + 1, 3, 4);
+  }
+  const g = 0.14 + 0.04 * Math.sin(t * 1.5);
+  ctx.fillStyle = 'rgba(255,226,160,' + g.toFixed(3) + ')';
+  ctx.beginPath(); ctx.ellipse(px + 111, py + 64, 18, 10, 0, 0, Math.PI * 2); ctx.fill();
+}
+
+function mlChair(c, x, y) {
+  c.fillStyle = 'rgba(0,0,0,0.22)'; c.beginPath(); c.ellipse(x, y + 6, 7, 3, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#1e120a'; c.beginPath(); c.arc(x, y, 6.5, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#8a6038'; c.beginPath(); c.arc(x, y, 5, 0, Math.PI * 2); c.fill();
+  c.fillStyle = 'rgba(255,255,255,0.12)'; c.beginPath(); c.arc(x - 1.5, y - 1.5, 2, 0, Math.PI * 2); c.fill();
+}
+function mlBistroTable(c, tx, ty) {
+  const cx = tx * TILE + TILE / 2, cy = ty * TILE + TILE / 2;
+  mlChair(c, cx - 23, cy); mlChair(c, cx + 23, cy);
+  c.fillStyle = 'rgba(0,0,0,0.25)'; c.beginPath(); c.ellipse(cx + 1, cy + 5, 13, 8, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#1e120a'; c.beginPath(); c.arc(cx, cy, 13, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#5a3820'; c.beginPath(); c.arc(cx, cy, 11.5, 0, Math.PI * 2); c.fill();
+  c.fillStyle = 'rgba(255,255,255,0.10)'; c.beginPath(); c.arc(cx - 3, cy - 3, 6, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#e8d8b0'; c.beginPath(); c.arc(cx - 1, cy - 1, 2.6, 0, Math.PI * 2); c.fill();      // candle jar
+  c.fillStyle = '#ffcf60'; c.fillRect(cx - 1.5, cy - 2.5, 1.5, 2);
+  c.fillStyle = '#e0702a'; c.beginPath(); c.arc(cx + 5, cy + 3, 2.2, 0, Math.PI * 2); c.fill();      // cocktail
+  c.fillStyle = '#f4ecd6'; c.fillRect(cx - 8, cy + 3, 4, 3);                                         // napkin
+}
+
+function paintMiseryLovesInterior(c) {
+  const W = 14 * TILE, H = 10 * TILE;
+  const DARK = '#2a1a10', BRASS = '#c8963c', CREAM = '#f4ecd6';
+
+  // ---------------------------------------------------------------- back wall: exposed brick
+  c.fillStyle = '#8a3d2e'; c.fillRect(0, 0, W, 64);
+  for (let row = 0, y = 10; y < 60; y += 6, row++) {
+    c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(0, y + 5, W, 1);
+    const off = row % 2 ? 6 : 0;
+    for (let x = -off; x < W; x += 12) {
+      c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(x + 11, y, 1, 5);
+      const hv = mhHash(x >> 2, row + 90);
+      if (hv % 5 === 0) { c.fillStyle = 'rgba(255,255,255,0.07)'; c.fillRect(x + 1, y + 1, 10, 4); }
+      else if (hv % 7 === 0) { c.fillStyle = 'rgba(0,0,0,0.14)'; c.fillRect(x + 1, y + 1, 10, 4); }
+    }
+  }
+  c.fillStyle = DARK; c.fillRect(0, 0, W, 9);                                // ceiling beam
+  c.fillStyle = '#4a3020'; c.fillRect(0, 9, W, 1);
+  c.fillStyle = DARK; c.fillRect(0, 60, W, 4);                               // baseboard
+  c.fillStyle = BRASS; c.fillRect(0, 60, W, 1);
+  // Edison string lights (bulbs glow live)
+  c.strokeStyle = '#1a110a'; c.lineWidth = 1; c.beginPath();
+  for (let x = 4; x <= W - 4; x += 4) { const y = 12 + 4 * Math.sin((x / W) * Math.PI * 6); if (x === 4) c.moveTo(x, y); else c.lineTo(x, y); }
+  c.stroke();
+  for (let x = 12; x < W - 8; x += 16) {
+    const y = 12 + 4 * Math.sin((x / W) * Math.PI * 6);
+    c.fillStyle = '#ffe6a0'; c.fillRect(x - 1, y + 1, 3, 4);
+  }
+
+  // ---------------------------------------------------------------- chalkboard menu (left)
+  c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(42, 15, 158, 46);
+  c.fillStyle = '#6a4a2a'; c.fillRect(40, 13, 158, 46);
+  c.fillStyle = '#1b1c1e'; c.fillRect(43, 16, 152, 40);
+  c.fillStyle = CREAM; c.font = 'italic 700 9px Georgia, serif'; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+  c.fillText('Misery Loves Co.', 119, 26);
+  c.fillRect(66, 29, 106, 1);
+  c.font = '700 5px monospace'; c.fillStyle = '#e0b040';
+  c.fillText('COMFORT', 80, 35); c.fillText('CRAFT COCKTAILS', 150, 35);
+  c.fillStyle = CREAM; c.font = '700 5px monospace'; c.textAlign = 'left';
+  ['MAC & CHEESE', 'FRIED CHICKEN', 'LOADED TOTS', 'BRISKET MELT'].forEach((t, i) => c.fillText(t, 49, 41 + i * 5));
+  ['OLD FASHIONED', 'MAPLE SOUR', 'SPICY MARG', 'NEGRONI'].forEach((t, i) => c.fillText(t, 120, 41 + i * 5));
+  c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(112, 33, 1, 22);
+
+  // ---------------------------------------------------------------- back-bar bottle shelves (right)
+  c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(254, 14, 168, 46);
+  c.fillStyle = '#3a2616'; c.fillRect(250, 11, 168, 49);
+  c.fillStyle = '#150d08'; c.fillRect(253, 14, 162, 43);
+  for (const sy of [26, 40, 54]) {
+    c.fillStyle = '#7a5230'; c.fillRect(253, sy, 162, 3);
+    c.fillStyle = 'rgba(255,255,255,0.12)'; c.fillRect(253, sy, 162, 1);
+    for (let x = 257; x < 410; x += 8 + ((x * 7 + sy) % 4)) {
+      const hv = mhHash(x, sy);
+      const col = ['#3a7a4a', '#a8601c', '#7a2a2a', '#c8b060', '#2a5a7a', '#8a3a6a'][hv % 6];
+      const bh = 8 + (hv % 5);
+      c.fillStyle = col; c.fillRect(x, sy - bh, 4, bh);
+      c.fillStyle = col; c.fillRect(x + 1, sy - bh - 3, 2, 3);
+      c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(x, sy - bh + 1, 1, bh - 2);
+      c.fillStyle = CREAM; c.fillRect(x, sy - 5, 4, 2);
+    }
+  }
+  // back-bar cabinet + tap tower (tiles (8,2)(9,2))
+  c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(256, 94, 64, 3);
+  c.fillStyle = '#2a1a10'; c.fillRect(256, 72, 64, 24);
+  c.fillStyle = '#5a3a22'; c.fillRect(256, 70, 64, 4);
+  c.fillStyle = '#1a100a'; c.fillRect(259, 77, 28, 16); c.fillRect(290, 77, 27, 16);
+  c.fillStyle = BRASS; c.fillRect(272, 82, 3, 6); c.fillRect(301, 82, 3, 6);
+  c.fillStyle = '#b8bcc0'; c.fillRect(262, 62, 44, 3); c.fillRect(264, 62, 2, 9); c.fillRect(302, 62, 2, 9);
+  for (const [tx, col] of [[270, '#c4202e'], [284, '#e0b030'], [298, '#2a7a4a']]) {
+    c.fillStyle = '#8a8d90'; c.fillRect(tx, 65, 2, 7);
+    c.fillStyle = col; c.fillRect(tx - 1, 58, 4, 7);
+  }
+
+  // hanging pendant lamps (cream cones; glow is live)
+  for (const lx of [224, 286, 392]) {
+    c.fillStyle = '#1a110a'; c.fillRect(lx, 9, 1, 25);
+    c.fillStyle = '#f3dfb0'; c.beginPath(); c.moveTo(lx - 9, 46); c.lineTo(lx + 10, 46); c.lineTo(lx + 5, 34); c.lineTo(lx - 4, 34); c.closePath(); c.fill();
+    c.fillStyle = '#fff4d6'; c.fillRect(lx - 9, 45, 19, 2);
+  }
+
+  // ---------------------------------------------------------------- side walls
+  c.fillStyle = '#3a2418'; c.fillRect(0, 64, TILE, H - 64);
+  for (let y = 66; y < H; y += 12) { c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(0, y + 10, TILE, 2); }
+  c.fillStyle = BRASS; c.fillRect(TILE - 3, 64, 2, H - 64);
+  c.fillStyle = '#5a2a20'; c.fillRect(13 * TILE, 64, TILE, H - 64);
+  for (let y = 66; y < H; y += 12) { c.fillStyle = 'rgba(0,0,0,0.2)'; c.fillRect(13 * TILE, y + 10, TILE, 2); }
+  c.fillStyle = BRASS; c.fillRect(13 * TILE + 1, 64, 2, H - 64);
+
+  // worn entry rug
+  c.fillStyle = '#c8963c'; c.fillRect(160, 232, 128, 56);
+  c.fillStyle = '#4a2430'; c.fillRect(164, 236, 120, 48);
+  c.fillStyle = '#d8b070'; c.beginPath(); c.moveTo(224, 242); c.lineTo(250, 260); c.lineTo(224, 278); c.lineTo(198, 260); c.closePath(); c.fill();
+  c.fillStyle = '#4a2430'; c.beginPath(); c.moveTo(224, 249); c.lineTo(240, 260); c.lineTo(224, 271); c.lineTo(208, 260); c.closePath(); c.fill();
+
+  // ---------------------------------------------------------------- the bar (tiles (8..12,3))
+  c.fillStyle = '#3a2416'; c.fillRect(8 * TILE, 3 * TILE, 5 * TILE, 12);
+  c.fillStyle = '#6a4428'; c.fillRect(8 * TILE, 3 * TILE + 1, 5 * TILE, 2);
+  c.fillStyle = BRASS; c.fillRect(8 * TILE, 3 * TILE, 5 * TILE, 1);
+  c.fillStyle = '#5b3a22'; c.fillRect(8 * TILE, 3 * TILE + 12, 5 * TILE, 20);
+  for (let x = 8 * TILE; x < 13 * TILE; x += 16) { c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(x, 3 * TILE + 12, 1, 20); }
+  c.fillStyle = 'rgba(255,255,255,0.06)'; c.fillRect(8 * TILE, 3 * TILE + 12, 5 * TILE, 2);
+  c.fillStyle = BRASS; c.fillRect(8 * TILE, 3 * TILE + 28, 5 * TILE, 3);
+  c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(8 * TILE, 4 * TILE - 2, 5 * TILE, 2);
+  // things on the bar: copper shaker, coupes, limes, succulent, tip jar
+  c.fillStyle = '#b8662e'; c.fillRect(268, 86, 8, 11); c.fillStyle = '#d8884a'; c.fillRect(268, 86, 3, 11);
+  c.fillStyle = '#8a4a1e'; c.fillRect(269, 83, 6, 3);
+  for (const gx of [290, 302]) {
+    c.fillStyle = 'rgba(220,235,240,0.75)'; c.beginPath(); c.moveTo(gx - 5, 88); c.lineTo(gx + 5, 88); c.lineTo(gx, 94); c.closePath(); c.fill();
+    c.fillRect(gx - 0.5, 94, 1, 3); c.fillRect(gx - 3, 96, 6, 1);
+    c.fillStyle = '#e0702a'; c.fillRect(gx - 3, 88, 6, 2);
+  }
+  c.fillStyle = '#7cc43a'; c.beginPath(); c.arc(318, 93, 2.5, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#4a8a1a'; c.beginPath(); c.arc(318, 93, 1.2, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#c4622e'; c.fillRect(374, 88, 9, 8); c.fillStyle = '#4f9a4a'; c.beginPath(); c.moveTo(375, 88); c.lineTo(378.5, 80); c.lineTo(382, 88); c.closePath(); c.fill();
+  c.fillStyle = 'rgba(220,235,240,0.7)'; c.fillRect(398, 86, 9, 11); c.fillStyle = '#e8c070'; c.fillRect(399, 91, 7, 5);
+  c.fillStyle = '#2a1a10'; c.fillRect(397, 85, 11, 2);
+
+  // ---------------------------------------------------------------- bistro tables (extraTables)
+  for (const [tx, ty] of [[3, 5], [3, 7], [10, 6], [10, 8]]) mlBistroTable(c, tx, ty);
+
+  // ---------------------------------------------------------------- props on blockTiles
+  // pantry shelf (1,2)(1,3) -- market goods + trailing plant
+  c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(33, 126, 30, 3);
+  c.fillStyle = '#8a6038'; c.fillRect(33, 66, 30, 60);
+  c.fillStyle = '#2a1a10'; c.fillRect(35, 68, 26, 56);
+  for (const sy of [82, 100, 118]) {
+    c.fillStyle = '#b08848'; c.fillRect(35, sy, 26, 3);
+    for (let i = 0; i < 5; i++) {
+      c.fillStyle = ['#c4202e', '#e0b040', '#3f8a3a', '#f4ecd6', '#c4622e'][(i + sy) % 5];
+      c.fillRect(37 + i * 5, sy - 9, 4, 9); c.fillStyle = '#2a1a10'; c.fillRect(37 + i * 5, sy - 10, 4, 1.5);
+    }
+  }
+  c.fillStyle = '#3f8a3a'; for (const [vx, vy] of [[38, 72], [44, 74], [52, 71], [57, 75], [41, 79]]) { c.beginPath(); c.arc(vx, vy, 3, 0, Math.PI * 2); c.fill(); }
+  // potted topiary in a black planter (12,8)
+  c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(386, 286, 26, 3);
+  c.fillStyle = '#16120f'; c.fillRect(388, 268, 22, 19); c.fillStyle = '#2a221c'; c.fillRect(386, 266, 26, 4);
+  c.fillStyle = 'rgba(255,255,255,0.08)'; c.fillRect(390, 272, 3, 12);
+  c.fillStyle = '#5a3a20'; c.fillRect(398, 244, 3, 24);
+  for (const [lx, ly, r] of [[399, 236, 9], [399, 252, 8], [399, 222, 7]]) {
+    c.fillStyle = '#2f7a34'; c.beginPath(); c.arc(lx, ly, r, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#4a9a42'; c.beginPath(); c.arc(lx - 2, ly - 2, r * 0.55, 0, Math.PI * 2); c.fill();
+  }
+
+  // ---------------------------------------------------------------- front wall: black-framed windows
+  const fy = 9 * TILE;
+  for (const [x0, x1] of [[TILE, 6 * TILE], [7 * TILE, 13 * TILE]]) {
+    c.fillStyle = '#14110f'; c.fillRect(x0, fy, x1 - x0, TILE);
+    const gg = c.createLinearGradient(0, fy + 4, 0, fy + 28);
+    gg.addColorStop(0, '#2a4a46'); gg.addColorStop(1, '#10201e');
+    c.fillStyle = gg; c.fillRect(x0 + 3, fy + 5, x1 - x0 - 6, 22);
+    for (const gx of [x0 + (x1 - x0) * 0.25, x0 + (x1 - x0) * 0.75]) {
+      const rg = c.createRadialGradient(gx, fy + 20, 1, gx, fy + 20, 14);
+      rg.addColorStop(0, 'rgba(255,200,130,0.5)'); rg.addColorStop(1, 'rgba(255,200,130,0)');
+      c.fillStyle = rg; c.fillRect(gx - 14, fy + 6, 28, 21);
+    }
+    c.fillStyle = '#14110f'; c.fillRect((x0 + x1) / 2 - 1, fy + 4, 3, 24);
+    c.fillStyle = '#3f8a3a';                                              // plants on the sill
+    for (let x = x0 + 8; x < x1 - 8; x += 22) { c.beginPath(); c.arc(x, fy + 24, 3.5, 0, Math.PI * 2); c.fill(); c.fillStyle = '#c4622e'; c.fillRect(x - 3, fy + 25, 6, 3); c.fillStyle = '#3f8a3a'; }
+  }
+  c.fillStyle = '#ff5a4a'; c.font = '700 6px monospace'; c.textAlign = 'center'; c.fillText('OPEN', 4 * TILE, fy + 17);
+  c.fillStyle = '#14110f'; c.fillRect(6 * TILE - 3, fy, 3, TILE); c.fillRect(7 * TILE, fy, 3, TILE);
+}
+
+let _mlInteriorCache = null;
+function drawMiseryLovesInterior(time) {
+  if (!_mlInteriorCache) {
+    const cv = document.createElement('canvas');
+    cv.width = 14 * TILE; cv.height = 10 * TILE;
+    paintMiseryLovesInterior(cv.getContext('2d'));
+    _mlInteriorCache = cv;
+  }
+  ctx.drawImage(_mlInteriorCache, 0, 0);
+
+  // Edison bulbs glow along the beam
+  const W = 14 * TILE;
+  for (let x = 12, i = 0; x < W - 8; x += 16, i++) {
+    const y = 12 + 4 * Math.sin((x / W) * Math.PI * 6);
+    const a = 0.10 + 0.06 * Math.sin(time * 2 + i * 1.4);
+    ctx.fillStyle = 'rgba(255,205,120,' + a.toFixed(3) + ')';
+    ctx.beginPath(); ctx.arc(x + 0.5, y + 3, 7, 0, Math.PI * 2); ctx.fill();
+  }
+  // pendant lamp pools of light
+  for (const lx of [224, 286, 392]) {
+    const a = 0.10 + 0.03 * Math.sin(time * 1.3 + lx);
+    ctx.fillStyle = 'rgba(255,224,160,' + a.toFixed(3) + ')';
+    ctx.beginPath(); ctx.ellipse(lx + 0.5, 52, 22, 12, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  // candle flames flicker on the bistro tables
+  for (const [tx, ty] of [[3, 5], [3, 7], [10, 6], [10, 8]]) {
+    const f = 0.35 + 0.15 * Math.sin(time * 7 + tx * 3 + ty);
+    ctx.fillStyle = 'rgba(255,200,100,' + f.toFixed(3) + ')';
+    ctx.beginPath(); ctx.arc(tx * TILE + 15, ty * TILE + 14, 5, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+
+// ---------------------------------------------------------------- THE MILL (Winooski, LEVEL 4)
+// The long red-brick Champlain Mill along the river: orange-red brick, a green
+// copper cornice, tall pale-green-framed windows in tidy columns (one per tile, so
+// the columns line up from wing to wing), and a concrete river wall at the foot.
+// The corner TOWER by the bridge is taller and carries the name plaque plus a
+// striped-awning entrance (decorative only -- the mill is not enterable).
+const _millCache = new Map();
+function drawMillWing(b, px, py, w, h) {
+  const key = b.mill + ':' + b.x + ',' + b.y + ':' + w + 'x' + h;
+  let cv = _millCache.get(key);
+  if (!cv) {
+    cv = document.createElement('canvas');
+    cv.width = w; cv.height = h;
+    paintMillWing(cv.getContext('2d'), b, w, h);
+    _millCache.set(key, cv);
+  }
+  ctx.drawImage(cv, px, py);
+}
+
+function paintMillWing(c, b, w, h) {
+  const tower = b.mill === 'tower';
+  const BRICK = '#b04e2b', GREEN = '#2d7468', GREEN_L = '#4a9a88', GREEN_D = '#1d4f47';
+  const STONE = '#b4ae9c', STONE_D = '#8a8576', SAGE = '#a9c4b0', SILL = '#d2ccb8';
+  const col0 = b.x;                                    // tile column, so the textures line up across wings
+
+  // ---- brick body: courses + staggered joints + a little per-brick tint
+  c.fillStyle = BRICK; c.fillRect(0, 0, w, h);
+  for (let y = 0, row = 0; y < h; y += 4, row++) {
+    c.fillStyle = 'rgba(40,16,8,0.20)'; c.fillRect(0, y + 3, w, 1);
+    const off = row % 2 ? 4 : 0;
+    for (let x = -off; x < w; x += 8) {
+      c.fillStyle = 'rgba(40,16,8,0.14)'; c.fillRect(x + 7, y, 1, 3);
+      const hv = mhHash((x + off) / 8 + col0 * 4, row + 7000);
+      if (hv % 6 === 0) { c.fillStyle = 'rgba(255,170,110,0.10)'; c.fillRect(x, y, 7, 3); }
+      else if (hv % 7 === 0) { c.fillStyle = 'rgba(40,10,4,0.13)'; c.fillRect(x, y, 7, 3); }
+    }
+  }
+
+  // ---- cornice / roof cap
+  const capH = tower ? 16 : 11;
+  c.fillStyle = GREEN; c.fillRect(0, 0, w, capH);
+  c.fillStyle = GREEN_L; c.fillRect(0, 0, w, 3);
+  c.fillStyle = GREEN_D; c.fillRect(0, capH - 3, w, 3);
+  c.fillStyle = 'rgba(0,0,0,0.28)'; c.fillRect(0, capH, w, 3);                  // shadow under the overhang
+  c.fillStyle = '#8f3d20'; c.fillRect(0, capH + 3, w, 2);                       // brick corbel course
+  if (tower) {                                                                  // stepped cap on the tower
+    c.fillStyle = GREEN_D; c.fillRect(0, 0, w, 1);
+    c.fillStyle = GREEN_L; c.fillRect(6, 3, w - 12, 1);
+  }
+
+  // ---- concrete river wall at the foot
+  const baseH = 14;
+  c.fillStyle = STONE; c.fillRect(0, h - baseH, w, baseH);
+  c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(0, h - baseH, w, 2);
+  c.fillStyle = STONE_D; c.fillRect(0, h - 3, w, 3);
+  for (let x = 0; x < w; x += 32) { c.fillStyle = 'rgba(60,56,46,0.35)'; c.fillRect(x, h - baseH + 2, 1, baseH - 5); }
+  c.fillStyle = 'rgba(60,56,46,0.25)'; c.fillRect(0, h - baseH + 6, w, 1);
+
+  // ---- name plaque on the tower
+  let y0 = capH + 8;
+  if (tower) {
+    const pw = w - 20, ph = 26, pxl = 10, pyt = capH + 8;
+    c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(pxl + 2, pyt + 2, pw, ph);
+    c.fillStyle = '#1d4f47'; c.fillRect(pxl - 2, pyt - 2, pw + 4, ph + 4);
+    c.fillStyle = '#efe6cc'; c.fillRect(pxl, pyt, pw, ph);
+    c.fillStyle = '#2d7468'; c.fillRect(pxl, pyt + ph - 3, pw, 3);
+    c.textAlign = 'center'; c.textBaseline = 'alphabetic'; c.fillStyle = '#1d4f47';
+    c.font = 'bold 10px monospace'; c.fillText('CHAMPLAIN', w / 2, pyt + 11);
+    c.font = 'bold 10px monospace'; c.fillText('MILL', w / 2, pyt + 21);
+    y0 = pyt + ph + 8;
+  }
+
+  // ---- window grid: one tall window per tile column, 5 floors (tower: 5 below the plaque)
+  const y1 = h - baseH - 3, floors = 5, pitch = (y1 - y0) / floors;
+  const winH = Math.floor(pitch - 8), winW = 14;
+  const ground = tower ? [Math.floor(w / TILE / 2)] : [];                        // tower: middle column's ground floor is the entrance
+  for (let col = 0; col < w / TILE; col++) {
+    const wx = col * TILE + (TILE - winW) / 2;
+    for (let f = 0; f < floors; f++) {
+      if (tower && f === floors - 1 && ground.includes(col)) continue;
+      const wy = Math.round(y0 + f * pitch + 3);
+      c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(wx - 1, wy - 1, winW + 3, winH + 3);   // recess shadow
+      c.fillStyle = SAGE; c.fillRect(wx - 1, wy - 1, winW + 2, winH + 2);                // pale-green frame
+      const hv = mhHash(col + col0, f + 91);
+      const lit = hv % 9 === 0;
+      c.fillStyle = lit ? '#e8c978' : '#2b3b42'; c.fillRect(wx + 1, wy + 1, winW - 2, winH - 2);
+      if (!lit) { c.fillStyle = 'rgba(150,190,205,0.30)'; c.fillRect(wx + 1, wy + 1, winW - 2, Math.floor((winH - 2) * 0.42)); }
+      c.fillStyle = SAGE; c.fillRect(wx + 1, wy + Math.floor(winH * 0.45), winW - 2, 1);   // meeting rail
+      c.fillRect(wx + Math.floor(winW / 2), wy + 1, 1, winH - 2);                          // center mullion
+      c.fillStyle = SILL; c.fillRect(wx - 2, wy + winH + 1, winW + 4, 2);                  // stone sill
+    }
+  }
+
+  // ---- tower entrance: glass door under a green-and-cream striped awning (decorative)
+  if (tower) {
+    const dxc = Math.floor(w / 2), doorW = 18, doorH = 26;
+    const dTop = h - baseH - doorH;
+    c.fillStyle = '#1c140f'; c.fillRect(dxc - doorW / 2 - 2, dTop - 2, doorW + 4, doorH + 2);
+    c.fillStyle = '#26363c'; c.fillRect(dxc - doorW / 2, dTop, doorW, doorH);
+    c.fillStyle = 'rgba(150,190,205,0.30)'; c.fillRect(dxc - doorW / 2 + 1, dTop + 1, doorW - 2, 9);
+    c.fillStyle = SAGE; c.fillRect(dxc, dTop, 1, doorH);
+    const aw = 40, ax = dxc - aw / 2, ay = dTop - 12;
+    for (let i = 0; i < 8; i++) { c.fillStyle = i % 2 ? '#f1ead2' : '#1f6b3c'; c.fillRect(ax + i * 5, ay, 5, 9); }
+    c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(ax, ay + 9, aw, 2);
+    c.fillStyle = '#1c140f'; c.fillRect(ax - 1, ay - 1, aw + 2, 1);
+  }
+
+  // ---- edge lines: dark top/bottom, soft seams where wings meet
+  c.fillStyle = '#1c140f'; c.fillRect(0, 0, w, 1); c.fillRect(0, h - 1, w, 1);
+  c.fillStyle = 'rgba(28,20,15,0.6)'; c.fillRect(0, 0, 1, h); c.fillRect(w - 1, 0, 1, h);
+}
+
 function drawBuildings(map) {
   for (const b of map.buildings) {
     const px = b.x * TILE, py = b.y * TILE, w = b.w * TILE, h = b.h * TILE;
+    // THE MILL (Winooski): scenery only -- no door, sign plate or roof/window pass of its own
+    if (b.mill) { drawMillWing(b, px, py, w, h); continue; }
     const isGreenDoorStudio = b.name === 'Green Door Studio';
     const isHeyBud = b.name === 'Hey Bud';
     const isThrift = b.name === 'Pure Pop Records';
@@ -32224,6 +32815,7 @@ function drawBuildings(map) {
     const isTinyThai = b.name === 'TINY THAI';
     const isMonkeyHouse = b.name === 'THE MONKEY HOUSE';
     const isBellevue = b.name === 'BELLEVUE';
+    const isMiseryLoves = b.name === 'MISERY LOVES CO.';
 
     // wall/roof shade colors: each building's wall/roof color never changes,
     // so compute these once per building and cache them on the building
@@ -32293,7 +32885,7 @@ function drawBuildings(map) {
 
     // (ECHO CENTER skips these too: its two big aquarium windows are painted
     // by drawEchoCenterExterior() instead.)
-    if (!isDeli && !isBurlington && !isJohnnysPool && !isVillageScoop && !isEchoCenter && !isAutumnRecords && !isTinyThai && !isMonkeyHouse && !isBellevue) {
+    if (!isDeli && !isBurlington && !isJohnnysPool && !isVillageScoop && !isEchoCenter && !isAutumnRecords && !isTinyThai && !isMonkeyHouse && !isBellevue && !isMiseryLoves) {
       for (let i = 0; i < b.w; i++) {
         if (b.x + i === b.doorX) continue;
         if (i === 0 || i === b.w - 1) continue;
@@ -32395,7 +32987,7 @@ function drawBuildings(map) {
       drawOpenDoorSign(dx, py + h - TILE);
       // "3rd Thursdays" hip-hop night flyer taped in a window near the entrance
       drawThursPoster(dx - TILE - 4, py + h - TILE - 18);
-    } else if (isAutumnRecords || isTinyThai || isMonkeyHouse || isBellevue) {
+    } else if (isAutumnRecords || isTinyThai || isMonkeyHouse || isBellevue || isMiseryLoves) {
       // door is part of the storefront painted by drawAutumnRecordsExterior()/drawTinyThaiExterior()
     } else if (isDeli) {
       // No separate wood door here — the deli's whole front is one glass
@@ -32486,7 +33078,11 @@ function drawBuildings(map) {
     // Draw building name sign (skip for Nectar's - uses neon sign instead).
     // High-contrast dark plate + bright bold lettering, auto-sized to the
     // name so it always fits cleanly and never overlaps or crowds.
-    if (isBellevue) {
+    if (isMiseryLoves) {
+      // whole red-brick storefront (fascia, windows, door, mums) in one cached blit, then the live string lights
+      drawMiseryLovesExterior(px, py, w, h, dx);
+      drawMiseryLovesLive(px, py, w, h);
+    } else if (isBellevue) {
       // whole teal storefront + sign plate in one cached blit, then the live logo
       drawBellevueExterior(px, py, w, h, dx);
     } else if (isTinyThai) {
