@@ -11360,6 +11360,38 @@ bontaImg.src = 'assets/bonta.png';
 const liggyImg = new Image();
 liggyImg.src = 'assets/liggy.png';
 
+// CHRISTIE -- the keeper of MISERY LOVES CO. in WINOOSKI (Level 4): always
+// cooking up freshness for the community. Pixel-art sprite: messy curly
+// brown hair piled up under a green floral bandana, gold hoops, peace-sign
+// necklace, cream VERMONT apron over a green cardigan, a tray of blueberry
+// muffins in one hand and a fresh-baked loaf in the other. Drawn as a shop
+// keeper (see keeperImgs.CHRISTIE below, with `cook: true` on her keeper
+// def for the busy-in-the-kitchen bob + steam), not a roaming npc, so she
+// doesn't need an entry in SHOP_NPC_IMAGES.
+const christieImg = new Image();
+christieImg.src = 'assets/christie.png';
+
+// GREG -- the keeper of AUTUMN RECORDS in WINOOSKI (Level 4): the shop's
+// owner and a great supporter of local artists and musicians. His crates
+// hold the best obscure/oddity records around, and he makes beats on the
+// side under the producer name "Asterisk". Pixel-art sprite: short gray
+// hair, big friendly grin, full gray-and-brown beard, royal-blue hoodie
+// with a striped two-circle logo, dark jeans and navy sneakers. Drawn as a
+// shop keeper (see keeperImgs.GREG below), not a roaming npc, so he doesn't
+// need an entry in SHOP_NPC_IMAGES.
+const gregImg = new Image();
+gregImg.src = 'assets/greg.png';
+
+// JAKE -- the keeper of THE MONKEY HOUSE in WINOOSKI (Level 4): a vegan punk
+// from Winooski who runs the bar. Pixel-art sprite: olive beanie with a pine
+// tree patch, glasses, full brown beard, black gauge earrings, a patched
+// denim vest (anarchy "A", vinyl record, mountain) over a black hoodie and a
+// skull tee, olive cargos and black Vans. Drawn as a shop keeper (see
+// keeperImgs.JAKE below), not a roaming npc, so he doesn't need an entry in
+// SHOP_NPC_IMAGES.
+const jakeImg = new Image();
+jakeImg.src = 'assets/jake.png';
+
 // QUEEN B -- the keeper of VILLAGE SCOOP out in the swamp: the drive-thru ice
 // cream queen, serving up every marvelous flavor with her sidekick Hendrix
 // (the sunglasses-wearing dachshund standing right beside her in the art).
@@ -13231,6 +13263,38 @@ function makeWinooski() {
   // lamp posts along the walkway's land side + around the park (pixel coords of the pole base)
   const lamps = [];
   for (const x of [25, 31, 36, 42, 48, 53, 59]) { const yt = walkTop(x); if (yt > 0) lamps.push([x * PX + PX / 2, yt * PX + 4]); }
+  // NIGHT: Winooski is an evening level, so it gets a proper string of street lights --
+  // down both bridge sidewalks, around the rim of the rotary park, and staggered along
+  // the roadsides. Every one is checked against the finished grid (grass/paving only, clear
+  // of buildings and of other lamps), so none lands on a road, a tree, a bench or a wall.
+  {
+    const inBuilding = (tx, ty) => winBuildings.some((b) => tx >= b.x - 1 && tx <= b.x + b.w && ty >= b.y - 1 && ty <= b.y + b.h);
+    const tooClose = (tx, ty, minD) => lamps.some(([lx, ly]) => Math.hypot(lx / PX - 0.5 - tx, (ly - 4) / PX - ty) < minD);
+    const addLamp = (tx, ty, minD = 3.2) => {
+      if (tx < 1 || ty < 1 || tx >= W - 1 || ty >= H - 1) return;
+      const c = g[ty][tx];
+      if (c !== '.' && c !== 'p') return;
+      if (inBuilding(tx, ty) || tooClose(tx, ty, minD)) return;
+      lamps.push([tx * PX + PX / 2, ty * PX + 4]);
+    };
+    // bridge: outer edge of each sidewalk
+    for (const ty of [29, 34, 39, 44]) { addLamp(13, ty, 2); addLamp(22, ty, 2); }
+    // rotary park: a ring of lamps just inside the curb
+    for (let i = 0; i < 14; i++) {
+      const a = (i / 14) * Math.PI * 2 + 0.2;
+      addLamp(Math.floor(CX + Math.cos(a) * (IN_RX - 1.4)), Math.floor(CY + Math.sin(a) * (IN_RY - 1.4)), 3.4);
+    }
+    // the four roads: alternate sides, every ~6 tiles, on the grass beside the asphalt
+    for (const road of [NORTH_ROAD, EAST_ROAD, WEST_ROAD]) {
+      const c = cum(road), L = c[c.length - 1];
+      let side = 1;
+      for (let s = 2; s < L - 1; s += 6, side = -side) {
+        const a = pointAt(road, c, s), b = pointAt(road, c, Math.min(L, s + 0.4));
+        const dx = b[0] - a[0], dy = b[1] - a[1], dl = Math.hypot(dx, dy) || 1;
+        addLamp(Math.floor(a[0] - (dy / dl) * side * 4.3), Math.floor(a[1] + (dx / dl) * side * 4.3), 4);
+      }
+    }
+  }
   const deckSamples = deckPtsA.concat(deckPtsB).map(([x, y]) => [x * PX, y * PX]);
 
   const waterTiles = [];
@@ -14548,19 +14612,21 @@ const shops = {
   // the keeper (6,2), the door (6,9) and the spawn (6.5,7.5). Four junk
   // crates for now: Winooski's five records are still placeholders (see
   // WORLD_DEFS.winooski), so no real record is hidden in here yet -- swap one
-  // of these for { record: '<id>' } when they get real names. The keeper's
-  // name/lines are generic placeholders until the owner is decided.
+  // of these for { record: '<id>' } when they get real names. The keeper is
+  // GREG, the owner (see keeperImgs.GREG).
   autumnrecords: makeShop('autumnrecords', {
     world: 'winooski',
     floor: '#c9a46d', plank: '#b08a58', wallColor: '#e6cf94',
     autumnRecords: true,
     blockTiles: [[3, 5], [4, 5], [8, 5], [9, 5], [3, 7], [4, 7], [8, 7], [9, 7], [10, 3], [1, 8], [12, 8]],
-    keeper: { name: 'THE CLERK', shirt: '#c4571f', skin: '#d9a47a',
+    keeper: { name: 'GREG', shirt: '#1f5fb4', skin: '#e8a47c',
       lines: [
-        'Welcome to Autumn Records. Leaves are turning, the bins are full -- take your time.',
-        'Used vinyl, new arrivals, and a whole lot of dust. Dig as deep as you like.',
-        'Best season for a record store: cold outside, warm in here, and something good always on the turntable.',
-        'Winooski\'s got a lot of music in it. Some of it ends up on a shelf in here.',
+        'Welcome to Autumn Records! Leaves are turning, the bins are full -- take your time. I\'m Greg, this is my shop.',
+        'If it\'s obscure, odd, or just plain weird, there\'s a good chance it\'s in one of these crates. That\'s the whole idea.',
+        'I\'ve got records in here you won\'t find anywhere else. Always something interesting -- you just gotta dig.',
+        'Winooski\'s got a ton of talent in it, and I\'m all about the local artists and musicians. Got a demo or a tape? Leave one with me.',
+        'When I\'m not behind this counter, I\'m making beats. Producer name: Asterisk. Sample the crates, flip it into something new.',
+        'Best way to support the scene: buy a record, catch a show, tell a friend. Cold outside, warm in here, and something good is always on the turntable.',
       ] },
     crates: [ { junkSeed: 0 }, { junkSeed: 1 }, { junkSeed: 2 }, { junkSeed: 3 } ],
   }),
@@ -14594,7 +14660,7 @@ const shops = {
   // THE MONKEY HOUSE -- bar/restaurant + live-music venue on the Winooski
   // northwest lawn (see makeWinooski()). `monkeyHouse: true` gets its own
   // interior (drawMonkeyHouseInterior): a pool table up front by the door, a
-  // bar across the back-right (bartender at (11,2), counter = default 'T' row
+  // bar across the back-right (JAKE behind it at (11,2), counter = default 'T' row
   // y=3 over x 9..12 via tableRange) and a raised live stage across the back
   // (x 1..7). Solid props are plain tiles the painter dresses up: row 1 is
   // walled off so nobody walks behind the stage; blockTiles = stage row (1..7,2)
@@ -14602,7 +14668,7 @@ const shops = {
   // extraTables = gig tables (9,6)(10,6) and a small round one at (12,6) -- all
   // clear of the door (6,9) and spawn (6.5,7.5). The stage front row (y=3) is
   // walkable, so you can hop up and stand by the mic. No crates: nothing to dig.
-  // The bartender's name/lines are generic placeholders until a character is set.
+  // The bartender is JAKE, a vegan punk from Winooski (see keeperImgs.JAKE).
   monkeyhouse: makeShop('monkeyhouse', {
     world: 'winooski',
     floor: '#4b3321', plank: '#3b281a', wallColor: '#4a2e28',
@@ -14615,12 +14681,14 @@ const shops = {
       [2, 6], [3, 6], [4, 6], [2, 7], [3, 7], [4, 7],
     ],
     extraTables: [[9, 6], [10, 6], [12, 6]],
-    keeper: { x: 11, y: 2, name: 'BARTENDER', shirt: '#1f1f24', skin: '#c68a5e',
+    keeper: { x: 11, y: 2, name: 'JAKE', shirt: '#1f1f24', skin: '#e8a47c',
       lines: [
-        'Welcome to The Monkey House! Grab a stool -- there\'s a show in the back tonight.',
+        'Welcome to The Monkey House! I\'m Jake. Grab a stool -- there\'s a show in the back tonight.',
+        'Born and raised in Winooski. Punk rock, pool and good food -- that\'s about the whole résumé.',
         'Pool table\'s up front by the door. Winner stays on. Loser buys a round. House rules.',
         'Live music most nights. Local bands, loud amps, no cover if you get here early.',
-        'Burgers, wings, fries, a few good local taps. The food\'s good. The music\'s better.',
+        'Yeah, I\'m vegan. Don\'t sweat it -- the vegan stuff here goes hard. Ask for the loaded fries and tell me you don\'t miss the wings.',
+        'Cheap beer, local taps, good people. Support the scene: buy a drink, catch a set, tell a friend.',
         'The monkey over the door? Don\'t ask. Everybody asks. He was here before I was.',
       ] },
     crates: [],
@@ -14668,7 +14736,8 @@ const shops = {
   // (8,2)(9,2), potted topiary (12,8); the bar is the counter row y=3 over x 8..12 with the
   // bartender at (10,2); extraTables = four bistro tables (3,5)(3,7)(10,6)(10,8). All clear
   // of the door (6,9) and spawn (6.5,7.5). No crates: it's a restaurant, nothing to dig.
-  // The bartender's name/lines are generic placeholders until a character is set.
+  // CHRISTIE runs the place from behind the bar at (10,2) -- see
+  // keeperImgs.CHRISTIE / drawKeeper()'s `cook` motion.
   miseryloves: makeShop('miseryloves', {
     world: 'winooski',
     floor: '#6b4a30', plank: '#58391f', wallColor: '#8a3d2e',
@@ -14680,13 +14749,15 @@ const shops = {
       [1, 2], [1, 3], [8, 2], [9, 2], [12, 8],
     ],
     extraTables: [[3, 5], [3, 7], [10, 6], [10, 8]],
-    keeper: { x: 10, y: 2, name: 'BARTENDER', shirt: '#2b3236', skin: '#d9a47a',
+    keeper: { x: 10, y: 2, name: 'CHRISTIE', shirt: '#cfc6a8', skin: '#d9a47a', cook: true,
       lines: [
-        'Welcome to Misery Loves Co. Grab a seat anywhere -- the good stools go fast.',
+        'Hey, hey! Welcome to Misery Loves Co. I\'m Christie. Grab a seat anywhere -- the good stools go fast.',
+        'I\'m always cooking up something fresh for the community. Blueberry muffins just came out, and that loaf is still too hot to slice. Patience, my friend.',
         'Comfort food, but we mess with it. Mac and cheese with a crust, fried chicken with a kick, tots with way too much on them.',
-        'Craft cocktails are my side of the bar. Tell me what you like and I\'ll build you something. Smoky, sour, boozy, bright.',
+        'Everything\'s made from scratch, start to finish. Bread, muffins, the works. Keeping it local, keeping it Vermont -- it\'s on the apron for a reason.',
+        'Craft cocktails are on the menu too. Tell me what you like and I\'ll build you something. Smoky, sour, boozy, bright.',
         'Fun fact: the market next door and this place are the same family. Good food runs in the block.',
-        'That chalkboard changes more than the weather does. If a special sells out, it\'s gone.',
+        'That chalkboard changes more than the weather does. If a special sells out, it\'s gone. Peace, love, and fresh bread.',
       ] },
     crates: [],
   }),
@@ -27332,6 +27403,7 @@ function render(time) {
   drawTrickSparkles(); // [T] Turbo Taunt sparkle burst -- world-space, so it rides the camera/zoom above
   if (map.winooski) drawWinooskiOverhead(time, map, camX, camY); // LEVEL 4 highway decks, over the player
   if (map.winooski) drawMonkeyHouseUmbrellas(map, camX, camY);   // yard umbrellas, over the player
+  if (map.winooski) drawWinooskiNight(time, map, camX, camY);    // LEVEL 4 is an evening level: darkness + glowing lights, over everything in the world
 
   // Floating callout signs for every mini-game on this map -- drawn last
   // (on top of everything) so they're always readable, and their hitboxes
@@ -28570,6 +28642,288 @@ function drawWinooskiDecorations(time, map, camX, camY) {
   }
   // SCOUT coffee cart on the east lawn
   drawScoutCart();
+}
+
+// ---------------------------------------------------------------- WINOOSKI AT NIGHT
+// Winooski is set in the evening. The whole day-time scene above is drawn exactly as
+// before; then drawWinooskiNight() lays a deep-blue "darkness" sheet over the world and
+// punches soft holes in it wherever there is a light (street lamps, shop fronts, the
+// player's own glow, the highway lamps), and finally adds warm additive glow on top:
+// lamp halos + pools of light on the ground, lit windows, shop neon, moths around the
+// lamps, headlights and tail-lights crossing the overpass, and moonlight glinting on the
+// river. Everything is cached/pooled (one offscreen sheet, a few cached hole sprites,
+// the shared glow sprites), so it costs a handful of drawImage calls per frame.
+// Set WINOOSKI_NIGHT to false to get the plain daytime look back.
+const WINOOSKI_NIGHT = true;
+const WIN_NIGHT_TINT = 'rgba(8,12,46,0.64)';
+const winNightCanvas = document.createElement('canvas');
+winNightCanvas.width = VIEW_W; winNightCanvas.height = VIEW_H;
+const winNightCtx = winNightCanvas.getContext('2d');
+const winNightHoleCache = new Map();
+function getWinNightHole(r) {
+  let spr = winNightHoleCache.get(r);
+  if (spr) return spr;
+  spr = document.createElement('canvas');
+  spr.width = r * 2; spr.height = r * 2;
+  const c = spr.getContext('2d');
+  const gr = c.createRadialGradient(r, r, 0, r, r, r);
+  gr.addColorStop(0, 'rgba(0,0,0,1)');
+  gr.addColorStop(0.3, 'rgba(0,0,0,0.78)');
+  gr.addColorStop(0.65, 'rgba(0,0,0,0.28)');
+  gr.addColorStop(1, 'rgba(0,0,0,0)');
+  c.fillStyle = gr; c.fillRect(0, 0, r * 2, r * 2);
+  winNightHoleCache.set(r, spr);
+  return spr;
+}
+
+// Storefront lighting, in building-relative pixels: [x, y, w, h, color, strength].
+// (Building origin = b.x * TILE, b.y * TILE; every shop here is 4 tiles / 128px tall.)
+const WIN_NIGHT_SHOP_LIGHTS = {
+  'AUTUMN RECORDS': [
+    [28, 14, 40, 32, '#ffd9a0', 0.55], [156, 14, 40, 32, '#ffd9a0', 0.55],      // upstairs windows
+    [4, 98, 92, 26, '#ffc470', 0.5], [128, 98, 92, 26, '#ffc470', 0.5],         // shop windows
+    [100, 96, 24, 28, '#fff0c8', 0.6],                                          // door glass
+    [12, 64, 200, 30, '#ff9a50', 0.42],                                         // orange name sign
+  ],
+  'TINY THAI': [
+    [8, 84, 50, 40, '#ffb860', 0.55], [102, 84, 50, 40, '#ffb860', 0.55],
+    [64, 90, 32, 38, '#ffd890', 0.5],
+    [10, 36, 140, 28, '#ff4a3a', 0.42],                                         // red name plaque
+  ],
+  'THE MONKEY HOUSE': [
+    [8, 62, 74, 36, '#ffb868', 0.5], [136, 62, 48, 36, '#ffc878', 0.5],
+    [98, 96, 28, 32, '#ffa050', 0.45],
+    [86, 74, 50, 14, '#ffe03a', 0.8],                                           // yellow "monkey" neon
+    [10, 30, 204, 22, '#ffd23a', 0.45],                                         // marquee plate
+  ],
+  'BELLEVUE': [
+    [8, 88, 82, 38, '#ff4fb0', 0.5], [134, 88, 82, 38, '#3fd6ff', 0.5],         // TATTOO pink / PIERCING cyan neon
+    [96, 90, 32, 36, '#ff5a4a', 0.3],
+  ],
+  'MISERY LOVES CO.': [
+    [68, 46, 86, 66, '#ffd48a', 0.6],                                           // big front window
+    [34, 66, 28, 60, '#ffc070', 0.5],                                           // door
+  ],
+};
+
+// The Champlain Mill's tall window grid, mirrored from paintMillWing() so the glow lines up.
+function winNightMillWindows(map) {
+  const wk = map.winooski;
+  if (wk._millWins) return wk._millWins;
+  const out = [];
+  for (const b of map.buildings) {
+    if (!b.mill) continue;
+    const tower = b.mill === 'tower';
+    const w = b.w * TILE, h = b.h * TILE;
+    const capH = tower ? 16 : 11, baseH = 14, floors = 5, winW = 14;
+    const y0 = tower ? capH + 8 + 26 + 8 : capH + 8;
+    const y1 = h - baseH - 3, pitch = (y1 - y0) / floors, winH = Math.floor(pitch - 8);
+    for (let col = 0; col < w / TILE; col++) {
+      for (let f = 0; f < floors; f++) {
+        if (tower && f === floors - 1 && col === Math.floor(w / TILE / 2)) continue;
+        const hv = mhHash(col + b.x * 3, f + 555);
+        if (hv % 100 >= 58) continue;                      // ~58% of the windows have somebody home
+        out.push({
+          x: b.x * TILE + col * TILE + (TILE - winW) / 2,
+          y: b.y * TILE + Math.round(y0 + f * pitch + 3),
+          w: winW, h: winH, warm: hv % 3, ph: (hv % 628) / 100,
+        });
+      }
+    }
+    if (tower) {                                            // glass entrance under the awning
+      const dxc = Math.floor(w / 2);
+      out.push({ x: b.x * TILE + dxc - 9, y: b.y * TILE + h - baseH - 26, w: 18, h: 26, warm: 1, ph: 0, door: true });
+    }
+  }
+  wk._millWins = out;
+  return out;
+}
+
+// Lamps along both highway decks (world px), computed once.
+function winNightDeckLamps(wk) {
+  if (wk._deckLamps) return wk._deckLamps;
+  const out = [];
+  for (const c of [wk.deckA, wk.deckB]) {
+    for (let i = 1; i < 12; i++) {
+      const t = i / 12, u = 1 - t;
+      const x = u * u * c[0][0] + 2 * u * t * c[1][0] + t * t * c[2][0];
+      const y = u * u * c[0][1] + 2 * u * t * c[1][1] + t * t * c[2][1];
+      const tx = 2 * u * (c[1][0] - c[0][0]) + 2 * t * (c[2][0] - c[1][0]);
+      const ty = 2 * u * (c[1][1] - c[0][1]) + 2 * t * (c[2][1] - c[1][1]);
+      const tl = Math.hypot(tx, ty) || 1, nx = -ty / tl, ny = tx / tl;
+      const off = wk.deckWidth / 2 + 5;
+      out.push([x + nx * off, y + ny * off], [x - nx * off, y - ny * off]);
+    }
+  }
+  wk._deckLamps = out;
+  return out;
+}
+
+function drawWinooskiNight(time, map, camX, camY) {
+  if (!WINOOSKI_NIGHT) return;
+  const wk = map.winooski;
+  const vx0 = camX, vx1 = camX + VIEW_W, vy0 = camY, vy1 = camY + VIEW_H;
+  const seen = (x, y, m) => x > vx0 - m && x < vx1 + m && y > vy0 - m && y < vy1 + m;
+  const deckVisible = vx1 > 44 * TILE && vy1 > 28 * TILE;
+  const deckA = deckVisible ? winooskiDeckFade : 0;           // lights dim while the player stands under the deck, like the deck itself
+  const lamps = wk.lamps;
+  const shops = map.buildings.filter((b) => WIN_NIGHT_SHOP_LIGHTS[b.name]);
+
+  // ---- 1. the darkness sheet, with holes where light lands
+  const nc = winNightCtx;
+  nc.globalCompositeOperation = 'source-over';
+  nc.globalAlpha = 1;
+  nc.clearRect(0, 0, VIEW_W, VIEW_H);
+  nc.fillStyle = WIN_NIGHT_TINT;
+  nc.fillRect(0, 0, VIEW_W, VIEW_H);
+  nc.globalCompositeOperation = 'destination-out';
+  const hole = (x, y, r, k) => {
+    if (!seen(x, y, r)) return;
+    nc.globalAlpha = k;
+    nc.drawImage(getWinNightHole(r), Math.round(x - camX - r), Math.round(y - camY - r));
+  };
+  for (let i = 0; i < lamps.length; i++) {
+    const [lx, ly] = lamps[i];
+    const fl = i % 6 === 2 ? 0.88 + 0.12 * Math.sin(time * 9 + i * 2.1) * Math.sin(time * 3.3 + i) : 1;   // the odd tired bulb flickers
+    hole(lx, ly + 6, 128, 0.97 * fl);
+  }
+  for (const b of shops) hole(b.x * TILE + (b.w * TILE) / 2, b.y * TILE + b.h * TILE - 10, 112, 0.82);
+  for (const b of map.buildings) if (b.mill && b.mill === 'tower') hole(b.x * TILE + (b.w * TILE) / 2, b.y * TILE + b.h * TILE - 20, 90, 0.6);
+  hole(player.x, player.y, 96, 0.55);                          // the player's own little glow, so they're never lost in the dark
+  if (deckA > 0.05) for (const [dx, dy] of winNightDeckLamps(wk)) hole(dx, dy, 58, 0.55 * deckA);
+  nc.globalAlpha = 1;
+  nc.globalCompositeOperation = 'source-over';
+  ctx.drawImage(winNightCanvas, camX, camY);
+
+  // ---- 2. additive light on top of the darkness
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+
+  // lit windows + shop signs
+  for (const b of shops) {
+    const ox = b.x * TILE, oy = b.y * TILE;
+    for (const [rx, ry, rw, rh, col, k] of WIN_NIGHT_SHOP_LIGHTS[b.name]) {
+      const x = ox + rx, y = oy + ry;
+      if (!seen(x + rw / 2, y + rh / 2, 80)) continue;
+      ctx.globalAlpha = k * (0.55 + 0.45 * (0.5 + 0.5 * Math.sin(time * 1.1 + rx * 0.07 + b.x)));
+      ctx.fillStyle = col;
+      ctx.fillRect(x, y, rw, rh);
+      ctx.globalAlpha = Math.min(1, k * 1.1);
+      drawGlow(x + rw / 2, y + rh / 2, Math.max(28, Math.round(Math.max(rw, rh) * 0.8)), hexToRgbaTemplate(col));
+    }
+  }
+  // the mill: a scatter of lit windows
+  for (const wv of winNightMillWindows(map)) {
+    if (!seen(wv.x, wv.y, 40)) continue;
+    ctx.globalAlpha = 0.5 + 0.08 * Math.sin(time * 0.8 + wv.ph);
+    ctx.fillStyle = wv.warm === 0 ? '#ffe9b0' : wv.warm === 1 ? '#ffc470' : '#ffd890';
+    ctx.fillRect(wv.x, wv.y, wv.w, wv.h);
+    ctx.globalAlpha = wv.door ? 0.6 : 0.3;
+    drawGlow(wv.x + wv.w / 2, wv.y + wv.h / 2, 26, 'rgba(255,196,110,ALPHA)');
+  }
+
+  // street lamps: ground pool + halo around the bulb
+  for (let i = 0; i < lamps.length; i++) {
+    const [lx, ly] = lamps[i];
+    if (!seen(lx, ly, 140)) continue;
+    const fl = i % 6 === 2 ? 0.8 + 0.2 * Math.sin(time * 9 + i * 2.1) * Math.sin(time * 3.3 + i) : 1;
+    ctx.globalAlpha = 0.55 * fl;
+    drawGlowEllipse(lx, ly + 14, 92, 58, 'rgba(255,186,96,ALPHA)');          // pool of light on the pavement
+    ctx.globalAlpha = 0.95 * fl;
+    drawGlow(lx, ly - 9, 30, 'rgba(255,226,140,ALPHA)');                      // halo round the lamp head
+    ctx.globalAlpha = 0.35 * fl;
+    drawGlow(lx, ly - 9, 60, 'rgba(255,200,110,ALPHA)');
+  }
+  ctx.restore();
+
+  // the lamp heads themselves, un-darkened, so the bulbs read as the brightest thing on screen
+  for (let i = 0; i < lamps.length; i++) {
+    const [lx, ly] = lamps[i];
+    if (!seen(lx, ly, 20)) continue;
+    const fl = i % 6 === 2 ? 0.82 + 0.18 * Math.sin(time * 9 + i * 2.1) * Math.sin(time * 3.3 + i) : 1;
+    ctx.fillStyle = '#2a2c32';
+    ctx.fillRect(lx - 5, ly - 14, 10, 3);
+    ctx.globalAlpha = fl;
+    ctx.fillStyle = '#fff4c4';
+    ctx.fillRect(lx - 4, ly - 12, 8, 7);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(lx - 2, ly - 11, 4, 4);
+    ctx.globalAlpha = 1;
+  }
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+
+  // moths fluttering around each lamp
+  ctx.fillStyle = '#fff2c8';
+  for (let i = 0; i < lamps.length; i++) {
+    const [lx, ly] = lamps[i];
+    if (!seen(lx, ly, 30)) continue;
+    for (let m = 0; m < 3; m++) {
+      const a = time * (1.6 + m * 0.7) + i * 1.9 + m * 2.3;
+      const r = 9 + 6 * Math.sin(time * 0.9 + m * 1.7 + i);
+      ctx.globalAlpha = 0.55 + 0.4 * Math.sin(time * 14 + m * 3 + i);        // wing flutter
+      ctx.fillRect(lx + Math.cos(a) * r - 1, ly - 9 + Math.sin(a * 1.3) * r * 0.7 - 1, 2, 2);
+    }
+  }
+
+  // moonlight glinting on the river
+  ctx.fillStyle = '#bcd8ff';
+  for (const t of wk._riverGlints || (wk._riverGlints = map.riverTiles.filter((t) => mhHash(t.x, t.y) % 3 === 0))) {
+    const x = t.x * TILE, y = t.y * TILE;
+    if (x < vx0 - 32 || x > vx1 || y < vy0 - 32 || y > vy1) continue;
+    const hv = mhHash(t.x + 11, t.y + 5);
+    const s = 0.5 + 0.5 * Math.sin(time * (0.9 + (hv % 5) * 0.2) + (hv % 628) / 100);
+    if (s < 0.45) continue;
+    ctx.globalAlpha = (s - 0.45) * 0.9;
+    ctx.fillRect(x + (hv % 20), y + ((hv >> 5) % 24), 4 + (hv % 5), 1.5);
+  }
+
+  // the overpass: sodium lamps along both decks + cars with head/tail-lights
+  if (deckA > 0.05) {
+    for (const [dx, dy] of winNightDeckLamps(wk)) {
+      if (!seen(dx, dy, 40)) continue;
+      ctx.globalAlpha = 0.9 * deckA;
+      drawGlow(dx, dy, 18, 'rgba(255,170,80,ALPHA)');
+      ctx.globalAlpha = deckA;
+      ctx.fillStyle = '#ffe0a0';
+      ctx.fillRect(dx - 1, dy - 1, 2, 2);
+    }
+    const cars = [[0, 0.06, 0], [0, 0.06, 0.37], [0, 0.06, 0.71], [1, -0.05, 0.15], [1, -0.05, 0.52], [1, -0.05, 0.86]];
+    for (const [di, spd, ph] of cars) {
+      const c = di ? wk.deckB : wk.deckA;
+      let t = (time * Math.abs(spd) * 1.4 + ph) % 1;
+      if (spd < 0) t = 1 - t;
+      const u = 1 - t;
+      const x = u * u * c[0][0] + 2 * u * t * c[1][0] + t * t * c[2][0];
+      const y = u * u * c[0][1] + 2 * u * t * c[1][1] + t * t * c[2][1];
+      if (!seen(x, y, 60)) continue;
+      let tx = 2 * u * (c[1][0] - c[0][0]) + 2 * t * (c[2][0] - c[1][0]);
+      let ty = 2 * u * (c[1][1] - c[0][1]) + 2 * t * (c[2][1] - c[1][1]);
+      if (spd < 0) { tx = -tx; ty = -ty; }
+      const ang = Math.atan2(ty, tx);
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(ang);
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = deckA;
+      ctx.fillStyle = '#0c0d12';
+      ctx.fillRect(-9, -4, 18, 8);                                             // car body
+      ctx.fillStyle = '#1b1e28';
+      ctx.fillRect(-4, -3, 8, 6);                                              // cabin roof
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.7 * deckA;
+      drawGlowEllipse(26, 0, 30, 11, 'rgba(255,244,200,ALPHA)');               // headlight beam
+      drawGlow(10, -3, 9, 'rgba(255,250,220,ALPHA)');
+      drawGlow(10, 3, 9, 'rgba(255,250,220,ALPHA)');
+      ctx.globalAlpha = 0.8 * deckA;
+      drawGlow(-10, -3, 8, 'rgba(255,40,30,ALPHA)');                           // tail-lights
+      drawGlow(-10, 3, 8, 'rgba(255,40,30,ALPHA)');
+      ctx.restore();
+    }
+  }
+  ctx.restore();
+  ctx.globalAlpha = 1;
 }
 
 // SCOUT -- a small coffee cart on the Winooski east lawn (tiles 35-36, row 27).
@@ -40601,6 +40955,12 @@ keeperImgs['QUEEN B'] = queenbImg;
 keeperImgs.CHAMP = champImg;
 // TALENT's keeper, LIGGY -- same idea as CHAMP above.
 keeperImgs.LIGGY = liggyImg;
+// MISERY LOVES CO.'s keeper, CHRISTIE -- same idea as LIGGY above.
+keeperImgs.CHRISTIE = christieImg;
+// AUTUMN RECORDS' keeper, GREG -- same idea as CHRISTIE above.
+keeperImgs.GREG = gregImg;
+// THE MONKEY HOUSE's keeper, JAKE -- same idea as GREG above.
+keeperImgs.JAKE = jakeImg;
 
 function drawAnt(cx, cy, s) {
   // A white ant silhouette (the Anthill Collective mark), drawn on SK1's hat.
@@ -40684,6 +41044,25 @@ function drawKeeper(k) {
         ctx.fillText(i === 0 ? '\u266A' : '\u266B', nx, ny);
       }
       ctx.globalAlpha = 1;
+      return;
+    }
+    if (k.cook) {
+      // Cooks who are busy in the kitchen (CHRISTIE): a gentle, slow bob
+      // pivoting about the feet, plus little steam wisps rising off the
+      // fresh bakes. Purely visual.
+      const t = performance.now() / 1000;
+      const bob = Math.abs(Math.sin(t * 2.2 + k.x)) * 1.5;
+      ctx.drawImage(img, Math.round(px + 16 - kw / 2), Math.round(py + 30 - kh - bob), kw, kh);
+      ctx.save();
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+      for (let i = 0; i < 3; i++) {
+        const ph = (t * 0.5 + i / 3) % 1;
+        const sx = px + 16 + (i - 1) * kw * 0.28 + Math.sin(ph * 7 + i * 2) * 2;
+        const sy = py + 30 - kh * 0.55 - ph * 20;
+        ctx.globalAlpha = 0.7 * (1 - ph);
+        ctx.fillRect(Math.round(sx), Math.round(sy), 2, 2);
+      }
+      ctx.restore();
       return;
     }
     ctx.drawImage(img, Math.round(px + 16 - kw / 2), Math.round(py + 30 - kh), kw, kh);
