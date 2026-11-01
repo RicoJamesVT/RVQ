@@ -11392,6 +11392,17 @@ gregImg.src = 'assets/greg.png';
 const jakeImg = new Image();
 jakeImg.src = 'assets/jake.png';
 
+// KEV -- the keeper of TINY THAI in WINOOSKI (Level 4): a St. Michael's
+// College student who works the Thai restaurant and is just starting to learn
+// the town and the scene by painting around Winooski with some buddies.
+// Pixel-art sprite: big black locs, mustache and goatee, black polo under a
+// maroon "THAI CUISINE" apron with a gold lotus, a silver cocktail shaker in
+// one hand and a striped towel in the other, black pants and black-and-white
+// sneakers. Drawn as a shop keeper (see keeperImgs.KEV below), not a roaming
+// npc, so he doesn't need an entry in SHOP_NPC_IMAGES.
+const kevImg = new Image();
+kevImg.src = 'assets/kev.png';
+
 // QUEEN B -- the keeper of VILLAGE SCOOP out in the swamp: the drive-thru ice
 // cream queen, serving up every marvelous flavor with her sidekick Hendrix
 // (the sunglasses-wearing dachshund standing right beside her in the art).
@@ -14639,19 +14650,24 @@ const shops = {
   // up: blockTiles = drinks cooler (1,2)(1,3), rice sacks (1,8), bamboo (12,8);
   // extraTables = two 2-tile dining tables at (3,6)(4,6) and (8,6)(9,6) -- all
   // clear of the counter (row 3), the cook (6,2), the door (6,9) and the spawn
-  // (6.5,7.5). No crates: it's a restaurant, nothing to dig. The cook's name and
-  // lines are generic placeholders until the owner is decided.
+  // (6.5,7.5). No crates: it's a restaurant, nothing to dig. The keeper is KEV,
+  // a St. Michael's College student learning the Winooski scene by painting
+  // around town with his buddies (see keeperImgs.KEV).
   tinythai: makeShop('tinythai', {
     world: 'winooski',
     floor: '#6b4a2e', plank: '#5a3c24', wallColor: '#8e2230',
     tinyThai: true,
     blockTiles: [[1, 2], [1, 3], [1, 8], [12, 8]],
     extraTables: [[3, 6], [4, 6], [8, 6], [9, 6]],
-    keeper: { name: 'THE COOK', shirt: '#f4f1ea', skin: '#d9a47a',
+    keeper: { name: 'KEV', shirt: '#2a2a2e', skin: '#a8643a',
       lines: [
-        'Sawasdee! Welcome to Tiny Thai. Tiny place, big flavor -- grab a seat anywhere.',
+        'Sawasdee! Welcome to Tiny Thai. I\'m Kev. Tiny place, big flavor -- grab a seat anywhere.',
         'Pad Thai, green curry, tom kha soup, mango sticky rice. Everything\'s made to order, so give the wok a minute.',
         'How spicy? One chili is gentle. Two is honest. Three... Winooski winters are long, so three is popular.',
+        'I go to St. Michael\'s, just across town. This gig keeps me fed and keeps me in the neighborhood.',
+        'I\'m still learning the town and the scene. Me and some buddies have been out painting around Winooski -- tags, pieces, whatever we can get up.',
+        'Winooski\'s full of hidden spots. Back walls, alleys, corners you\'d never notice until somebody points them out. Perfect for practicing tags and murals.',
+        'Still rough, still practicing. Everybody starts somewhere, right? Keep your eyes open out there and you\'ll find the good spots.',
         'Thai iced tea is on the counter. Sweet, creamy, orange as a Vermont maple in October.',
         'Only a few tables, but nobody gets rushed. Eat slow. Good food needs company.',
       ] },
@@ -40961,6 +40977,8 @@ keeperImgs.CHRISTIE = christieImg;
 keeperImgs.GREG = gregImg;
 // THE MONKEY HOUSE's keeper, JAKE -- same idea as GREG above.
 keeperImgs.JAKE = jakeImg;
+// TINY THAI's keeper, KEV -- same idea as JAKE above.
+keeperImgs.KEV = kevImg;
 
 function drawAnt(cx, cy, s) {
   // A white ant silhouette (the Anthill Collective mark), drawn on SK1's hat.
