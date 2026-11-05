@@ -11403,6 +11403,16 @@ jakeImg.src = 'assets/jake.png';
 const kevImg = new Image();
 kevImg.src = 'assets/kev.png';
 
+// THE AZTEXT -- the VT hip hop duo and local legends, rocking the stage at THE
+// MONKEY HOUSE in WINOOSKI (Level 4). PRO (aka "Pro Knows Music") is on the left
+// in the teal cap, grey v-neck and black backpack; LEARIC is on the right in the
+// blue OKC cap and BVT tee. Drawn live on the stage by drawAztext() below, not as
+// keepers or roaming npcs (assets/pro.png + assets/learic.png, cut from aztext.png).
+const aztextProImg = new Image();
+aztextProImg.src = 'assets/pro.png';
+const aztextLearicImg = new Image();
+aztextLearicImg.src = 'assets/learic.png';
+
 // QUEEN B -- the keeper of VILLAGE SCOOP out in the swamp: the drive-thru ice
 // cream queen, serving up every marvelous flavor with her sidekick Hendrix
 // (the sunglasses-wearing dachshund standing right beside her in the art).
@@ -14706,6 +14716,7 @@ const shops = {
         'Yeah, I\'m vegan. Don\'t sweat it -- the vegan stuff here goes hard. Ask for the loaded fries and tell me you don\'t miss the wings.',
         'Cheap beer, local taps, good people. Support the scene: buy a drink, catch a set, tell a friend.',
         'The monkey over the door? Don\'t ask. Everybody asks. He was here before I was.',
+        'That\'s The Aztext up on stage -- Pro Knows Music and Learic. VT hip hop legends, local royalty. Stay for the whole set.',
       ] },
     crates: [],
   }),
@@ -32136,6 +32147,52 @@ function paintMonkeyHouseInterior(c) {
   c.fillStyle = '#17181d'; c.fillRect(6 * TILE - 3, fy, 3, TILE); c.fillRect(7 * TILE, fy, 3, TILE);
 }
 
+// THE AZTEXT -- PRO ("Pro Knows Music") on the left mic, LEARIC on the right mic.
+// Both bounce to the beat, sway a little and throw music notes into the crowd, under
+// a hot-pink neon "THE AZTEXT" banner on the stage curtain. Stage front is y~120.
+function drawAztextPerformer(img, cx, footY, h, time, phase) {
+  if (!(img.complete && img.naturalWidth)) return;
+  const dw = h * img.naturalWidth / img.naturalHeight;
+  const beat = Math.abs(Math.sin(time * 5.2 + phase));
+  const hop = beat * 4, sway = Math.sin(time * 2.6 + phase) * 0.05;
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.beginPath(); ctx.ellipse(cx, footY + 1, dw * 0.42 * (1 - beat * 0.15), 3, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.translate(cx, footY - hop); ctx.rotate(sway);
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(img, -dw / 2, -h, dw, h);
+  ctx.restore();
+  // music notes drifting up off the performer
+  ctx.save();
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = '700 10px sans-serif';
+  for (let i = 0; i < 3; i++) {
+    const t = ((time * 0.55 + i / 3 + phase * 0.1) % 1 + 1) % 1;
+    ctx.globalAlpha = Math.sin(t * Math.PI) * 0.9;
+    ctx.fillStyle = ['#ffd83a', '#ff6aa0', '#6ad4ff'][i];
+    ctx.fillText(i % 2 ? '\u266B' : '\u266A', cx + (i - 1) * 12 + Math.sin(time * 2 + i) * 3, footY - h - 2 - t * 22);
+  }
+  ctx.restore();
+}
+
+function drawAztext(time) {
+  // neon banner on the curtain
+  let f = 1;
+  if ((time % 7) > 6.5 && Math.sin(time * 41) > 0) f = 0.35;
+  ctx.save();
+  ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.lineJoin = 'round';
+  ctx.font = 'italic 800 14px "Trebuchet MS", Verdana, sans-serif';
+  ctx.fillStyle = 'rgba(255,70,150,' + (0.14 * f).toFixed(3) + ')';
+  ctx.beginPath(); ctx.ellipse(146, 31, 48, 13, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(255,70,150,' + (0.30 * f).toFixed(3) + ')';
+  for (const [ox, oy] of NEON_GLOW_OFFSETS) ctx.fillText('THE AZTEXT', 146 + ox, 36 + oy);
+  ctx.strokeStyle = 'rgba(255,40,120,' + f.toFixed(3) + ')'; ctx.lineWidth = 3; ctx.strokeText('THE AZTEXT', 146, 36);
+  ctx.fillStyle = 'rgba(255,214,236,' + f.toFixed(3) + ')'; ctx.fillText('THE AZTEXT', 146, 36);
+  ctx.restore();
+  // the emcees
+  drawAztextPerformer(aztextProImg, 90, 120, 64, time, 0);
+  drawAztextPerformer(aztextLearicImg, 198, 120, 64, time, 1.7);
+}
+
 let _mhInteriorCache = null;
 function drawMonkeyHouseInterior(time) {
   if (!_mhInteriorCache) {
@@ -32145,6 +32202,9 @@ function drawMonkeyHouseInterior(time) {
     _mhInteriorCache = cv;
   }
   ctx.drawImage(_mhInteriorCache, 0, 0);
+
+  // THE AZTEXT on stage (PRO + LEARIC), under the sweeping lights below
+  drawAztext(time);
 
   // sweeping stage-light beams (additive, over the stage + front of it)
   ctx.save();
