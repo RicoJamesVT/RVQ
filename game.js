@@ -13132,13 +13132,25 @@ function makeWinooski() {
   // solid-walls-plus-one-door construction as the skatepark's shops. Carved
   // AFTER the park tree sprinkle so its footprint wins over any tree, and the
   // row below the door is cleared of trees so the player never spawns boxed in.
-  const AR_X = 15, AR_Y = 10, AR_W = 7, AR_H = 4;
+  const AR_X = 15, AR_Y = 10, AR_W = 6, AR_H = 4;
   const AR_DOOR_X = AR_X + Math.floor(AR_W / 2), AR_DOOR_Y = AR_Y + AR_H - 1;
   for (let y = AR_Y; y < AR_Y + AR_H; y++)
     for (let x = AR_X; x < AR_X + AR_W; x++) g[y][x] = 'w';
   g[AR_DOOR_Y][AR_DOOR_X] = 'D';
   for (let x = AR_X; x < AR_X + AR_W; x++)
     if (g[AR_DOOR_Y + 1][x] === '#') g[AR_DOOR_Y + 1][x] = '.';
+  // --- ROTARY CONCERT -- a small free show in the middle of the rotary park, below AUTUMN
+  // RECORDS: a 7x3-tile stage (x 15-21, rows 15-17) with the crowd packed in front of it
+  // (x 14-21, rows 18-20). Both are SOLID 'q' tiles that render as grass (the stage, band,
+  // crowd and lights are cosmetic sprites painted by drawWinooskiConcert()). Row 14 stays an
+  // open walkway between the shop door and the stage. Park trees in the area are cleared first.
+  const CN_STAGE = { x: 15, y: 15, w: 7, h: 3 }, CN_PIT = { x: 14, y: 18, w: 8, h: 3 };
+  for (let y = 14; y <= 21; y++)
+    for (let x = 13; x <= 22; x++) if (g[y][x] === '#') g[y][x] = '.';
+  for (let y = CN_STAGE.y; y < CN_STAGE.y + CN_STAGE.h; y++)
+    for (let x = CN_STAGE.x; x < CN_STAGE.x + CN_STAGE.w; x++) g[y][x] = 'q';
+  for (let y = CN_PIT.y; y < CN_PIT.y + CN_PIT.h; y++)
+    for (let x = CN_PIT.x; x < CN_PIT.x + CN_PIT.w; x++) g[y][x] = 'q';
   // --- TINY THAI -- a little Thai restaurant out on the big east lawn (between
   // the east road and the waterfront walkway), 5x4 tiles (x 44-48, rows 22-25).
   // Same solid-walls-plus-one-door construction as AUTUMN RECORDS; the door is
@@ -13334,6 +13346,9 @@ function makeWinooski() {
       dashes, crosswalks, lamps, deckSamples, deckWidth: DECK_W * PX,
       deckA: DECK_A.map(([x, y]) => [x * PX, y * PX]), deckB: DECK_B.map(([x, y]) => [x * PX, y * PX]),
       park: { cx: CX * PX, cy: CY * PX, rx: IN_RX * PX, ry: IN_RY * PX },
+      // rotary concert (world px): the stage deck and the crowd pit in front of it
+      concert: { x: CN_STAGE.x * PX, y: CN_STAGE.y * PX, w: CN_STAGE.w * PX, h: CN_STAGE.h * PX,
+                 pitX: CN_PIT.x * PX, pitY: CN_PIT.y * PX, pitW: CN_PIT.w * PX, pitH: CN_PIT.h * PX },
       // table centers (world px) for the Monkey House yard umbrellas
       umbrellas: MH_TABLES.map(([tx, ty]) => ({ x: tx * PX + PX / 2, y: ty * PX + PX / 2 })),
     },
@@ -16052,13 +16067,13 @@ const VENDOR_CARTS = [
   // point is that far in from tile 20, just below the trailer's bottom edge
   // (row 14, the top of the walkway ring) -- see drawAlsFrysTruck().
   { id: 'alsfrys', map: 'skatepark', label: 'BUY A BUCKET OF FRIES', x: 20 * TILE + 88, y: 14 * TILE + 26, radius: 46 },
-  // SCOUT coffee cart -- Winooski, on the open east lawn between the rotary
-  // and the waterfront walkway (tiles 35-36, row 27: all plain grass, clear
-  // of trees, benches, picnic tables and Tiny Thai). Same "cart_x + half its
-  // drawn width, cart_y + an offset below it" pattern as the cold brew cart
-  // -- the base 35*TILE+4, 27*TILE+2 matches the top-left corner
-  // drawScoutCart() draws from.
-  { id: 'scout', map: 'winooski', label: 'BUY A SCOUT COFFEE', x: 35 * TILE + 4 + 28, y: 27 * TILE + 2 + 40, radius: 42 },
+  // SCOUT coffee cart -- Winooski, on the open east lawn between the east road
+  // and the Champlain Mill (tiles 35-36, row 23: plain grass, north of the mill
+  // wings which start at row 26, clear of the road, trees, benches, picnic
+  // tables and Tiny Thai). Same "cart_x + half its drawn width, cart_y + an
+  // offset below it" pattern as the cold brew cart -- the base 35*TILE+4,
+  // 23*TILE+2 matches the top-left corner drawScoutCart() draws from.
+  { id: 'scout', map: 'winooski', label: 'BUY A SCOUT COFFEE', x: 35 * TILE + 4 + 28, y: 23 * TILE + 2 + 40, radius: 42 },
 ];
 
 function facingTile() {
@@ -28667,8 +28682,316 @@ function drawWinooskiDecorations(time, map, camX, camY) {
     }
     ctx.restore();
   }
+  // free show in the middle of the rotary park
+  drawWinooskiConcert(time, map, camX, camY);
   // SCOUT coffee cart on the east lawn
   drawScoutCart();
+}
+
+// ---------------------------------------------------------------- WINOOSKI ROTARY CONCERT
+// A small free show in the grass circle of the rotary: a stage (tiles x 15-21, rows 15-17,
+// solid 'q' tiles that render as grass) with a four-piece band, speaker stacks, a truss of
+// stage lights, and a packed crowd (tiles x 14-21, rows 18-20, also solid 'q') dancing right
+// in front of it, with festoon party lights strung from the truss to two poles. Everything
+// here is a cosmetic sprite drawn from drawWinooskiDecorations(); collision comes from the
+// 'q' tiles. The stage beams / glow live in drawWinooskiConcertLights() (night pass).
+const CONCERT_COLORS = ['#ff3fa4', '#3fd6ff', '#ffd23a', '#7dff6a', '#b06bff', '#ff7a3a'];
+const CONCERT_SHIRTS = ['#c4302b', '#2f6ea6', '#e0a430', '#3f8f5a', '#7a4a8a', '#d8d0bc', '#23232a', '#d4651f', '#4aa3a0', '#c98aa0'];
+const CONCERT_HAIR = ['#2a1b12', '#5a3a20', '#c9a44a', '#111111', '#8a3a22', '#d8d0bc'];
+const CONCERT_SKIN = ['#f0c8a0', '#d9a577', '#b27a50', '#8a5a34', '#6b4226'];
+const CONCERT_PANTS = ['#2a3550', '#1d1d24', '#4a4034', '#3a4a6a', '#5a2a2a'];
+
+// ~120 bpm kick pulse, 0..1
+function concertBeat(time) { return Math.pow(Math.max(0, Math.sin(time * Math.PI * 4)), 3); }
+
+// Crowd + party-light bulbs, built once (deterministic, no shimmer)
+function winConcertData(wk) {
+  if (wk._concertData) return wk._concertData;
+  const c = wk.concert, crowd = [], bulbs = [];
+  const feet = [30, 62, 92];
+  for (let r = 0; r < 3; r++) {
+    for (let i = 0; i < 9; i++) {
+      if (r === 2 && (i === 0 || i === 8)) continue;                 // keep the corner poles clear
+      const h = mhHash(i * 7 + r * 13, 91 + r);
+      if (h % 100 < 12) continue;
+      crowd.push({
+        x: c.pitX + 18 + i * 26 + ((h >> 3) % 9) - 4 + (r % 2) * 10,
+        y: c.pitY + feet[r] + ((h >> 7) % 5) - 2,
+        shirt: CONCERT_SHIRTS[(h >> 4) % CONCERT_SHIRTS.length],
+        hair: CONCERT_HAIR[(h >> 9) % CONCERT_HAIR.length],
+        skin: CONCERT_SKIN[(h >> 12) % CONCERT_SKIN.length],
+        pants: CONCERT_PANTS[(h >> 15) % CONCERT_PANTS.length],
+        ph: (h % 628) / 100,
+        arms: (h >> 11) % 3,
+        phone: (h >> 13) % 7 === 0,
+        hat: (h >> 17) % 6 === 0,
+      });
+    }
+  }
+  crowd.sort((a, b) => a.y - b.y);
+  // festoon lights: truss corners -> pole tops, and pole -> pole across the crowd
+  const poleY = c.pitY + c.pitH - 4, topY = poleY - 74;
+  const pl = c.pitX + 12, pr = c.pitX + c.pitW - 12;
+  c.poles = [[pl, poleY, topY], [pr, poleY, topY]];
+  const strands = [
+    [[c.x + 8, c.y + 8], [(c.x + 8 + pl) / 2, (c.y + 8 + topY) / 2 + 26], [pl, topY]],
+    [[c.x + c.w - 8, c.y + 8], [(c.x + c.w - 8 + pr) / 2, (c.y + 8 + topY) / 2 + 26], [pr, topY]],
+    [[pl, topY], [(pl + pr) / 2, topY + 44], [pr, topY]],
+  ];
+  strands.forEach((s, si) => {
+    const len = Math.hypot(s[2][0] - s[0][0], s[2][1] - s[0][1]);
+    const n = Math.max(6, Math.round(len / 12));
+    for (let i = 0; i <= n; i++) {
+      const t = i / n, u = 1 - t;
+      bulbs.push({
+        x: u * u * s[0][0] + 2 * u * t * s[1][0] + t * t * s[2][0],
+        y: u * u * s[0][1] + 2 * u * t * s[1][1] + t * t * s[2][1],
+        col: CONCERT_COLORS[(i + si * 2) % CONCERT_COLORS.length], ph: i * 0.9 + si,
+      });
+    }
+  });
+  wk._concertData = { crowd, bulbs, strands };
+  return wk._concertData;
+}
+
+// A little pixel person standing with feet at (x, fy). o: shirt/pants/skin/hair, bob (px up),
+// arms: 0 down, 1 one arm up, 2 both up, ph (arm wave phase), front (faces camera), hat, time
+function drawWinPerson(x, fy, o, time) {
+  const by = fy - (o.bob || 0);
+  ctx.fillStyle = 'rgba(0,0,0,0.28)'; ctx.fillRect(x - 7, fy - 1, 14, 3);
+  ctx.fillStyle = o.pants; ctx.fillRect(x - 5, by - 10, 4, 10); ctx.fillRect(x + 1, by - 10, 4, 10);
+  ctx.fillStyle = '#16161a'; ctx.fillRect(x - 6, by - 2, 5, 2); ctx.fillRect(x + 1, by - 2, 5, 2);
+  ctx.fillStyle = o.shirt; ctx.fillRect(x - 6, by - 23, 12, 14);
+  ctx.fillStyle = 'rgba(0,0,0,0.16)'; ctx.fillRect(x - 6, by - 11, 12, 2);
+  const w1 = Math.sin(time * 9 + (o.ph || 0)) * 2, w2 = Math.sin(time * 9 + (o.ph || 0) + 2) * 2;
+  const armDown = (ax) => { ctx.fillStyle = o.shirt; ctx.fillRect(ax, by - 22, 3, 9); ctx.fillStyle = o.skin; ctx.fillRect(ax, by - 13, 3, 3); };
+  const armUp = (ax, wv) => { ctx.fillStyle = o.shirt; ctx.fillRect(ax, by - 33 + wv, 3, 12); ctx.fillStyle = o.skin; ctx.fillRect(ax, by - 36 + wv, 3, 3); };
+  const a = o.arms || 0;
+  if (a === 2) { armUp(x - 10, w1); armUp(x + 7, w2); }
+  else if (a === 1) { armUp(x + 7, w1); armDown(x - 10); }
+  else { armDown(x - 10); armDown(x + 7); }
+  ctx.fillStyle = o.skin; ctx.fillRect(x - 4, by - 32, 8, 9);
+  if (o.front) {
+    ctx.fillStyle = o.hair; ctx.fillRect(x - 4, by - 34, 8, 4); ctx.fillRect(x - 5, by - 33, 1, 5); ctx.fillRect(x + 4, by - 33, 1, 5);
+    ctx.fillStyle = '#1a1a1a'; ctx.fillRect(x - 3, by - 29, 2, 2); ctx.fillRect(x + 1, by - 29, 2, 2);
+  } else {
+    ctx.fillStyle = o.hair; ctx.fillRect(x - 5, by - 34, 10, 10);
+  }
+  if (o.hat) { ctx.fillStyle = '#1b1b22'; ctx.fillRect(x - 5, by - 36, 10, 3); ctx.fillRect(x - 3, by - 38, 6, 3); }
+}
+
+function drawConcertSpeaker(x, y, beat) {
+  ctx.fillStyle = '#0d0d12'; ctx.fillRect(x, y + 6, 24, 38);
+  ctx.fillStyle = '#23232c'; ctx.fillRect(x, y + 6, 24, 2); ctx.fillRect(x, y + 26, 24, 2);
+  ctx.fillStyle = '#17171d'; ctx.fillRect(x + 1, y + 8, 22, 18); ctx.fillRect(x + 1, y + 28, 22, 16);
+  for (const [cy, r] of [[y + 17, 6], [y + 36, 7.5]]) {
+    ctx.fillStyle = '#05050a'; ctx.beginPath(); ctx.arc(x + 12, cy, r + beat * 1.6, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#2c2c38'; ctx.beginPath(); ctx.arc(x + 12, cy, (r - 2.5) + beat * 1.2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#4a4a5a'; ctx.fillRect(x + 11, cy - 1, 2, 2);
+  }
+  ctx.fillStyle = '#ff3fa4'; ctx.fillRect(x + 20, y + 44, 3, 2);
+}
+
+function drawWinooskiConcert(time, map, camX, camY) {
+  const c = map.winooski.concert;
+  const x0 = camX - 60, x1 = camX + VIEW_W + 60, y0 = camY - 60, y1 = camY + VIEW_H + 60;
+  if (c.x + c.w < x0 || c.x > x1 || c.pitY + c.pitH < y0 || c.y > y1) return;
+  const beat = concertBeat(time);
+  const data = winConcertData(map.winooski);
+  const sx = c.x, sy = c.y, sw = c.w;
+
+  // trampled grass + dirt where the crowd stands
+  ctx.fillStyle = 'rgba(70,52,30,0.38)';
+  ctx.beginPath(); ctx.ellipse(c.pitX + c.pitW / 2, c.pitY + c.pitH / 2 + 2, c.pitW / 2 + 6, c.pitH / 2 + 4, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(40,28,16,0.35)';
+  for (let i = 0; i < 26; i++) {
+    const h = mhHash(i, 311);
+    ctx.fillRect(c.pitX + 6 + (h % (c.pitW - 12)), c.pitY + 4 + ((h >> 8) % (c.pitH - 8)), 2, 1);
+  }
+  // red solo cups left behind
+  for (let i = 0; i < 6; i++) {
+    const h = mhHash(i, 77);
+    ctx.fillStyle = '#c4302b'; ctx.fillRect(c.pitX + 4 + (h % (c.pitW - 8)), c.pitY + 70 + ((h >> 8) % 24), 3, 3);
+  }
+
+  // ---- the stage (local coords: L(x, y) = world (sx + x, sy + y))
+  ctx.fillStyle = 'rgba(0,0,0,0.38)'; ctx.fillRect(sx - 2, sy + c.h - 6, sw + 4, 9);
+  // back truss posts + top beam
+  ctx.fillStyle = '#2b2d36'; ctx.fillRect(sx + 6, sy, 4, 68); ctx.fillRect(sx + sw - 10, sy, 4, 68);
+  ctx.fillRect(sx + 4, sy, sw - 8, 7);
+  ctx.strokeStyle = '#4a4e5a'; ctx.lineWidth = 1; ctx.beginPath();
+  for (let x = sx + 8; x < sx + sw - 8; x += 8) { ctx.moveTo(x, sy + 1); ctx.lineTo(x + 4, sy + 6); ctx.lineTo(x + 8, sy + 1); }
+  ctx.stroke();
+  // backdrop screen with banner
+  const bg = ctx.createLinearGradient(0, sy + 9, 0, sy + 66);
+  bg.addColorStop(0, '#4a2478'); bg.addColorStop(1, '#150f24');
+  ctx.fillStyle = '#0b0a12'; ctx.fillRect(sx + 12, sy + 8, sw - 24, 58);
+  ctx.fillStyle = bg; ctx.fillRect(sx + 14, sy + 10, sw - 28, 54);
+  ctx.save();
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = 'bold 15px "Courier New", monospace';
+  ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillText('ROTARY JAM', sx + sw / 2 + 1, sy + 25);
+  ctx.fillStyle = beat > 0.5 ? '#ff8ccc' : '#ff5cb0'; ctx.fillText('ROTARY JAM', sx + sw / 2, sy + 24);
+  ctx.font = 'bold 7px "Courier New", monospace';
+  ctx.fillStyle = '#7de8ff'; ctx.fillText('LIVE  *  FREE SHOW  *  WINOOSKI', sx + sw / 2, sy + 37);
+  ctx.restore();
+  // equalizer bars along the bottom of the screen
+  for (let i = 0; i < 18; i++) {
+    const hgt = 3 + Math.round((0.5 + 0.5 * Math.sin(time * 7 + i * 1.7)) * 7 + beat * 4);
+    ctx.fillStyle = CONCERT_COLORS[i % CONCERT_COLORS.length];
+    ctx.fillRect(sx + 18 + i * 10, sy + 63 - hgt, 6, hgt);
+  }
+  // hanging light cans (the beams themselves are drawn in the night pass)
+  for (let i = 0; i < 6; i++) {
+    const lx = sx + 24 + i * 34;
+    ctx.fillStyle = '#111116'; ctx.fillRect(lx - 4, sy + 7, 8, 6);
+    ctx.fillStyle = CONCERT_COLORS[(i + Math.floor(time * 1.5)) % CONCERT_COLORS.length]; ctx.fillRect(lx - 2, sy + 12, 4, 2);
+  }
+  // deck: wood top, front face, LED edge strip
+  ctx.fillStyle = '#6b4a2e'; ctx.fillRect(sx + 2, sy + 62, sw - 4, 20);
+  ctx.fillStyle = 'rgba(0,0,0,0.18)';
+  for (let y = sy + 67; y < sy + 82; y += 5) ctx.fillRect(sx + 2, y, sw - 4, 1);
+  ctx.fillStyle = '#3a2718'; ctx.fillRect(sx + 2, sy + 82, sw - 4, 10);
+  ctx.fillStyle = '#17110b'; ctx.fillRect(sx + 2, sy + 92, sw - 4, 4);
+  for (let x = 0; x < sw - 4; x += 8) {
+    ctx.fillStyle = CONCERT_COLORS[(Math.floor(x / 8) + Math.floor(time * 3)) % CONCERT_COLORS.length];
+    ctx.fillRect(sx + 2 + x, sy + 84, 6, 2);
+  }
+  // stage monitors
+  for (const mx of [sx + 58, sx + 150]) { ctx.fillStyle = '#0d0d12'; ctx.fillRect(mx, sy + 76, 18, 6); ctx.fillStyle = '#2a2a34'; ctx.fillRect(mx + 2, sy + 77, 14, 1); }
+
+  // ---- the band
+  const bob = (ph, amp) => Math.abs(Math.sin(time * Math.PI * 2 + ph)) * amp;
+  // drummer (back, right) -- behind the kit
+  const dx = sx + 172;
+  drawWinPerson(dx, sy + 74, { shirt: '#2a2a32', pants: '#1d1d24', skin: '#d9a577', hair: '#5a3a20', bob: 0, arms: 0, front: true, ph: 0 }, time);
+  ctx.fillStyle = '#d63a3a'; ctx.beginPath(); ctx.arc(dx, sy + 70, 10, 0, Math.PI * 2); ctx.fill();      // kick drum
+  ctx.fillStyle = '#f2f2f2'; ctx.beginPath(); ctx.arc(dx, sy + 70, 5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#b52a2a'; ctx.beginPath(); ctx.arc(dx, sy + 70, 2.5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#e8e8ea'; ctx.fillRect(dx - 17, sy + 56, 11, 6); ctx.fillRect(dx + 6, sy + 56, 11, 6);  // toms
+  ctx.fillStyle = '#9a9aa2'; ctx.fillRect(dx - 17, sy + 56, 11, 1); ctx.fillRect(dx + 6, sy + 56, 11, 1);
+  ctx.fillStyle = '#e0b030'; ctx.fillRect(dx + 20, sy + 47, 15, 2); ctx.fillRect(dx - 36, sy + 55, 13, 2);  // crash + hat
+  ctx.fillStyle = '#4a4a54'; ctx.fillRect(dx + 27, sy + 49, 1, 22); ctx.fillRect(dx - 30, sy + 57, 1, 17);
+  const hitL = Math.abs(Math.sin(time * Math.PI * 4)) * 6, hitR = Math.abs(Math.sin(time * Math.PI * 4 + 1.6)) * 6;
+  ctx.strokeStyle = '#d8c8a0'; ctx.lineWidth = 2; ctx.beginPath();
+  ctx.moveTo(dx - 6, sy + 53); ctx.lineTo(dx - 13, sy + 47 + hitL);
+  ctx.moveTo(dx + 6, sy + 53); ctx.lineTo(dx + 13, sy + 47 + hitR); ctx.stroke();
+  // bassist (left)
+  const bxp = sx + 56;
+  drawWinPerson(bxp, sy + 79, { shirt: '#1f7a74', pants: '#2a2a34', skin: '#8a5a34', hair: '#111111', bob: bob(0.6, 2), arms: 0, front: true, ph: 1, hat: true }, time);
+  ctx.save(); ctx.translate(bxp + 2, sy + 62 - bob(0.6, 2)); ctx.rotate(-0.55);
+  ctx.fillStyle = '#1d4f8a'; ctx.fillRect(-9, -3, 14, 8); ctx.fillStyle = '#0f2a4a'; ctx.fillRect(-9, 3, 14, 2);
+  ctx.fillStyle = '#2a1a10'; ctx.fillRect(5, -1, 22, 2); ctx.fillStyle = '#111'; ctx.fillRect(27, -2, 4, 4); ctx.restore();
+  // guitarist
+  const gxp = sx + 132;
+  drawWinPerson(gxp, sy + 78, { shirt: '#c4302b', pants: '#1d1d24', skin: '#f0c8a0', hair: '#c9a44a', bob: bob(1.4, 3), arms: 0, front: true, ph: 2 }, time);
+  ctx.save(); ctx.translate(gxp + 3, sy + 62 - bob(1.4, 3)); ctx.rotate(-0.45 + Math.sin(time * 4) * 0.07);
+  ctx.fillStyle = '#e8c850'; ctx.fillRect(-8, -3, 12, 8); ctx.fillStyle = '#b8902a'; ctx.fillRect(-8, 3, 12, 2);
+  ctx.fillStyle = '#2a1a10'; ctx.fillRect(4, -1, 18, 2); ctx.fillStyle = '#111'; ctx.fillRect(22, -2, 4, 4); ctx.restore();
+  // singer (front, center) with mic stand
+  const px = sx + 96, pyf = sy + 81;
+  const sing = Math.sin(time * 0.6) > 0.2;
+  ctx.fillStyle = '#2a2c32'; ctx.fillRect(px + 10, pyf - 36, 2, 36);
+  ctx.fillStyle = '#111'; ctx.fillRect(px + 8, pyf - 40, 6, 5);
+  drawWinPerson(px, pyf, { shirt: '#ffd23a', pants: '#2a3550', skin: '#d9a577', hair: '#2a1b12', bob: bob(0, 4), arms: sing ? 2 : 1, front: true, ph: 0.5 }, time);
+  ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.fillRect(px - 2, pyf - bob(0, 4) - 25, 4, 1);
+
+  // speaker stacks (over the stage edges) + balloons tied to them
+  drawConcertSpeaker(sx + 2, sy + 36, beat);
+  drawConcertSpeaker(sx + sw - 26, sy + 36, beat);
+  const bal = ['#ff3fa4', '#ffd23a', '#3fd6ff', '#7dff6a', '#b06bff'];
+  [[sx + 14, 0], [sx + sw - 14, 3]].forEach(([bx0, o]) => {
+    for (let i = 0; i < 3; i++) {
+      const bx = bx0 + (i - 1) * 8 + Math.sin(time * 1.3 + i + o) * 3, by = sy + 14 - i * 3 + Math.sin(time * 1.7 + i * 2 + o) * 2;
+      ctx.strokeStyle = 'rgba(230,230,230,0.7)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(bx0, sy + 38); ctx.lineTo(bx, by + 8); ctx.stroke();
+      ctx.fillStyle = bal[(i + o) % bal.length]; ctx.beginPath(); ctx.ellipse(bx, by, 6, 7.5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillRect(bx - 3, by - 4, 2, 3);
+    }
+  });
+
+  // ---- the crowd, back row first so heads overlap the row behind
+  for (let i = 0; i < data.crowd.length; i++) {
+    const p = data.crowd[i];
+    if (p.x < x0 || p.x > x1) continue;
+    const lively = 0.6 + 0.4 * Math.sin(time * 0.4 + p.ph);
+    const b = Math.abs(Math.sin(time * Math.PI * 2 + p.ph)) * 4 * lively;
+    drawWinPerson(p.x, p.y, { shirt: p.shirt, pants: p.pants, skin: p.skin, hair: p.hair, bob: b, arms: p.arms, ph: p.ph, hat: p.hat, front: false }, time);
+    if (p.phone) {                          // somebody filming it
+      const wv = Math.sin(time * 9 + p.ph) * 2;
+      ctx.fillStyle = '#0c0c10'; ctx.fillRect(p.x + 6, p.y - b - 42 + wv, 6, 9);
+      ctx.fillStyle = '#e8f4ff'; ctx.fillRect(p.x + 7, p.y - b - 41 + wv, 4, 6);
+    }
+  }
+  // confetti drifting down over the crowd
+  for (let i = 0; i < 26; i++) {
+    const h = mhHash(i, 505);
+    const fx = c.pitX + (h % c.pitW) + Math.sin(time * 1.5 + i) * 4;
+    const fy = c.pitY - 50 + ((h >> 6) % 90 + time * (16 + h % 12)) % 150;
+    ctx.fillStyle = CONCERT_COLORS[i % CONCERT_COLORS.length];
+    ctx.fillRect(fx, fy, 2, 3);
+  }
+  // festoon party lights + poles (over the crowd)
+  for (const [ppx, pby, ptop] of c.poles) {
+    ctx.fillStyle = '#2a2c32'; ctx.fillRect(ppx - 2, ptop, 4, pby - ptop);
+    ctx.fillStyle = '#17181c'; ctx.fillRect(ppx - 5, pby - 3, 10, 4);
+  }
+  ctx.strokeStyle = 'rgba(20,20,26,0.8)'; ctx.lineWidth = 1;
+  for (const s of data.strands) { ctx.beginPath(); ctx.moveTo(s[0][0], s[0][1]); ctx.quadraticCurveTo(s[1][0], s[1][1], s[2][0], s[2][1]); ctx.stroke(); }
+  for (const bl of data.bulbs) {
+    const tw = 0.6 + 0.4 * Math.sin(time * 3 + bl.ph);
+    ctx.globalAlpha = 0.55 + 0.45 * tw;
+    ctx.fillStyle = bl.col; ctx.fillRect(bl.x - 2, bl.y, 4, 5);
+    ctx.globalAlpha = 1;
+  }
+}
+
+// Night pass: colored beams sweeping from the truss, a warm wash on the stage, pools of colored
+// light on the crowd, glowing phones and party bulbs. Called from drawWinooskiNight() with the
+// 'lighter' composite already set.
+function drawWinooskiConcertLights(time, wk, seen) {
+  const c = wk.concert;
+  if (!seen(c.x + c.w / 2, c.y + 120, 260)) return;
+  const beat = concertBeat(time), data = winConcertData(wk);
+  const pulse = 0.8 + 0.2 * beat;
+  // stage wash
+  ctx.globalAlpha = 0.5 * pulse;
+  drawGlowEllipse(c.x + c.w / 2, c.y + 56, 150, 70, 'rgba(255,90,190,ALPHA)');
+  ctx.globalAlpha = 0.35;
+  drawGlowEllipse(c.x + c.w / 2, c.y + 74, 120, 30, 'rgba(255,200,120,ALPHA)');
+  // sweeping beams
+  for (let i = 0; i < 6; i++) {
+    const lx = c.x + 24 + i * 34, ly = c.y + 14;
+    const ang = Math.sin(time * 0.9 + i * 1.3) * 0.6 + (i % 2 ? 0.15 : -0.15);
+    const L = 150 + 18 * Math.sin(time * 1.4 + i);
+    const col = CONCERT_COLORS[(i + Math.floor(time * 0.5)) % CONCERT_COLORS.length];
+    const rgb = hexToRgbaTemplate(col);
+    ctx.save();
+    ctx.translate(lx, ly); ctx.rotate(ang);
+    const gr = ctx.createLinearGradient(0, 0, 0, L);
+    gr.addColorStop(0, rgb.replace('ALPHA', String(0.42 * pulse)));
+    gr.addColorStop(1, rgb.replace('ALPHA', '0'));
+    ctx.fillStyle = gr; ctx.globalAlpha = 1;
+    ctx.beginPath(); ctx.moveTo(-3, 0); ctx.lineTo(3, 0); ctx.lineTo(30, L); ctx.lineTo(-30, L); ctx.closePath(); ctx.fill();
+    ctx.restore();
+    // pool of that color where the beam lands
+    ctx.globalAlpha = 0.45;
+    drawGlowEllipse(lx + Math.sin(ang) * L * 0.9, ly + Math.cos(ang) * L * 0.9, 46, 24, rgb);
+  }
+  // wash over the whole crowd, pumping with the kick
+  ctx.globalAlpha = 0.28 * pulse;
+  drawGlowEllipse(c.pitX + c.pitW / 2, c.pitY + c.pitH / 2, 170, 80, 'rgba(160,110,255,ALPHA)');
+  // phones + party bulbs
+  for (const p of data.crowd) {
+    if (!p.phone || !seen(p.x, p.y, 30)) continue;
+    const wv = Math.sin(time * 9 + p.ph) * 2;
+    ctx.globalAlpha = 0.85; drawGlow(p.x + 9, p.y - 38 + wv, 16, 'rgba(210,235,255,ALPHA)');
+  }
+  for (const bl of data.bulbs) {
+    if (!seen(bl.x, bl.y, 20)) continue;
+    ctx.globalAlpha = 0.55 + 0.4 * Math.sin(time * 3 + bl.ph);
+    drawGlow(bl.x, bl.y + 3, 13, hexToRgbaTemplate(bl.col));
+  }
+  ctx.globalAlpha = 1;
 }
 
 // ---------------------------------------------------------------- WINOOSKI AT NIGHT
@@ -28707,10 +29030,10 @@ function getWinNightHole(r) {
 // (Building origin = b.x * TILE, b.y * TILE; every shop here is 4 tiles / 128px tall.)
 const WIN_NIGHT_SHOP_LIGHTS = {
   'AUTUMN RECORDS': [
-    [28, 14, 40, 32, '#ffd9a0', 0.55], [156, 14, 40, 32, '#ffd9a0', 0.55],      // upstairs windows
-    [4, 98, 92, 26, '#ffc470', 0.5], [128, 98, 92, 26, '#ffc470', 0.5],         // shop windows
+    [28, 14, 40, 32, '#ffd9a0', 0.55], [124, 14, 40, 32, '#ffd9a0', 0.55],      // upstairs windows
+    [4, 98, 92, 26, '#ffc470', 0.5], [128, 98, 60, 26, '#ffc470', 0.5],         // shop windows
     [100, 96, 24, 28, '#fff0c8', 0.6],                                          // door glass
-    [12, 64, 200, 30, '#ff9a50', 0.42],                                         // orange name sign
+    [12, 64, 168, 30, '#ff9a50', 0.42],                                         // orange name sign
   ],
   'TINY THAI': [
     [8, 84, 50, 40, '#ffb860', 0.55], [102, 84, 50, 40, '#ffb860', 0.55],
@@ -28816,6 +29139,9 @@ function drawWinooskiNight(time, map, camX, camY) {
   }
   for (const b of shops) hole(b.x * TILE + (b.w * TILE) / 2, b.y * TILE + b.h * TILE - 10, 112, 0.82);
   for (const b of map.buildings) if (b.mill && b.mill === 'tower') hole(b.x * TILE + (b.w * TILE) / 2, b.y * TILE + b.h * TILE - 20, 90, 0.6);
+  { const cn = wk.concert;                                      // the rotary concert is the brightest thing in town
+    hole(cn.x + cn.w / 2, cn.y + 56, 210, 0.9);
+    hole(cn.pitX + cn.pitW / 2, cn.pitY + cn.pitH / 2, 190, 0.85); }
   hole(player.x, player.y, 96, 0.55);                          // the player's own little glow, so they're never lost in the dark
   if (deckA > 0.05) for (const [dx, dy] of winNightDeckLamps(wk)) hole(dx, dy, 58, 0.55 * deckA);
   nc.globalAlpha = 1;
@@ -28848,6 +29174,9 @@ function drawWinooskiNight(time, map, camX, camY) {
     ctx.globalAlpha = wv.door ? 0.6 : 0.3;
     drawGlow(wv.x + wv.w / 2, wv.y + wv.h / 2, 26, 'rgba(255,196,110,ALPHA)');
   }
+
+  drawWinooskiConcertLights(time, wk, seen);                   // stage beams, crowd wash, phones, party bulbs
+  ctx.globalAlpha = 1;
 
   // street lamps: ground pool + halo around the bulb
   for (let i = 0; i < lamps.length; i++) {
@@ -28953,7 +29282,7 @@ function drawWinooskiNight(time, map, camX, camY) {
   ctx.globalAlpha = 1;
 }
 
-// SCOUT -- a small coffee cart on the Winooski east lawn (tiles 35-36, row 27).
+// SCOUT -- a small coffee cart on the Winooski east lawn (tiles 35-36, row 23).
 // Fixed-position cosmetic sprite like drawCoffeeCart()/drawSwampJuiceCart(): the
 // player can walk over it, and the actual "buy a coffee" interaction lives in
 // VENDOR_CARTS/doBuy() (id 'scout'). Colors come straight from the logo: deep
@@ -28961,7 +29290,7 @@ function drawWinooskiNight(time, map, camX, camY) {
 // little roof sign; if the image hasn't loaded, "Scout" is lettered in text.
 function drawScoutCart() {
   const x = 35 * TILE + 4;
-  const y = 27 * TILE + 2;
+  const y = 23 * TILE + 2;
   const GREEN = '#2d4140', DARK = '#1c2b2a', PINK = '#f2bfbc';
   ctx.save();
 
@@ -30840,7 +31169,7 @@ function arDrawLogo(c, cx, cy, r, color, lw) {
   c.restore();
 }
 
-// Paints the whole 7-tile-wide, 4-tile-tall facade into context `c`.
+// Paints the whole 6-tile-wide, 4-tile-tall facade (any width >= 5 tiles works) into context `c`.
 // w/h are the building size in px; doorLX is the door tile's left edge, in
 // building-local px.
 function paintAutumnRecordsExterior(c, w, h, doorLX) {
@@ -30865,7 +31194,7 @@ function paintAutumnRecordsExterior(c, w, h, doorLX) {
   // ---- roofline: dark eave with carved brackets
   c.fillStyle = DARK; c.fillRect(0, 0, w, 6);
   c.fillStyle = DARK2; c.fillRect(0, 6, w, 2);
-  for (const bx of [14, 56, 98, 126, 168, 210]) {
+  for (const bx of [14, 56, 98, 126, 168, 210].filter((b) => b < w - 8)) {
     c.fillStyle = DARK; c.fillRect(bx - 4, 6, 8, 9);
     c.fillStyle = '#4a382c'; c.fillRect(bx - 2, 8, 4, 4);
     c.fillStyle = DARK; c.fillRect(bx - 1, 15, 2, 2);
@@ -30873,7 +31202,7 @@ function paintAutumnRecordsExterior(c, w, h, doorLX) {
 
   // ---- two tall second-floor windows with a hood cap and stone sill
   const winH = 28, winY = 17;
-  for (const wx of [30, 158]) {
+  for (const wx of [30, w - 66]) {
     const ww = 36;
     c.fillStyle = DARK; c.fillRect(wx - 4, winY - 5, ww + 8, 4);          // hood
     c.fillStyle = '#5a4030'; c.fillRect(wx - 4, winY - 5, ww + 8, 1);
@@ -30895,7 +31224,7 @@ function paintAutumnRecordsExterior(c, w, h, doorLX) {
   c.fillStyle = '#6b3a28'; c.fillRect(0, 50, w, 2);
   c.fillStyle = DARK; c.fillRect(0, 52, w, 7);
   c.fillStyle = DARK2; c.fillRect(0, 52, w, 1);
-  for (const bx of [10, 34, 72, 112, 152, 190, 214]) {        // corbels
+  for (const bx of [10, 34, 72, 112, 152, 190, 214].filter((b) => b < w - 8)) {        // corbels
     c.fillStyle = DARK2; c.fillRect(bx - 4, 59, 8, 5);
     c.fillStyle = DARK; c.fillRect(bx - 3, 64, 6, 3);
     c.fillStyle = '#4a382c'; c.fillRect(bx - 1, 60, 2, 2);
@@ -30929,13 +31258,17 @@ function paintAutumnRecordsExterior(c, w, h, doorLX) {
   c.save();
   c.fillStyle = '#fff7ec';
   c.textBaseline = 'middle'; c.textAlign = 'left';
-  c.font = '500 11px "Helvetica Neue", Helvetica, Arial, sans-serif';
   const textL = sx + 54, textR = sx + sw - 10;
   const letters = 'AUTUMN RECORDS'.split('');
-  const widths = letters.map((ch) => (ch === ' ' ? 7 : c.measureText(ch).width));
-  const total = widths.reduce((a, b) => a + b, 0);
   const gaps = letters.length - 1;
-  const space = (textR - textL - total) / gaps;
+  let fs = 11, widths, total, space;
+  do {                                   // shrink the lettering until the sign span fits (narrower building)
+    c.font = '500 ' + fs + 'px "Helvetica Neue", Helvetica, Arial, sans-serif';
+    widths = letters.map((ch) => (ch === ' ' ? fs * 0.64 : c.measureText(ch).width));
+    total = widths.reduce((a, b) => a + b, 0);
+    space = (textR - textL - total) / gaps;
+    fs -= 0.5;
+  } while (space < 1.6 && fs >= 7);
   let x = textL;
   letters.forEach((ch, i) => { if (ch !== ' ') c.fillText(ch, x, sy + sh / 2 + 0.5); x += widths[i] + space; });
   c.restore();
