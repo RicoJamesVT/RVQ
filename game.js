@@ -12387,6 +12387,7 @@ function makeShop(id, opts) {
     monkeyHouse: opts.monkeyHouse || false,
     bellevue: opts.bellevue || false,
     miseryLoves: opts.miseryLoves || false,
+    sneakers: opts.sneakers || false,
     plantShop: opts.plantShop || false,
     soulShack: opts.soulShack || false,
     foamBrewers: opts.foamBrewers || false,
@@ -13151,16 +13152,20 @@ function makeWinooski() {
     for (let x = CN_STAGE.x; x < CN_STAGE.x + CN_STAGE.w; x++) g[y][x] = 'q';
   for (let y = CN_PIT.y; y < CN_PIT.y + CN_PIT.h; y++)
     for (let x = CN_PIT.x; x < CN_PIT.x + CN_PIT.w; x++) g[y][x] = 'q';
-  // --- TINY THAI -- a little Thai restaurant out on the big east lawn (between
-  // the east road and the waterfront walkway), 5x4 tiles (x 44-48, rows 22-25).
-  // Same solid-walls-plus-one-door construction as AUTUMN RECORDS; the door is
-  // the bottom row's middle tile, and row 26 below it is open lawn (the lot()
-  // area is kept tree-free above, so nothing needs clearing).
-  const TT_X = 44, TT_Y = 22, TT_W = 5, TT_H = 4;
+  // --- TINY THAI -- a little Thai restaurant tucked into the LOWER-LEFT corner of
+  // the map, on the grass strip between the west road and the river (west of the
+  // bridge), 5x4 tiles (x 2-6, rows 29-32). Same solid-walls-plus-one-door
+  // construction as AUTUMN RECORDS; the door is the bottom row's middle tile
+  // (x 4, row 32) and row 33 below it is open grass above the riverbank. The
+  // footprint and the row below the door are cleared of trees so the player
+  // never spawns boxed in when stepping back outside.
+  const TT_X = 2, TT_Y = 29, TT_W = 5, TT_H = 4;
   const TT_DOOR_X = TT_X + Math.floor(TT_W / 2), TT_DOOR_Y = TT_Y + TT_H - 1;
   for (let y = TT_Y; y < TT_Y + TT_H; y++)
     for (let x = TT_X; x < TT_X + TT_W; x++) g[y][x] = 'w';
   g[TT_DOOR_Y][TT_DOOR_X] = 'D';
+  for (let x = TT_X - 1; x <= TT_X + TT_W; x++)
+    if (at(x, TT_DOOR_Y + 1) === '#') g[TT_DOOR_Y + 1][x] = '.';
   // --- THE MONKEY HOUSE -- a bar/restaurant + live-music venue on the open grass
   // NORTHWEST of the rotary (left side), 7x4 tiles (x 2-8, rows 4-7). Same
   // solid-walls-plus-one-door construction as the other Winooski buildings; the
@@ -13231,6 +13236,27 @@ function makeWinooski() {
     millBuildings.push({ x: mx, y: my, w: mw, h: mh, name: 'CHAMPLAIN MILL', mill: kind,
       wall: '#b04e2b', roof: '#2d7468', doorX: -1 });   // red brick + green copper trim (see paintMillWing)
   }
+  // --- SNEAKERS BISTRO -- the famous local brunch spot, on the far LEFT side of the map just
+  // west of the rotary (x 1-4, rows 13-16): a small 4x4-tile building whose right edge sits
+  // flush against the ring road like a real street-front. The door is the bottom row's 4th
+  // tile (x 4, row 16) and opens onto a red-brick PATIO (x 1-4, rows 17-20) with three
+  // dark-green picnic tables ('x' tiles; the custom green/drinks art and the orange
+  // umbrellas are drawn by drawSneakersPicnicTable()/drawMonkeyHouseUmbrellas()). Tables
+  // leave row 17, column 2 and column 4 open so the exit never boxes the player in. Carved
+  // AFTER the tree sprinkle so the footprint and patio win over any tree.
+  const SB_X = 1, SB_Y = 13, SB_W = 4, SB_H = 4;
+  const SB_DOOR_X = SB_X + 3, SB_DOOR_Y = SB_Y + SB_H - 1;
+  const SB_PATIO = { x: 1, y: SB_Y + SB_H, w: 4, h: 4 };
+  for (let y = SB_Y - 1; y <= SB_PATIO.y + SB_PATIO.h; y++)
+    for (let x = 1; x <= 4; x++) if (g[y][x] === '#') g[y][x] = '.';
+  for (let y = SB_Y; y < SB_Y + SB_H; y++)
+    for (let x = SB_X; x < SB_X + SB_W; x++) g[y][x] = 'w';
+  g[SB_DOOR_Y][SB_DOOR_X] = 'D';
+  fillRect(SB_PATIO.x, SB_PATIO.y, SB_PATIO.x + SB_PATIO.w - 1, SB_PATIO.y + SB_PATIO.h - 1, 'p', ['.']);
+  const SB_TABLES = [[1, 18], [3, 18], [2, 20]];
+  for (const [tx, ty] of SB_TABLES) if (g[ty][tx] === 'p') g[ty][tx] = 'x';
+  const sbTableKeys = {};
+  for (const [tx, ty] of SB_TABLES) sbTableKeys[tx + ',' + ty] = true;
   const winBuildings = [{
     x: AR_X, y: AR_Y, w: AR_W, h: AR_H, name: 'AUTUMN RECORDS',
     wall: '#a94f2a', roof: '#241a15', doorX: AR_DOOR_X,   // red brick + dark carved-wood trim (see drawAutumnRecordsExterior)
@@ -13246,6 +13272,9 @@ function makeWinooski() {
   }, {
     x: ML_X, y: ML_Y, w: ML_W, h: ML_H, name: 'MISERY LOVES CO.',
     wall: '#9b4b38', roof: '#14110f', doorX: ML_DOOR_X,   // red brick + black trim (see drawMiseryLovesExterior)
+  }, {
+    x: SB_X, y: SB_Y, w: SB_W, h: SB_H, name: 'SNEAKERS BISTRO',
+    wall: '#4aa8ea', roof: '#16277a', doorX: SB_DOOR_X,   // sky-blue siding + navy trim (see drawSneakersExterior)
   }, ...millBuildings];
 
   // --- painted road details (precomputed pixel-space marks; drawn by drawWinooskiDecorations)
@@ -13341,6 +13370,7 @@ function makeWinooski() {
     monkeyHouseDoor: { x: MH_DOOR_X, y: MH_DOOR_Y },
     bellevueDoor: { x: BV_DOOR_X, y: BV_DOOR_Y },
     miseryLovesDoor: { x: ML_DOOR_X, y: ML_DOOR_Y },
+    sneakersDoor: { x: SB_DOOR_X, y: SB_DOOR_Y },
     // Drawing data for drawWinooskiDecorations()/drawWinooskiOverhead() -- everything in world pixels.
     winooski: {
       dashes, crosswalks, lamps, deckSamples, deckWidth: DECK_W * PX,
@@ -13350,7 +13380,11 @@ function makeWinooski() {
       concert: { x: CN_STAGE.x * PX, y: CN_STAGE.y * PX, w: CN_STAGE.w * PX, h: CN_STAGE.h * PX,
                  pitX: CN_PIT.x * PX, pitY: CN_PIT.y * PX, pitW: CN_PIT.w * PX, pitH: CN_PIT.h * PX },
       // table centers (world px) for the Monkey House yard umbrellas
-      umbrellas: MH_TABLES.map(([tx, ty]) => ({ x: tx * PX + PX / 2, y: ty * PX + PX / 2 })),
+      umbrellas: MH_TABLES.map(([tx, ty]) => ({ x: tx * PX + PX / 2, y: ty * PX + PX / 2 }))
+        // SNEAKERS BISTRO's patio: orange-and-cream umbrellas over two of its three tables
+        .concat(SB_TABLES.slice(0, 2).map(([tx, ty]) => ({ x: tx * PX + PX / 2, y: ty * PX + PX / 2, cols: ['#f0562a', '#fbf5e6'] }))),
+      // SNEAKERS BISTRO's brick patio rect (tile coords) + its green picnic tables (keys 'x,y')
+      sneakersPatio: SB_PATIO, sneakersTables: sbTableKeys,
     },
     spawn: { x: 21.5, y: 30.5 },   // tile coords: the bridge's east sidewalk, just south of the rotary
     palette: {
@@ -14803,6 +14837,39 @@ const shops = {
       ] },
     crates: [],
   }),
+  // SNEAKERS BISTRO -- the famous local brunch spot, on the far left of the Winooski map
+  // (see makeWinooski()). `sneakers: true` gets its own interior (drawSneakersInterior): a
+  // hip brunch room -- blush plaster over mint subway tile, a neon sign wall, chalkboard
+  // brunch menu, plant + mug shelves, bunting, a checkerboard floor, a marble counter with
+  // an espresso station, mint velvet booths, round tables and a monstera. Solid props are
+  // plain tiles the painter dresses up: row 1 is walled off (back wall); blockTiles =
+  // espresso station (8,2)(9,2), booths (1,4)..(1,7), potted monstera (12,8); the counter is
+  // the row y=3 over x 8..12 with the host behind it at (10,2); extraTables = four round
+  // tables (2,5)(2,7)(10,6)(10,8). All clear of the door (6,9) and spawn (6.5,7.5). No
+  // crates: it's a restaurant, nothing to dig.
+  sneakersbistro: makeShop('sneakersbistro', {
+    world: 'winooski',
+    floor: '#f3d9c6', plank: '#e6c8b0', wallColor: '#8fc7b0',
+    sneakers: true,
+    noCounterTable: false,
+    tableRange: { start: 8, end: 12 },
+    blockTiles: [
+      [1, 1], [2, 1], [3, 1], [4, 1], [5, 1], [6, 1], [7, 1], [8, 1], [9, 1], [10, 1], [11, 1], [12, 1],
+      [8, 2], [9, 2], [1, 4], [1, 5], [1, 6], [1, 7], [12, 8],
+    ],
+    extraTables: [[2, 5], [2, 7], [10, 6], [10, 8]],
+    keeper: { x: 10, y: 2, name: 'HOST', shirt: '#f4efe4', skin: '#d9a47a',
+      lines: [
+        'Welcome to Sneakers! Sit anywhere you like -- the booths by the window go first, so grab one while you can.',
+        'We\'re an institution around here. Half of Winooski has had a Saturday morning in this room.',
+        'Brunch is the whole point. Eggs benny, avocado toast, stuffed French toast -- and yes, you can get a mimosa with any of it.',
+        'The espresso martini is the move. Ask anybody on the patio.',
+        'See the neon on the wall? Same one that\'s in the front window. It\'s been glowing since before I started.',
+        'Doors open at 7 and we close up at 3, every single day. Come early, the line out the door is real.',
+        'Patio\'s open when the weather behaves. Picnic tables, brick underfoot, an orange spritz in your hand. Hard to beat.',
+      ] },
+    crates: [],
+  }),
   // CB PRINTS -- the skatepark's fourth building: a small, artsy independent
   // screen printing shop owned and run by BONTA, the master screen printer
   // in the area, who always backs the hip hop scene -- connecting artists
@@ -15096,6 +15163,9 @@ transitions['bellevue:' + key(6, 9)] = { map: 'winooski', x: winooski.bellevueDo
 // MISERY LOVES CO. door wiring (Winooski, LEVEL 4) -- same pattern as BELLEVUE above.
 transitions['winooski:' + key(winooski.miseryLovesDoor.x, winooski.miseryLovesDoor.y)] = { map: 'miseryloves', x: 6.5, y: 7.5 };
 transitions['miseryloves:' + key(6, 9)] = { map: 'winooski', x: winooski.miseryLovesDoor.x + 0.5, y: winooski.miseryLovesDoor.y + 1.6 };
+// SNEAKERS BISTRO door wiring (Winooski, LEVEL 4) -- same pattern as MISERY LOVES CO. above.
+transitions['winooski:' + key(winooski.sneakersDoor.x, winooski.sneakersDoor.y)] = { map: 'sneakersbistro', x: 6.5, y: 7.5 };
+transitions['sneakersbistro:' + key(6, 9)] = { map: 'winooski', x: winooski.sneakersDoor.x + 0.5, y: winooski.sneakersDoor.y + 1.6 };
 const maps = { town, ...shops, swamp, skatepark, winooski };
 
 // Reshuffles, within EACH location that has one, which of that location's
@@ -27437,6 +27507,7 @@ function render(time) {
   if (map.monkeyHouse) drawMonkeyHouseInterior(time);
   if (map.bellevue) drawBellevueInterior(time);
   if (map.miseryLoves) drawMiseryLovesInterior(time);
+  if (map.sneakers) drawSneakersInterior(time);
   if (map.poolParty) drawJohnnysPoolInterior(time);
   if (map.keeper) drawKeeper(map.keeper);
   drawShopImageNpcs(map);
@@ -27746,6 +27817,9 @@ function drawTiles(map, time, camX = 0, camY = 0) {
           break;
         }
         case 'p': {
+          // SNEAKERS BISTRO's patio is red brick instead of the grey promenade pavers
+          const sbp = map.winooski && map.winooski.sneakersPatio;
+          if (sbp && tx >= sbp.x && tx < sbp.x + sbp.w && ty >= sbp.y && ty < sbp.y + sbp.h) { drawSneakersBrick(px, py, tx, ty); break; }
           // promenade paving: warm pavers in a running-bond pattern
           ctx.fillStyle = (h % 5 === 0) ? '#c2bcae' : '#cbc5b7';
           ctx.fillRect(px, py, TILE, TILE);
@@ -27821,6 +27895,8 @@ function drawTiles(map, time, camX = 0, camY = 0) {
           break;
         }
         case 'x': {
+          // SNEAKERS BISTRO's patio tables: dark green, on brick, with brunch drinks
+          if (map.winooski && map.winooski.sneakersTables && map.winooski.sneakersTables[key(tx, ty)]) { drawSneakersPicnicTable(px, py, tx, ty); break; }
           // Winooski picnic table (solid): wood top with a bench along each long side
           ctx.fillStyle = 'rgba(0,0,0,0.2)';
           ctx.fillRect(px + 2, py + 25, TILE - 4, 4);
@@ -29053,6 +29129,11 @@ const WIN_NIGHT_SHOP_LIGHTS = {
   'MISERY LOVES CO.': [
     [68, 46, 86, 66, '#ffd48a', 0.6],                                           // big front window
     [34, 66, 28, 60, '#ffc070', 0.5],                                           // door
+  ],
+  'SNEAKERS BISTRO': [
+    [25, 43, 57, 63, '#ff6a4a', 0.55],                                          // neon window
+    [99, 81, 26, 37, '#ffe2a8', 0.5],                                           // door glass
+    [5, 14, 118, 20, '#7fd0ff', 0.30],                                          // name board
   ],
 };
 
@@ -32258,8 +32339,9 @@ function drawMonkeyHouseLive(px, py, w, h, dx) {
 function drawMonkeyHouseUmbrellas(map, camX, camY) {
   const list = map.winooski && map.winooski.umbrellas;
   if (!list) return;
-  const cols = ['#ffd83a', '#2f4a3a'];
+  const defCols = ['#ffd83a', '#2f4a3a'];
   for (const u of list) {
+    const cols = u.cols || defCols;
     if (u.x < camX - 40 || u.x > camX + VIEW_W + 40 || u.y < camY - 40 || u.y > camY + VIEW_H + 40) continue;
     const cx = u.x, cy = u.y - 5, R = 20;
     ctx.fillStyle = 'rgba(0,0,0,0.16)';
@@ -33042,6 +33124,447 @@ function drawBellevueInterior(time) {
 
 }
 
+// ---------------------------------------------------------------- SNEAKERS BISTRO (Winooski, LEVEL 4)
+// The famous local brunch spot, on the far LEFT of the map just west of the rotary (see
+// makeWinooski()). Outside, modeled on two photos of the real place: a bright sky-blue
+// painted storefront with navy trim, a red-brick pillar, a big street window carrying the
+// neon "Bistro & Cafe" + diagonal red "sneakers" sign inside a green tube frame, a menu
+// case, the street number 28, and a glass door with the white "sneakers" decal and
+// "7AM-3PM EVERY DAY". Out front is a red-brick patio with dark-green picnic tables, a
+// couple of orange spritzes and an espresso martini on them, and striped umbrellas.
+// Inside: a hip brunch room -- blush plaster over mint subway tile, a neon sign wall,
+// chalkboard brunch menu, plant + mug shelves, pastel bunting, a checkerboard floor, a
+// marble-topped counter with an espresso machine and pastry dome, mint velvet booths,
+// bentwood chairs and a monstera in the corner.
+//
+// Static art is painted once into offscreen canvases; only the neon glow is drawn live.
+
+// Neon "Bistro & Cafe" (blue) + "sneakers" (red script inside a green tube frame).
+// diag = true: the storefront-window layout (stacked blue text, sign tilted up-right);
+// diag = false: the interior wall layout (blue line above a level sign).
+function sbNeon(c, cx, cy, s, diag) {
+  const FAM = '"Brush Script MT", "Segoe Script", "Snell Roundhand", cursive';
+  c.save();
+  c.translate(cx, cy); c.scale(s, s);
+  c.textAlign = 'center'; c.textBaseline = 'middle'; c.lineJoin = 'round'; c.lineCap = 'round';
+  const blue = (txt, x, y) => {
+    c.font = 'italic 700 13px ' + FAM;
+    c.strokeStyle = 'rgba(80,170,255,0.35)'; c.lineWidth = 5; c.strokeText(txt, x, y);
+    c.strokeStyle = '#3fa0ff'; c.lineWidth = 1.4; c.strokeText(txt, x, y);
+    c.fillStyle = '#bfe4ff'; c.fillText(txt, x, y);
+  };
+  if (diag) { blue('Bistro', -34, -38); blue('& Cafe', -28, -22); c.translate(6, 14); c.rotate(-0.52); }
+  else { blue('Bistro & Cafe', 0, -25); c.translate(0, 3); }
+  // green tube frame (a parallelogram)
+  c.beginPath(); c.moveTo(-46, -13); c.lineTo(56, -13); c.lineTo(46, 13); c.lineTo(-56, 13); c.closePath();
+  c.strokeStyle = 'rgba(47,209,106,0.30)'; c.lineWidth = 6; c.stroke();
+  c.strokeStyle = '#2fd16a'; c.lineWidth = 2; c.stroke();
+  c.strokeStyle = '#b9ffd0'; c.lineWidth = 0.6; c.stroke();
+  // red script
+  let fs = 22;
+  c.font = 'italic 800 ' + fs + 'px ' + FAM;
+  while (fs > 11 && c.measureText('sneakers').width > 84) { fs--; c.font = 'italic 800 ' + fs + 'px ' + FAM; }
+  c.strokeStyle = 'rgba(255,80,50,0.38)'; c.lineWidth = 5; c.strokeText('sneakers', 0, 1);
+  c.strokeStyle = '#ff4a2a'; c.lineWidth = 1.8; c.strokeText('sneakers', 0, 1);
+  c.fillStyle = '#ff9a78'; c.fillText('sneakers', 0, 1);
+  c.restore();
+}
+
+function paintSneakersExterior(c, w, h, doorLX) {
+  const NAVY = '#16277a', SKY = '#4aa8ea', SKYD = '#2f86cf', SKYL = '#8ed0f6', WHITE = '#f6f6f2';
+  // ---- painted sky-blue wood siding
+  c.fillStyle = SKY; c.fillRect(0, 0, w, h);
+  for (let y = 7; y < h; y += 7) {
+    c.fillStyle = 'rgba(0,40,110,0.12)'; c.fillRect(0, y, w, 1);
+    c.fillStyle = 'rgba(255,255,255,0.10)'; c.fillRect(0, y + 1, w, 1);
+  }
+  c.fillStyle = NAVY; c.fillRect(0, 0, 3, h); c.fillRect(w - 3, 0, 3, h);
+
+  // ---- navy cornice + the name board
+  c.fillStyle = NAVY; c.fillRect(0, 0, w, 11);
+  c.fillStyle = '#2c3fa0'; c.fillRect(0, 0, w, 2);
+  c.fillStyle = '#0c1650'; c.fillRect(0, 9, w, 2);
+  c.fillStyle = SKYD; c.fillRect(5, 14, w - 10, 20);
+  c.fillStyle = NAVY; c.fillRect(5, 14, w - 10, 1); c.fillRect(5, 33, w - 10, 1); c.fillRect(5, 14, 1, 20); c.fillRect(w - 6, 14, 1, 20);
+  c.fillStyle = '#f0562a'; c.fillRect(6, 31, w - 12, 2);
+  let fs = 12;
+  c.font = '800 ' + fs + 'px "Trebuchet MS", Verdana, sans-serif';
+  while (fs > 6 && c.measureText('SNEAKERS BISTRO').width > w - 26) { fs--; c.font = '800 ' + fs + 'px "Trebuchet MS", Verdana, sans-serif'; }
+  c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+  c.fillStyle = NAVY; c.fillText('SNEAKERS BISTRO', w / 2 + 1, 28 + 1);
+  c.fillStyle = WHITE; c.fillText('SNEAKERS BISTRO', w / 2, 28);
+
+  // ---- menu case on the left wall: white frame, pinned menus
+  c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(6, 54, 16, 36);
+  c.fillStyle = '#ecece6'; c.fillRect(4, 51, 16, 36);
+  c.fillStyle = '#9a9a94'; c.fillRect(6, 53, 12, 32);
+  c.fillStyle = '#f7f1e2'; c.fillRect(7, 54, 10, 30);
+  for (const [px, py, pw, ph, col] of [[8, 56, 4, 6, '#2f86cf'], [13, 57, 3, 5, '#f0562a'], [8, 65, 8, 5, '#ffffff'], [9, 72, 6, 8, '#e8d8a0']]) {
+    c.fillStyle = col; c.fillRect(px, py, pw, ph);
+  }
+  c.fillStyle = 'rgba(0,0,0,0.25)'; for (let y = 66; y < 70; y += 2) c.fillRect(9, y, 6, 1);
+
+  // ---- the big street window: navy frame, dark reflective glass, neon inside
+  c.fillStyle = NAVY; c.fillRect(22, 40, 63, 69);
+  c.fillStyle = '#0c1650'; c.fillRect(22, 40, 63, 2);
+  const gl = c.createLinearGradient(0, 43, 0, 106);
+  gl.addColorStop(0, '#7d98b4'); gl.addColorStop(1, '#b9c6cf');
+  c.fillStyle = gl; c.fillRect(25, 43, 57, 63);
+  // reflection of the brick building across the street + winter sky
+  c.fillStyle = '#c9d6df'; c.fillRect(25, 43, 57, 12);
+  c.fillStyle = '#8b4a3a'; c.fillRect(27, 58, 34, 30);
+  c.fillStyle = '#a45a46'; c.fillRect(27, 58, 34, 3);
+  for (let y = 63; y < 86; y += 8) for (let x = 30; x < 58; x += 8) { c.fillStyle = '#e6dcc4'; c.fillRect(x, y, 4, 5); }
+  c.fillStyle = '#e8e8e4'; c.fillRect(62, 82, 18, 14);                   // a white delivery van
+  c.fillStyle = '#6a7480'; c.fillRect(62, 94, 18, 3);
+  // bare tree branches
+  c.strokeStyle = 'rgba(40,32,26,0.75)'; c.lineWidth = 1; c.beginPath();
+  c.moveTo(80, 43); c.lineTo(68, 56); c.lineTo(60, 52); c.moveTo(68, 56); c.lineTo(62, 66); c.moveTo(74, 48); c.lineTo(78, 60);
+  c.moveTo(48, 43); c.lineTo(54, 54); c.lineTo(46, 58); c.stroke();
+  c.fillStyle = 'rgba(8,16,40,0.38)'; c.fillRect(25, 43, 57, 63);          // dim the glass so the neon pops
+  sbNeon(c, 54, 80, 0.52, true);
+  c.fillStyle = 'rgba(255,255,255,0.10)';
+  c.beginPath(); c.moveTo(30, 106); c.lineTo(44, 43); c.lineTo(52, 43); c.lineTo(40, 106); c.closePath(); c.fill();
+  // bulkhead under the window, with the white paint streaks from the photo
+  c.fillStyle = SKYD; c.fillRect(22, 109, 63, h - 109);
+  c.fillStyle = NAVY; c.fillRect(22, 109, 63, 2);
+  c.fillStyle = 'rgba(255,255,255,0.75)'; c.fillRect(26, 115, 44, 2); c.fillRect(30, 120, 30, 1);
+  // low recessed panel under the menu case
+  c.fillStyle = SKYD; c.fillRect(4, 94, 15, h - 97); c.fillStyle = NAVY; c.fillRect(4, 94, 15, 1);
+  c.fillStyle = 'rgba(255,255,255,0.75)'; c.fillRect(5, 104, 12, 2);
+
+  // ---- red-brick pillar between the window and the door
+  c.fillStyle = '#a84c36'; c.fillRect(85, 36, 11, h - 36);
+  for (let row = 0, y = 36; y < h; y += 6, row++) {
+    c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(85, y + 5, 11, 1);
+    const off = row % 2 ? 5 : 0;
+    for (let x = 85 - off; x < 96; x += 10) { if (x + 9 >= 85) { c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(Math.max(85, x + 9), y, 1, 5); } }
+    if (mhHash(row, 9) % 3 === 0) { c.fillStyle = 'rgba(255,255,255,0.08)'; c.fillRect(86, y + 1, 9, 4); }
+  }
+
+  // ---- the door (col 3): navy frame, transom with the street number, glass with the decal
+  const dX = doorLX + 3, dW = 26;
+  c.fillStyle = NAVY; c.fillRect(dX - 3, 56, dW + 6, h - 56);
+  c.fillStyle = '#cfe3ee'; c.fillRect(dX, 60, dW, 18);
+  c.fillStyle = '#9aa0a6'; c.fillRect(dX + 4, 62, 18, 12);
+  c.fillStyle = '#5a6066'; c.fillRect(dX + 4, 62, 18, 1);
+  c.fillStyle = '#1c2024'; c.font = '700 9px Georgia, serif'; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+  c.fillText('28', dX + 13, 72);
+  c.fillStyle = NAVY; c.fillRect(dX, 78, dW, 3);
+  const dg = c.createLinearGradient(0, 81, 0, 118);
+  dg.addColorStop(0, '#3e566c'); dg.addColorStop(1, '#17222e');
+  c.fillStyle = dg; c.fillRect(dX, 81, dW, 37);
+  c.fillStyle = 'rgba(255,255,255,0.10)'; c.fillRect(dX + 3, 81, 4, 37);
+  // white outlined diamond decal with the "sneakers" script
+  c.save(); c.translate(dX + 13, 92); c.rotate(-0.5);
+  c.strokeStyle = 'rgba(255,255,255,0.92)'; c.lineWidth = 1;
+  c.beginPath(); c.moveTo(-11, -4.5); c.lineTo(12, -4.5); c.lineTo(10, 4.5); c.lineTo(-13, 4.5); c.closePath(); c.stroke();
+  let df = 7;
+  c.font = 'italic 800 ' + df + 'px "Brush Script MT", "Segoe Script", cursive';
+  while (df > 4 && c.measureText('sneakers').width > 19) { df--; c.font = 'italic 800 ' + df + 'px "Brush Script MT", "Segoe Script", cursive'; }
+  c.fillStyle = '#fff'; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillText('sneakers', -1, 0.5);
+  c.restore();
+  c.fillStyle = '#fff'; c.font = '700 4px Arial, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+  c.fillText('7AM-3PM', dX + 13, 107); c.fillText('EVERY DAY', dX + 13, 113);
+  c.fillStyle = '#d8dce0'; c.fillRect(dX + dW - 5, 98, 2, 9);              // pull handle
+  c.fillStyle = NAVY; c.fillRect(dX, 118, dW, h - 118);
+
+  // ---- foundation + mat
+  c.fillStyle = '#0c1650'; c.fillRect(0, h - 3, w, 3);
+  c.fillStyle = '#c43a2a'; c.fillRect(dX, h - 3, dW, 3);
+}
+
+let _sbExteriorCache = null;
+function drawSneakersExterior(px, py, w, h, dx) {
+  const doorLX = dx - px;
+  if (!_sbExteriorCache || _sbExteriorCache.w !== w || _sbExteriorCache.h !== h || _sbExteriorCache.d !== doorLX) {
+    const cv = document.createElement('canvas');
+    cv.width = w; cv.height = h;
+    paintSneakersExterior(cv.getContext('2d'), w, h, doorLX);
+    _sbExteriorCache = { cv, w, h, d: doorLX };
+  }
+  ctx.drawImage(_sbExteriorCache.cv, px, py);
+}
+
+// Live bits of the storefront: the window neon glows and now and then buzzes.
+function drawSneakersLive(px, py, w, h) {
+  const t = performance.now() / 1000;
+  let f = 0.85 + 0.15 * Math.sin(t * 1.7);
+  if ((t % 9) > 8.6 && Math.sin(t * 37) > 0) f = 0.3;
+  ctx.fillStyle = 'rgba(255,90,60,' + (0.12 * f).toFixed(3) + ')';
+  ctx.beginPath(); ctx.ellipse(px + 54, py + 84, 27, 17, -0.5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(60,220,120,' + (0.08 * f).toFixed(3) + ')';
+  ctx.beginPath(); ctx.ellipse(px + 54, py + 84, 31, 21, -0.5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(90,180,255,' + (0.10 * f).toFixed(3) + ')';
+  ctx.beginPath(); ctx.ellipse(px + 38, py + 58, 14, 9, 0, 0, Math.PI * 2); ctx.fill();
+}
+
+// ---------------------------------------------------------------- patio props (outside)
+// Red-brick running-bond paving under the patio (called from drawTiles' 'p' / 'x' cases).
+function drawSneakersBrick(px, py, tx, ty) {
+  const hv = mhHash(tx * 3 + 11, ty * 5 + 7);
+  ctx.fillStyle = (hv % 4 === 0) ? '#a94d37' : (hv % 3 === 0) ? '#bd6045' : '#b3563e';
+  ctx.fillRect(px, py, TILE, TILE);
+  ctx.fillStyle = 'rgba(60,20,10,0.35)';
+  for (let r = 0; r < 4; r++) {
+    ctx.fillRect(px, py + r * 8 + 7, TILE, 1);
+    const off = ((r + ty) % 2) ? 8 : 0;
+    for (let x = off; x < TILE; x += 16) ctx.fillRect(px + x, py + r * 8, 1, 7);
+  }
+  ctx.fillStyle = 'rgba(255,255,255,0.06)'; ctx.fillRect(px, py, TILE, 1);
+}
+
+// A dark-green picnic table on the brick (solid 'x' tile) with brunch drinks on top:
+// an orange spritz with a lime wheel, a brown espresso martini, a little plate.
+function drawSneakersPicnicTable(px, py, tx, ty) {
+  drawSneakersBrick(px, py, tx, ty);
+  ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.fillRect(px + 2, py + 25, TILE - 4, 4);
+  ctx.fillStyle = '#173a26';                                                // benches
+  ctx.fillRect(px + 3, py + 4, TILE - 6, 4); ctx.fillRect(px + 3, py + 21, TILE - 6, 4);
+  ctx.fillStyle = '#2d6a45'; ctx.fillRect(px + 2, py + 9, TILE - 4, 11);   // tabletop
+  ctx.fillStyle = '#3f8a5c'; ctx.fillRect(px + 2, py + 9, TILE - 4, 3);
+  ctx.fillStyle = 'rgba(0,0,0,0.20)'; ctx.fillRect(px + 2, py + 15, TILE - 4, 1); ctx.fillRect(px + 2, py + 19, TILE - 4, 1);
+  const v = mhHash(tx, ty) % 3;
+  // orange spritz
+  ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(px + 7, py + 17, 6, 2);
+  ctx.fillStyle = '#f2592b'; ctx.beginPath(); ctx.arc(px + 10, py + 13, 3, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.fillRect(px + 8, py + 11, 1, 2);
+  ctx.fillStyle = '#9ad24a'; ctx.fillRect(px + 12, py + 10, 3, 2);          // lime wheel
+  // espresso martini (or a second spritz)
+  ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(px + 19, py + 17, 6, 2);
+  ctx.fillStyle = v === 0 ? '#f2592b' : '#6b4226'; ctx.beginPath(); ctx.arc(px + 22, py + 13, 3, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = v === 0 ? '#ffd0a0' : '#e8d4b0'; ctx.fillRect(px + 21, py + 11, 3, 1);
+  if (v === 2) { ctx.fillStyle = '#f4efe4'; ctx.beginPath(); ctx.arc(px + 16, py + 15, 2.2, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#f0c040'; ctx.fillRect(px + 15, py + 14, 2, 2); }
+}
+
+// ---------------------------------------------------------------- interior
+// Solid props are plain 'W'/'T' tiles in the shop def (blockTiles/extraTables) that this
+// painter dresses up: espresso station (8,2)(9,2), booths (1,4..7), potted monstera (12,8);
+// the counter is the default 'T' row at y=3 (x 8..12) with the host behind it at (10,2);
+// round tables at (2,5)(2,7) (booth tables) and (10,6)(10,8).
+function sbChair(c, x, y, col) {
+  c.fillStyle = 'rgba(0,0,0,0.22)'; c.beginPath(); c.ellipse(x, y + 6, 7, 3, 0, 0, Math.PI * 2); c.fill();
+  c.strokeStyle = '#2a1a10'; c.lineWidth = 1.2; c.beginPath(); c.arc(x, y, 6.5, 0, Math.PI * 2); c.stroke();     // bentwood ring
+  c.fillStyle = col; c.beginPath(); c.arc(x, y, 5.2, 0, Math.PI * 2); c.fill();
+  c.fillStyle = 'rgba(255,255,255,0.22)'; c.beginPath(); c.arc(x - 1.5, y - 1.5, 2, 0, Math.PI * 2); c.fill();
+}
+function sbTable(c, tx, ty, i, booth) {
+  const cx = tx * TILE + TILE / 2, cy = ty * TILE + TILE / 2;
+  if (!booth) sbChair(c, cx - 23, cy, i % 2 ? '#e8b64a' : '#2f8f8f');   // booth tables seat on the velvet bench instead
+  sbChair(c, cx + 23, cy, i % 2 ? '#2f8f8f' : '#e8b64a');
+  c.fillStyle = 'rgba(0,0,0,0.25)'; c.beginPath(); c.ellipse(cx + 1, cy + 5, 13, 8, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#16277a'; c.beginPath(); c.arc(cx, cy, 13, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#fbf5e6'; c.beginPath(); c.arc(cx, cy, 11.5, 0, Math.PI * 2); c.fill();
+  c.fillStyle = 'rgba(0,0,0,0.05)'; c.beginPath(); c.arc(cx + 3, cy + 3, 6, 0, Math.PI * 2); c.fill();
+  // eggs benny on a plate, an OJ/mimosa, a mug, a little bud vase
+  c.fillStyle = '#ffffff'; c.beginPath(); c.arc(cx - 4, cy + 1, 4.4, 0, Math.PI * 2); c.fill();
+  c.strokeStyle = '#d8d0bc'; c.lineWidth = 0.6; c.stroke();
+  c.fillStyle = '#f5d24a'; c.beginPath(); c.arc(cx - 4, cy + 1, 1.8, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#4f9a4a'; c.fillRect(cx - 7, cy + 2, 2, 1);
+  c.fillStyle = '#f29a3a'; c.beginPath(); c.arc(cx + 6, cy - 2, 2.6, 0, Math.PI * 2); c.fill();
+  c.fillStyle = 'rgba(255,255,255,0.5)'; c.fillRect(cx + 5, cy - 4, 1, 2);
+  c.fillStyle = '#6b4226'; c.beginPath(); c.arc(cx + 3, cy + 6, 2.2, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#f08a9a'; c.fillRect(cx - 1, cy - 8, 2, 3); c.fillStyle = '#4f9a4a'; c.fillRect(cx - 1, cy - 5, 2, 2);
+}
+
+function paintSneakersInterior(c) {
+  const W = 14 * TILE, H = 10 * TILE;
+  const NAVY = '#16277a', MINT = '#a9d8c4', CREAM = '#fbf5e6', BLUSH = '#f4cdbf', MUST = '#e8b64a', TERRA = '#d9826a', SAGE = '#5fa58a';
+
+  // ---------------------------------------------------------------- checkerboard floor
+  for (let ty = 2; ty <= 8; ty++) for (let tx = 1; tx <= 12; tx++)
+    for (let sy = 0; sy < 2; sy++) for (let sx = 0; sx < 2; sx++) {
+      c.fillStyle = ((tx * 2 + sx + ty * 2 + sy) % 2) ? '#f3d9c6' : '#fbf3e2';
+      c.fillRect(tx * TILE + sx * 16, ty * TILE + sy * 16, 16, 16);
+    }
+  c.fillStyle = 'rgba(0,0,0,0.05)'; c.fillRect(TILE, 2 * TILE, 12 * TILE, 3);
+
+  // ---------------------------------------------------------------- back wall: blush plaster over mint subway tile
+  c.fillStyle = BLUSH; c.fillRect(0, 0, W, 40);
+  c.fillStyle = CREAM; c.fillRect(0, 0, W, 7); c.fillStyle = '#e6d9bf'; c.fillRect(0, 7, W, 2);
+  c.fillStyle = MINT; c.fillRect(0, 40, W, 20);
+  for (let row = 0, y = 40; y < 60; y += 7, row++) {
+    c.fillStyle = 'rgba(255,255,255,0.6)'; c.fillRect(0, y + 6, W, 1);
+    const off = row % 2 ? 8 : 0;
+    for (let x = -off; x < W; x += 16) c.fillRect(x + 15, y, 1, 6);
+  }
+  c.fillStyle = CREAM; c.fillRect(0, 38, W, 2);                              // chair rail
+  c.fillStyle = NAVY; c.fillRect(0, 60, W, 4);                               // baseboard
+  c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(0, 60, W, 1);
+
+  // pastel bunting along the cornice
+  c.strokeStyle = '#5a4a3a'; c.lineWidth = 1; c.beginPath();
+  for (let x = 0; x <= W; x += 2) { const y = 11 + 3 * Math.sin((x / W) * Math.PI * 14); if (x === 0) c.moveTo(x, y); else c.lineTo(x, y); }
+  c.stroke();
+  const flagCols = [BLUSH, MINT, MUST, TERRA, '#9fd0f0'];
+  for (let i = 0, x = 6; x < W - 6; x += 16, i++) {
+    const y = 11 + 3 * Math.sin((x / W) * Math.PI * 14);
+    c.fillStyle = flagCols[i % 5]; c.beginPath(); c.moveTo(x - 5, y); c.lineTo(x + 5, y); c.lineTo(x, y + 9); c.closePath(); c.fill();
+    c.fillStyle = 'rgba(0,0,0,0.12)'; c.beginPath(); c.moveTo(x, y); c.lineTo(x + 5, y); c.lineTo(x, y + 9); c.closePath(); c.fill();
+  }
+
+  // neon wall: navy backing plaque with the Sneakers neon (glow is live)
+  c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(42, 25, 130, 36);
+  c.fillStyle = '#0e1640'; c.fillRect(40, 23, 130, 36);
+  c.strokeStyle = '#f4f0e4'; c.lineWidth = 1; c.strokeRect(42.5, 25.5, 125, 31);
+  sbNeon(c, 105, 41, 0.62, false);
+
+  // chalkboard brunch menu
+  c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(182, 20, 68, 40);
+  c.fillStyle = '#b9855a'; c.fillRect(180, 18, 68, 40);
+  c.fillStyle = '#23302c'; c.fillRect(183, 21, 62, 34);
+  c.fillStyle = '#f6efd8'; c.font = '700 6px Georgia, serif'; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+  c.fillText('BRUNCH', 214, 29);
+  c.fillRect(190, 31, 48, 1);
+  c.font = '700 4px monospace'; c.textAlign = 'left';
+  ['EGGS BENNY', 'AVO TOAST', 'FRENCH TOAST', 'BLOODY MARY', 'MIMOSA', 'ESPRESSO MARTINI'].forEach((t, i) => c.fillText(t, 187, 37 + i * 3.2));
+
+  // floating shelves (right): mugs, plants, jars, and a tiny sneaker
+  for (const sy of [30, 51]) {
+    c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(262, sy + 3, 150, 2);
+    c.fillStyle = '#c9a36c'; c.fillRect(260, sy, 150, 3);
+    c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(260, sy, 150, 1);
+  }
+  const mugCols = ['#e8b64a', '#2f8f8f', '#f08a9a', '#fbf5e6', '#d9826a'];
+  for (let i = 0, x = 266; x < 404; x += 11, i++) {
+    if (i % 4 === 2) { // trailing pothos
+      c.fillStyle = '#c4622e'; c.fillRect(x, 20, 8, 7); c.fillStyle = '#9a4a20'; c.fillRect(x, 20, 8, 1);
+      c.fillStyle = '#3f8a3a'; c.beginPath(); c.arc(x + 4, 17, 5, 0, Math.PI * 2); c.fill();
+      c.fillRect(x + 1, 27, 1, 10); c.fillRect(x + 6, 27, 1, 7);
+    } else {
+      c.fillStyle = mugCols[i % 5]; c.fillRect(x, 21, 7, 6); c.fillStyle = 'rgba(0,0,0,0.16)'; c.fillRect(x, 25, 7, 2);
+      c.fillStyle = mugCols[i % 5]; c.fillRect(x + 7, 22, 2, 3);
+    }
+  }
+  for (let i = 0, x = 266; x < 380; x += 14, i++) {                          // plates + jars on the lower shelf
+    if (i % 3 === 0) { c.fillStyle = CREAM; c.fillRect(x, 46, 11, 2); c.fillRect(x + 1, 44, 9, 2); c.fillRect(x + 2, 42, 7, 2); }
+    else { c.fillStyle = 'rgba(220,240,245,0.85)'; c.fillRect(x, 40, 8, 11); c.fillStyle = ['#e8b64a', '#c4622e', '#7a9a3a'][i % 3]; c.fillRect(x + 1, 44, 6, 6); c.fillStyle = '#8a6a3a'; c.fillRect(x, 39, 8, 2); }
+  }
+  // little sneaker trophy on the shelf (white high-top, orange swoosh)
+  c.fillStyle = '#fbfbf6'; c.fillRect(388, 42, 14, 8); c.fillRect(388, 38, 6, 5); c.fillStyle = '#f0562a'; c.fillRect(391, 45, 8, 2);
+  c.fillStyle = '#16277a'; c.fillRect(388, 49, 14, 2);
+
+  // ---------------------------------------------------------------- side walls
+  c.fillStyle = '#7fb59c'; c.fillRect(0, 64, TILE, H - 64);
+  for (let x = 4; x < TILE; x += 6) { c.fillStyle = 'rgba(255,255,255,0.22)'; c.fillRect(x, 64, 1, H - 64); }
+  c.fillStyle = NAVY; c.fillRect(TILE - 3, 64, 3, H - 64);
+  c.fillStyle = '#e59c82'; c.fillRect(13 * TILE, 64, TILE, H - 64);
+  for (let x = 4; x < TILE; x += 6) { c.fillStyle = 'rgba(255,255,255,0.22)'; c.fillRect(13 * TILE + x, 64, 1, H - 64); }
+  c.fillStyle = NAVY; c.fillRect(13 * TILE, 64, 3, H - 64);
+  // framed prints: a coffee cup (left), a sneaker (right)
+  c.fillStyle = '#f4f0e4'; c.fillRect(5, 150, 20, 26); c.fillStyle = '#3a2a1c'; c.fillRect(7, 152, 16, 22);
+  c.fillStyle = '#f6efd8'; c.fillRect(10, 160, 10, 8); c.fillRect(19, 162, 3, 4); c.fillStyle = '#e8b64a'; c.fillRect(10, 160, 10, 2);
+  c.fillStyle = '#f4f0e4'; c.fillRect(13 * TILE + 7, 150, 20, 26); c.fillStyle = '#2f86cf'; c.fillRect(13 * TILE + 9, 152, 16, 22);
+  c.fillStyle = '#fbfbf6'; c.fillRect(13 * TILE + 11, 162, 12, 7); c.fillRect(13 * TILE + 11, 158, 5, 5); c.fillStyle = '#f0562a'; c.fillRect(13 * TILE + 14, 165, 7, 2);
+
+  // striped runner from the door
+  c.fillStyle = NAVY; c.fillRect(176, 236, 96, 52);
+  for (let x = 180; x < 268; x += 12) { c.fillStyle = CREAM; c.fillRect(x, 236, 6, 52); }
+  c.fillStyle = MUST; c.fillRect(176, 236, 96, 2); c.fillRect(176, 286, 96, 2);
+
+  // ---------------------------------------------------------------- the counter (tiles (8..12,3))
+  c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(256, 126, 160, 3);
+  c.fillStyle = '#f4f1ea'; c.fillRect(256, 96, 160, 11);                       // marble top
+  c.strokeStyle = '#cfc7b8'; c.lineWidth = 1; c.beginPath();
+  for (let x = 262; x < 410; x += 23) { c.moveTo(x, 97); c.lineTo(x + 9, 105); }
+  c.stroke();
+  c.fillStyle = '#e0d8c6'; c.fillRect(256, 106, 160, 3);
+  c.fillStyle = SAGE; c.fillRect(256, 109, 160, 15);                           // mint beadboard front
+  for (let x = 260; x < 416; x += 6) { c.fillStyle = 'rgba(0,0,0,0.16)'; c.fillRect(x, 109, 1, 15); }
+  c.fillStyle = NAVY; c.fillRect(256, 124, 160, 4);
+  // espresso station (8,2)(9,2): chrome machine, grinder, cups
+  c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(258, 94, 60, 3);
+  c.fillStyle = '#2a2d33'; c.fillRect(258, 84, 60, 10);
+  c.fillStyle = '#c9ced4'; c.fillRect(260, 66, 36, 20);
+  c.fillStyle = '#e6eaee'; c.fillRect(260, 66, 36, 4);
+  c.fillStyle = '#9aa0a8'; c.fillRect(260, 80, 36, 6);
+  c.fillStyle = '#f0562a'; c.fillRect(262, 72, 5, 5); c.fillStyle = '#2f8f8f'; c.fillRect(270, 72, 5, 5);
+  c.fillStyle = '#6a6f78'; c.fillRect(267, 86, 4, 3); c.fillRect(281, 86, 4, 3);
+  c.fillStyle = '#fbf5e6'; c.fillRect(268, 90, 5, 4); c.fillRect(282, 90, 5, 4);
+  c.fillStyle = '#b8bcc4'; c.fillRect(300, 70, 12, 16); c.fillStyle = '#6b4226'; c.fillRect(302, 66, 8, 5);   // grinder + hopper
+  // pastry dome (left of the host), mimosa pitcher + flutes, tip jar -- all resting on the marble top
+  c.save(); c.translate(0, 9);
+  c.fillStyle = '#e0d8c6'; c.fillRect(274, 94, 20, 2);
+  c.fillStyle = '#d6a050'; c.beginPath(); c.arc(279, 93, 3.5, Math.PI, 0); c.fill(); c.beginPath(); c.arc(288, 93, 3.5, Math.PI, 0); c.fill();
+  c.fillStyle = 'rgba(210,235,242,0.55)'; c.beginPath(); c.arc(284, 94, 11, Math.PI, 0); c.fill();
+  c.strokeStyle = 'rgba(255,255,255,0.7)'; c.lineWidth = 0.8; c.beginPath(); c.arc(284, 94, 11, Math.PI, 0); c.stroke();
+  c.fillStyle = 'rgba(255,230,190,0.85)'; c.fillRect(367, 84, 12, 14);          // pitcher
+  c.fillStyle = '#f29a3a'; c.fillRect(368, 88, 10, 9);
+  c.fillStyle = '#f2c24a'; c.beginPath(); c.arc(373, 84, 3, 0, Math.PI * 2); c.fill();
+  for (const gx of [386, 394]) { c.fillStyle = 'rgba(220,235,240,0.8)'; c.fillRect(gx, 88, 5, 7); c.fillStyle = '#f6c05a'; c.fillRect(gx, 88, 5, 4); c.fillRect(gx + 2, 95, 1, 3); }
+  c.fillStyle = 'rgba(220,235,240,0.7)'; c.fillRect(402, 86, 9, 11); c.fillStyle = '#6fbf70'; c.fillRect(403, 92, 7, 4); c.fillStyle = '#2a1a10'; c.fillRect(401, 85, 11, 2);
+  c.restore();
+
+  // ---------------------------------------------------------------- mint velvet booths (1,4)..(1,7)
+  c.fillStyle = 'rgba(0,0,0,0.2)'; c.fillRect(34, 254, 28, 3);
+  c.fillStyle = '#3f8a70'; c.fillRect(33, 129, 31, 126);
+  c.fillStyle = SAGE; c.fillRect(34, 130, 12, 124);                              // backrest
+  c.fillStyle = '#7cc4a6'; c.fillRect(46, 130, 17, 124);                         // seat
+  c.fillStyle = '#3f8a70'; c.fillRect(34, 190, 29, 2);                           // seam between the two booths
+  for (let y = 138; y < 250; y += 16) { c.fillStyle = '#3f8a70'; c.beginPath(); c.arc(40, y, 1.6, 0, Math.PI * 2); c.fill(); }
+  c.fillStyle = MUST; c.fillRect(47, 140, 9, 13); c.fillStyle = TERRA; c.fillRect(47, 202, 9, 13);
+  c.fillStyle = 'rgba(255,255,255,0.14)'; c.fillRect(46, 130, 3, 124);
+
+  // ---------------------------------------------------------------- tables + chairs
+  [[2, 5], [2, 7], [10, 6], [10, 8]].forEach(([tx, ty], i) => sbTable(c, tx, ty, i, tx === 2));
+
+  // potted monstera (12,8)
+  c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(386, 286, 26, 3);
+  c.fillStyle = '#c4622e'; c.fillRect(389, 268, 20, 19); c.fillStyle = '#9a4a20'; c.fillRect(387, 266, 24, 4);
+  c.fillStyle = 'rgba(255,255,255,0.12)'; c.fillRect(391, 272, 3, 12);
+  c.fillStyle = '#2d6a3a'; c.fillRect(398, 236, 3, 31);
+  for (const [lx, ly, rx, ry, rot] of [[386, 240, 12, 7, -0.5], [412, 238, 12, 7, 0.5], [399, 224, 11, 8, 0], [388, 256, 10, 6, -0.3], [411, 256, 10, 6, 0.3]]) {
+    c.fillStyle = '#2f7a3a'; c.beginPath(); c.ellipse(lx, ly, rx, ry, rot, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#4a9a4a'; c.beginPath(); c.ellipse(lx - 2, ly - 1, rx * 0.5, ry * 0.5, rot, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#16401f'; c.fillRect(lx - 1, ly - 1, 3, 1);
+  }
+
+  // ---------------------------------------------------------------- front wall: blue-framed windows onto the patio
+  const fy = 9 * TILE;
+  for (const [x0, x1] of [[TILE, 6 * TILE], [7 * TILE, 13 * TILE]]) {
+    c.fillStyle = NAVY; c.fillRect(x0, fy, x1 - x0, TILE);
+    const gg = c.createLinearGradient(0, fy + 4, 0, fy + 28);
+    gg.addColorStop(0, '#9fd4f2'); gg.addColorStop(1, '#e8f5fb');
+    c.fillStyle = gg; c.fillRect(x0 + 3, fy + 5, x1 - x0 - 6, 22);
+    for (let x = x0 + 14; x < x1 - 14; x += 38) {                                // patio umbrellas + tables seen through the glass
+      c.fillStyle = '#f0562a'; c.beginPath(); c.moveTo(x - 9, fy + 16); c.lineTo(x + 9, fy + 16); c.lineTo(x, fy + 9); c.closePath(); c.fill();
+      c.fillStyle = '#fbf5e6'; c.fillRect(x - 2, fy + 10, 4, 6);
+      c.fillStyle = '#2d6a45'; c.fillRect(x - 8, fy + 21, 16, 4);
+    }
+    c.fillStyle = NAVY; c.fillRect((x0 + x1) / 2 - 1, fy + 4, 3, 24);
+    c.fillStyle = '#3f8a3a';
+    for (let x = x0 + 8; x < x1 - 8; x += 26) { c.beginPath(); c.arc(x, fy + 24, 3.5, 0, Math.PI * 2); c.fill(); c.fillStyle = '#c4622e'; c.fillRect(x - 3, fy + 25, 6, 3); c.fillStyle = '#3f8a3a'; }
+  }
+  c.fillStyle = '#0c1650'; c.fillRect(4 * TILE - 14, fy + 8, 28, 12);
+  c.strokeStyle = '#ff5a4a'; c.lineWidth = 1; c.strokeRect(4 * TILE - 13.5, fy + 8.5, 27, 11);
+  c.fillStyle = '#ff7a6a'; c.font = '700 7px monospace'; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+  c.fillText('OPEN', 4 * TILE, fy + 17);
+  c.fillStyle = NAVY; c.fillRect(6 * TILE - 3, fy, 3, TILE); c.fillRect(7 * TILE, fy, 3, TILE);
+}
+
+let _sbInteriorCache = null;
+function drawSneakersInterior(time) {
+  if (!_sbInteriorCache) {
+    const cv = document.createElement('canvas');
+    cv.width = 14 * TILE; cv.height = 10 * TILE;
+    paintSneakersInterior(cv.getContext('2d'));
+    _sbInteriorCache = cv;
+  }
+  ctx.drawImage(_sbInteriorCache, 0, 0);
+  // the neon wall glows (and breathes a little)
+  const a = 0.5 + 0.5 * Math.sin(time * 1.6);
+  ctx.fillStyle = 'rgba(255,90,60,' + (0.10 + 0.05 * a).toFixed(3) + ')';
+  ctx.beginPath(); ctx.ellipse(105, 44, 46, 14, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(60,220,120,' + (0.07 + 0.03 * a).toFixed(3) + ')';
+  ctx.beginPath(); ctx.ellipse(105, 44, 56, 19, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(90,180,255,' + (0.10 + 0.04 * a).toFixed(3) + ')';
+  ctx.beginPath(); ctx.ellipse(105, 31, 30, 8, 0, 0, Math.PI * 2); ctx.fill();
+  // warm sunlight spilling through the front windows onto the checkerboard
+  ctx.fillStyle = 'rgba(255,236,170,' + (0.05 + 0.02 * a).toFixed(3) + ')';
+  ctx.beginPath(); ctx.moveTo(2 * TILE, 8 * TILE + 4); ctx.lineTo(6 * TILE, 8 * TILE + 4); ctx.lineTo(7 * TILE, 5 * TILE); ctx.lineTo(3 * TILE, 5 * TILE); ctx.closePath(); ctx.fill();
+}
+
 // ---------------------------------------------------------------- MISERY LOVES CO. (Winooski, LEVEL 4)
 // A rustic-chic comfort-food + craft-cocktail spot (Winooski Market, est. 2012), on the
 // north-east lawn next to BELLEVUE (see makeWinooski()). Outside, modeled on photos of the
@@ -33579,6 +34102,7 @@ function drawBuildings(map) {
     const isMonkeyHouse = b.name === 'THE MONKEY HOUSE';
     const isBellevue = b.name === 'BELLEVUE';
     const isMiseryLoves = b.name === 'MISERY LOVES CO.';
+    const isSneakers = b.name === 'SNEAKERS BISTRO';
 
     // wall/roof shade colors: each building's wall/roof color never changes,
     // so compute these once per building and cache them on the building
@@ -33648,7 +34172,7 @@ function drawBuildings(map) {
 
     // (ECHO CENTER skips these too: its two big aquarium windows are painted
     // by drawEchoCenterExterior() instead.)
-    if (!isDeli && !isBurlington && !isJohnnysPool && !isVillageScoop && !isEchoCenter && !isAutumnRecords && !isTinyThai && !isMonkeyHouse && !isBellevue && !isMiseryLoves) {
+    if (!isDeli && !isBurlington && !isJohnnysPool && !isVillageScoop && !isEchoCenter && !isAutumnRecords && !isTinyThai && !isMonkeyHouse && !isBellevue && !isMiseryLoves && !isSneakers) {
       for (let i = 0; i < b.w; i++) {
         if (b.x + i === b.doorX) continue;
         if (i === 0 || i === b.w - 1) continue;
@@ -33750,7 +34274,7 @@ function drawBuildings(map) {
       drawOpenDoorSign(dx, py + h - TILE);
       // "3rd Thursdays" hip-hop night flyer taped in a window near the entrance
       drawThursPoster(dx - TILE - 4, py + h - TILE - 18);
-    } else if (isAutumnRecords || isTinyThai || isMonkeyHouse || isBellevue || isMiseryLoves) {
+    } else if (isAutumnRecords || isTinyThai || isMonkeyHouse || isBellevue || isMiseryLoves || isSneakers) {
       // door is part of the storefront painted by drawAutumnRecordsExterior()/drawTinyThaiExterior()
     } else if (isDeli) {
       // No separate wood door here — the deli's whole front is one glass
@@ -33841,7 +34365,11 @@ function drawBuildings(map) {
     // Draw building name sign (skip for Nectar's - uses neon sign instead).
     // High-contrast dark plate + bright bold lettering, auto-sized to the
     // name so it always fits cleanly and never overlaps or crowds.
-    if (isMiseryLoves) {
+    if (isSneakers) {
+      // whole sky-blue storefront (name board, neon window, brick pillar, door) in one cached blit, then the live neon glow
+      drawSneakersExterior(px, py, w, h, dx);
+      drawSneakersLive(px, py, w, h);
+    } else if (isMiseryLoves) {
       // whole red-brick storefront (fascia, windows, door, mums) in one cached blit, then the live string lights
       drawMiseryLovesExterior(px, py, w, h, dx);
       drawMiseryLovesLive(px, py, w, h);
