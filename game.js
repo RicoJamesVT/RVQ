@@ -824,15 +824,22 @@ const WORLD_DEFS = {
                   flavor: 'One shimmering synth line bounced off a mirror ball in a gift-shop window. Every note lands like sunlight on a pink wall at golden hour.' },
     },
     padOrder: ['winDrums', 'winBass', 'winHorns', 'winVox', 'winLead'],
-    // Placeholder beat: 96 BPM, D-minor flavored, its own kick pattern and waveforms so
-    // it doesn't just sound like another world's. Tune freely.
+    // Winooski's beat: a ska-disco 118 BPM in G minor -- the fastest-feeling of the
+    // four worlds' grooves and the only one with a four-on-the-floor kick (0/4/8/12)
+    // and an early open hat on step 2. Bass is a sine wave bouncing in octaves
+    // (G2/G3, Bb2/Bb3, C3/C4) -- town = square, swamp = triangle, skatepark = sawtooth.
+    // Horns are a triangle-wave Gm7 stack (G-Bb-D-F) skanking on syncopated steps
+    // 3/6/11/14, vox are sine in G minor, and the lead is a glassy sine "disco ball"
+    // line that climbs in an arpeggio (G-Bb-D-G) and tumbles back, not town's V-shaped
+    // dip-then-rise. Tempo, key, drum feel, waveforms AND melodic shape all differ
+    // from town, the swamp and the skatepark.
     beat: {
-      bpm: 96,
-      kickSteps: [0, 5, 8, 13], snareSteps: [4, 12], hatOpenStep: 10,
-      bassWave: 'triangle', bassPattern: [[0,38,2],[3,38,1],[6,41,2],[8,43,2],[11,41,1],[14,38,2]],
-      hornWave: 'sawtooth', hornSteps: [3, 7, 11], hornNotes: [62, 65, 69],
-      voxWave: 'sine',      voxSteps: [0, 8], voxNotesEven: [69, 67], voxNotesOdd: [65, 64],
-      leadWave: 'square',   leadNotes: [74, 72, 69, 65, 69, 72, 74, 77],
+      bpm: 118,
+      kickSteps: [0, 4, 8, 12], snareSteps: [4, 12], hatOpenStep: 2,
+      bassWave: 'sine',     bassPattern: [[0,43,1],[2,55,1],[4,43,1],[6,55,1],[8,46,1],[10,58,1],[12,48,1],[14,60,1]],
+      hornWave: 'triangle', hornSteps: [3, 6, 11, 14], hornNotes: [67, 70, 74, 77],
+      voxWave: 'sine',      voxSteps: [0, 8], voxNotesEven: [74, 70], voxNotesOdd: [72, 69],
+      leadWave: 'sine',     leadNotes: [67, 70, 74, 79, 77, 74, 70, 74],
     },
   },
   // ADD MORE WORLDS HERE, e.g.:
