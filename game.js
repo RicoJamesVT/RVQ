@@ -25858,14 +25858,20 @@ if (state === 'splash') {
 
 let last = performance.now();
 function frame(now) {
-  pollGamepad();
-  const dt = Math.min((now - last) / 1000, 0.05);
-  last = now;
-  update(dt);
-  render(now / 1000);
-  syncHotkeysHintBtn();
-  syncTrickBtn();
-  requestAnimationFrame(frame);
+  // try/finally: if anything below throws, still schedule the next frame so a
+  // single bad frame can't permanently freeze the game (the error is still
+  // reported to the console, it just no longer kills the loop).
+  try {
+    pollGamepad();
+    const dt = Math.min((now - last) / 1000, 0.05);
+    last = now;
+    update(dt);
+    render(now / 1000);
+    syncHotkeysHintBtn();
+    syncTrickBtn();
+  } finally {
+    requestAnimationFrame(frame);
+  }
 }
 
 function update(dt) {
@@ -32253,4 +32259,13909 @@ function arPoster(c, x, y, w, h, seed) {
   c.fillStyle = '#26262b'; c.fillRect(x + 3, y + h - 6, w - 6, 1.5); c.fillRect(x + 5, y + h - 3, w - 10, 1);  // caption bars
 }
 
-// Triangular pennant bunting hung in 
+// Triangular pennant bunting hung in a sag between x0 and x1.
+function arBunting(c, x0, x1, y0, sag, colors, step) {
+  c.strokeStyle = '#7a6a40'; c.lineWidth = 1;
+  c.beginPath();
+  for (let x = x0; x <= x1; x += 4) { const t = (x - x0) / (x1 - x0); const y = y0 + sag * 4 * t * (1 - t); if (x === x0) c.moveTo(x, y); else c.lineTo(x, y); }
+  c.stroke();
+  let i = 0;
+  for (let x = x0 + 5; x < x1 - 3; x += step, i++) {
+    const t = (x - x0) / (x1 - x0), y = y0 + sag * 4 * t * (1 - t);
+    c.fillStyle = colors[i % colors.length];
+    c.beginPath(); c.moveTo(x - 4, y); c.lineTo(x + 4, y); c.lineTo(x, y + 9); c.closePath(); c.fill();
+  }
+}
+
+// A blonde-plywood record bin island, `tiles` tiles wide, one tile tall.
+function arBin(c, x, y, tiles, seed) {
+  const w = tiles * 32;
+  c.fillStyle = 'rgba(0,0,0,0.22)'; c.beginPath(); c.ellipse(x + w / 2, y + 31, w / 2 + 2, 4, 0, 0, Math.PI * 2); c.fill();
+  // tray with the tops of the sleeves showing
+  c.fillStyle = '#e4c88e'; c.fillRect(x, y + 1, w, 15);
+  c.fillStyle = '#b8935a'; c.fillRect(x + 2, y + 3, w - 4, 11);
+  for (let sx = x + 3, i = 0; sx < x + w - 5; sx += 3, i++) {
+    const hh = arHash(seed + i, 3);
+    c.fillStyle = AR_ALBUM_COLORS[hh % AR_ALBUM_COLORS.length];
+    c.fillRect(sx, y + 4 - (hh % 3 === 0 ? 2 : 0), 2, 10 + (hh % 3 === 0 ? 2 : 0));
+  }
+  c.fillStyle = '#f4f0e2';                                       // divider tabs
+  for (let tx = x + 9; tx < x + w - 10; tx += 17) c.fillRect(tx, y + 1, 8, 4);
+  c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(x + 2, y + 14, w - 4, 2);
+  // front face
+  c.fillStyle = '#d4af73'; c.fillRect(x, y + 16, w, 13);
+  c.fillStyle = '#e6c88c'; c.fillRect(x, y + 16, w, 2);
+  c.fillStyle = 'rgba(120,80,30,0.16)';
+  for (let gx = x + 6; gx < x + w; gx += 9) c.fillRect(gx, y + 18, 1, 10);
+  c.fillStyle = '#a58450'; c.fillRect(x, y + 28, w, 2);
+  c.fillStyle = '#5a3d22'; c.fillRect(x + 2, y + 30, 5, 2); c.fillRect(x + w - 7, y + 30, 5, 2);   // feet
+}
+
+function paintAutumnRecordsInterior(c) {
+  const W = 14 * TILE, H = 10 * TILE;
+
+  // ---------------------------------------------------------------- back wall
+  // gray ceiling band with a silver spiral duct and a vent box
+  c.fillStyle = '#35363b'; c.fillRect(0, 0, W, 19);
+  const dg = c.createLinearGradient(0, 3, 0, 14);
+  dg.addColorStop(0, '#7b8287'); dg.addColorStop(0.35, '#dde1e3'); dg.addColorStop(0.7, '#a0a7ac'); dg.addColorStop(1, '#5c6267');
+  c.fillStyle = dg; c.fillRect(20, 3, W - 40, 11);
+  c.fillStyle = 'rgba(0,0,0,0.22)';
+  for (let x = 26; x < W - 24; x += 14) c.fillRect(x, 3, 2, 11);   // spiral seam
+  c.fillStyle = '#2a2b2f'; c.fillRect(20, 3, 2, 11); c.fillRect(W - 22, 3, 2, 11);
+  c.fillStyle = '#9aa1a6'; c.fillRect(W - 78, 1, 30, 15);          // vent box
+  c.fillStyle = '#6c7277'; for (let i = 0; i < 5; i++) c.fillRect(W - 76, 3 + i * 3, 26, 1.5);
+  // long white LED tubes with a soft glow
+  for (const [x0, x1] of [[60, 210], [238, 392]]) {
+    c.fillStyle = 'rgba(255,252,225,0.20)'; c.fillRect(x0 - 3, 14, x1 - x0 + 6, 8);
+    c.fillStyle = '#fffdf2'; c.fillRect(x0, 15, x1 - x0, 3);
+    c.fillStyle = '#9a9a96'; c.fillRect(x0 - 2, 14, 2, 5); c.fillRect(x1, 14, 2, 5);
+  }
+  // butter-yellow plaster wall
+  const wg = c.createLinearGradient(0, 19, 0, 62);
+  wg.addColorStop(0, '#f1dda0'); wg.addColorStop(1, '#e3c984');
+  c.fillStyle = wg; c.fillRect(0, 19, W, 43);
+  c.fillStyle = 'rgba(0,0,0,0.07)'; c.fillRect(0, 19, W, 2);
+  c.fillStyle = '#b8944f'; c.fillRect(0, 60, W, 4);                  // baseboard
+  c.fillStyle = '#d2b06a'; c.fillRect(0, 60, W, 1);
+  c.fillStyle = 'rgba(0,0,0,0.12)'; c.fillRect(0, 64, W, 2);
+
+  // green pennant bunting strung across the wall
+  arBunting(c, 40, 205, 21, 5, ['#4aa63a', '#7dc95c'], 11);
+  arBunting(c, 243, 410, 21, 5, ['#7dc95c', '#4aa63a'], 11);
+
+  // framed album walls + B&W posters
+  arFrameGrid(c, 44, 31, 5, 2, 12, 11);
+  arPoster(c, 126, 31, 20, 28, 1);
+  arPoster(c, 150, 31, 20, 28, 2);
+  arPoster(c, 270, 31, 20, 28, 3);
+  arPoster(c, 294, 31, 20, 28, 4);
+  arFrameGrid(c, 332, 31, 5, 2, 12, 47);
+  // the shop's own circular leaf logo in brand orange, centered on the wall
+  c.fillStyle = 'rgba(0,0,0,0.10)'; c.beginPath(); c.arc(225, 45, 15, 0, Math.PI * 2); c.fill();
+  arDrawLogo(c, 224, 44, 14, '#d4651f', 1.3);
+
+  // ---------------------------------------------------------------- left wall: brick + the white doodle door
+  for (let row = 0, y = 0; y < H; row++, y += 4) {
+    const off = row % 2 ? 4 : 0;
+    c.fillStyle = '#7d4028'; c.fillRect(0, y, TILE, 4);
+    for (let x = -off; x < TILE; x += 8) {
+      c.fillStyle = ['#b5502b', '#a94a27', '#bd5a31', '#c2623a'][arHash(x >> 3, row + 9) % 4];
+      c.fillRect(Math.max(0, x), y, Math.min(7, TILE - x) - (x < 0 ? -x : 0), 3);
+    }
+  }
+  c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(TILE - 4, 20, 4, H - 40);
+  // white door with a marker doodle, tucked in the wall at rows 3-4
+  c.fillStyle = '#c9c2b2'; c.fillRect(2, 98, 28, 62);
+  c.fillStyle = '#f6f3ec'; c.fillRect(4, 100, 24, 58);
+  c.fillStyle = '#e4dfd2'; c.fillRect(7, 103, 18, 22); c.fillRect(7, 130, 18, 24);
+  c.strokeStyle = '#2a3340'; c.lineWidth = 1;
+  c.beginPath(); c.arc(16, 112, 4, 0, Math.PI * 2); c.moveTo(12, 118); c.lineTo(20, 122); c.lineTo(11, 124); c.moveTo(21, 110); c.lineTo(24, 106); c.stroke();
+  c.beginPath(); c.moveTo(9, 138); c.quadraticCurveTo(14, 132, 17, 140); c.quadraticCurveTo(21, 146, 24, 136); c.stroke();
+  c.fillStyle = '#9a8a5a'; c.fillRect(24, 130, 2, 3);                // knob
+
+  // ---------------------------------------------------------------- counter dressing (turntables are drawn live)
+  // stack of 45s with their paper sleeves
+  for (let i = 0; i < 4; i++) {
+    c.fillStyle = i % 2 ? '#e6d6a4' : '#cdb982'; c.fillRect(268, 98 - i * 3, 24, 3);
+    c.fillStyle = '#17171a'; c.beginPath(); c.arc(280, 97 - i * 3, 4, 0, Math.PI * 2); c.fill();
+    c.fillStyle = ['#e0b030', '#d4651f', '#e8e0c8', '#c0392b'][i]; c.beginPath(); c.arc(280, 97 - i * 3, 1.8, 0, Math.PI * 2); c.fill();
+  }
+  // a leaning LP in a hand-lettered sleeve
+  c.save(); c.translate(306, 100); c.rotate(-0.12);
+  c.fillStyle = '#e8e0c4'; c.fillRect(-12, -22, 24, 22);
+  c.fillStyle = '#23232a'; c.fillRect(-10, -20, 20, 10);
+  c.fillStyle = '#f2f0e6'; c.font = 'bold 6px monospace'; c.textAlign = 'center'; c.fillText('FAT', 0, -14);
+  c.fillStyle = '#d4651f'; c.fillRect(-9, -8, 18, 4);
+  c.fillStyle = '#23232a'; c.fillRect(-9, -3, 12, 1.5);
+  c.restore();
+
+  // ---------------------------------------------------------------- record bins (blockTiles: (3,5)(4,5) (8,5)(9,5) (3,7)(4,7) (8,7)(9,7))
+  arBin(c, 3 * TILE, 5 * TILE, 2, 5);
+  arBin(c, 8 * TILE, 5 * TILE, 2, 25);
+  arBin(c, 3 * TILE, 7 * TILE, 2, 45);
+  arBin(c, 8 * TILE, 7 * TILE, 2, 65);
+
+  // CD towers beside the counter (blockTile (10,3))
+  for (const tx of [322, 337]) {
+    c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(tx, 125, 14, 3);
+    c.fillStyle = '#17171a'; c.fillRect(tx, 94, 12, 33);
+    c.fillStyle = '#2c2c32'; c.fillRect(tx, 94, 12, 2);
+    for (let r = 0; r < 10; r++) {
+      c.fillStyle = AR_ALBUM_COLORS[arHash(tx + r, 5) % AR_ALBUM_COLORS.length];
+      c.fillRect(tx + 2, 98 + r * 3, 8, 2);
+    }
+  }
+  // stacked red + teal milk crates of records (blockTile (1,8))
+  c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(34, 285, 28, 3);
+  for (const [cy, col, dk] of [[270, '#c4302b', '#8a1f1c'], [254, '#2f9e8a', '#1d6a5c']]) {
+    c.fillStyle = dk; c.fillRect(34, cy, 28, 16);
+    c.fillStyle = col; c.fillRect(35, cy + 1, 26, 14);
+    c.fillStyle = dk; for (let q = 0; q < 4; q++) c.fillRect(38 + q * 6, cy + 4, 3, 8);
+    c.fillStyle = col; c.fillRect(34, cy, 28, 3);
+  }
+  for (let i = 0; i < 5; i++) { c.fillStyle = AR_ALBUM_COLORS[(i * 3 + 1) % AR_ALBUM_COLORS.length]; c.fillRect(37 + i * 5, 248, 4, 8); }
+  // potted fiddle-leaf plant with a few turning leaves (blockTile (12,8))
+  c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(386, 285, 26, 3);
+  c.fillStyle = '#a8552e'; c.fillRect(390, 268, 18, 18);
+  c.fillStyle = '#c4703e'; c.fillRect(388, 266, 22, 4);
+  c.fillStyle = '#6a3418'; c.fillRect(390, 282, 18, 4);
+  c.strokeStyle = '#5a4020'; c.lineWidth = 1.5;
+  c.beginPath(); c.moveTo(399, 266); c.lineTo(399, 250); c.moveTo(399, 262); c.lineTo(390, 252); c.moveTo(399, 260); c.lineTo(408, 250); c.stroke();
+  for (const [lx, ly, rot, col] of [[399, 246, 0, '#3f7d3a'], [389, 250, -0.9, '#58a04a'], [409, 248, 0.9, '#d9741f'], [394, 256, -0.5, '#3f7d3a'], [405, 256, 0.5, '#58a04a']]) {
+    c.save(); c.translate(lx, ly); c.rotate(rot); c.fillStyle = col;
+    c.beginPath(); c.ellipse(0, 0, 4.5, 8, 0, 0, Math.PI * 2); c.fill(); c.restore();
+  }
+
+  // ---------------------------------------------------------------- front wall: the storefront glass (row 9)
+  const fy = 9 * TILE;
+  for (const [x0, x1] of [[TILE, 6 * TILE], [7 * TILE, 13 * TILE]]) {
+    c.fillStyle = '#17181d'; c.fillRect(x0, fy, x1 - x0, TILE);
+    const gg = c.createLinearGradient(0, fy + 4, 0, fy + 28);
+    gg.addColorStop(0, '#26364a'); gg.addColorStop(1, '#121a24');
+    c.fillStyle = gg; c.fillRect(x0 + 3, fy + 5, x1 - x0 - 6, 22);
+    // warm street-lamp glows beyond the glass
+    for (const gx of [x0 + (x1 - x0) * 0.2, x0 + (x1 - x0) * 0.8]) {
+      const rg = c.createRadialGradient(gx, fy + 20, 1, gx, fy + 20, 14);
+      rg.addColorStop(0, 'rgba(255,214,140,0.65)'); rg.addColorStop(1, 'rgba(255,214,140,0)');
+      c.fillStyle = rg; c.fillRect(gx - 14, fy + 6, 28, 21);
+    }
+    c.fillStyle = '#17181d';                                      // mullions
+    const mid = (x0 + x1) / 2; c.fillRect(mid - 1, fy + 4, 3, 24);
+    c.fillStyle = 'rgba(255,255,255,0.07)';
+    c.beginPath(); c.moveTo(x0 + 8, fy + 27); c.lineTo(x0 + 20, fy + 5); c.lineTo(x0 + 28, fy + 5); c.lineTo(x0 + 16, fy + 27); c.closePath(); c.fill();
+    // the circular logo etched into the glass, one per window
+    arDrawLogo(c, (x0 + mid) / 2, fy + 17, 9, 'rgba(238,230,212,0.7)', 1);
+    // warm string lights along the top
+    c.strokeStyle = '#2a2a2e'; c.lineWidth = 1;
+    c.beginPath(); for (let x = x0 + 4; x <= x1 - 4; x += 4) { const t = (x - x0) / (x1 - x0), y = fy + 6 + 3 * 4 * t * (1 - t); if (x === x0 + 4) c.moveTo(x, y); else c.lineTo(x, y); } c.stroke();
+    for (let x = x0 + 8; x < x1 - 6; x += 13) {
+      const t = (x - x0) / (x1 - x0), y = fy + 7 + 3 * 4 * t * (1 - t);
+      c.fillStyle = 'rgba(255,230,160,0.35)'; c.fillRect(x - 2, y - 1, 5, 5);
+      c.fillStyle = '#ffe9a8'; c.fillRect(x - 1, y, 3, 3);
+    }
+    c.fillStyle = '#0c0c10'; c.fillRect(x0, fy + 28, x1 - x0, 4);  // sill
+  }
+  // door-frame posts either side of the exit
+  c.fillStyle = '#17181d'; c.fillRect(6 * TILE - 3, fy, 3, TILE); c.fillRect(7 * TILE, fy, 3, TILE);
+}
+
+let _arInteriorCache = null;
+function drawAutumnRecordsInterior(time) {
+  if (!_arInteriorCache) {
+    const cv = document.createElement('canvas');
+    cv.width = 14 * TILE; cv.height = 10 * TILE;
+    paintAutumnRecordsInterior(cv.getContext('2d'));
+    _arInteriorCache = cv;
+  }
+  ctx.drawImage(_arInteriorCache, 0, 0);
+
+  // two turntables on the counter, platters slowly spinning (Pure Pop's
+  // DJ-booth layout, but with Autumn Records' orange labels)
+  for (const [x, y, seed] of [[136, 79, 0.4], [236, 79, 2.1]]) {
+    ctx.fillStyle = '#212125'; ctx.fillRect(x, y, 40, 28);
+    ctx.fillStyle = '#34343a'; ctx.fillRect(x, y, 40, 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(x, y + 26, 40, 2);
+    const cx = x + 15, cy = y + 14;
+    ctx.fillStyle = '#0c0c0e'; ctx.beginPath(); ctx.arc(cx, cy, 11.5, 0, Math.PI * 2); ctx.fill();
+    const a = time * 3.5 + seed;
+    ctx.strokeStyle = 'rgba(255,255,255,0.28)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(cx, cy, 9, a, a + 0.9); ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx, cy, 6.5, a + 2.4, a + 3.2); ctx.stroke();
+    ctx.fillStyle = '#d4651f'; ctx.beginPath(); ctx.arc(cx, cy, 3.6, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#0c0c0e'; ctx.fillRect(cx - 0.5, cy - 0.5, 1, 1);
+    ctx.strokeStyle = '#c9cdd0'; ctx.lineWidth = 1.5;                       // tonearm
+    ctx.beginPath(); ctx.moveTo(x + 35, y + 4); ctx.lineTo(x + 32, y + 18 + Math.sin(time * 0.8 + seed) * 0.6); ctx.stroke();
+    ctx.fillStyle = '#c9cdd0'; ctx.fillRect(x + 33, y + 3, 4, 3);
+    ctx.fillStyle = '#d4651f'; ctx.fillRect(x + 31, y + 22, 3, 3);          // start/stop
+  }
+}
+
+// ---------------------------------------------------------------- TINY THAI (Winooski, LEVEL 4)
+// A little Thai restaurant: a tiny teal clapboard storefront under a maroon
+// tiled roof with gold upturned gable tips, a red lacquer sign, a striped
+// awning, glowing windows (neon OPEN + a menu board) and a red paper lantern
+// over the door. Inside: deep-red walls with gold trim, a kitchen pass-through
+// with a flaming wok, a chalk menu board, a gold elephant panel, a lacquered
+// counter, little cloth-covered tables, a drinks cooler, rice sacks and a
+// bamboo plant, with paper lanterns swaying in the rafters.
+//
+// Static art is painted once into an offscreen canvas (see the caches below);
+// only the lanterns, wok flames and steam are drawn live.
+
+function ttChili(c, x, y, s, rot) {
+  c.save(); c.translate(x, y); c.rotate(rot || 0);
+  c.fillStyle = '#d4202a';
+  c.beginPath(); c.moveTo(-s, -s * 0.3); c.quadraticCurveTo(0, -s * 0.9, s, 0); c.quadraticCurveTo(0, s * 0.7, -s, -s * 0.3); c.closePath(); c.fill();
+  c.fillStyle = '#3f9a3a'; c.fillRect(-s - 1.5, -s * 0.5, 2.5, s * 0.5);
+  c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(-s * 0.4, -s * 0.35, s * 0.8, 1);
+  c.restore();
+}
+
+function paintTinyThaiExterior(c, w, h, doorLX) {
+  const GOLD = '#e0b040', DGOLD = '#a8802a', WOOD = '#2a140e';
+
+  // ---- teal clapboard siding
+  c.fillStyle = '#1f7a74'; c.fillRect(0, 0, w, h);
+  for (let y = 34; y < h; y += 6) {
+    c.fillStyle = '#17605b'; c.fillRect(0, y + 4, w, 2);
+    c.fillStyle = '#2a918a'; c.fillRect(0, y, w, 1);
+  }
+  c.fillStyle = 'rgba(0,0,0,0.14)'; c.fillRect(0, 34, 3, h); c.fillRect(w - 3, 34, 3, h);
+
+  // ---- maroon tiled roof with a gold ridge + upturned gable tips
+  c.fillStyle = '#7a1a24'; c.fillRect(0, 0, w, 31);
+  for (let row = 0; row < 5; row++) {
+    const off = row % 2 ? 4 : 0;
+    for (let x = -off; x < w; x += 8) {
+      c.fillStyle = (arHashT(x >> 3, row) % 3) ? '#a02632' : '#8c1f2b';
+      c.beginPath(); c.moveTo(x, row * 6); c.lineTo(x + 8, row * 6); c.lineTo(x + 8, row * 6 + 3); c.arc(x + 4, row * 6 + 3, 4, 0, Math.PI); c.closePath(); c.fill();
+      c.fillStyle = 'rgba(255,200,170,0.18)'; c.fillRect(x + 1, row * 6, 6, 1);
+    }
+  }
+  c.fillStyle = GOLD; c.fillRect(0, 0, w, 3);
+  c.fillStyle = DGOLD; c.fillRect(0, 3, w, 1);
+  for (const side of [0, 1]) {                                  // chofa horns
+    const bx = side ? w : 0, d = side ? -1 : 1;
+    c.fillStyle = GOLD;
+    c.beginPath(); c.moveTo(bx, 4); c.lineTo(bx + d * 5, 4); c.quadraticCurveTo(bx + d * 2, 12, bx + d * 11, 22); c.lineTo(bx + d * 1, 22); c.closePath(); c.fill();
+  }
+  c.fillStyle = GOLD; c.fillRect(0, 28, w, 4);                   // eave trim
+  c.fillStyle = DGOLD; c.fillRect(0, 31, w, 1);
+  c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(0, 32, w, 3);
+  for (let x = 6; x < w - 4; x += 10) { c.fillStyle = '#c4902c'; c.fillRect(x, 29, 4, 2); }
+
+  // ---- red lacquer sign with gold border
+  const sx = 12, sy = 37, sw = w - 24, sh = 27;
+  c.fillStyle = 'rgba(0,0,0,0.35)'; c.fillRect(sx + 2, sy + 3, sw, sh);
+  c.fillStyle = GOLD; c.fillRect(sx - 2, sy - 2, sw + 4, sh + 4);
+  const sg = c.createLinearGradient(0, sy, 0, sy + sh);
+  sg.addColorStop(0, '#c02636'); sg.addColorStop(1, '#8f1624');
+  c.fillStyle = sg; c.fillRect(sx, sy, sw, sh);
+  c.strokeStyle = DGOLD; c.lineWidth = 1; c.strokeRect(sx + 2.5, sy + 2.5, sw - 5, sh - 5);
+  ttChili(c, sx + 13, sy + 13, 6, -0.5); ttChili(c, sx + sw - 13, sy + 13, 6, Math.PI + 0.5);
+  c.save();
+  c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#ffe9b0';
+  c.font = '700 14px Georgia, "Times New Roman", serif';
+  const word = 'TINY THAI', ws = word.split('').map((ch) => (ch === ' ' ? 6 : c.measureText(ch).width));
+  const tw = ws.reduce((a, b) => a + b, 0) + 2.2 * (word.length - 1);
+  let tx = sx + sw / 2 - tw / 2;
+  c.textAlign = 'left';
+  word.split('').forEach((ch, i) => { if (ch !== ' ') { c.fillStyle = 'rgba(60,0,0,0.5)'; c.fillText(ch, tx + 0.8, sy + 11.8); c.fillStyle = '#ffe9b0'; c.fillText(ch, tx, sy + 11); } tx += ws[i] + 2.2; });
+  c.font = '700 6px monospace'; c.textAlign = 'center'; c.fillStyle = '#f4c860';
+  c.fillText('THAI KITCHEN', sx + sw / 2, sy + 21.5);
+  c.restore();
+
+  // ---- striped awning over the windows and door
+  const ay = 66, ah = 13;
+  c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(2, ay + 3, w - 2, ah);
+  for (let i = 0, x = 4; x < w - 4; x += 10, i++) {
+    c.fillStyle = i % 2 ? '#f4e6c4' : '#b3202e'; c.fillRect(x, ay, 10, ah - 3);
+    c.beginPath(); c.arc(x + 5, ay + ah - 3, 5, 0, Math.PI); c.fill();
+  }
+  c.fillStyle = 'rgba(255,255,255,0.22)'; c.fillRect(4, ay, w - 8, 2);
+  c.fillStyle = 'rgba(0,0,0,0.12)'; c.fillRect(4, ay + ah - 6, w - 8, 3);
+
+  // ---- windows: left glows with a neon OPEN sign, right holds a menu board
+  const wy = 86, wh = 33;
+  for (const [x0, x1, kind] of [[10, 56, 0], [104, 150, 1]]) {
+    const gw = x1 - x0;
+    c.fillStyle = WOOD; c.fillRect(x0 - 2, wy - 2, gw + 4, wh + 4);
+    const gg = c.createLinearGradient(0, wy, 0, wy + wh);
+    gg.addColorStop(0, '#f6d48a'); gg.addColorStop(1, '#d99c52');
+    c.fillStyle = gg; c.fillRect(x0, wy, gw, wh);
+    c.fillStyle = 'rgba(120,50,20,0.28)'; c.fillRect(x0, wy + wh - 10, gw, 10);         // table shadows inside
+    c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(x0 + 2, wy + 2, 6, 14);
+    if (kind === 0) {
+      c.fillStyle = 'rgba(255,70,100,0.30)'; c.fillRect(x0 + 8, wy + 6, 30, 14);
+      c.fillStyle = '#16100e'; c.fillRect(x0 + 10, wy + 8, 26, 10);
+      c.fillStyle = '#ff5a78'; c.font = '700 8px monospace'; c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.fillText('OPEN', x0 + 23, wy + 13.5);
+      c.strokeStyle = '#ff9ab0'; c.lineWidth = 0.6; c.strokeRect(x0 + 10.5, wy + 8.5, 25, 9);
+      for (const lx of [x0 + 8, x0 + 38]) {                                     // two tiny lanterns inside
+        c.fillStyle = '#6a1a1a'; c.fillRect(lx, wy, 1, 4);
+        c.fillStyle = '#d02a2a'; c.beginPath(); c.ellipse(lx, wy + 8, 3, 4, 0, 0, Math.PI * 2); c.fill();
+      }
+    } else {
+      c.fillStyle = '#17171a'; c.fillRect(x0 + 8, wy + 4, gw - 16, wh - 14);
+      c.strokeStyle = GOLD; c.lineWidth = 1; c.strokeRect(x0 + 8.5, wy + 4.5, gw - 17, wh - 15);
+      c.fillStyle = GOLD; c.font = '700 5px monospace'; c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.fillText('MENU', x0 + gw / 2, wy + 9);
+      c.fillStyle = '#f4ecd6';
+      for (let i = 0; i < 3; i++) { c.fillRect(x0 + 12, wy + 13 + i * 3.5, 14 + (i % 2) * 6, 1); c.fillRect(x0 + gw - 18, wy + 13 + i * 3.5, 6, 1); }
+    }
+    c.fillStyle = WOOD; c.fillRect(x0 + gw / 2 - 1, wy, 2, wh);
+    c.fillStyle = '#4a2a1c'; c.fillRect(x0 - 3, wy + wh + 2, gw + 6, 3);
+    // planter box with leaves + a few orange flowers
+    c.fillStyle = '#5a3420'; c.fillRect(x0 - 2, wy + wh + 5, gw + 4, 5);
+    for (let i = 0; i < 9; i++) {
+      c.fillStyle = i % 2 ? '#3f9a3a' : '#58b248'; c.beginPath(); c.arc(x0 + 3 + i * (gw - 6) / 8, wy + wh + 4, 3, 0, Math.PI * 2); c.fill();
+      if (i % 3 === 1) { c.fillStyle = '#f08a2a'; c.fillRect(x0 + 2 + i * (gw - 6) / 8, wy + wh + 1, 2, 2); }
+    }
+  }
+
+  // ---- door: dark wood, warm glass, gold handle, red lantern above
+  const dX = doorLX + 2, dW = 28, dY = 92, dH = h - dY;
+  c.fillStyle = WOOD; c.fillRect(dX - 2, dY - 2, dW + 4, dH + 2);
+  c.fillStyle = '#6b2a1c'; c.fillRect(dX, dY, dW, dH);
+  c.fillStyle = '#f0c878'; c.fillRect(dX + 3, dY + 3, dW - 6, 15);
+  c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(dX + 4, dY + 4, 4, 13);
+  c.fillStyle = WOOD; c.fillRect(dX + dW / 2 - 1, dY + 3, 2, 15);
+  c.fillStyle = '#4a1a12'; c.fillRect(dX + 4, dY + 22, dW - 8, 9); c.fillRect(dX + 4, dY + 33, dW - 8, 3);
+  c.fillStyle = GOLD; c.fillRect(dX + dW - 6, dY + 20, 2, 7);
+  // chili garland over the door
+  ttChili(c, dX + 6, dY - 5, 3, 0.4); ttChili(c, dX + dW - 6, dY - 5, 3, 2.7);
+  // red paper lantern hanging from the awning
+  const lx = doorLX + 16;
+  c.fillStyle = '#6a1a1a'; c.fillRect(lx, ay + ah - 2, 1, 4);
+  c.fillStyle = 'rgba(255,200,120,0.22)'; c.beginPath(); c.arc(lx, ay + ah + 11, 12, 0, Math.PI * 2); c.fill();
+  c.fillStyle = GOLD; c.fillRect(lx - 4, ay + ah + 1, 9, 2);
+  c.fillStyle = '#d42a2e'; c.beginPath(); c.ellipse(lx, ay + ah + 8, 6, 6, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(lx - 4, ay + ah + 5, 2, 5);
+  c.fillStyle = GOLD; c.fillRect(lx - 4, ay + ah + 13, 9, 2);
+  c.fillStyle = '#e0b040'; c.fillRect(lx, ay + ah + 15, 1, 3);
+
+  // foundation + welcome mat
+  c.fillStyle = '#12302d'; c.fillRect(0, h - 3, w, 3);
+  c.fillStyle = '#8a1f2d'; c.fillRect(dX, h - 3, dW, 3);
+}
+function arHashT(a, b) { return arHash(a + 311, b + 17); }
+
+let _ttExteriorCache = null;
+function drawTinyThaiExterior(px, py, w, h, dx) {
+  const doorLX = dx - px;
+  if (!_ttExteriorCache || _ttExteriorCache.w !== w || _ttExteriorCache.h !== h || _ttExteriorCache.d !== doorLX) {
+    const cv = document.createElement('canvas');
+    cv.width = w; cv.height = h;
+    paintTinyThaiExterior(cv.getContext('2d'), w, h, doorLX);
+    _ttExteriorCache = { cv, w, h, d: doorLX };
+  }
+  ctx.drawImage(_ttExteriorCache.cv, px, py);
+}
+
+// ---------------------------------------------------------------- interior
+// Solid props are plain 'W'/'T' tiles in the shop def (blockTiles/extraTables)
+// that this painter dresses up: drinks cooler (1,2)(1,3), rice sacks (1,8),
+// bamboo plant (12,8), and two 2-tile dining tables at (3,6)(4,6) (8,6)(9,6).
+function ttPlate(c, x, y) {
+  c.fillStyle = 'rgba(0,0,0,0.18)'; c.beginPath(); c.ellipse(x + 1, y + 2, 10, 4.5, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#f4f1ea'; c.beginPath(); c.ellipse(x, y, 10, 4.5, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#e8a23a'; c.beginPath(); c.ellipse(x, y - 1, 6.5, 3, 0, 0, Math.PI * 2); c.fill();     // pad thai
+  c.fillStyle = '#c4781c'; for (let i = 0; i < 4; i++) c.fillRect(x - 5 + i * 3, y - 2 + (i % 2), 2, 1);
+  c.fillStyle = '#5aa84a'; c.fillRect(x - 2, y - 3, 2, 1.5); c.fillRect(x + 3, y - 1, 2, 1.5);           // scallion
+  c.fillStyle = '#9ccf3a'; c.beginPath(); c.moveTo(x + 6, y + 1); c.lineTo(x + 10, y + 1); c.lineTo(x + 8, y + 3.5); c.closePath(); c.fill(); // lime
+}
+function ttTable(c, x, y) {
+  // two-tile cloth-covered table, 64 x ~28
+  c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(x + 2, y + 27, 62, 4);
+  c.fillStyle = '#f2e8d0'; c.fillRect(x, y + 2, 64, 24);
+  c.fillStyle = '#d9ccaa'; c.fillRect(x, y + 22, 64, 6);                  // front drape
+  c.fillStyle = '#b3202e'; c.fillRect(x, y + 12, 64, 4);                  // red runner
+  c.fillStyle = DGOLD_T; c.fillRect(x, y + 12, 64, 1); c.fillRect(x, y + 15, 64, 1);
+  ttPlate(c, x + 16, y + 9); ttPlate(c, x + 48, y + 9);
+  c.fillStyle = '#6a4a2a'; c.fillRect(x + 10, y + 16, 12, 1); c.fillRect(x + 42, y + 16, 12, 1);       // chopsticks
+  c.fillStyle = '#e07a1c'; c.fillRect(x + 30, y + 3, 5, 9);                                              // iced tea
+  c.fillStyle = '#f4e4c0'; c.fillRect(x + 30, y + 3, 5, 3);
+  c.fillStyle = '#d02a2a'; c.fillRect(x + 36, y + 6, 1, 6);                                              // straw
+  c.fillStyle = '#7a1822'; c.fillRect(x + 30, y + 15, 5, 5);                                             // sauce caddy
+  c.fillStyle = '#3f9a3a'; c.fillRect(x + 31, y + 14, 3, 2);
+}
+const DGOLD_T = '#c4902c';
+function ttChair(c, x, y) {
+  c.fillStyle = '#3a1c14'; c.fillRect(x, y, 16, 3);
+  c.fillStyle = '#5a3020'; c.fillRect(x, y + 3, 16, 12);
+  c.fillStyle = '#3a1c14'; for (let i = 0; i < 3; i++) c.fillRect(x + 3 + i * 5, y + 3, 1.5, 12);
+}
+
+function paintTinyThaiInterior(c) {
+  const W = 14 * TILE, H = 10 * TILE;
+  const GOLD = '#e0b040', DARKW = '#3a1c14';
+
+  // ---------------------------------------------------------------- back wall
+  c.fillStyle = '#8e2230'; c.fillRect(0, 0, W, 64);
+  c.fillStyle = '#6e1824'; c.fillRect(0, 44, W, 16);                       // wainscot
+  c.fillStyle = GOLD; c.fillRect(0, 43, W, 2);
+  c.fillStyle = 'rgba(0,0,0,0.18)'; for (let x = 8; x < W; x += 16) c.fillRect(x, 46, 1, 14);
+  c.fillStyle = DARKW; c.fillRect(0, 60, W, 4);                           // baseboard
+  c.fillStyle = GOLD; c.fillRect(0, 60, W, 1);
+  c.fillStyle = DARKW; c.fillRect(0, 0, W, 9);                            // ceiling beam
+  c.fillStyle = GOLD; for (let x = 6; x < W; x += 14) c.fillRect(x, 3, 6, 2);
+  c.fillStyle = '#5a3020'; c.fillRect(0, 9, W, 1);
+  // fairy lights
+  c.strokeStyle = '#2a1a14'; c.lineWidth = 1; c.beginPath();
+  for (let x = 4; x <= W - 4; x += 4) { const t = x / W; const y = 12 + 4 * Math.sin(t * Math.PI * 6); if (x === 4) c.moveTo(x, y); else c.lineTo(x, y); }
+  c.stroke();
+  for (let x = 12; x < W - 8; x += 16) {
+    const y = 12 + 4 * Math.sin((x / W) * Math.PI * 6);
+    c.fillStyle = 'rgba(255,225,150,0.35)'; c.fillRect(x - 2, y, 5, 5);
+    c.fillStyle = '#ffe6a0'; c.fillRect(x - 1, y + 1, 3, 3);
+  }
+
+  // chalk menu board (left)
+  c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(42, 18, 92, 42);
+  c.fillStyle = '#5a3020'; c.fillRect(40, 16, 92, 42);
+  c.fillStyle = '#1b1c1e'; c.fillRect(43, 19, 86, 36);
+  c.fillStyle = GOLD; c.font = '700 8px Georgia, serif'; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+  c.fillText('TINY THAI', 86, 29);
+  c.fillRect(54, 32, 64, 1);
+  c.fillStyle = '#f4ecd6'; c.font = '700 6px monospace'; c.textAlign = 'left';
+  [['PAD THAI', 38], ['GREEN CURRY', 44], ['TOM KHA SOUP', 50], ['STICKY RICE', 55.5]].forEach(([t, y]) => c.fillText(t, 49, y));
+  ttChili(c, 118, 37, 3, 0.3); ttChili(c, 118, 43, 3, 0.3); ttChili(c, 122, 43, 3, 0.3);
+
+  // kitchen pass-through (center)
+  c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(152, 16, 148, 46);
+  c.fillStyle = DARKW; c.fillRect(148, 12, 152, 48);
+  c.fillStyle = GOLD; c.fillRect(148, 12, 152, 1);
+  const kg = c.createLinearGradient(0, 16, 0, 58);
+  kg.addColorStop(0, '#f0c878'); kg.addColorStop(1, '#b57a38');
+  c.fillStyle = kg; c.fillRect(153, 17, 142, 38);
+  c.fillStyle = '#6a4220'; c.fillRect(153, 33, 142, 2);                     // shelf
+  for (let i = 0; i < 9; i++) {                                           // jars + bottles
+    c.fillStyle = ['#c0392b', '#3f9a3a', '#e0a030', '#f4ecd6'][i % 4];
+    c.fillRect(158 + i * 14, 25 + (i % 2) * 2, 7, 8 - (i % 2) * 2);
+    c.fillStyle = '#2a1a14'; c.fillRect(159 + i * 14, 23 + (i % 2) * 2, 5, 2);
+  }
+  c.strokeStyle = '#3a2a20'; c.lineWidth = 1;                              // hanging ladles / pans
+  for (const hx of [170, 196, 222]) {
+    c.beginPath(); c.moveTo(hx, 17); c.lineTo(hx, 22); c.stroke();
+    c.fillStyle = '#4a4a50'; c.beginPath(); c.arc(hx, 25, 4, 0, Math.PI * 2); c.fill();
+  }
+  c.fillStyle = '#2a2a2e'; c.fillRect(244, 44, 40, 11);                    // stove
+  c.fillStyle = '#16161a'; c.beginPath(); c.moveTo(250, 44); c.quadraticCurveTo(264, 33, 278, 44); c.closePath(); c.fill();  // wok
+  c.fillStyle = '#5a5a60'; c.fillRect(280, 40, 10, 2);                     // wok handle
+  c.fillStyle = DARKW; c.fillRect(148, 55, 152, 5);                        // sill
+  c.fillStyle = GOLD; c.fillRect(148, 55, 152, 1);
+
+  // golden elephant panel + two small framed chili prints (right)
+  c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(326, 18, 50, 40);
+  c.fillStyle = GOLD; c.fillRect(322, 14, 50, 42);
+  c.fillStyle = '#1f6f6b'; c.fillRect(325, 17, 44, 36);
+  c.fillStyle = GOLD;
+  c.beginPath(); c.ellipse(349, 38, 11, 7.5, 0, 0, Math.PI * 2); c.fill();                // body
+  c.beginPath(); c.arc(337, 33, 5.5, 0, Math.PI * 2); c.fill();                           // head
+  c.fillStyle = '#d8a838'; c.beginPath(); c.ellipse(341, 35, 3.5, 5, 0.3, 0, Math.PI * 2); c.fill();  // ear
+  c.strokeStyle = GOLD; c.lineWidth = 3; c.lineCap = 'round';
+  c.beginPath(); c.moveTo(333, 35); c.quadraticCurveTo(328, 43, 332, 47); c.stroke();     // trunk
+  c.fillStyle = GOLD; for (const lx of [342, 347, 353, 358]) c.fillRect(lx, 42, 3, 8);     // legs
+  c.fillStyle = '#c4202e'; c.fillRect(344, 29, 10, 5);                                    // saddle cloth
+  c.fillStyle = '#ffe9b0'; c.fillRect(335, 31, 1.5, 1.5);                                  // eye
+  for (const fy of [16, 38]) {
+    c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(388, fy + 2, 24, 18);
+    c.fillStyle = GOLD; c.fillRect(386, fy, 24, 18);
+    c.fillStyle = '#f4ecd6'; c.fillRect(388, fy + 2, 20, 14);
+    ttChili(c, 398, fy + 9, 5, -0.4);
+  }
+
+  // left wall: dark teak paneling with a gold chair-rail
+  c.fillStyle = '#4a2418'; c.fillRect(0, 64, TILE, H - 64);
+  for (let y = 66; y < H; y += 12) { c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(0, y + 10, TILE, 2); }
+  c.fillStyle = GOLD; c.fillRect(TILE - 3, 64, 2, H - 64);
+  c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(TILE - 1, 64, 1, H - 64);
+  c.fillStyle = '#6e1824'; c.fillRect(13 * TILE, 64, TILE, H - 64);       // right wall wainscot
+  c.fillStyle = GOLD; c.fillRect(13 * TILE + 1, 64, 2, H - 64);
+
+  // red entry rug with a gold border + diamond
+  c.fillStyle = '#c4902c'; c.fillRect(164, 240, 120, 48);
+  c.fillStyle = '#7a1822'; c.fillRect(167, 243, 114, 42);
+  c.fillStyle = GOLD; c.beginPath(); c.moveTo(224, 247); c.lineTo(248, 264); c.lineTo(224, 281); c.lineTo(200, 264); c.closePath(); c.fill();
+  c.fillStyle = '#7a1822'; c.beginPath(); c.moveTo(224, 253); c.lineTo(240, 264); c.lineTo(224, 275); c.lineTo(208, 264); c.closePath(); c.fill();
+
+  // ---------------------------------------------------------------- lacquered counter (tiles (4..9,3)) + things on it
+  c.fillStyle = '#4a2c1a'; c.fillRect(4 * TILE, 3 * TILE, 6 * TILE, 12);
+  c.fillStyle = GOLD; c.fillRect(4 * TILE, 3 * TILE, 6 * TILE, 1);
+  c.fillStyle = '#7a1822'; c.fillRect(4 * TILE, 3 * TILE + 12, 6 * TILE, 20);
+  c.fillStyle = GOLD; c.fillRect(4 * TILE, 3 * TILE + 12, 6 * TILE, 1);
+  for (let x = 4 * TILE + 12; x < 10 * TILE - 6; x += 24) {
+    c.beginPath(); c.moveTo(x, 3 * TILE + 16); c.lineTo(x + 6, 3 * TILE + 22); c.lineTo(x, 3 * TILE + 28); c.lineTo(x - 6, 3 * TILE + 22); c.closePath(); c.fill();
+  }
+  c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(4 * TILE, 4 * TILE - 2, 6 * TILE, 2);
+  // register
+  c.fillStyle = '#2a2a2e'; c.fillRect(136, 86, 22, 12); c.fillStyle = '#4a4a50'; c.fillRect(136, 86, 22, 2);
+  c.fillStyle = '#7cd68a'; c.fillRect(140, 78, 14, 8); c.fillStyle = '#1c2a1e'; c.fillRect(141, 79, 12, 6);
+  c.fillStyle = '#7cd68a'; c.fillRect(143, 81, 7, 1);
+  // service bell
+  c.fillStyle = GOLD; c.beginPath(); c.arc(172, 96, 5, Math.PI, 0); c.fill(); c.fillRect(167, 96, 10, 2);
+  // sriracha-style sauce bottles
+  for (const bx of [248, 256, 264]) {
+    c.fillStyle = '#c4202e'; c.fillRect(bx, 84, 6, 13); c.fillStyle = '#3f9a3a'; c.fillRect(bx + 1, 80, 4, 4);
+    c.fillStyle = '#f4ecd6'; c.fillRect(bx + 1, 89, 4, 4);
+  }
+  // little gold elephant statue + a Thai iced tea
+  c.fillStyle = GOLD; c.beginPath(); c.ellipse(288, 92, 7, 5, 0, 0, Math.PI * 2); c.fill(); c.beginPath(); c.arc(282, 88, 3.5, 0, Math.PI * 2); c.fill();
+  c.fillRect(284, 95, 2, 3); c.fillRect(291, 95, 2, 3);
+  c.fillStyle = '#e07a1c'; c.fillRect(304, 84, 8, 14); c.fillStyle = '#f4e4c0'; c.fillRect(304, 84, 8, 4);
+  c.fillStyle = '#d02a2a'; c.fillRect(310, 80, 1.5, 8);
+
+  // ---------------------------------------------------------------- dining tables (extraTables (3,6)(4,6) and (8,6)(9,6))
+  for (const tx of [3, 8]) {
+    ttChair(c, tx * TILE + 8, 5 * TILE + 10); ttChair(c, tx * TILE + 40, 5 * TILE + 10);
+    ttTable(c, tx * TILE, 6 * TILE);
+  }
+
+  // ---------------------------------------------------------------- props on blockTiles
+  // glass-door drinks cooler (1,2)(1,3)
+  c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(34, 124, 30, 4);
+  c.fillStyle = '#d4dadd'; c.fillRect(33, 66, 30, 60);
+  c.fillStyle = '#8fa0a8'; c.fillRect(33, 66, 30, 3);
+  c.fillStyle = '#b8e0f0'; c.fillRect(36, 72, 24, 46);
+  for (let r = 0; r < 3; r++) {
+    c.fillStyle = '#7a94a0'; c.fillRect(36, 72 + r * 15 + 13, 24, 2);
+    for (let q = 0; q < 4; q++) {
+      c.fillStyle = ['#e07a1c', '#3f9a3a', '#c4202e', '#e0b040'][(q + r) % 4];
+      c.fillRect(38 + q * 5.5, 72 + r * 15 + 3, 4, 10);
+    }
+  }
+  c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(38, 74, 3, 42);
+  c.fillStyle = '#4a5a62'; c.fillRect(58, 92, 2, 10);
+  // rice sacks (1,8)
+  c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(33, 285, 30, 3);
+  for (const [sy, off] of [[270, 0], [256, 3]]) {
+    c.fillStyle = '#cdb78c'; c.fillRect(34 + off, sy, 26, 16);
+    c.fillStyle = '#e0cca2'; c.fillRect(34 + off, sy, 26, 3);
+    c.fillStyle = '#b3202e'; c.fillRect(34 + off, sy + 6, 26, 5);
+    c.fillStyle = '#fff4dc'; c.font = '700 4px monospace'; c.textAlign = 'center'; c.fillText('RICE', 47 + off, sy + 10.2);
+  }
+  // bamboo plant in a blue-and-white pot (12,8)
+  c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(386, 285, 26, 3);
+  c.fillStyle = '#2c5f78'; c.fillRect(390, 268, 18, 18);
+  c.fillStyle = '#e8eef0'; c.fillRect(392, 272, 14, 2); c.fillRect(392, 279, 14, 2);
+  c.fillStyle = '#3a7a98'; c.fillRect(388, 266, 22, 4);
+  for (const [bx, top] of [[393, 236], [399, 228], [405, 240]]) {
+    c.fillStyle = '#6ba04a'; c.fillRect(bx, top, 3, 268 - top);
+    c.fillStyle = '#4a8034'; for (let ny = top + 8; ny < 266; ny += 12) c.fillRect(bx - 0.5, ny, 4, 1.5);
+    c.fillStyle = '#8fc060'; c.fillRect(bx, top, 1, 268 - top);
+  }
+  c.fillStyle = '#58a04a';
+  for (const [lx, ly, rot] of [[388, 240, -0.8], [410, 244, 0.8], [394, 232, -0.5], [404, 230, 0.5]]) {
+    c.save(); c.translate(lx, ly); c.rotate(rot); c.beginPath(); c.ellipse(0, 0, 2.5, 8, 0, 0, Math.PI * 2); c.fill(); c.restore();
+  }
+
+  // ---------------------------------------------------------------- front wall: window with red valance
+  const fy = 9 * TILE;
+  for (const [x0, x1] of [[TILE, 6 * TILE], [7 * TILE, 13 * TILE]]) {
+    c.fillStyle = '#17181d'; c.fillRect(x0, fy, x1 - x0, TILE);
+    const gg = c.createLinearGradient(0, fy + 4, 0, fy + 28);
+    gg.addColorStop(0, '#1d3a3c'); gg.addColorStop(1, '#0f1a1c');
+    c.fillStyle = gg; c.fillRect(x0 + 3, fy + 5, x1 - x0 - 6, 22);
+    for (const gx of [x0 + (x1 - x0) * 0.25, x0 + (x1 - x0) * 0.75]) {
+      const rg = c.createRadialGradient(gx, fy + 20, 1, gx, fy + 20, 14);
+      rg.addColorStop(0, 'rgba(255,200,130,0.55)'); rg.addColorStop(1, 'rgba(255,200,130,0)');
+      c.fillStyle = rg; c.fillRect(gx - 14, fy + 6, 28, 21);
+    }
+    c.fillStyle = '#17181d'; c.fillRect((x0 + x1) / 2 - 1, fy + 4, 3, 24);
+    for (let i = 0, x = x0 + 3; x < x1 - 7; x += 9, i++) {               // red scalloped valance
+      c.fillStyle = i % 2 ? '#a81f2e' : '#c4283a'; c.fillRect(x, fy + 3, 9, 6);
+      c.beginPath(); c.arc(x + 4.5, fy + 9, 4.5, 0, Math.PI); c.fill();
+    }
+    c.fillStyle = GOLD; c.fillRect(x0 + 3, fy + 3, x1 - x0 - 6, 1);
+    c.fillStyle = '#0c0c10'; c.fillRect(x0, fy + 28, x1 - x0, 4);
+  }
+  c.fillStyle = '#17181d'; c.fillRect(6 * TILE - 3, fy, 3, TILE); c.fillRect(7 * TILE, fy, 3, TILE);
+}
+
+let _ttInteriorCache = null;
+function drawTinyThaiInterior(time) {
+  if (!_ttInteriorCache) {
+    const cv = document.createElement('canvas');
+    cv.width = 14 * TILE; cv.height = 10 * TILE;
+    paintTinyThaiInterior(cv.getContext('2d'));
+    _ttInteriorCache = cv;
+  }
+  ctx.drawImage(_ttInteriorCache, 0, 0);
+
+  // wok flames + rising steam in the kitchen window
+  for (let i = 0; i < 4; i++) {
+    const fl = 3 + Math.abs(Math.sin(time * 9 + i * 1.7)) * 4;
+    const fx = 252 + i * 8;
+    ctx.fillStyle = '#e8601c'; ctx.beginPath(); ctx.moveTo(fx - 3, 48); ctx.lineTo(fx, 48 - fl); ctx.lineTo(fx + 3, 48); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#ffd54a'; ctx.beginPath(); ctx.moveTo(fx - 1.5, 48); ctx.lineTo(fx, 48 - fl * 0.6); ctx.lineTo(fx + 1.5, 48); ctx.closePath(); ctx.fill();
+  }
+  ctx.fillStyle = '#16161a'; ctx.beginPath(); ctx.moveTo(250, 44); ctx.quadraticCurveTo(264, 33, 278, 44); ctx.closePath(); ctx.fill();
+  for (let k = 0; k < 4; k++) {
+    const t = ((time * 0.9 + k * 0.25) % 1);
+    ctx.fillStyle = 'rgba(255,255,255,' + (0.45 * (1 - t)).toFixed(2) + ')';
+    ctx.beginPath(); ctx.arc(262 + Math.sin(time * 2 + k * 2) * 3 + k * 3, 38 - t * 20, 2.5 + t * 3, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // two paper lanterns swaying beside the kitchen window
+  for (const [lx, ph] of [[140, 0], [308, 1.6]]) {
+    const sway = Math.sin(time * 1.4 + ph) * 1.6;
+    ctx.strokeStyle = '#2a1a14'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(lx, 10); ctx.lineTo(lx + sway, 30); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,190,110,0.18)'; ctx.beginPath(); ctx.arc(lx + sway, 40, 16, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#e0b040'; ctx.fillRect(lx + sway - 4, 29, 9, 3);
+    ctx.fillStyle = '#d42a2e'; ctx.beginPath(); ctx.ellipse(lx + sway, 40, 8, 9, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.28)'; ctx.fillRect(lx + sway - 5, 35, 2, 9);
+    ctx.fillStyle = 'rgba(120,10,10,0.35)'; ctx.fillRect(lx + sway - 1, 32, 1, 16);
+    ctx.fillStyle = '#e0b040'; ctx.fillRect(lx + sway - 4, 48, 9, 3); ctx.fillRect(lx + sway, 51, 1, 5);
+  }
+}
+
+// ---------------------------------------------------------------- THE MONKEY HOUSE (Winooski, LEVEL 4)
+// A bar/restaurant and the neighborhood's go-to live-music room, on the grass
+// northwest of the rotary (see makeWinooski()). Outside: weathered green painted
+// brick, a dark wood sign band reading THE MONKEY HOUSE, a yellow neon "monkey"
+// over the door (flickers live), a hanging monkey sculpture swinging from an
+// iron bracket, and a yard of picnic tables with umbrellas. Inside: a pool table
+// up front by the door, a bar across the back-right, and a raised live stage
+// across the back (drums, amps, guitar, keys, mic stands, sweeping stage lights).
+//
+// NOTE: the monkey sculpture is drawn procedurally in mhSculptMonkey() from the
+// written description (the reference photo wasn't available when this was
+// written) -- restyle that one function to match the photo and both the outside
+// bracket and the inside rafter monkey update together.
+//
+// Static art is painted once into offscreen canvases; only the neon, the swinging
+// monkeys, stage beams and the umbrellas' overhead pass are drawn live.
+
+function mhHash(a, b) { let h = (a * 374761393 + b * 668265263) | 0; h = (h ^ (h >>> 13)) * 1274126177 | 0; return (h ^ (h >>> 16)) >>> 0; }
+
+function mhBanana(c, x, y, s, rot) {
+  c.save(); c.translate(x, y); c.rotate(rot || 0); c.scale(s, s);
+  c.fillStyle = '#ffd83a';
+  c.beginPath(); c.moveTo(-9, -3); c.quadraticCurveTo(0, 10, 10, -6); c.quadraticCurveTo(1, 3, -9, -3); c.closePath(); c.fill();
+  c.fillStyle = '#8a6a1a'; c.fillRect(9, -8, 2, 3); c.fillRect(-10, -4, 2, 2);
+  c.restore();
+}
+
+// A little cast-metal monkey hanging by one hand from (x, y). `ang` swings it.
+function mhSculptMonkey(c, x, y, s, ang) {
+  const FUR = '#4a2e1a', FURL = '#6b4528', FACE = '#d8b088', DARK = '#1a110a';
+  c.save(); c.translate(x, y); c.rotate(ang); c.scale(s, s);
+  c.lineCap = 'round';
+  c.strokeStyle = '#14100d'; c.lineWidth = 2; c.beginPath(); c.moveTo(0, -5); c.lineTo(0, 1); c.stroke();   // hook
+  c.strokeStyle = FUR;
+  c.lineWidth = 4; c.beginPath(); c.moveTo(0, 0); c.lineTo(1, 10); c.stroke();                               // gripping arm
+  c.lineWidth = 3; c.beginPath(); c.moveTo(3, 30); c.bezierCurveTo(18, 29, 21, 15, 12, 11); c.stroke();      // curled tail
+  c.lineWidth = 4; c.beginPath(); c.moveTo(-3, 34); c.lineTo(-5, 46); c.moveTo(3, 34); c.lineTo(6, 45); c.stroke(); // dangling legs
+  c.lineWidth = 3.5; c.beginPath(); c.moveTo(-4, 20); c.lineTo(-10, 32); c.stroke();                         // free arm
+  c.fillStyle = FUR; c.beginPath(); c.ellipse(0, 26, 7, 10, 0, 0, Math.PI * 2); c.fill();                     // body
+  c.fillStyle = FURL; c.beginPath(); c.ellipse(1, 27, 4, 6.5, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = FUR; c.beginPath(); c.arc(0, 12, 6.5, 0, Math.PI * 2); c.fill();                              // head
+  c.beginPath(); c.arc(-6.5, 11, 2.6, 0, Math.PI * 2); c.arc(6.5, 11, 2.6, 0, Math.PI * 2); c.fill();        // ears
+  c.fillStyle = FACE; c.beginPath(); c.ellipse(0, 13.5, 4.3, 4.6, 0, 0, Math.PI * 2); c.fill();               // face
+  c.fillStyle = DARK; c.fillRect(-3, 11, 1.6, 1.6); c.fillRect(1.4, 11, 1.6, 1.6); c.fillRect(-1, 15.5, 2, 1); // eyes + grin
+  c.restore();
+}
+
+function paintMonkeyHouseExterior(c, w, h, doorLX) {
+  const BANANA = '#ffd83a';
+  // ---- weathered green painted brick
+  c.fillStyle = '#3b4a43'; c.fillRect(0, 0, w, h);
+  for (let row = 0, y = 30; y < h; y += 6, row++) {
+    c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(0, y + 5, w, 1);
+    const off = row % 2 ? 6 : 0;
+    for (let x = -off; x < w; x += 12) {
+      c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(x + 11, y, 1, 5);
+      const hv = mhHash(x >> 2, row);
+      if (hv % 6 === 0) { c.fillStyle = 'rgba(255,255,255,0.06)'; c.fillRect(x + 1, y + 1, 10, 4); }
+      else if (hv % 7 === 0) { c.fillStyle = 'rgba(0,0,0,0.10)'; c.fillRect(x + 1, y + 1, 10, 4); }
+    }
+  }
+  c.fillStyle = 'rgba(0,0,0,0.16)'; c.fillRect(0, 30, 3, h); c.fillRect(w - 3, 30, 3, h);
+
+  // ---- dark parapet with coping and recessed panels
+  c.fillStyle = '#231a16'; c.fillRect(0, 0, w, 28);
+  c.fillStyle = '#3a2c24'; c.fillRect(0, 0, w, 4);
+  c.fillStyle = '#17110e'; c.fillRect(0, 4, w, 1);
+  for (let x = 4; x < w - 8; x += 12) {
+    c.fillStyle = '#2d221c'; c.fillRect(x, 8, 8, 14);
+    c.fillStyle = 'rgba(255,255,255,0.05)'; c.fillRect(x, 8, 8, 2);
+  }
+  c.fillStyle = '#120d0a'; c.fillRect(0, 24, w, 4);
+  c.fillStyle = '#6a5038'; c.fillRect(0, 23, w, 1);
+
+  // ---- sign band: THE MONKEY HOUSE in banana yellow on dark wood
+  c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(12, 33, w - 20, 24);
+  c.fillStyle = '#120d0a'; c.fillRect(10, 30, w - 20, 24);
+  c.fillStyle = BANANA; c.fillRect(10, 30, w - 20, 1); c.fillRect(10, 53, w - 20, 1);
+  let fs = 15;
+  c.font = '900 ' + fs + 'px "Arial Black", Impact, sans-serif';
+  while (fs > 9 && c.measureText('THE MONKEY HOUSE').width > w - 64) { fs--; c.font = '900 ' + fs + 'px "Arial Black", Impact, sans-serif'; }
+  c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+  c.fillStyle = '#6a4a10'; c.fillText('THE MONKEY HOUSE', w / 2 + 1, 48 + 1);
+  c.fillStyle = BANANA; c.fillText('THE MONKEY HOUSE', w / 2, 48);
+  mhBanana(c, 24, 42, 0.9, -0.3); mhBanana(c, w - 24, 42, 0.9, 0.3);
+  // string of bulbs under the sign
+  c.strokeStyle = '#120d0a'; c.lineWidth = 1; c.beginPath(); c.moveTo(12, 56.5); c.lineTo(w - 12, 56.5); c.stroke();
+  for (let x = 16; x < w - 12; x += 10) {
+    c.fillStyle = 'rgba(255,220,130,0.35)'; c.fillRect(x - 2, 57, 5, 5);
+    c.fillStyle = '#ffe6a0'; c.fillRect(x - 1, 58, 3, 3);
+  }
+
+  // ---- windows
+  const win = (x, y, ww, hh) => {
+    c.fillStyle = '#120d0a'; c.fillRect(x - 3, y - 3, ww + 6, hh + 6);
+    const g = c.createLinearGradient(0, y, 0, y + hh);
+    g.addColorStop(0, '#ffcf6a'); g.addColorStop(1, '#a85a1c');
+    c.fillStyle = g; c.fillRect(x, y, ww, hh);
+    c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(x, y + hh * 0.55, ww, hh * 0.45);
+    c.fillStyle = '#120d0a'; c.fillRect(x + ww / 2 - 1, y, 2, hh);
+    c.fillStyle = '#2a1a10'; c.fillRect(x - 4, y + hh + 3, ww + 8, 3);
+  };
+  // left: the pool-table end of the bar -- green lamp, a couple of patrons, neon OPEN
+  win(10, 64, 70, 30);
+  c.fillStyle = '#1a1210'; c.fillRect(30, 64, 1, 5); c.fillRect(60, 64, 1, 5);
+  c.fillStyle = '#1f6e4a'; c.fillRect(22, 69, 18, 5); c.fillRect(52, 69, 18, 5);
+  c.fillStyle = 'rgba(255,240,170,0.4)'; c.fillRect(24, 74, 14, 3); c.fillRect(54, 74, 14, 3);
+  c.fillStyle = '#2a1810';
+  for (const hx of [20, 46, 66]) { c.beginPath(); c.arc(hx, 84, 4, 0, Math.PI * 2); c.fill(); c.fillRect(hx - 5, 87, 10, 7); }
+  c.fillStyle = 'rgba(255,60,60,0.35)'; c.fillRect(50, 85, 26, 9);
+  c.fillStyle = '#ff4a4a'; c.font = '700 7px monospace'; c.textAlign = 'center'; c.fillText('OPEN', 63, 92);
+  // right: gig posters taped in the window
+  win(138, 64, 42, 30);
+  for (const [px2, py2, col, rot] of [[142, 67, '#e8e0c8', -0.06], [153, 68, '#f2a93a', 0.05], [164, 67, '#9ad0c4', -0.04]]) {
+    c.save(); c.translate(px2 + 5, py2 + 9); c.rotate(rot);
+    c.fillStyle = col; c.fillRect(-5, -9, 11, 18);
+    c.fillStyle = 'rgba(0,0,0,0.55)'; c.fillRect(-3, -6, 7, 2); c.fillRect(-3, -2, 7, 1); c.fillRect(-3, 1, 5, 1); c.fillRect(-3, 4, 6, 1);
+    c.restore();
+  }
+  c.fillStyle = '#120d0a'; c.font = '700 5px monospace'; c.fillText('LIVE MUSIC', 159, 92);
+
+  // ---- neon backing rail above the door (the yellow "monkey" tubes are live; see drawMonkeyHouseLive)
+  c.fillStyle = '#120d0a'; c.fillRect(doorLX - 4, 68, 40, 24);
+  c.fillStyle = '#2a1e16'; c.fillRect(doorLX - 4, 68, 40, 2);
+
+  // ---- door
+  const dX = doorLX + 3, dY = h - 30, dW = 26;
+  c.fillStyle = '#120d0a'; c.fillRect(dX - 3, dY - 3, dW + 6, 33);
+  c.fillStyle = '#6a2a1c'; c.fillRect(dX, dY, dW, 30);
+  c.fillStyle = 'rgba(0,0,0,0.28)'; c.fillRect(dX, dY, dW / 2, 30);
+  c.fillStyle = '#ffd070'; c.fillRect(dX + 5, dY + 4, dW - 10, 12);
+  c.fillStyle = '#120d0a'; c.fillRect(dX + dW / 2 - 1, dY + 4, 2, 12);
+  c.fillStyle = '#4a1c12'; c.fillRect(dX + 4, dY + 19, dW - 8, 8);
+  c.fillStyle = '#c4902c'; c.fillRect(dX + dW - 7, dY + 17, 3, 5);
+
+  // ---- iron bracket on the right for the hanging monkey (the monkey itself is live)
+  c.fillStyle = '#14100d';
+  c.fillRect(w - 12, 56, 3, 40);
+  c.fillRect(w - 32, 59, 23, 3);
+  c.fillRect(w - 33, 59, 3, 6);
+  c.strokeStyle = '#14100d'; c.lineWidth = 2;
+  c.beginPath(); c.moveTo(w - 11, 80); c.quadraticCurveTo(w - 28, 78, w - 29, 62); c.stroke();
+
+  // ---- foundation + mat
+  c.fillStyle = '#17130f'; c.fillRect(0, h - 3, w, 3);
+  c.fillStyle = '#2a1a10'; c.fillRect(dX, h - 3, dW, 3);
+}
+
+let _mhExteriorCache = null;
+function drawMonkeyHouseExterior(px, py, w, h, dx) {
+  const doorLX = dx - px;
+  if (!_mhExteriorCache || _mhExteriorCache.w !== w || _mhExteriorCache.h !== h || _mhExteriorCache.d !== doorLX) {
+    const cv = document.createElement('canvas');
+    cv.width = w; cv.height = h;
+    paintMonkeyHouseExterior(cv.getContext('2d'), w, h, doorLX);
+    _mhExteriorCache = { cv, w, h, d: doorLX };
+  }
+  ctx.drawImage(_mhExteriorCache.cv, px, py);
+}
+
+// Live bits of the storefront: the flickering yellow neon "monkey" over the door
+// and the sculpture swaying on its bracket.
+function drawMonkeyHouseLive(px, py, w, h, dx) {
+  const t = performance.now() / 1000;
+  const cx = dx + TILE / 2, cy = py + 85;
+  let f = 1;
+  if ((t % 7) > 6.5 && Math.sin(t * 41) > 0) f = 0.3;       // the odd buzzy flicker
+  ctx.save();
+  ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.lineJoin = 'round';
+  let fs = 17;
+  ctx.font = 'italic 800 ' + fs + 'px "Trebuchet MS", Verdana, sans-serif';
+  while (fs > 9 && ctx.measureText('monkey').width > 50) { fs--; ctx.font = 'italic 800 ' + fs + 'px "Trebuchet MS", Verdana, sans-serif'; }
+  // soft glow on the wall + a few offset passes (no shadowBlur -- see NEON_GLOW_OFFSETS)
+  ctx.fillStyle = 'rgba(255,214,40,' + (0.16 * f).toFixed(3) + ')';
+  ctx.beginPath(); ctx.ellipse(cx, cy - 4, 32, 15, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(255,214,40,' + (0.30 * f).toFixed(3) + ')';
+  for (const [ox, oy] of NEON_GLOW_OFFSETS) ctx.fillText('monkey', cx + ox, cy + oy);
+  ctx.strokeStyle = 'rgba(255,184,0,' + f.toFixed(3) + ')'; ctx.lineWidth = 3;
+  ctx.strokeText('monkey', cx, cy);
+  ctx.fillStyle = 'rgba(255,246,176,' + f.toFixed(3) + ')';
+  ctx.fillText('monkey', cx, cy);
+  ctx.restore();
+  // hanging monkey sculpture
+  mhSculptMonkey(ctx, px + w - 32, py + 63, 1, Math.sin(t * 1.3) * 0.07);
+}
+
+// Umbrellas over the yard's picnic tables -- drawn AFTER the player so you walk
+// under them. Each is a striped canopy centred a little above its table so it
+// never covers the tile south of it.
+function drawMonkeyHouseUmbrellas(map, camX, camY) {
+  const list = map.winooski && map.winooski.umbrellas;
+  if (!list) return;
+  const defCols = ['#ffd83a', '#2f4a3a'];
+  for (const u of list) {
+    const cols = u.cols || defCols;
+    if (u.x < camX - 40 || u.x > camX + VIEW_W + 40 || u.y < camY - 40 || u.y > camY + VIEW_H + 40) continue;
+    const cx = u.x, cy = u.y - 5, R = 20;
+    ctx.fillStyle = 'rgba(0,0,0,0.16)';
+    ctx.beginPath(); ctx.ellipse(cx + 3, cy + 10, R - 2, R * 0.55, 0, 0, Math.PI * 2); ctx.fill();
+    const seg = 8;
+    for (let i = 0; i < seg; i++) {
+      ctx.fillStyle = cols[i % 2];
+      ctx.beginPath(); ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, R, (i / seg) * Math.PI * 2, ((i + 1) / seg) * Math.PI * 2);
+      ctx.closePath(); ctx.fill();
+    }
+    ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 1;
+    for (let i = 0; i < seg; i++) { const a = (i / seg) * Math.PI * 2; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(a) * R, cy + Math.sin(a) * R); ctx.stroke(); }
+    ctx.strokeStyle = '#120d0a'; ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = '#120d0a'; ctx.beginPath(); ctx.arc(cx, cy, 2.2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.beginPath(); ctx.arc(cx - 6, cy - 7, 4, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+// ---------------------------------------------------------------- interior
+// Solid props are plain 'W'/'T' tiles in the shop def (blockTiles/extraTables)
+// that this painter dresses up: stage row (1..7, 2) = amp, guitar stand, drum kit
+// (2 tiles), keyboard (2 tiles), amp; pool table (2..4, 6..7); gig tables at
+// (9,6)(10,6) and (12,6). The bar counter is the default 'T' row at y=3 (x 9..12)
+// in front of the bartender at (11,2).
+function mhAmp(c, tx, ty) {
+  const x = tx * TILE, y = ty * TILE;
+  c.fillStyle = '#141416'; c.fillRect(x + 3, y + 12, 26, 19);
+  c.fillStyle = '#2c2c30'; c.fillRect(x + 5, y + 14, 22, 15);
+  c.fillStyle = '#0c0c0e';
+  c.beginPath(); c.arc(x + 11, y + 22, 5, 0, Math.PI * 2); c.arc(x + 21, y + 22, 5, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#1c1c20'; c.fillRect(x + 4, y + 3, 24, 9);
+  c.fillStyle = '#8a7a50'; c.fillRect(x + 4, y + 3, 24, 1);
+  c.fillStyle = '#c0b080'; for (let i = 0; i < 4; i++) c.fillRect(x + 7 + i * 5, y + 6, 2, 2);
+  c.fillStyle = '#e04a2a'; c.fillRect(x + 25, y + 6, 2, 2);
+}
+
+function paintMonkeyHouseInterior(c) {
+  const W = 14 * TILE, H = 10 * TILE;
+  const BANANA = '#ffd83a', DWOOD = '#24150c';
+
+  // ---------------------------------------------------------------- back wall: dark brick + beam + bulbs
+  c.fillStyle = '#4a2e28'; c.fillRect(0, 0, W, 64);
+  for (let y = 10, row = 0; y < 60; y += 8, row++) {
+    c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(0, y + 7, W, 1);
+    const off = row % 2 ? 8 : 0;
+    for (let x = -off; x < W; x += 16) c.fillRect(x + 15, y, 1, 7);
+  }
+  c.fillStyle = DWOOD; c.fillRect(0, 0, W, 9);
+  c.fillStyle = '#5a3a24'; c.fillRect(0, 9, W, 1);
+  c.fillStyle = DWOOD; c.fillRect(0, 60, W, 4);
+  for (let x = 20; x < W; x += 34) {
+    c.fillStyle = '#1a1a1a'; c.fillRect(x, 10, 1, 6);
+    c.fillStyle = 'rgba(255,210,120,0.35)'; c.fillRect(x - 3, 15, 7, 7);
+    c.fillStyle = '#ffd88a'; c.fillRect(x - 1, 17, 3, 4);
+  }
+
+  // left / right wall paneling
+  c.fillStyle = '#2e1c14'; c.fillRect(0, 64, TILE, H - 64); c.fillRect(13 * TILE, 64, TILE, H - 64);
+  for (let y = 66; y < H; y += 12) { c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(0, y + 10, TILE, 2); c.fillRect(13 * TILE, y + 10, TILE, 2); }
+  c.fillStyle = BANANA; c.fillRect(TILE - 2, 64, 1, H - 64); c.fillRect(13 * TILE + 1, 64, 1, H - 64);
+
+  // ---------------------------------------------------------------- the stage (x 32..256, y 64..128)
+  const SX = TILE, SW = 7 * TILE;
+  // black curtain backdrop with a gold fringe
+  c.fillStyle = '#15101a'; c.fillRect(36, 11, SW - 8, 52);
+  for (let x = 40; x < 36 + SW - 8; x += 14) { c.fillStyle = '#241a2e'; c.fillRect(x, 11, 5, 52); c.fillStyle = '#0c0810'; c.fillRect(x + 6, 11, 2, 52); }
+  c.fillStyle = BANANA; c.fillRect(36, 58, SW - 8, 2);
+  for (let x = 38; x < 36 + SW - 8; x += 4) c.fillRect(x, 60, 1, 3);
+  // raised wooden deck
+  c.fillStyle = '#2a1e16'; c.fillRect(SX, 64, SW, 64);
+  for (let y = 66; y < 124; y += 8) { c.fillStyle = 'rgba(0,0,0,0.30)'; c.fillRect(SX, y + 7, SW, 1); c.fillStyle = 'rgba(255,255,255,0.04)'; c.fillRect(SX, y, SW, 1); }
+  c.fillStyle = '#120c08'; c.fillRect(SX, 124, SW, 6);
+  c.fillStyle = BANANA; c.fillRect(SX, 124, SW, 1);
+  for (let x = SX + 6; x < SX + SW; x += 14) { c.fillStyle = '#ffe9a0'; c.fillRect(x, 126, 3, 2); }
+  c.fillStyle = '#120c08'; c.fillRect(SX - 2, 64, 2, 66); c.fillRect(SX + SW, 64, 2, 66);
+  // stage light cans on the beam
+  for (const lx of [70, 140, 210]) { c.fillStyle = '#0c0c0e'; c.fillRect(lx - 5, 10, 10, 8); c.fillStyle = '#3a3a40'; c.fillRect(lx - 5, 10, 10, 1); }
+
+  mhAmp(c, 1, 2);                                                       // guitar amp (1,2)
+  // guitar on a stand (2,2)
+  c.strokeStyle = '#14100d'; c.lineWidth = 1.5;
+  c.beginPath(); c.moveTo(80, 94); c.lineTo(72, 100); c.moveTo(80, 94); c.lineTo(88, 100); c.moveTo(80, 94); c.lineTo(80, 100); c.stroke();
+  c.fillStyle = '#b3202e'; c.beginPath(); c.ellipse(80, 86, 9, 8, 0, 0, Math.PI * 2); c.fill(); c.beginPath(); c.ellipse(80, 76, 6.5, 6, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#6a1018'; c.fillRect(74, 84, 12, 1);
+  c.fillStyle = '#e8e0c8'; c.fillRect(75, 87, 10, 2); c.fillStyle = '#1a1a1a'; c.fillRect(77, 81, 6, 1.5); c.fillRect(77, 84.5, 6, 1.5);
+  c.fillStyle = '#6a4a22'; c.fillRect(79, 54, 3, 22); c.fillStyle = '#1a1a1a'; c.fillRect(78, 50, 5, 6);
+  c.fillStyle = '#c0b080'; for (let i = 0; i < 3; i++) c.fillRect(77, 51 + i * 2, 1, 1);
+  // drum kit (3,2)(4,2)
+  c.fillStyle = '#6a1822'; c.fillRect(94, 64, 68, 34); c.fillStyle = '#8a2a32'; c.fillRect(94, 64, 68, 2);   // drum rug
+  c.fillStyle = '#c4202e'; c.beginPath(); c.arc(128, 86, 13, 0, Math.PI * 2); c.fill();                       // kick
+  c.fillStyle = '#f4ecd6'; c.beginPath(); c.arc(128, 86, 9, 0, Math.PI * 2); c.fill();
+  mhBanana(c, 128, 85, 0.6, 0);
+  c.fillStyle = '#d4d8dc'; for (const [tx2, ty2, r] of [[113, 72, 7], [143, 72, 7], [116, 92, 6]]) { c.beginPath(); c.arc(tx2, ty2, r, 0, Math.PI * 2); c.fill(); c.fillStyle = '#f4ecd6'; c.beginPath(); c.arc(tx2, ty2, r - 2, 0, Math.PI * 2); c.fill(); c.fillStyle = '#d4d8dc'; }
+  c.fillStyle = '#e0b040';                                                                                    // cymbals
+  c.beginPath(); c.ellipse(101, 68, 8, 3, -0.2, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(157, 68, 8, 3, 0.2, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(150, 92, 6, 2.5, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#14100d'; c.fillRect(127, 98, 2, 0);
+  // keyboard on an X-stand (5,2)(6,2)
+  c.fillStyle = '#1c1c20'; c.fillRect(162, 70, 60, 16);
+  c.fillStyle = '#e8e4d8'; c.fillRect(164, 80, 56, 12);
+  c.fillStyle = '#14100d'; for (let x = 168; x < 218; x += 7) c.fillRect(x, 80, 3, 7);
+  c.fillStyle = '#6a6a72'; for (let i = 0; i < 5; i++) c.fillRect(168 + i * 8, 73, 4, 4);
+  c.fillStyle = '#e04a2a'; c.fillRect(210, 73, 6, 3);
+  c.strokeStyle = '#14100d'; c.lineWidth = 2; c.beginPath(); c.moveTo(170, 92); c.lineTo(180, 96); c.moveTo(214, 92); c.lineTo(204, 96); c.stroke();
+  mhAmp(c, 7, 2);                                                       // bass amp (7,2)
+  // mic stands + floor monitors on the stage front (walkable)
+  for (const mx of [112, 176]) {
+    c.strokeStyle = '#14100d'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(mx, 120); c.lineTo(mx, 104); c.moveTo(mx - 5, 121); c.lineTo(mx + 5, 121); c.stroke();
+    c.fillStyle = '#6a6a72'; c.beginPath(); c.arc(mx, 102, 2.6, 0, Math.PI * 2); c.fill();
+  }
+  c.fillStyle = '#16161a';
+  for (const mx of [78, 144, 208]) { c.beginPath(); c.moveTo(mx - 10, 121); c.lineTo(mx + 10, 121); c.lineTo(mx + 7, 114); c.lineTo(mx - 7, 114); c.closePath(); c.fill(); c.fillStyle = '#2c2c30'; c.fillRect(mx - 6, 116, 12, 3); c.fillStyle = '#16161a'; }
+
+  // ---------------------------------------------------------------- hanging-sculpture rail (monkey itself is live)
+  c.fillStyle = '#14100d'; c.fillRect(260, 9, 5, 4);
+
+  // ---------------------------------------------------------------- back bar: shelves, mirror, neon spot
+  c.fillStyle = '#2a1810'; c.fillRect(272, 11, 162, 51);
+  const mg = c.createLinearGradient(0, 14, 0, 58);
+  mg.addColorStop(0, '#3a4f52'); mg.addColorStop(1, '#1c2a2c');
+  c.fillStyle = mg; c.fillRect(300, 14, 104, 44);
+  c.fillStyle = 'rgba(255,255,255,0.10)'; c.fillRect(304, 16, 6, 40);
+  c.fillStyle = '#120d0a'; c.fillRect(299, 13, 106, 1); c.fillRect(299, 58, 106, 1);
+  for (const [bx0, bx1] of [[276, 298], [408, 430]]) {
+    for (const sy of [28, 44]) {
+      c.fillStyle = '#6a4220'; c.fillRect(bx0, sy + 6, bx1 - bx0, 2);
+      for (let x = bx0 + 2; x < bx1 - 3; x += 6) {
+        c.fillStyle = ['#2f7a3a', '#c4902c', '#7a2a1c', '#d8e0e4'][(x >> 1) % 4];
+        c.fillRect(x, sy - 2 + ((x >> 2) % 2) * 2, 4, 8 - ((x >> 2) % 2) * 2); c.fillStyle = '#1a1210'; c.fillRect(x + 1, sy - 4 + ((x >> 2) % 2) * 2, 2, 2);
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------- bar counter (tiles (9..12,3))
+  c.fillStyle = '#7a4a22'; c.fillRect(9 * TILE, 3 * TILE, 4 * TILE, 12);
+  c.fillStyle = '#a86a30'; c.fillRect(9 * TILE, 3 * TILE, 4 * TILE, 2);
+  c.fillStyle = '#3a2314'; c.fillRect(9 * TILE, 3 * TILE + 12, 4 * TILE, 20);
+  for (let x = 9 * TILE + 4; x < 13 * TILE - 2; x += 10) { c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(x, 3 * TILE + 14, 1, 16); }
+  c.fillStyle = BANANA; c.fillRect(9 * TILE, 3 * TILE + 12, 4 * TILE, 1);
+  c.fillStyle = '#8a7a50'; c.fillRect(9 * TILE, 4 * TILE - 4, 4 * TILE, 2);                                  // foot rail
+  c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(9 * TILE, 4 * TILE - 2, 4 * TILE, 2);
+  // tap tower, pint glasses, banana bowl, register
+  c.fillStyle = '#b8a060'; c.fillRect(324, 82, 6, 14); c.fillRect(318, 80, 18, 3);
+  c.fillStyle = '#14100d'; for (const hx of [320, 326, 332]) c.fillRect(hx, 74, 3, 7);
+  c.fillStyle = '#e0b040'; c.fillRect(320, 75, 3, 2); c.fillStyle = '#c4202e'; c.fillRect(326, 75, 3, 2); c.fillStyle = '#3f9a3a'; c.fillRect(332, 75, 3, 2);
+  c.fillStyle = '#e8c070'; c.fillRect(342, 86, 6, 10); c.fillStyle = '#f4ecd6'; c.fillRect(342, 86, 6, 3);
+  c.fillStyle = '#d8a040'; c.fillRect(352, 88, 6, 8); c.fillStyle = '#f4ecd6'; c.fillRect(352, 88, 6, 3);
+  c.fillStyle = '#5a3a20'; c.beginPath(); c.ellipse(384, 94, 11, 4, 0, 0, Math.PI); c.fill();
+  mhBanana(c, 380, 90, 0.7, -0.2); mhBanana(c, 388, 90, 0.7, 0.3);
+  c.fillStyle = '#2a2a2e'; c.fillRect(402, 84, 18, 12); c.fillStyle = '#7cd68a'; c.fillRect(405, 78, 12, 7); c.fillStyle = '#1c2a1e'; c.fillRect(406, 79, 10, 5);
+  // bar stool seats peeking out under the counter lip
+  for (const sx2 of [9, 11]) {
+    c.fillStyle = '#a82a2a'; c.beginPath(); c.ellipse(sx2 * TILE + 16, 4 * TILE + 2, 9, 4, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.2)'; c.fillRect(sx2 * TILE + 10, 4 * TILE, 6, 1);
+  }
+
+  // ---------------------------------------------------------------- gig tables (9,6)(10,6) and (12,6) + chairs
+  for (const cx2 of [9 * TILE + 8, 9 * TILE + 40]) {
+    c.fillStyle = '#3a1c14'; c.fillRect(cx2, 5 * TILE + 10, 16, 3); c.fillStyle = '#5a3020'; c.fillRect(cx2, 5 * TILE + 13, 16, 12);
+  }
+  c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(9 * TILE + 2, 6 * TILE + 27, 62, 4);
+  c.fillStyle = '#6a3e1c'; c.fillRect(9 * TILE, 6 * TILE + 2, 64, 24);
+  c.fillStyle = '#8a5a2c'; c.fillRect(9 * TILE, 6 * TILE + 2, 64, 3);
+  c.fillStyle = '#3a2314'; c.fillRect(9 * TILE, 6 * TILE + 22, 64, 6);
+  c.fillStyle = '#e8c070'; c.fillRect(9 * TILE + 8, 6 * TILE + 8, 5, 9); c.fillStyle = '#f4ecd6'; c.fillRect(9 * TILE + 8, 6 * TILE + 8, 5, 3);
+  c.fillStyle = '#c4902c'; c.beginPath(); c.ellipse(9 * TILE + 34, 6 * TILE + 14, 9, 5, 0, 0, Math.PI * 2); c.fill();             // basket of fries
+  c.fillStyle = '#f2d060'; for (let i = 0; i < 5; i++) c.fillRect(9 * TILE + 29 + i * 2, 6 * TILE + 8 + (i % 2), 1.5, 6);
+  c.fillStyle = '#ffd070'; c.fillRect(9 * TILE + 52, 6 * TILE + 9, 4, 6); c.fillStyle = '#ff9a2a'; c.fillRect(9 * TILE + 53, 6 * TILE + 7, 2, 2);   // candle
+  // little round table (12,6)
+  c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(12 * TILE + 5, 6 * TILE + 27, 24, 3);
+  c.fillStyle = '#6a3e1c'; c.beginPath(); c.ellipse(12 * TILE + 16, 6 * TILE + 16, 13, 9, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#8a5a2c'; c.beginPath(); c.ellipse(12 * TILE + 16, 6 * TILE + 14, 13, 8, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#e8c070'; c.fillRect(12 * TILE + 12, 6 * TILE + 7, 5, 9); c.fillStyle = '#f4ecd6'; c.fillRect(12 * TILE + 12, 6 * TILE + 7, 5, 3);
+
+  // ---------------------------------------------------------------- pool table (tiles (2..4,6..7) = x 64..160, y 192..256)
+  c.fillStyle = 'rgba(0,0,0,0.28)'; c.fillRect(66, 254, 96, 5);
+  c.fillStyle = '#2a140c'; c.fillRect(64, 192, 96, 64);
+  c.fillStyle = '#5a2e18'; c.fillRect(65, 193, 94, 62);
+  c.fillStyle = '#8a5a30'; c.fillRect(65, 193, 94, 2);
+  c.fillStyle = '#1f6e4a'; c.fillRect(71, 199, 82, 50);
+  c.fillStyle = '#2a8a5c'; c.fillRect(71, 199, 82, 3);
+  c.fillStyle = '#0c0c0c';
+  for (const [qx, qy] of [[71, 199], [112, 198], [153, 199], [71, 249], [112, 250], [153, 249]]) { c.beginPath(); c.arc(qx, qy, 4, 0, Math.PI * 2); c.fill(); }
+  c.fillStyle = '#e8e4d8'; c.beginPath(); c.arc(90, 224, 2.6, 0, Math.PI * 2); c.fill();                                         // cue ball
+  const rackBalls = [['#e8c020', 0, 0], ['#2a4ab0', 5, -3], ['#c4202e', 5, 3], ['#6a2a8a', 10, -6], ['#101010', 10, 0], ['#e0701c', 10, 6], ['#2a8a3a', 15, -9], ['#7a1a1a', 15, -3], ['#e8c020', 15, 3], ['#2a4ab0', 15, 9]];
+  for (const [col, ox, oy] of rackBalls) { c.fillStyle = col; c.beginPath(); c.arc(124 + ox, 224 + oy, 2.4, 0, Math.PI * 2); c.fill(); }
+  c.strokeStyle = '#d8c090'; c.lineWidth = 2; c.beginPath(); c.moveTo(72, 232); c.lineTo(87, 226); c.stroke();                      // cue stick
+  c.strokeStyle = '#3a2314'; c.beginPath(); c.moveTo(72, 232); c.lineTo(62, 236); c.stroke();
+  c.fillStyle = '#3a8ad0'; c.fillRect(100, 242, 4, 4);                                                                            // chalk
+  c.fillStyle = 'rgba(255,240,170,0.08)'; c.fillRect(71, 199, 82, 50);                                                            // lamp glow
+  // cue rack on the left wall
+  c.fillStyle = '#14100d'; c.fillRect(6, 190, 22, 3); c.fillRect(6, 244, 22, 3);
+  for (let i = 0; i < 4; i++) { c.fillStyle = ['#d8c090', '#3a2314', '#d8c090', '#6a4a22'][i]; c.fillRect(9 + i * 5, 192, 2, 54); }
+  // chalkboard + dartboard on the right wall
+  c.fillStyle = '#5a3020'; c.fillRect(418, 150, 26, 36); c.fillStyle = '#1b1c1e'; c.fillRect(420, 152, 22, 32);
+  c.fillStyle = BANANA; c.font = '700 5px monospace'; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+  c.fillText('LIVE', 431, 162); c.fillText('MUSIC', 431, 169);
+  c.fillStyle = '#f4ecd6'; c.fillRect(423, 173, 16, 1); c.fillRect(423, 177, 12, 1); c.fillRect(423, 181, 14, 1);
+  c.fillStyle = '#14100d'; c.beginPath(); c.arc(431, 216, 10, 0, Math.PI * 2); c.fill();
+  for (const [r, col] of [[8, '#c4202e'], [6, '#e8e4d8'], [4, '#2f7a3a'], [2, '#c4202e']]) { c.fillStyle = col; c.beginPath(); c.arc(431, 216, r, 0, Math.PI * 2); c.fill(); }
+
+  // ---------------------------------------------------------------- entry rug + front wall with glowing windows
+  c.fillStyle = '#c4902c'; c.fillRect(168, 262, 80, 24);
+  c.fillStyle = '#4a1c14'; c.fillRect(171, 265, 74, 18);
+  c.fillStyle = BANANA; c.fillRect(176, 273, 64, 2);
+  const fy = 9 * TILE;
+  c.fillStyle = '#2a1810'; c.fillRect(0, fy, 6 * TILE, TILE); c.fillRect(7 * TILE, fy, 7 * TILE, TILE);
+  for (const [x0, x1] of [[TILE + 4, 6 * TILE - 4], [7 * TILE + 4, 13 * TILE - 4]]) {
+    c.fillStyle = '#120d0a'; c.fillRect(x0 - 2, fy + 4, x1 - x0 + 4, 24);
+    const gg = c.createLinearGradient(0, fy + 6, 0, fy + 26);
+    gg.addColorStop(0, '#6a4a24'); gg.addColorStop(1, '#2a1c10');
+    c.fillStyle = gg; c.fillRect(x0, fy + 6, x1 - x0, 20);
+  }
+  c.fillStyle = '#ff4a4a'; c.font = '700 8px monospace'; c.fillText('OPEN', 3 * TILE + 10, fy + 20);
+  c.fillStyle = BANANA; c.fillText('LIVE MUSIC', 10 * TILE, fy + 20);
+  c.fillStyle = '#17181d'; c.fillRect(6 * TILE - 3, fy, 3, TILE); c.fillRect(7 * TILE, fy, 3, TILE);
+}
+
+// THE AZTEXT -- PRO ("Pro Knows Music") on the left mic, LEARIC on the right mic.
+// Both bounce to the beat, sway a little and throw music notes into the crowd, under
+// a hot-pink neon "THE AZTEXT" banner on the stage curtain. Stage front is y~120.
+function drawAztextPerformer(img, cx, footY, h, time, phase) {
+  if (!(img.complete && img.naturalWidth)) return;
+  const dw = h * img.naturalWidth / img.naturalHeight;
+  const beat = Math.abs(Math.sin(time * 5.2 + phase));
+  const hop = beat * 4, sway = Math.sin(time * 2.6 + phase) * 0.05;
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.beginPath(); ctx.ellipse(cx, footY + 1, dw * 0.42 * (1 - beat * 0.15), 3, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.translate(cx, footY - hop); ctx.rotate(sway);
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(img, -dw / 2, -h, dw, h);
+  ctx.restore();
+  // music notes drifting up off the performer
+  ctx.save();
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = '700 10px sans-serif';
+  for (let i = 0; i < 3; i++) {
+    const t = ((time * 0.55 + i / 3 + phase * 0.1) % 1 + 1) % 1;
+    ctx.globalAlpha = Math.sin(t * Math.PI) * 0.9;
+    ctx.fillStyle = ['#ffd83a', '#ff6aa0', '#6ad4ff'][i];
+    ctx.fillText(i % 2 ? '\u266B' : '\u266A', cx + (i - 1) * 12 + Math.sin(time * 2 + i) * 3, footY - h - 2 - t * 22);
+  }
+  ctx.restore();
+}
+
+function drawAztext(time) {
+  // neon banner on the curtain
+  let f = 1;
+  if ((time % 7) > 6.5 && Math.sin(time * 41) > 0) f = 0.35;
+  ctx.save();
+  ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.lineJoin = 'round';
+  ctx.font = 'italic 800 14px "Trebuchet MS", Verdana, sans-serif';
+  ctx.fillStyle = 'rgba(255,70,150,' + (0.14 * f).toFixed(3) + ')';
+  ctx.beginPath(); ctx.ellipse(146, 31, 48, 13, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(255,70,150,' + (0.30 * f).toFixed(3) + ')';
+  for (const [ox, oy] of NEON_GLOW_OFFSETS) ctx.fillText('THE AZTEXT', 146 + ox, 36 + oy);
+  ctx.strokeStyle = 'rgba(255,40,120,' + f.toFixed(3) + ')'; ctx.lineWidth = 3; ctx.strokeText('THE AZTEXT', 146, 36);
+  ctx.fillStyle = 'rgba(255,214,236,' + f.toFixed(3) + ')'; ctx.fillText('THE AZTEXT', 146, 36);
+  ctx.restore();
+  // the emcees
+  drawAztextPerformer(aztextProImg, 90, 120, 64, time, 0);
+  drawAztextPerformer(aztextLearicImg, 198, 120, 64, time, 1.7);
+}
+
+let _mhInteriorCache = null;
+function drawMonkeyHouseInterior(time) {
+  if (!_mhInteriorCache) {
+    const cv = document.createElement('canvas');
+    cv.width = 14 * TILE; cv.height = 10 * TILE;
+    paintMonkeyHouseInterior(cv.getContext('2d'));
+    _mhInteriorCache = cv;
+  }
+  ctx.drawImage(_mhInteriorCache, 0, 0);
+
+  // THE AZTEXT on stage (PRO + LEARIC), under the sweeping lights below
+  drawAztext(time);
+
+  // sweeping stage-light beams (additive, over the stage + front of it)
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  const beams = [[70, 'rgba(255,70,120,0.09)', 0], [140, 'rgba(70,190,255,0.09)', 2.1], [210, 'rgba(255,214,60,0.09)', 4.2]];
+  for (const [bx, col, ph] of beams) {
+    const sw = Math.sin(time * 1.1 + ph) * 34;
+    ctx.fillStyle = col;
+    ctx.beginPath(); ctx.moveTo(bx - 4, 18); ctx.lineTo(bx + 4, 18); ctx.lineTo(bx + sw + 26, 128); ctx.lineTo(bx + sw - 26, 128); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(bx + sw, 120, 26, 7, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+
+  // yellow neon "monkey" in the back-bar mirror (flickers now and then)
+  let f = 1;
+  if ((time % 9) > 8.4 && Math.sin(time * 37) > 0) f = 0.3;
+  ctx.save();
+  ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.lineJoin = 'round';
+  ctx.font = 'italic 800 15px "Trebuchet MS", Verdana, sans-serif';
+  ctx.fillStyle = 'rgba(255,214,40,' + (0.14 * f).toFixed(3) + ')';
+  ctx.beginPath(); ctx.ellipse(352, 32, 40, 14, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(255,214,40,' + (0.30 * f).toFixed(3) + ')';
+  for (const [ox, oy] of NEON_GLOW_OFFSETS) ctx.fillText('monkey', 352 + ox, 38 + oy);
+  ctx.strokeStyle = 'rgba(255,184,0,' + f.toFixed(3) + ')'; ctx.lineWidth = 3; ctx.strokeText('monkey', 352, 38);
+  ctx.fillStyle = 'rgba(255,246,176,' + f.toFixed(3) + ')'; ctx.fillText('monkey', 352, 38);
+  ctx.restore();
+
+  // the monkey sculpture swinging from the rafter between stage and bar
+  ctx.strokeStyle = '#14100d'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(262, 13); ctx.lineTo(262, 22); ctx.stroke();
+  mhSculptMonkey(ctx, 262, 24, 0.75, Math.sin(time * 1.5) * 0.09);
+}
+
+// ---------------------------------------------------------------- BELLEVUE TATTOO & PIERCING (Winooski, LEVEL 4)
+// A cool tattoo + piercing studio where SK1 works. Outside: a teal board-and-batten
+// storefront under a black parapet, a black sign plate carrying the real BELLEVUE
+// script logo (assets/bellevue.png, drawn live so it shows up whenever the image
+// finishes loading; a lettered fallback is used if the file is missing), neon
+// TATTOO / PIERCING signs in the front windows and a black glass door.
+// Inside (modeled on photos of the real shop): teal walls and a silver spiral duct,
+// polished concrete floor with sun streaming in from tall street windows on the
+// left (purple wainscot + orange sills), a sticker-bombed cabinet mid-floor, a
+// reception desk with a computer, a record shelf with a turntable, a tattoo bed
+// with an arm lamp, flash art on the walls and a steel trash can by the desk.
+//
+// Static art is painted once into offscreen canvases (see the caches below); only
+// the logo, neon and monitor glow are drawn live.
+
+const bellevueImg = new Image();
+bellevueImg.src = 'assets/bellevue.png';
+
+function bvRng(seed) {
+  let s = seed >>> 0;
+  return function () { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; };
+}
+
+// Draws the BELLEVUE logo centered at (cx, cy), fitted inside boxW x boxH. If the
+// image isn't available (yet), draws lettering that resembles it instead.
+function drawBellevueLogo(cx, cy, boxW, boxH) {
+  if (bellevueImg.complete && bellevueImg.naturalWidth) {
+    const r = bellevueImg.naturalWidth / bellevueImg.naturalHeight;
+    let dw = boxW, dh = dw / r;
+    if (dh > boxH) { dh = boxH; dw = dh * r; }
+    ctx.save();
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(bellevueImg, cx - dw / 2, cy - dh / 2, dw, dh);
+    ctx.restore();
+  } else {
+    ctx.save();
+    ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+    ctx.fillStyle = '#ffffff';
+    const fs = Math.max(8, Math.round(boxH * 0.62));
+    ctx.font = 'italic 700 ' + fs + 'px "Brush Script MT", "Segoe Script", Georgia, serif';
+    ctx.fillText('Bellevue', cx, cy + boxH * 0.12);
+    ctx.fillRect(cx - boxW * 0.42, cy + boxH * 0.2, boxW * 0.84, Math.max(1, boxH * 0.03));
+    ctx.font = '700 ' + Math.max(5, Math.round(boxH * 0.17)) + 'px Georgia, serif';
+    ctx.fillText('TATTOO & PIERCING', cx, cy + boxH * 0.44);
+    ctx.restore();
+  }
+}
+
+// ------------------------------------------------------------------ exterior
+function bvFlashSheet(c, x, y, w, h, kind) {
+  c.fillStyle = '#f3eee0'; c.fillRect(x, y, w, h);
+  c.strokeStyle = 'rgba(0,0,0,0.35)'; c.lineWidth = 0.6; c.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+  const cx = x + w / 2, cy = y + h / 2;
+  c.strokeStyle = '#17181c'; c.fillStyle = '#17181c'; c.lineWidth = 1;
+  if (kind === 0) {                                   // anchor
+    c.beginPath(); c.arc(cx, cy - h * 0.28, w * 0.1, 0, Math.PI * 2); c.stroke();
+    c.beginPath(); c.moveTo(cx, cy - h * 0.18); c.lineTo(cx, cy + h * 0.3); c.moveTo(cx - w * 0.2, cy - h * 0.06); c.lineTo(cx + w * 0.2, cy - h * 0.06); c.stroke();
+    c.beginPath(); c.arc(cx, cy + h * 0.08, w * 0.26, 0.15 * Math.PI, 0.85 * Math.PI); c.stroke();
+  } else if (kind === 1) {                            // rose
+    c.fillStyle = '#c4283a'; c.beginPath(); c.arc(cx, cy - h * 0.08, w * 0.2, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#8a1a28'; c.beginPath(); c.arc(cx, cy - h * 0.08, w * 0.1, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = '#2f7a3a'; c.beginPath(); c.moveTo(cx, cy + h * 0.1); c.lineTo(cx, cy + h * 0.36); c.stroke();
+    c.fillStyle = '#2f7a3a'; c.fillRect(cx + 1, cy + h * 0.2, w * 0.14, h * 0.05);
+  } else if (kind === 2) {                            // swallow
+    c.fillStyle = '#17181c';
+    c.beginPath(); c.moveTo(cx - w * 0.34, cy - h * 0.12); c.quadraticCurveTo(cx - w * 0.1, cy - h * 0.34, cx, cy); c.quadraticCurveTo(cx + w * 0.1, cy - h * 0.34, cx + w * 0.34, cy - h * 0.12); c.quadraticCurveTo(cx + w * 0.1, cy - h * 0.02, cx + w * 0.04, cy + h * 0.08); c.lineTo(cx + w * 0.1, cy + h * 0.34); c.lineTo(cx, cy + h * 0.22); c.lineTo(cx - w * 0.1, cy + h * 0.34); c.lineTo(cx - w * 0.04, cy + h * 0.08); c.quadraticCurveTo(cx - w * 0.1, cy - h * 0.02, cx - w * 0.34, cy - h * 0.12); c.closePath(); c.fill();
+  } else {                                            // dagger
+    c.fillStyle = '#8a8f96'; c.beginPath(); c.moveTo(cx, cy - h * 0.36); c.lineTo(cx + w * 0.07, cy + h * 0.06); c.lineTo(cx - w * 0.07, cy + h * 0.06); c.closePath(); c.fill();
+    c.fillStyle = '#17181c'; c.fillRect(cx - w * 0.2, cy + h * 0.06, w * 0.4, h * 0.05); c.fillRect(cx - w * 0.03, cy + h * 0.11, w * 0.06, h * 0.2);
+    c.fillStyle = '#c4283a'; c.beginPath(); c.arc(cx, cy + h * 0.34, w * 0.05, 0, Math.PI * 2); c.fill();
+  }
+}
+
+function bvNeonText(c, txt, x, y, col, glow, size) {
+  c.save();
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.font = 'italic 700 ' + size + 'px "Trebuchet MS", Verdana, sans-serif';
+  c.fillStyle = glow;
+  for (const [ox, oy] of [[-1.5, 0], [1.5, 0], [0, -1.5], [0, 1.5], [-1, -1], [1, 1], [-1, 1], [1, -1]]) c.fillText(txt, x + ox, y + oy);
+  c.fillStyle = col; c.fillText(txt, x, y);
+  c.fillStyle = 'rgba(255,255,255,0.75)'; c.fillText(txt, x, y - 0.4);
+  c.restore();
+}
+
+function paintBellevueExterior(c, w, h, doorLX) {
+  const TEAL = '#1f9d93', TEALD = '#157a73', TEALL = '#43c2b6', INK = '#101114';
+
+  // ---- teal board-and-batten wall
+  c.fillStyle = TEAL; c.fillRect(0, 0, w, h);
+  for (let x = 6; x < w; x += 14) {
+    c.fillStyle = 'rgba(0,0,0,0.13)'; c.fillRect(x, 33, 1, h - 33);
+    c.fillStyle = 'rgba(255,255,255,0.07)'; c.fillRect(x + 1, 33, 1, h - 33);
+  }
+  c.fillStyle = 'rgba(0,0,0,0.14)'; c.fillRect(0, 33, 3, h); c.fillRect(w - 3, 33, 3, h);
+
+  // ---- black parapet roof band with coping + a few vents
+  c.fillStyle = '#17181c'; c.fillRect(0, 0, w, 30);
+  for (let y = 9; y < 28; y += 6) { c.fillStyle = 'rgba(255,255,255,0.05)'; c.fillRect(0, y, w, 1); c.fillStyle = 'rgba(0,0,0,0.35)'; c.fillRect(0, y + 1, w, 1); }
+  c.fillStyle = '#2d3037'; c.fillRect(0, 0, w, 4);
+  c.fillStyle = '#3d414a'; c.fillRect(0, 0, w, 1);
+  c.fillStyle = '#0a0a0c'; c.fillRect(0, 27, w, 3);
+  for (const vx of [26, w - 40]) { c.fillStyle = '#2a2c33'; c.fillRect(vx, 10, 14, 10); c.fillStyle = '#101114'; for (let i = 0; i < 4; i++) c.fillRect(vx + 2, 12 + i * 2, 10, 1); }
+  // ---- teal trim under the parapet
+  c.fillStyle = TEALD; c.fillRect(0, 30, w, 3);
+  c.fillStyle = TEALL; c.fillRect(0, 30, w, 1);
+  c.fillStyle = 'rgba(0,0,0,0.28)'; c.fillRect(0, 33, w, 3);
+
+  // ---- sign plate for the logo (the logo itself is drawn live on top of this)
+  const sx = 34, sy = 38, sw = w - 68, sh = 46;
+  c.fillStyle = 'rgba(0,0,0,0.38)'; c.fillRect(sx + 2, sy + 3, sw, sh);
+  c.fillStyle = '#d9d4c6'; c.fillRect(sx - 2, sy - 2, sw + 4, sh + 4);
+  c.fillStyle = '#000002'; c.fillRect(sx, sy, sw, sh);
+  for (const [ax, ay] of [[sx + 3, sy + 3], [sx + sw - 5, sy + 3], [sx + 3, sy + sh - 5], [sx + sw - 5, sy + sh - 5]]) { c.fillStyle = '#6a6e75'; c.fillRect(ax, ay, 2, 2); }
+  // two little gooseneck lamps throwing light on the sign
+  for (const lx of [sx + 18, sx + sw - 18]) {
+    c.strokeStyle = '#0a0a0c'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(lx, sy - 2); c.quadraticCurveTo(lx, sy - 9, lx + 6 * (lx < w / 2 ? 1 : -1), sy - 7); c.stroke();
+    c.fillStyle = '#0a0a0c'; c.fillRect(lx + 4 * (lx < w / 2 ? 1 : -1) - 3, sy - 9, 7, 3);
+    c.fillStyle = 'rgba(255,240,200,0.10)';
+    c.beginPath(); c.moveTo(lx + 4 * (lx < w / 2 ? 1 : -1) - 3, sy - 6); c.lineTo(lx + 4 * (lx < w / 2 ? 1 : -1) + 4, sy - 6); c.lineTo(lx + 20, sy + sh * 0.7); c.lineTo(lx - 18, sy + sh * 0.7); c.closePath(); c.fill();
+  }
+
+  // ---- storefront windows (left + right of the door)
+  const wy = 91, wh = 33;
+  const wins = [[10, 88, 0], [w - 88, w - 10, 1]];
+  for (const [x0, x1, kind] of wins) {
+    const gw = x1 - x0;
+    c.fillStyle = INK; c.fillRect(x0 - 3, wy - 3, gw + 6, wh + 6);
+    const gg = c.createLinearGradient(0, wy, 0, wy + wh);
+    gg.addColorStop(0, '#2f4a4c'); gg.addColorStop(1, '#16282a');
+    c.fillStyle = gg; c.fillRect(x0, wy, gw, wh);
+    c.fillStyle = 'rgba(255,200,130,0.16)'; c.fillRect(x0, wy + wh - 14, gw, 14);       // warm light inside
+    if (kind === 0) {
+      bvNeonText(c, 'TATTOO', x0 + gw / 2, wy + 11, '#ff6fa8', 'rgba(255,60,140,0.30)', 11);
+      c.fillStyle = '#e8e2d2'; c.fillRect(x0 + 8, wy + 22, 14, 8); c.fillRect(x0 + gw - 22, wy + 22, 14, 8);
+      c.fillStyle = '#17181c'; c.fillRect(x0 + 10, wy + 24, 10, 1); c.fillRect(x0 + 10, wy + 27, 7, 1); c.fillRect(x0 + gw - 20, wy + 24, 10, 1); c.fillRect(x0 + gw - 20, wy + 27, 7, 1);
+    } else {
+      bvNeonText(c, 'PIERCING', x0 + gw / 2, wy + 11, '#7ee8ff', 'rgba(60,200,255,0.30)', 10);
+      bvFlashSheet(c, x0 + 8, wy + 17, 13, 14, 2); bvFlashSheet(c, x0 + 24, wy + 17, 13, 14, 1); bvFlashSheet(c, x0 + gw - 22, wy + 17, 13, 14, 0);
+    }
+    // glass glint + mullion
+    c.fillStyle = 'rgba(255,255,255,0.16)';
+    c.beginPath(); c.moveTo(x0 + 6, wy); c.lineTo(x0 + 18, wy); c.lineTo(x0 + 6, wy + wh); c.lineTo(x0, wy + wh); c.lineTo(x0, wy + 14); c.closePath(); c.fill();
+    c.fillStyle = INK; c.fillRect(x0 + gw / 2 - 1, wy, 2, wh);
+    // stickers on the glass
+    const rr = bvRng(kind * 977 + 5);
+    for (let i = 0; i < 5; i++) { c.fillStyle = ['#ffd23f', '#ff5a6a', '#f4f1ea', '#7ee8ff', '#b07cff'][i]; c.beginPath(); c.arc(x0 + 4 + rr() * (gw - 8), wy + 4 + rr() * (wh - 8), 1.6 + rr() * 1.4, 0, Math.PI * 2); c.fill(); }
+    // sill
+    c.fillStyle = '#0c3b37'; c.fillRect(x0 - 4, wy + wh + 3, gw + 8, 3);
+    c.fillStyle = TEALL; c.fillRect(x0 - 4, wy + wh + 3, gw + 8, 1);
+  }
+
+  // ---- black glass door
+  const dX = doorLX + 2, dW = 28, dY = 92, dH = h - dY;
+  c.fillStyle = INK; c.fillRect(dX - 3, dY - 4, dW + 6, dH + 4);
+  c.fillStyle = '#1e2127'; c.fillRect(dX, dY - 1, dW, dH + 1);
+  const dg = c.createLinearGradient(dX, dY, dX + dW, dY + 30);
+  dg.addColorStop(0, '#356a6b'); dg.addColorStop(1, '#16282a');
+  c.fillStyle = dg; c.fillRect(dX + 3, dY + 2, dW - 6, 26);
+  c.fillStyle = 'rgba(255,255,255,0.22)'; c.fillRect(dX + 5, dY + 3, 4, 24);
+  c.fillStyle = INK; c.fillRect(dX + dW / 2 - 1, dY + 2, 2, 26);
+  c.fillStyle = '#ff4a5a'; c.fillRect(dX + 8, dY + 9, 12, 6);              // little neon OPEN card
+  c.fillStyle = '#16100e'; c.fillRect(dX + 9, dY + 10, 10, 4);
+  c.fillStyle = '#ff7a88'; c.font = '700 4px monospace'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('OPEN', dX + 14, dY + 12.4);
+  c.fillStyle = '#16282a'; c.fillRect(dX + 3, dY + 30, dW - 6, dH - 33);
+  c.fillStyle = '#c8ccd2'; c.fillRect(dX + dW - 6, dY + 22, 2, 10);        // push handle
+  c.fillStyle = '#f4f1ea'; c.font = '700 3.5px monospace'; c.fillText('WALK-INS', dX + 14, dY + 34); c.fillText('WELCOME', dX + 14, dY + 38);
+  // door mat + foundation
+  c.fillStyle = '#0c3b37'; c.fillRect(0, h - 3, w, 3);
+  c.fillStyle = '#101114'; c.fillRect(dX - 2, h - 3, dW + 4, 3);
+}
+
+let _bvExteriorCache = null;
+function drawBellevueExterior(px, py, w, h, dx) {
+  const doorLX = dx - px;
+  if (!_bvExteriorCache || _bvExteriorCache.w !== w || _bvExteriorCache.h !== h || _bvExteriorCache.d !== doorLX) {
+    const cv = document.createElement('canvas');
+    cv.width = w; cv.height = h;
+    paintBellevueExterior(cv.getContext('2d'), w, h, doorLX);
+    _bvExteriorCache = { cv, w, h, d: doorLX };
+  }
+  ctx.drawImage(_bvExteriorCache.cv, px, py);
+  // the real logo on the sign plate (live, so it appears as soon as the image loads)
+  drawBellevueLogo(px + w / 2, py + 38 + 23, w - 82, 40);
+}
+
+// ------------------------------------------------------------------ interior
+// Solid props are plain 'W'/'T' tiles in the shop def (blockTiles / tableRange) that this
+// painter dresses up: row 1 (walled-off back), tattoo bed (2,3)(3,3), ink cart (4,3),
+// monitor + chair (8,2)(9,2), equipment cart (12,2), couch (1,5)(1,6), record shelf +
+// turntable (1,7)(1,8), sticker cabinet (5,5)(5,6), steel trash can (12,4); the reception
+// desk is the 'T' row at y=3, x 8..12, with SK1 behind it at (10,2).
+function bvShadow(c, x, y, w) { c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(x, y, w, 4); }
+
+function bvStickerCabinet(c, x, y, w, h) {
+  // top face + front face covered in stickers
+  c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(x + 2, y + h - 1, w, 5);
+  c.fillStyle = '#d8d6cf'; c.fillRect(x, y, w, h);
+  c.fillStyle = '#efede6'; c.fillRect(x, y, w, 8);
+  c.fillStyle = '#b9b6ac'; c.fillRect(x, y + 8, w, 1);
+  const rr = bvRng(424242);
+  const cols = ['#ff5a6a', '#ffd23f', '#3bb5e8', '#7ee8a0', '#b07cff', '#f4f1ea', '#ff9a3a', '#1e1e24', '#e84a9a', '#2fa39a'];
+  for (let i = 0; i < 46; i++) {
+    const sx = x + 1 + rr() * (w - 8), sy = y + 10 + rr() * (h - 18), s = 4 + rr() * 6;
+    c.fillStyle = cols[Math.floor(rr() * cols.length)];
+    const k = Math.floor(rr() * 4);
+    if (k === 0) c.fillRect(sx, sy, s, s * 0.8);
+    else if (k === 1) { c.beginPath(); c.arc(sx + s / 2, sy + s / 2, s / 2, 0, Math.PI * 2); c.fill(); }
+    else if (k === 2) { c.beginPath(); c.moveTo(sx + s / 2, sy); c.lineTo(sx + s, sy + s * 0.9); c.lineTo(sx, sy + s * 0.9); c.closePath(); c.fill(); }
+    else { c.beginPath(); for (let a = 0; a < 6; a++) { const ang = a * Math.PI / 3; c.lineTo(sx + s / 2 + Math.cos(ang) * s / 2, sy + s / 2 + Math.sin(ang) * s / 2); } c.closePath(); c.fill(); }
+    c.fillStyle = 'rgba(255,255,255,0.55)'; c.fillRect(sx + 1, sy + 1, Math.max(1, s * 0.3), 1);
+    if (rr() < 0.35) { c.fillStyle = 'rgba(20,20,24,0.55)'; c.fillRect(sx + s * 0.2, sy + s * 0.45, s * 0.6, 1); }
+  }
+  c.fillStyle = 'rgba(0,0,0,0.18)'; c.fillRect(x, y + h - 4, w, 4);
+  c.fillStyle = 'rgba(0,0,0,0.20)'; c.fillRect(x + w - 2, y + 8, 2, h - 8);
+}
+
+function paintBellevueInterior(c) {
+  const W = 14 * TILE, H = 10 * TILE;
+  const TEAL = '#1f9d93', TEALD = '#157a73', TEALL = '#43c2b6', PURP = '#3d2c58', PURPD = '#2a1d3e', ORANGE = '#d98a2b', INK = '#16171b';
+
+  // ================================================================ floor: polished concrete
+  const fg = c.createLinearGradient(0, 64, 0, 288);
+  fg.addColorStop(0, '#858a8e'); fg.addColorStop(0.5, '#979ca0'); fg.addColorStop(1, '#8a8f93');
+  c.fillStyle = fg; c.fillRect(0, 64, W, 224);
+  const fr = bvRng(1357);
+  for (let i = 0; i < 260; i++) { c.fillStyle = fr() < 0.5 ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'; c.fillRect(32 + fr() * 380, 66 + fr() * 220, 10 + fr() * 36, 1 + fr() * 2); }
+  c.fillStyle = 'rgba(0,0,0,0.10)';
+  for (const x of [128, 224, 320]) c.fillRect(x, 64, 1, 224);
+  for (const y of [128, 192, 256]) c.fillRect(32, y, 384, 1);
+  // soft sun patches from the left windows
+  c.fillStyle = 'rgba(255,255,240,0.16)';
+  for (const [y0, y1] of [[84, 118], [150, 184], [214, 248]]) {
+    c.beginPath(); c.moveTo(32, y0); c.lineTo(32, y1); c.lineTo(168, y1 + 52); c.lineTo(168, y0 + 52); c.closePath(); c.fill();
+  }
+  // ambient shade by the walls
+  const sh = c.createLinearGradient(0, 64, 0, 80); sh.addColorStop(0, 'rgba(0,0,0,0.30)'); sh.addColorStop(1, 'rgba(0,0,0,0)');
+  c.fillStyle = sh; c.fillRect(32, 64, 384, 16);
+
+  // ================================================================ back wall (y 0..64)
+  c.fillStyle = TEAL; c.fillRect(0, 0, W, 64);
+  for (let x = 0; x < W; x += 48) { c.fillStyle = 'rgba(255,255,255,0.045)'; c.fillRect(x, 10, 24, 50); }
+  c.fillStyle = TEALD; c.fillRect(32, 10, 5, 50); c.fillRect(W - 37, 10, 5, 50); c.fillRect(244, 10, 5, 50); c.fillRect(392, 10, 5, 50);   // pilasters
+  c.fillStyle = '#0f4f4a'; c.fillRect(0, 60, W, 4);                       // baseboard
+  c.fillStyle = TEALL; c.fillRect(0, 60, W, 1);
+  // ceiling soffit + silver spiral duct + can lights
+  c.fillStyle = '#6f757c'; c.fillRect(0, 0, W, 9);
+  c.fillStyle = '#3d4249'; c.fillRect(0, 8, W, 2);
+  const dgr = c.createLinearGradient(0, 0, 0, 12);
+  dgr.addColorStop(0, '#f2f4f6'); dgr.addColorStop(0.5, '#b4bac1'); dgr.addColorStop(1, '#6c727a');
+  c.fillStyle = dgr; c.fillRect(150, 0, W - 150, 11);
+  c.fillStyle = 'rgba(40,44,50,0.55)'; for (let x = 154; x < W; x += 7) c.fillRect(x, 0, 1, 11);
+  c.fillStyle = 'rgba(255,255,255,0.4)'; for (let x = 157; x < W; x += 7) c.fillRect(x, 0, 1, 11);
+  for (const lx of [60, 262, 366]) { c.fillStyle = '#2a2d33'; c.fillRect(lx - 4, 10, 8, 3); c.fillStyle = '#fff6d8'; c.fillRect(lx - 3, 12, 6, 2); c.fillStyle = 'rgba(255,246,216,0.15)'; c.beginPath(); c.moveTo(lx - 3, 14); c.lineTo(lx + 3, 14); c.lineTo(lx + 16, 56); c.lineTo(lx - 16, 56); c.closePath(); c.fill(); }
+
+  // EXIT sign (red) over the window
+  c.fillStyle = '#e9ecee'; c.fillRect(164, 12, 24, 9);
+  c.fillStyle = '#c4202e'; c.font = '700 6px monospace'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('EXIT', 176, 16.8);
+  c.strokeStyle = '#2a2d33'; c.lineWidth = 1; c.strokeRect(164.5, 12.5, 23, 8);
+
+  // back street window (3 x 2 black-framed panes, red umbrella + street outside)
+  const bwx = 120, bwy = 22, bww = 112, bwh = 34;
+  c.fillStyle = '#0c0d10'; c.fillRect(bwx - 3, bwy - 3, bww + 6, bwh + 6);
+  const sky = c.createLinearGradient(0, bwy, 0, bwy + bwh); sky.addColorStop(0, '#cfe9f2'); sky.addColorStop(0.55, '#e9f4f4'); sky.addColorStop(1, '#a9b0b0');
+  c.fillStyle = sky; c.fillRect(bwx, bwy, bww, bwh);
+  c.fillStyle = '#8c9a96'; c.fillRect(bwx, bwy + 22, bww, 12);                             // street
+  c.fillStyle = '#c5cdc9'; c.fillRect(bwx, bwy + 20, bww, 3);                              // sidewalk
+  c.fillStyle = '#b8a998'; c.fillRect(bwx + 4, bwy + 8, 30, 13); c.fillStyle = '#9aa79e'; c.fillRect(bwx + 36, bwy + 5, 26, 16); c.fillStyle = '#c4b8a2'; c.fillRect(bwx + 84, bwy + 7, 24, 14);   // buildings
+  c.fillStyle = '#d02a2a'; c.beginPath(); c.moveTo(bwx + 54, bwy + 16); c.quadraticCurveTo(bwx + 66, bwy + 6, bwx + 80, bwy + 16); c.closePath(); c.fill();   // red umbrella
+  c.fillStyle = '#7a1a1a'; c.fillRect(bwx + 66, bwy + 15, 1, 8);
+  c.fillStyle = '#f2f4f4'; c.fillRect(bwx + 8, bwy + 25, 22, 6); c.fillStyle = '#9fc7d6'; c.fillRect(bwx + 11, bwy + 23, 14, 3);    // parked car
+  c.fillStyle = '#1c1c20'; c.fillRect(bwx + 11, bwy + 30, 4, 3); c.fillRect(bwx + 23, bwy + 30, 4, 3);
+  c.fillStyle = '#0c0d10'; for (const gx of [bww / 3, 2 * bww / 3]) c.fillRect(bwx + gx - 1, bwy, 2, bwh); c.fillRect(bwx, bwy + bwh / 2 - 1, bww, 2);
+  c.fillStyle = 'rgba(255,255,255,0.35)'; c.beginPath(); c.moveTo(bwx + 6, bwy); c.lineTo(bwx + 24, bwy); c.lineTo(bwx + 6, bwy + bwh); c.lineTo(bwx, bwy + bwh); c.lineTo(bwx, bwy + 10); c.closePath(); c.fill();
+
+  // flash-art frames (left of the window)
+  for (let i = 0; i < 3; i++) {
+    const fx = 42 + i * 25, fy = 20;
+    c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(fx + 1, fy + 2, 21, 28);
+    c.fillStyle = '#17181c'; c.fillRect(fx - 1, fy - 1, 22, 28);
+    bvFlashSheet(c, fx + 1, fy + 1, 18, 24, i);
+  }
+  // wall shelf with a few ink bottles + a skull
+  c.fillStyle = '#4a3220'; c.fillRect(40, 52, 78, 3);
+  for (let i = 0; i < 6; i++) { c.fillStyle = ['#17181c', '#c4283a', '#2a6ab0', '#2f9a4a', '#e8c030', '#7a3aa8'][i]; c.fillRect(44 + i * 9, 46, 5, 6); c.fillStyle = '#e8e4d8'; c.fillRect(45 + i * 9, 44, 3, 2); }
+  c.fillStyle = '#e8e4d8'; c.beginPath(); c.arc(106, 49, 3.4, 0, Math.PI * 2); c.fill(); c.fillRect(104, 51, 5, 3); c.fillStyle = '#17181c'; c.fillRect(104, 48, 1.5, 1.5); c.fillRect(107, 48, 1.5, 1.5);
+
+  // BELLEVUE logo plaque (logo itself is drawn live) between the window and SK1's desk
+  c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(252, 21, 62, 30);
+  c.fillStyle = '#d9d4c6'; c.fillRect(249, 17, 62, 30);
+  c.fillStyle = '#000002'; c.fillRect(250, 18, 60, 28);
+  // price/policy board and white side door (right of SK1)
+  c.fillStyle = '#5a3a24'; c.fillRect(360, 20, 24, 30);
+  c.fillStyle = '#1b1c1e'; c.fillRect(362, 22, 20, 26);
+  c.fillStyle = '#f4ecd6'; c.font = '700 3.6px monospace'; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+  c.fillText('PIERCING', 372, 28); c.fillText('MENU', 372, 32);
+  for (let i = 0; i < 4; i++) { c.fillRect(365, 35 + i * 3, 9 + (i % 2) * 3, 1); c.fillRect(377, 35 + i * 3, 3, 1); }
+  c.fillStyle = '#f2f3f4'; c.fillRect(398, 16, 26, 48);
+  c.fillStyle = '#c9ccce'; c.fillRect(398, 16, 2, 48); c.fillRect(422, 16, 2, 48); c.fillRect(398, 16, 26, 2);
+  c.fillStyle = '#9ec6cc'; c.fillRect(403, 22, 16, 20); c.fillStyle = 'rgba(255,255,255,0.4)'; c.fillRect(405, 23, 4, 18);
+  c.fillStyle = '#8a8f96'; c.fillRect(402, 48, 3, 6);
+
+  // ================================================================ left wall: tall street windows (x 0..32)
+  c.fillStyle = TEAL; c.fillRect(0, 0, 32, 64);
+  c.fillStyle = PURPD; c.fillRect(0, 64, 32, 224);
+  const bays = [[68, 126], [132, 190], [196, 254]];
+  bays.forEach(([y0, y1], i) => {
+    c.fillStyle = '#0c0d10'; c.fillRect(2, y0 - 3, 30, y1 - y0 + 6);
+    const wg = c.createLinearGradient(0, y0, 0, y1); wg.addColorStop(0, '#bfe0ee'); wg.addColorStop(1, '#e8f3f5');
+    c.fillStyle = wg; c.fillRect(4, y0, 26, y1 - y0);
+    if (i === 0) { c.fillStyle = '#f4f6f6'; c.fillRect(8, y0 + 34, 20, 9); c.fillStyle = '#9fc7d6'; c.fillRect(11, y0 + 30, 12, 5); c.fillStyle = '#1c1c20'; c.fillRect(11, y0 + 42, 4, 3); c.fillRect(22, y0 + 42, 4, 3); }
+    if (i === 1) { c.fillStyle = '#5fa04a'; c.beginPath(); c.arc(17, y0 + 20, 10, 0, Math.PI * 2); c.fill(); c.fillStyle = '#4a3220'; c.fillRect(16, y0 + 28, 3, 14); c.fillStyle = '#b8a998'; c.fillRect(4, y0 + 42, 26, 16); }
+    if (i === 2) { c.fillStyle = '#c4b8a2'; c.fillRect(4, y0 + 10, 14, 48); c.fillStyle = '#9aa79e'; c.fillRect(18, y0 + 18, 12, 40); c.fillStyle = 'rgba(80,100,110,0.5)'; for (let yy = y0 + 14; yy < y1 - 4; yy += 8) { c.fillRect(7, yy, 3, 4); c.fillRect(12, yy, 3, 4); c.fillRect(21, yy + 4, 3, 4); } }
+    c.fillStyle = '#0c0d10'; c.fillRect(4, (y0 + y1) / 2 - 1, 26, 2); c.fillRect(16, y0, 2, y1 - y0);
+    c.fillStyle = 'rgba(255,255,255,0.4)'; c.beginPath(); c.moveTo(5, y0); c.lineTo(13, y0); c.lineTo(5, y0 + 26); c.closePath(); c.fill();
+    c.fillStyle = ORANGE; c.fillRect(0, y1 + 3, 34, 4);              // wood sill
+    c.fillStyle = '#f0b060'; c.fillRect(0, y1 + 3, 34, 1);
+  });
+  c.fillStyle = '#6b4aa0'; for (let y = 262; y < 286; y += 12) c.fillRect(3, y, 26, 1);
+  c.fillStyle = '#12131a'; c.fillRect(0, 286, 32, 2);
+
+  // ================================================================ right wall (x 416..448)
+  c.fillStyle = TEAL; c.fillRect(416, 0, 32, 288);
+  c.fillStyle = TEALD; c.fillRect(416, 0, 2, 288);
+  c.fillStyle = '#0f4f4a'; c.fillRect(416, 284, 32, 4);
+  // piercing guide board
+  c.fillStyle = '#17181c'; c.fillRect(420, 150, 24, 44); c.fillStyle = '#f3eee0'; c.fillRect(422, 152, 20, 40);
+  c.fillStyle = '#e8c9a4'; c.beginPath(); c.ellipse(430, 168, 6, 10, 0.1, 0, Math.PI * 2); c.fill();
+  c.strokeStyle = '#b8895a'; c.lineWidth = 1; c.beginPath(); c.ellipse(430, 168, 3.5, 6.5, 0.1, 0, Math.PI * 2); c.stroke();
+  c.fillStyle = '#c4283a'; for (const [px2, py2] of [[425, 163], [425, 170], [431, 158], [435, 175], [430, 180]]) c.fillRect(px2, py2, 1.6, 1.6);
+  c.fillStyle = '#17181c'; c.font = '700 3.5px monospace'; c.textAlign = 'center'; c.textBaseline = 'alphabetic'; c.fillText('EAR GUIDE', 432, 189);
+  // framed prints
+  for (const [fy, kind] of [[84, 3], [212, 1]]) { c.fillStyle = '#17181c'; c.fillRect(421, fy, 22, 30); bvFlashSheet(c, 423, fy + 2, 18, 26, kind); }
+  // steel trash can sits at (12,4) -> drawn below with the other props
+
+  // ================================================================ tattoo station: bed (2,3)(3,3), arm lamp, ink cart (4,3)
+  bvShadow(c, 66, 126, 62);
+  c.fillStyle = '#26282e'; c.fillRect(74, 114, 46, 12);             // hydraulic base
+  c.fillStyle = '#3a3d44'; c.fillRect(74, 114, 46, 2);
+  c.fillStyle = '#1c1d22'; c.fillRect(96, 122, 22, 4);
+  c.fillStyle = '#17181c'; c.fillRect(64, 98, 64, 18);              // bench body
+  c.fillStyle = '#2d3036'; c.fillRect(64, 98, 64, 4);
+  c.fillStyle = '#0d0e11'; c.fillRect(64, 112, 64, 4);
+  c.fillStyle = 'rgba(255,255,255,0.10)'; for (const sx2 of [84, 104]) c.fillRect(sx2, 100, 1, 12);
+  c.fillStyle = '#1e2025'; c.beginPath(); c.moveTo(64, 98); c.lineTo(74, 91); c.lineTo(88, 91); c.lineTo(88, 98); c.closePath(); c.fill();   // raised head rest
+  c.fillStyle = '#34373e'; c.fillRect(74, 91, 14, 2);
+  c.fillStyle = '#e9ecee'; c.fillRect(92, 99, 34, 2);                // paper sheet
+  c.fillStyle = '#17181c'; c.fillRect(112, 92, 16, 6); c.fillStyle = '#2d3036'; c.fillRect(112, 92, 16, 2);   // arm board
+  // arm lamp: pole + arm + shade + light cone
+  c.strokeStyle = '#0d0e11'; c.lineWidth = 2; c.beginPath(); c.moveTo(122, 92); c.lineTo(122, 66); c.lineTo(100, 70); c.stroke();
+  c.fillStyle = '#0d0e11'; c.beginPath(); c.moveTo(94, 72); c.lineTo(108, 72); c.lineTo(104, 80); c.lineTo(98, 80); c.closePath(); c.fill();
+  c.fillStyle = '#fff2c4'; c.fillRect(98, 80, 6, 1.5);
+  c.fillStyle = 'rgba(255,240,190,0.16)'; c.beginPath(); c.moveTo(98, 81); c.lineTo(104, 81); c.lineTo(116, 98); c.lineTo(88, 98); c.closePath(); c.fill();
+  // ink cart (4,3): stainless top, ink caps, gloves, soap
+  bvShadow(c, 130, 126, 30);
+  c.fillStyle = '#7e848c'; c.fillRect(130, 102, 28, 24);
+  c.fillStyle = '#c9ced4'; c.fillRect(129, 100, 30, 6); c.fillStyle = '#eef1f4'; c.fillRect(129, 100, 30, 1);
+  c.fillStyle = '#4a4f57'; c.fillRect(131, 112, 26, 1); c.fillRect(131, 120, 26, 1);
+  for (let i = 0; i < 5; i++) { c.fillStyle = ['#c4283a', '#2a6ab0', '#e8c030', '#2f9a4a', '#17181c'][i]; c.fillRect(132 + i * 5, 96, 4, 5); c.fillStyle = '#f4f1ea'; c.fillRect(133 + i * 5, 95, 2, 1.5); }
+  c.fillStyle = '#4aa8d8'; c.fillRect(146, 107, 9, 6); c.fillStyle = '#2a7aa8'; c.fillRect(146, 107, 9, 1.5);
+  c.fillStyle = '#17181c'; c.fillRect(132, 124, 3, 3); c.fillRect(152, 124, 3, 3);
+
+  // ================================================================ reception desk (tiles (8..12,3))
+  bvShadow(c, 258, 127, 158);
+  c.fillStyle = '#1f2126'; c.fillRect(256, 104, 160, 24);          // front panel
+  c.fillStyle = '#2c2f36'; for (let x = 256; x < 416; x += 40) c.fillRect(x, 104, 1, 24);
+  c.fillStyle = '#0d0e11'; c.fillRect(256, 124, 160, 4);
+  c.fillStyle = TEALL; c.fillRect(256, 122, 160, 1);               // teal LED strip
+  c.fillStyle = 'rgba(67,194,182,0.18)'; c.fillRect(256, 123, 160, 5);
+  c.fillStyle = '#d7dcde'; c.fillRect(254, 97, 164, 8);            // laminate top
+  c.fillStyle = '#f2f5f6'; c.fillRect(254, 97, 164, 2);
+  c.fillStyle = '#9aa0a3'; c.fillRect(254, 104, 164, 1);
+  // sticker bombed corner of the desk front
+  const dr = bvRng(8008);
+  for (let i = 0; i < 14; i++) { c.fillStyle = ['#ff5a6a', '#ffd23f', '#3bb5e8', '#f4f1ea', '#b07cff', '#ff9a3a'][i % 6]; c.fillRect(258 + dr() * 40, 107 + dr() * 14, 4 + dr() * 4, 3 + dr() * 3); }
+  // desktop items: keyboard + mouse, sticker stack, cards, cup of pens, bell, jewelry tower
+  c.fillStyle = '#17181c'; c.fillRect(268, 99, 22, 4); c.fillStyle = '#4a4f57'; for (let i = 0; i < 6; i++) c.fillRect(270 + i * 3, 100, 2, 1);
+  c.fillStyle = '#17181c'; c.beginPath(); c.ellipse(296, 101, 3, 2, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#ffd23f'; c.fillRect(300, 99, 7, 4); c.fillStyle = '#ff5a6a'; c.fillRect(301, 98, 7, 3); c.fillStyle = '#3bb5e8'; c.fillRect(300, 97.4, 6, 2);
+  c.fillStyle = '#17181c'; c.fillRect(360, 97, 12, 6); c.fillStyle = '#f4f1ea'; c.fillRect(361, 94, 10, 4);  // card holder
+  c.fillStyle = '#e8e4d8'; c.fillRect(376, 96, 5, 6); c.fillStyle = '#c4283a'; c.fillRect(376, 96, 5, 1.5); c.fillStyle = '#17181c'; c.fillRect(377, 92, 1, 4); c.fillRect(379, 91, 1, 5);   // pens
+  c.fillStyle = '#c9ced4'; c.beginPath(); c.arc(388, 99, 3.6, Math.PI, 0); c.fill(); c.fillStyle = '#17181c'; c.fillRect(387.5, 94.5, 1.4, 1.4);   // service bell
+  c.fillStyle = '#e8f4f6'; c.fillRect(402, 80, 12, 18); c.fillStyle = '#9fc7d6'; c.fillRect(403, 81, 10, 16);       // acrylic jewelry tower
+  for (let i = 0; i < 5; i++) { c.fillStyle = ['#e0b040', '#c9ced4', '#ff5a6a', '#7ee8ff', '#b07cff'][i]; c.fillRect(405 + (i % 2) * 4, 83 + i * 3, 2.4, 2.4); }
+  // monitor (8,2) + chair (9,2)
+  c.fillStyle = '#2a2d33'; c.fillRect(280, 88, 8, 10); c.fillRect(276, 96, 16, 2);
+  c.fillStyle = '#0d0e11'; c.fillRect(266, 66, 36, 24);
+  c.fillStyle = '#1b2b4a'; c.fillRect(268, 68, 32, 18);
+  c.fillStyle = 'rgba(160,200,255,0.55)'; c.fillRect(271, 71, 14, 1.5); c.fillRect(271, 74, 20, 1); c.fillRect(271, 77, 17, 1); c.fillRect(271, 80, 11, 1);
+  c.fillStyle = '#f4f1ea'; c.fillRect(292, 71, 5, 5);
+  c.fillStyle = '#17181c'; c.fillRect(300, 68, 20, 28); c.fillStyle = '#2d3036'; c.fillRect(300, 68, 20, 3);          // black rolling chair back
+  c.fillStyle = '#0d0e11'; c.fillRect(302, 96, 16, 3);
+  // equipment cart (12,2): black cases + autoclave
+  bvShadow(c, 386, 94, 28);
+  c.fillStyle = '#26282e'; c.fillRect(386, 78, 28, 18); c.fillStyle = '#3a3d44'; c.fillRect(386, 78, 28, 2);
+  c.fillStyle = '#17181c'; c.fillRect(388, 66, 24, 13); c.fillStyle = '#9aa0a8'; c.fillRect(390, 68, 12, 8); c.fillStyle = '#2a8a5c'; c.fillRect(405, 70, 4, 4);
+  c.fillStyle = '#0d0e11'; c.fillRect(388, 85, 24, 1); c.fillRect(388, 90, 24, 1);
+
+  // ================================================================ steel trash can (12,4)
+  bvShadow(c, 388, 157, 22);
+  const tg = c.createLinearGradient(388, 0, 410, 0); tg.addColorStop(0, '#6c727a'); tg.addColorStop(0.35, '#e8ecf0'); tg.addColorStop(1, '#7a8088');
+  c.fillStyle = tg; c.fillRect(389, 134, 21, 23);
+  c.fillStyle = '#c9ced4'; c.beginPath(); c.ellipse(399.5, 134, 10.5, 3.5, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#17181c'; c.beginPath(); c.ellipse(399.5, 134, 7, 2, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#4a4f57'; c.fillRect(389, 150, 21, 1);
+
+  // ================================================================ waiting couch (1,5)(1,6)
+  bvShadow(c, 33, 209, 30);
+  c.fillStyle = '#17181c'; c.fillRect(34, 162, 28, 48);
+  c.fillStyle = '#2d3036'; c.fillRect(34, 162, 6, 48); c.fillStyle = '#0d0e11'; c.fillRect(58, 162, 4, 48);
+  c.fillStyle = '#25272d'; c.fillRect(40, 166, 16, 20); c.fillRect(40, 188, 16, 18);
+  c.fillStyle = 'rgba(255,255,255,0.08)'; c.fillRect(41, 167, 3, 18); c.fillRect(41, 189, 3, 16);
+  c.fillStyle = '#7a3aa8'; c.fillRect(44, 170, 9, 9); c.fillStyle = '#9a5ac8'; c.fillRect(44, 170, 9, 2);       // purple throw pillow
+
+  // ================================================================ record shelf + turntable (1,7)(1,8)
+  bvShadow(c, 33, 287, 30);
+  c.fillStyle = '#6b4526'; c.fillRect(34, 228, 28, 58);
+  c.fillStyle = '#b08050'; c.fillRect(33, 224, 30, 6); c.fillStyle = '#d0a070'; c.fillRect(33, 224, 30, 1);
+  c.fillStyle = '#2a1a0e'; c.fillRect(37, 234, 22, 22); c.fillRect(37, 260, 22, 22);
+  const rrr = bvRng(777);
+  for (const sy2 of [234, 260]) for (let i = 0; i < 9; i++) { c.fillStyle = ['#c4283a', '#e8c030', '#3bb5e8', '#f4f1ea', '#2f9a4a', '#ff9a3a', '#b07cff', '#17181c'][Math.floor(rrr() * 8)]; c.fillRect(38 + i * 2.4, sy2 + 3 + rrr() * 3, 2, 18 - rrr() * 3); }
+  c.fillStyle = '#17181c'; c.fillRect(36, 207 + 20, 24, 0);
+  c.fillStyle = '#1c1d22'; c.fillRect(36, 213, 24, 13);                                                   // turntable on top
+  c.fillStyle = '#34373e'; c.fillRect(36, 213, 24, 2);
+  c.fillStyle = '#0d0e11'; c.beginPath(); c.arc(47, 220, 5.6, 0, Math.PI * 2); c.fill(); c.fillStyle = '#c4283a'; c.beginPath(); c.arc(47, 220, 1.6, 0, Math.PI * 2); c.fill();
+  c.strokeStyle = '#c9ced4'; c.lineWidth = 1; c.beginPath(); c.moveTo(57, 215); c.lineTo(52, 222); c.stroke();
+
+  // ================================================================ sticker-bombed cabinet (5,5)(5,6)
+  bvStickerCabinet(c, 160, 160, 32, 64);
+
+  // ================================================================ front wall + window strip (row 9)
+  const fy = 9 * TILE;
+  c.fillStyle = TEAL; c.fillRect(0, fy, 6 * TILE, TILE); c.fillRect(7 * TILE, fy, 7 * TILE, TILE);
+  for (const [x0, x1, label] of [[TILE + 6, 6 * TILE - 6, 'TATTOO'], [7 * TILE + 6, 13 * TILE - 6, 'PIERCING']]) {
+    c.fillStyle = '#0c0d10'; c.fillRect(x0 - 3, fy + 3, x1 - x0 + 6, 25);
+    const gg = c.createLinearGradient(0, fy + 5, 0, fy + 26); gg.addColorStop(0, '#d8eef2'); gg.addColorStop(1, '#a8c8d0');
+    c.fillStyle = gg; c.fillRect(x0, fy + 5, x1 - x0, 21);
+    c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(x0 + 3, fy + 6, 5, 19);
+    c.fillStyle = '#ffffff'; c.font = '700 6px Georgia, serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(label, (x0 + x1) / 2, fy + 16);
+    c.fillStyle = '#0c0d10'; c.fillRect((x0 + x1) / 2 - 1, fy + 5, 2, 21);
+  }
+  c.fillStyle = '#0f4f4a'; c.fillRect(0, fy + 28, W, 4);
+  c.fillStyle = '#17181d'; c.fillRect(6 * TILE - 3, fy, 3, TILE); c.fillRect(7 * TILE, fy, 3, TILE);
+  // black welcome mat inside the door
+  c.fillStyle = '#101114'; c.fillRect(176, 264, 72, 22);
+  c.fillStyle = TEAL; c.strokeStyle = TEAL; c.lineWidth = 1; c.strokeRect(178.5, 266.5, 67, 17);
+  c.fillStyle = '#f4f1ea'; c.font = '700 6px monospace'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('WELCOME', 212, 275);
+  c.textBaseline = 'alphabetic';
+}
+
+let _bvInteriorCache = null;
+function drawBellevueInterior(time) {
+  if (!_bvInteriorCache) {
+    const cv = document.createElement('canvas');
+    cv.width = 14 * TILE; cv.height = 10 * TILE;
+    paintBellevueInterior(cv.getContext('2d'));
+    _bvInteriorCache = cv;
+  }
+  ctx.drawImage(_bvInteriorCache, 0, 0);
+
+  // the BELLEVUE logo on its plaque behind the desk (live, so it shows once the image loads)
+  drawBellevueLogo(280, 32, 56, 24);
+
+  // monitor glow flicker
+  const f = 0.10 + 0.05 * Math.sin(time * 3.1) + (Math.sin(time * 17) > 0.97 ? 0.06 : 0);
+  ctx.fillStyle = 'rgba(150,200,255,' + f.toFixed(3) + ')';
+  ctx.fillRect(268, 68, 32, 18);
+  // soft cone of light from the tattoo lamp, slowly breathing
+  ctx.fillStyle = 'rgba(255,240,190,' + (0.05 + 0.02 * Math.sin(time * 1.3)).toFixed(3) + ')';
+  ctx.beginPath(); ctx.moveTo(98, 81); ctx.lineTo(104, 81); ctx.lineTo(120, 128); ctx.lineTo(84, 128); ctx.closePath(); ctx.fill();
+
+}
+
+// ---------------------------------------------------------------- SNEAKERS BISTRO (Winooski, LEVEL 4)
+// The famous local brunch spot, on the far LEFT of the map just west of the rotary (see
+// makeWinooski()). Outside, modeled on two photos of the real place: a bright sky-blue
+// painted storefront with navy trim, a red-brick pillar, a big street window carrying the
+// neon "Bistro & Cafe" + diagonal red "sneakers" sign inside a green tube frame, a menu
+// case, the street number 28, and a glass door with the white "sneakers" decal and
+// "7AM-3PM EVERY DAY". Out front is a red-brick patio with dark-green picnic tables, a
+// couple of orange spritzes and an espresso martini on them, and striped umbrellas.
+// Inside: a hip brunch room -- blush plaster over mint subway tile, a neon sign wall,
+// chalkboard brunch menu, plant + mug shelves, pastel bunting, a checkerboard floor, a
+// marble-topped counter with an espresso machine and pastry dome, mint velvet booths,
+// bentwood chairs and a monstera in the corner.
+//
+// Static art is painted once into offscreen canvases; only the neon glow is drawn live.
+
+// Neon "Bistro & Cafe" (blue) + "sneakers" (red script inside a green tube frame).
+// diag = true: the storefront-window layout (stacked blue text, sign tilted up-right);
+// diag = false: the interior wall layout (blue line above a level sign).
+function sbNeon(c, cx, cy, s, diag) {
+  const FAM = '"Brush Script MT", "Segoe Script", "Snell Roundhand", cursive';
+  c.save();
+  c.translate(cx, cy); c.scale(s, s);
+  c.textAlign = 'center'; c.textBaseline = 'middle'; c.lineJoin = 'round'; c.lineCap = 'round';
+  const blue = (txt, x, y) => {
+    c.font = 'italic 700 13px ' + FAM;
+    c.strokeStyle = 'rgba(80,170,255,0.35)'; c.lineWidth = 5; c.strokeText(txt, x, y);
+    c.strokeStyle = '#3fa0ff'; c.lineWidth = 1.4; c.strokeText(txt, x, y);
+    c.fillStyle = '#bfe4ff'; c.fillText(txt, x, y);
+  };
+  if (diag) { blue('Bistro', -34, -38); blue('& Cafe', -28, -22); c.translate(6, 14); c.rotate(-0.52); }
+  else { blue('Bistro & Cafe', 0, -25); c.translate(0, 3); }
+  // green tube frame (a parallelogram)
+  c.beginPath(); c.moveTo(-46, -13); c.lineTo(56, -13); c.lineTo(46, 13); c.lineTo(-56, 13); c.closePath();
+  c.strokeStyle = 'rgba(47,209,106,0.30)'; c.lineWidth = 6; c.stroke();
+  c.strokeStyle = '#2fd16a'; c.lineWidth = 2; c.stroke();
+  c.strokeStyle = '#b9ffd0'; c.lineWidth = 0.6; c.stroke();
+  // red script
+  let fs = 22;
+  c.font = 'italic 800 ' + fs + 'px ' + FAM;
+  while (fs > 11 && c.measureText('sneakers').width > 84) { fs--; c.font = 'italic 800 ' + fs + 'px ' + FAM; }
+  c.strokeStyle = 'rgba(255,80,50,0.38)'; c.lineWidth = 5; c.strokeText('sneakers', 0, 1);
+  c.strokeStyle = '#ff4a2a'; c.lineWidth = 1.8; c.strokeText('sneakers', 0, 1);
+  c.fillStyle = '#ff9a78'; c.fillText('sneakers', 0, 1);
+  c.restore();
+}
+
+function paintSneakersExterior(c, w, h, doorLX) {
+  const NAVY = '#16277a', SKY = '#4aa8ea', SKYD = '#2f86cf', SKYL = '#8ed0f6', WHITE = '#f6f6f2';
+  // ---- painted sky-blue wood siding
+  c.fillStyle = SKY; c.fillRect(0, 0, w, h);
+  for (let y = 7; y < h; y += 7) {
+    c.fillStyle = 'rgba(0,40,110,0.12)'; c.fillRect(0, y, w, 1);
+    c.fillStyle = 'rgba(255,255,255,0.10)'; c.fillRect(0, y + 1, w, 1);
+  }
+  c.fillStyle = NAVY; c.fillRect(0, 0, 3, h); c.fillRect(w - 3, 0, 3, h);
+
+  // ---- navy cornice + the name board
+  c.fillStyle = NAVY; c.fillRect(0, 0, w, 11);
+  c.fillStyle = '#2c3fa0'; c.fillRect(0, 0, w, 2);
+  c.fillStyle = '#0c1650'; c.fillRect(0, 9, w, 2);
+  c.fillStyle = SKYD; c.fillRect(5, 14, w - 10, 20);
+  c.fillStyle = NAVY; c.fillRect(5, 14, w - 10, 1); c.fillRect(5, 33, w - 10, 1); c.fillRect(5, 14, 1, 20); c.fillRect(w - 6, 14, 1, 20);
+  c.fillStyle = '#f0562a'; c.fillRect(6, 31, w - 12, 2);
+  let fs = 12;
+  c.font = '800 ' + fs + 'px "Trebuchet MS", Verdana, sans-serif';
+  while (fs > 6 && c.measureText('SNEAKERS BISTRO').width > w - 26) { fs--; c.font = '800 ' + fs + 'px "Trebuchet MS", Verdana, sans-serif'; }
+  c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+  c.fillStyle = NAVY; c.fillText('SNEAKERS BISTRO', w / 2 + 1, 28 + 1);
+  c.fillStyle = WHITE; c.fillText('SNEAKERS BISTRO', w / 2, 28);
+
+  // ---- menu case on the left wall: white frame, pinned menus
+  c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(6, 54, 16, 36);
+  c.fillStyle = '#ecece6'; c.fillRect(4, 51, 16, 36);
+  c.fillStyle = '#9a9a94'; c.fillRect(6, 53, 12, 32);
+  c.fillStyle = '#f7f1e2'; c.fillRect(7, 54, 10, 30);
+  for (const [px, py, pw, ph, col] of [[8, 56, 4, 6, '#2f86cf'], [13, 57, 3, 5, '#f0562a'], [8, 65, 8, 5, '#ffffff'], [9, 72, 6, 8, '#e8d8a0']]) {
+    c.fillStyle = col; c.fillRect(px, py, pw, ph);
+  }
+  c.fillStyle = 'rgba(0,0,0,0.25)'; for (let y = 66; y < 70; y += 2) c.fillRect(9, y, 6, 1);
+
+  // ---- the big street window: navy frame, dark reflective glass, neon inside
+  c.fillStyle = NAVY; c.fillRect(22, 40, 63, 69);
+  c.fillStyle = '#0c1650'; c.fillRect(22, 40, 63, 2);
+  const gl = c.createLinearGradient(0, 43, 0, 106);
+  gl.addColorStop(0, '#7d98b4'); gl.addColorStop(1, '#b9c6cf');
+  c.fillStyle = gl; c.fillRect(25, 43, 57, 63);
+  // reflection of the brick building across the street + winter sky
+  c.fillStyle = '#c9d6df'; c.fillRect(25, 43, 57, 12);
+  c.fillStyle = '#8b4a3a'; c.fillRect(27, 58, 34, 30);
+  c.fillStyle = '#a45a46'; c.fillRect(27, 58, 34, 3);
+  for (let y = 63; y < 86; y += 8) for (let x = 30; x < 58; x += 8) { c.fillStyle = '#e6dcc4'; c.fillRect(x, y, 4, 5); }
+  c.fillStyle = '#e8e8e4'; c.fillRect(62, 82, 18, 14);                   // a white delivery van
+  c.fillStyle = '#6a7480'; c.fillRect(62, 94, 18, 3);
+  // bare tree branches
+  c.strokeStyle = 'rgba(40,32,26,0.75)'; c.lineWidth = 1; c.beginPath();
+  c.moveTo(80, 43); c.lineTo(68, 56); c.lineTo(60, 52); c.moveTo(68, 56); c.lineTo(62, 66); c.moveTo(74, 48); c.lineTo(78, 60);
+  c.moveTo(48, 43); c.lineTo(54, 54); c.lineTo(46, 58); c.stroke();
+  c.fillStyle = 'rgba(8,16,40,0.38)'; c.fillRect(25, 43, 57, 63);          // dim the glass so the neon pops
+  sbNeon(c, 54, 80, 0.52, true);
+  c.fillStyle = 'rgba(255,255,255,0.10)';
+  c.beginPath(); c.moveTo(30, 106); c.lineTo(44, 43); c.lineTo(52, 43); c.lineTo(40, 106); c.closePath(); c.fill();
+  // bulkhead under the window, with the white paint streaks from the photo
+  c.fillStyle = SKYD; c.fillRect(22, 109, 63, h - 109);
+  c.fillStyle = NAVY; c.fillRect(22, 109, 63, 2);
+  c.fillStyle = 'rgba(255,255,255,0.75)'; c.fillRect(26, 115, 44, 2); c.fillRect(30, 120, 30, 1);
+  // low recessed panel under the menu case
+  c.fillStyle = SKYD; c.fillRect(4, 94, 15, h - 97); c.fillStyle = NAVY; c.fillRect(4, 94, 15, 1);
+  c.fillStyle = 'rgba(255,255,255,0.75)'; c.fillRect(5, 104, 12, 2);
+
+  // ---- red-brick pillar between the window and the door
+  c.fillStyle = '#a84c36'; c.fillRect(85, 36, 11, h - 36);
+  for (let row = 0, y = 36; y < h; y += 6, row++) {
+    c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(85, y + 5, 11, 1);
+    const off = row % 2 ? 5 : 0;
+    for (let x = 85 - off; x < 96; x += 10) { if (x + 9 >= 85) { c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(Math.max(85, x + 9), y, 1, 5); } }
+    if (mhHash(row, 9) % 3 === 0) { c.fillStyle = 'rgba(255,255,255,0.08)'; c.fillRect(86, y + 1, 9, 4); }
+  }
+
+  // ---- the door (col 3): navy frame, transom with the street number, glass with the decal
+  const dX = doorLX + 3, dW = 26;
+  c.fillStyle = NAVY; c.fillRect(dX - 3, 56, dW + 6, h - 56);
+  c.fillStyle = '#cfe3ee'; c.fillRect(dX, 60, dW, 18);
+  c.fillStyle = '#9aa0a6'; c.fillRect(dX + 4, 62, 18, 12);
+  c.fillStyle = '#5a6066'; c.fillRect(dX + 4, 62, 18, 1);
+  c.fillStyle = '#1c2024'; c.font = '700 9px Georgia, serif'; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+  c.fillText('28', dX + 13, 72);
+  c.fillStyle = NAVY; c.fillRect(dX, 78, dW, 3);
+  const dg = c.createLinearGradient(0, 81, 0, 118);
+  dg.addColorStop(0, '#3e566c'); dg.addColorStop(1, '#17222e');
+  c.fillStyle = dg; c.fillRect(dX, 81, dW, 37);
+  c.fillStyle = 'rgba(255,255,255,0.10)'; c.fillRect(dX + 3, 81, 4, 37);
+  // white outlined diamond decal with the "sneakers" script
+  c.save(); c.translate(dX + 13, 92); c.rotate(-0.5);
+  c.strokeStyle = 'rgba(255,255,255,0.92)'; c.lineWidth = 1;
+  c.beginPath(); c.moveTo(-11, -4.5); c.lineTo(12, -4.5); c.lineTo(10, 4.5); c.lineTo(-13, 4.5); c.closePath(); c.stroke();
+  let df = 7;
+  c.font = 'italic 800 ' + df + 'px "Brush Script MT", "Segoe Script", cursive';
+  while (df > 4 && c.measureText('sneakers').width > 19) { df--; c.font = 'italic 800 ' + df + 'px "Brush Script MT", "Segoe Script", cursive'; }
+  c.fillStyle = '#fff'; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillText('sneakers', -1, 0.5);
+  c.restore();
+  c.fillStyle = '#fff'; c.font = '700 4px Arial, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+  c.fillText('7AM-3PM', dX + 13, 107); c.fillText('EVERY DAY', dX + 13, 113);
+  c.fillStyle = '#d8dce0'; c.fillRect(dX + dW - 5, 98, 2, 9);              // pull handle
+  c.fillStyle = NAVY; c.fillRect(dX, 118, dW, h - 118);
+
+  // ---- foundation + mat
+  c.fillStyle = '#0c1650'; c.fillRect(0, h - 3, w, 3);
+  c.fillStyle = '#c43a2a'; c.fillRect(dX, h - 3, dW, 3);
+}
+
+let _sbExteriorCache = null;
+function drawSneakersExterior(px, py, w, h, dx) {
+  const doorLX = dx - px;
+  if (!_sbExteriorCache || _sbExteriorCache.w !== w || _sbExteriorCache.h !== h || _sbExteriorCache.d !== doorLX) {
+    const cv = document.createElement('canvas');
+    cv.width = w; cv.height = h;
+    paintSneakersExterior(cv.getContext('2d'), w, h, doorLX);
+    _sbExteriorCache = { cv, w, h, d: doorLX };
+  }
+  ctx.drawImage(_sbExteriorCache.cv, px, py);
+}
+
+// Live bits of the storefront: the window neon glows and now and then buzzes.
+function drawSneakersLive(px, py, w, h) {
+  const t = performance.now() / 1000;
+  let f = 0.85 + 0.15 * Math.sin(t * 1.7);
+  if ((t % 9) > 8.6 && Math.sin(t * 37) > 0) f = 0.3;
+  ctx.fillStyle = 'rgba(255,90,60,' + (0.12 * f).toFixed(3) + ')';
+  ctx.beginPath(); ctx.ellipse(px + 54, py + 84, 27, 17, -0.5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(60,220,120,' + (0.08 * f).toFixed(3) + ')';
+  ctx.beginPath(); ctx.ellipse(px + 54, py + 84, 31, 21, -0.5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(90,180,255,' + (0.10 * f).toFixed(3) + ')';
+  ctx.beginPath(); ctx.ellipse(px + 38, py + 58, 14, 9, 0, 0, Math.PI * 2); ctx.fill();
+}
+
+// ---------------------------------------------------------------- patio props (outside)
+// Red-brick running-bond paving under the patio (called from drawTiles' 'p' / 'x' cases).
+function drawSneakersBrick(px, py, tx, ty) {
+  const hv = mhHash(tx * 3 + 11, ty * 5 + 7);
+  ctx.fillStyle = (hv % 4 === 0) ? '#a94d37' : (hv % 3 === 0) ? '#bd6045' : '#b3563e';
+  ctx.fillRect(px, py, TILE, TILE);
+  ctx.fillStyle = 'rgba(60,20,10,0.35)';
+  for (let r = 0; r < 4; r++) {
+    ctx.fillRect(px, py + r * 8 + 7, TILE, 1);
+    const off = ((r + ty) % 2) ? 8 : 0;
+    for (let x = off; x < TILE; x += 16) ctx.fillRect(px + x, py + r * 8, 1, 7);
+  }
+  ctx.fillStyle = 'rgba(255,255,255,0.06)'; ctx.fillRect(px, py, TILE, 1);
+}
+
+// A dark-green picnic table on the brick (solid 'x' tile) with brunch drinks on top:
+// an orange spritz with a lime wheel, a brown espresso martini, a little plate.
+function drawSneakersPicnicTable(px, py, tx, ty) {
+  drawSneakersBrick(px, py, tx, ty);
+  ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.fillRect(px + 2, py + 25, TILE - 4, 4);
+  ctx.fillStyle = '#173a26';                                                // benches
+  ctx.fillRect(px + 3, py + 4, TILE - 6, 4); ctx.fillRect(px + 3, py + 21, TILE - 6, 4);
+  ctx.fillStyle = '#2d6a45'; ctx.fillRect(px + 2, py + 9, TILE - 4, 11);   // tabletop
+  ctx.fillStyle = '#3f8a5c'; ctx.fillRect(px + 2, py + 9, TILE - 4, 3);
+  ctx.fillStyle = 'rgba(0,0,0,0.20)'; ctx.fillRect(px + 2, py + 15, TILE - 4, 1); ctx.fillRect(px + 2, py + 19, TILE - 4, 1);
+  const v = mhHash(tx, ty) % 3;
+  // orange spritz
+  ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(px + 7, py + 17, 6, 2);
+  ctx.fillStyle = '#f2592b'; ctx.beginPath(); ctx.arc(px + 10, py + 13, 3, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.fillRect(px + 8, py + 11, 1, 2);
+  ctx.fillStyle = '#9ad24a'; ctx.fillRect(px + 12, py + 10, 3, 2);          // lime wheel
+  // espresso martini (or a second spritz)
+  ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(px + 19, py + 17, 6, 2);
+  ctx.fillStyle = v === 0 ? '#f2592b' : '#6b4226'; ctx.beginPath(); ctx.arc(px + 22, py + 13, 3, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = v === 0 ? '#ffd0a0' : '#e8d4b0'; ctx.fillRect(px + 21, py + 11, 3, 1);
+  if (v === 2) { ctx.fillStyle = '#f4efe4'; ctx.beginPath(); ctx.arc(px + 16, py + 15, 2.2, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#f0c040'; ctx.fillRect(px + 15, py + 14, 2, 2); }
+}
+
+// ---------------------------------------------------------------- interior
+// Solid props are plain 'W'/'T' tiles in the shop def (blockTiles/extraTables) that this
+// painter dresses up: espresso station (8,2)(9,2), booths (1,4..7), potted monstera (12,8);
+// the counter is the default 'T' row at y=3 (x 8..12) with the host behind it at (10,2);
+// round tables at (2,5)(2,7) (booth tables) and (10,6)(10,8).
+function sbChair(c, x, y, col) {
+  c.fillStyle = 'rgba(0,0,0,0.22)'; c.beginPath(); c.ellipse(x, y + 6, 7, 3, 0, 0, Math.PI * 2); c.fill();
+  c.strokeStyle = '#2a1a10'; c.lineWidth = 1.2; c.beginPath(); c.arc(x, y, 6.5, 0, Math.PI * 2); c.stroke();     // bentwood ring
+  c.fillStyle = col; c.beginPath(); c.arc(x, y, 5.2, 0, Math.PI * 2); c.fill();
+  c.fillStyle = 'rgba(255,255,255,0.22)'; c.beginPath(); c.arc(x - 1.5, y - 1.5, 2, 0, Math.PI * 2); c.fill();
+}
+function sbTable(c, tx, ty, i, booth) {
+  const cx = tx * TILE + TILE / 2, cy = ty * TILE + TILE / 2;
+  if (!booth) sbChair(c, cx - 23, cy, i % 2 ? '#e8b64a' : '#2f8f8f');   // booth tables seat on the velvet bench instead
+  sbChair(c, cx + 23, cy, i % 2 ? '#2f8f8f' : '#e8b64a');
+  c.fillStyle = 'rgba(0,0,0,0.25)'; c.beginPath(); c.ellipse(cx + 1, cy + 5, 13, 8, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#16277a'; c.beginPath(); c.arc(cx, cy, 13, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#fbf5e6'; c.beginPath(); c.arc(cx, cy, 11.5, 0, Math.PI * 2); c.fill();
+  c.fillStyle = 'rgba(0,0,0,0.05)'; c.beginPath(); c.arc(cx + 3, cy + 3, 6, 0, Math.PI * 2); c.fill();
+  // eggs benny on a plate, an OJ/mimosa, a mug, a little bud vase
+  c.fillStyle = '#ffffff'; c.beginPath(); c.arc(cx - 4, cy + 1, 4.4, 0, Math.PI * 2); c.fill();
+  c.strokeStyle = '#d8d0bc'; c.lineWidth = 0.6; c.stroke();
+  c.fillStyle = '#f5d24a'; c.beginPath(); c.arc(cx - 4, cy + 1, 1.8, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#4f9a4a'; c.fillRect(cx - 7, cy + 2, 2, 1);
+  c.fillStyle = '#f29a3a'; c.beginPath(); c.arc(cx + 6, cy - 2, 2.6, 0, Math.PI * 2); c.fill();
+  c.fillStyle = 'rgba(255,255,255,0.5)'; c.fillRect(cx + 5, cy - 4, 1, 2);
+  c.fillStyle = '#6b4226'; c.beginPath(); c.arc(cx + 3, cy + 6, 2.2, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#f08a9a'; c.fillRect(cx - 1, cy - 8, 2, 3); c.fillStyle = '#4f9a4a'; c.fillRect(cx - 1, cy - 5, 2, 2);
+}
+
+function paintSneakersInterior(c) {
+  const W = 14 * TILE, H = 10 * TILE;
+  const NAVY = '#16277a', MINT = '#a9d8c4', CREAM = '#fbf5e6', BLUSH = '#f4cdbf', MUST = '#e8b64a', TERRA = '#d9826a', SAGE = '#5fa58a';
+
+  // ---------------------------------------------------------------- checkerboard floor
+  for (let ty = 2; ty <= 8; ty++) for (let tx = 1; tx <= 12; tx++)
+    for (let sy = 0; sy < 2; sy++) for (let sx = 0; sx < 2; sx++) {
+      c.fillStyle = ((tx * 2 + sx + ty * 2 + sy) % 2) ? '#f3d9c6' : '#fbf3e2';
+      c.fillRect(tx * TILE + sx * 16, ty * TILE + sy * 16, 16, 16);
+    }
+  c.fillStyle = 'rgba(0,0,0,0.05)'; c.fillRect(TILE, 2 * TILE, 12 * TILE, 3);
+
+  // ---------------------------------------------------------------- back wall: blush plaster over mint subway tile
+  c.fillStyle = BLUSH; c.fillRect(0, 0, W, 40);
+  c.fillStyle = CREAM; c.fillRect(0, 0, W, 7); c.fillStyle = '#e6d9bf'; c.fillRect(0, 7, W, 2);
+  c.fillStyle = MINT; c.fillRect(0, 40, W, 20);
+  for (let row = 0, y = 40; y < 60; y += 7, row++) {
+    c.fillStyle = 'rgba(255,255,255,0.6)'; c.fillRect(0, y + 6, W, 1);
+    const off = row % 2 ? 8 : 0;
+    for (let x = -off; x < W; x += 16) c.fillRect(x + 15, y, 1, 6);
+  }
+  c.fillStyle = CREAM; c.fillRect(0, 38, W, 2);                              // chair rail
+  c.fillStyle = NAVY; c.fillRect(0, 60, W, 4);                               // baseboard
+  c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(0, 60, W, 1);
+
+  // pastel bunting along the cornice
+  c.strokeStyle = '#5a4a3a'; c.lineWidth = 1; c.beginPath();
+  for (let x = 0; x <= W; x += 2) { const y = 11 + 3 * Math.sin((x / W) * Math.PI * 14); if (x === 0) c.moveTo(x, y); else c.lineTo(x, y); }
+  c.stroke();
+  const flagCols = [BLUSH, MINT, MUST, TERRA, '#9fd0f0'];
+  for (let i = 0, x = 6; x < W - 6; x += 16, i++) {
+    const y = 11 + 3 * Math.sin((x / W) * Math.PI * 14);
+    c.fillStyle = flagCols[i % 5]; c.beginPath(); c.moveTo(x - 5, y); c.lineTo(x + 5, y); c.lineTo(x, y + 9); c.closePath(); c.fill();
+    c.fillStyle = 'rgba(0,0,0,0.12)'; c.beginPath(); c.moveTo(x, y); c.lineTo(x + 5, y); c.lineTo(x, y + 9); c.closePath(); c.fill();
+  }
+
+  // neon wall: navy backing plaque with the Sneakers neon (glow is live)
+  c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(42, 25, 130, 36);
+  c.fillStyle = '#0e1640'; c.fillRect(40, 23, 130, 36);
+  c.strokeStyle = '#f4f0e4'; c.lineWidth = 1; c.strokeRect(42.5, 25.5, 125, 31);
+  sbNeon(c, 105, 41, 0.62, false);
+
+  // chalkboard brunch menu
+  c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(182, 20, 68, 40);
+  c.fillStyle = '#b9855a'; c.fillRect(180, 18, 68, 40);
+  c.fillStyle = '#23302c'; c.fillRect(183, 21, 62, 34);
+  c.fillStyle = '#f6efd8'; c.font = '700 6px Georgia, serif'; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+  c.fillText('BRUNCH', 214, 29);
+  c.fillRect(190, 31, 48, 1);
+  c.font = '700 4px monospace'; c.textAlign = 'left';
+  ['EGGS BENNY', 'AVO TOAST', 'FRENCH TOAST', 'BLOODY MARY', 'MIMOSA', 'ESPRESSO MARTINI'].forEach((t, i) => c.fillText(t, 187, 37 + i * 3.2));
+
+  // floating shelves (right): mugs, plants, jars, and a tiny sneaker
+  for (const sy of [30, 51]) {
+    c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(262, sy + 3, 150, 2);
+    c.fillStyle = '#c9a36c'; c.fillRect(260, sy, 150, 3);
+    c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(260, sy, 150, 1);
+  }
+  const mugCols = ['#e8b64a', '#2f8f8f', '#f08a9a', '#fbf5e6', '#d9826a'];
+  for (let i = 0, x = 266; x < 404; x += 11, i++) {
+    if (i % 4 === 2) { // trailing pothos
+      c.fillStyle = '#c4622e'; c.fillRect(x, 20, 8, 7); c.fillStyle = '#9a4a20'; c.fillRect(x, 20, 8, 1);
+      c.fillStyle = '#3f8a3a'; c.beginPath(); c.arc(x + 4, 17, 5, 0, Math.PI * 2); c.fill();
+      c.fillRect(x + 1, 27, 1, 10); c.fillRect(x + 6, 27, 1, 7);
+    } else {
+      c.fillStyle = mugCols[i % 5]; c.fillRect(x, 21, 7, 6); c.fillStyle = 'rgba(0,0,0,0.16)'; c.fillRect(x, 25, 7, 2);
+      c.fillStyle = mugCols[i % 5]; c.fillRect(x + 7, 22, 2, 3);
+    }
+  }
+  for (let i = 0, x = 266; x < 380; x += 14, i++) {                          // plates + jars on the lower shelf
+    if (i % 3 === 0) { c.fillStyle = CREAM; c.fillRect(x, 46, 11, 2); c.fillRect(x + 1, 44, 9, 2); c.fillRect(x + 2, 42, 7, 2); }
+    else { c.fillStyle = 'rgba(220,240,245,0.85)'; c.fillRect(x, 40, 8, 11); c.fillStyle = ['#e8b64a', '#c4622e', '#7a9a3a'][i % 3]; c.fillRect(x + 1, 44, 6, 6); c.fillStyle = '#8a6a3a'; c.fillRect(x, 39, 8, 2); }
+  }
+  // little sneaker trophy on the shelf (white high-top, orange swoosh)
+  c.fillStyle = '#fbfbf6'; c.fillRect(388, 42, 14, 8); c.fillRect(388, 38, 6, 5); c.fillStyle = '#f0562a'; c.fillRect(391, 45, 8, 2);
+  c.fillStyle = '#16277a'; c.fillRect(388, 49, 14, 2);
+
+  // ---------------------------------------------------------------- side walls
+  c.fillStyle = '#7fb59c'; c.fillRect(0, 64, TILE, H - 64);
+  for (let x = 4; x < TILE; x += 6) { c.fillStyle = 'rgba(255,255,255,0.22)'; c.fillRect(x, 64, 1, H - 64); }
+  c.fillStyle = NAVY; c.fillRect(TILE - 3, 64, 3, H - 64);
+  c.fillStyle = '#e59c82'; c.fillRect(13 * TILE, 64, TILE, H - 64);
+  for (let x = 4; x < TILE; x += 6) { c.fillStyle = 'rgba(255,255,255,0.22)'; c.fillRect(13 * TILE + x, 64, 1, H - 64); }
+  c.fillStyle = NAVY; c.fillRect(13 * TILE, 64, 3, H - 64);
+  // framed prints: a coffee cup (left), a sneaker (right)
+  c.fillStyle = '#f4f0e4'; c.fillRect(5, 150, 20, 26); c.fillStyle = '#3a2a1c'; c.fillRect(7, 152, 16, 22);
+  c.fillStyle = '#f6efd8'; c.fillRect(10, 160, 10, 8); c.fillRect(19, 162, 3, 4); c.fillStyle = '#e8b64a'; c.fillRect(10, 160, 10, 2);
+  c.fillStyle = '#f4f0e4'; c.fillRect(13 * TILE + 7, 150, 20, 26); c.fillStyle = '#2f86cf'; c.fillRect(13 * TILE + 9, 152, 16, 22);
+  c.fillStyle = '#fbfbf6'; c.fillRect(13 * TILE + 11, 162, 12, 7); c.fillRect(13 * TILE + 11, 158, 5, 5); c.fillStyle = '#f0562a'; c.fillRect(13 * TILE + 14, 165, 7, 2);
+
+  // striped runner from the door
+  c.fillStyle = NAVY; c.fillRect(176, 236, 96, 52);
+  for (let x = 180; x < 268; x += 12) { c.fillStyle = CREAM; c.fillRect(x, 236, 6, 52); }
+  c.fillStyle = MUST; c.fillRect(176, 236, 96, 2); c.fillRect(176, 286, 96, 2);
+
+  // ---------------------------------------------------------------- the counter (tiles (8..12,3))
+  c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(256, 126, 160, 3);
+  c.fillStyle = '#f4f1ea'; c.fillRect(256, 96, 160, 11);                       // marble top
+  c.strokeStyle = '#cfc7b8'; c.lineWidth = 1; c.beginPath();
+  for (let x = 262; x < 410; x += 23) { c.moveTo(x, 97); c.lineTo(x + 9, 105); }
+  c.stroke();
+  c.fillStyle = '#e0d8c6'; c.fillRect(256, 106, 160, 3);
+  c.fillStyle = SAGE; c.fillRect(256, 109, 160, 15);                           // mint beadboard front
+  for (let x = 260; x < 416; x += 6) { c.fillStyle = 'rgba(0,0,0,0.16)'; c.fillRect(x, 109, 1, 15); }
+  c.fillStyle = NAVY; c.fillRect(256, 124, 160, 4);
+  // espresso station (8,2)(9,2): chrome machine, grinder, cups
+  c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(258, 94, 60, 3);
+  c.fillStyle = '#2a2d33'; c.fillRect(258, 84, 60, 10);
+  c.fillStyle = '#c9ced4'; c.fillRect(260, 66, 36, 20);
+  c.fillStyle = '#e6eaee'; c.fillRect(260, 66, 36, 4);
+  c.fillStyle = '#9aa0a8'; c.fillRect(260, 80, 36, 6);
+  c.fillStyle = '#f0562a'; c.fillRect(262, 72, 5, 5); c.fillStyle = '#2f8f8f'; c.fillRect(270, 72, 5, 5);
+  c.fillStyle = '#6a6f78'; c.fillRect(267, 86, 4, 3); c.fillRect(281, 86, 4, 3);
+  c.fillStyle = '#fbf5e6'; c.fillRect(268, 90, 5, 4); c.fillRect(282, 90, 5, 4);
+  c.fillStyle = '#b8bcc4'; c.fillRect(300, 70, 12, 16); c.fillStyle = '#6b4226'; c.fillRect(302, 66, 8, 5);   // grinder + hopper
+  // pastry dome (left of the host), mimosa pitcher + flutes, tip jar -- all resting on the marble top
+  c.save(); c.translate(0, 9);
+  c.fillStyle = '#e0d8c6'; c.fillRect(274, 94, 20, 2);
+  c.fillStyle = '#d6a050'; c.beginPath(); c.arc(279, 93, 3.5, Math.PI, 0); c.fill(); c.beginPath(); c.arc(288, 93, 3.5, Math.PI, 0); c.fill();
+  c.fillStyle = 'rgba(210,235,242,0.55)'; c.beginPath(); c.arc(284, 94, 11, Math.PI, 0); c.fill();
+  c.strokeStyle = 'rgba(255,255,255,0.7)'; c.lineWidth = 0.8; c.beginPath(); c.arc(284, 94, 11, Math.PI, 0); c.stroke();
+  c.fillStyle = 'rgba(255,230,190,0.85)'; c.fillRect(367, 84, 12, 14);          // pitcher
+  c.fillStyle = '#f29a3a'; c.fillRect(368, 88, 10, 9);
+  c.fillStyle = '#f2c24a'; c.beginPath(); c.arc(373, 84, 3, 0, Math.PI * 2); c.fill();
+  for (const gx of [386, 394]) { c.fillStyle = 'rgba(220,235,240,0.8)'; c.fillRect(gx, 88, 5, 7); c.fillStyle = '#f6c05a'; c.fillRect(gx, 88, 5, 4); c.fillRect(gx + 2, 95, 1, 3); }
+  c.fillStyle = 'rgba(220,235,240,0.7)'; c.fillRect(402, 86, 9, 11); c.fillStyle = '#6fbf70'; c.fillRect(403, 92, 7, 4); c.fillStyle = '#2a1a10'; c.fillRect(401, 85, 11, 2);
+  c.restore();
+
+  // ---------------------------------------------------------------- mint velvet booths (1,4)..(1,7)
+  c.fillStyle = 'rgba(0,0,0,0.2)'; c.fillRect(34, 254, 28, 3);
+  c.fillStyle = '#3f8a70'; c.fillRect(33, 129, 31, 126);
+  c.fillStyle = SAGE; c.fillRect(34, 130, 12, 124);                              // backrest
+  c.fillStyle = '#7cc4a6'; c.fillRect(46, 130, 17, 124);                         // seat
+  c.fillStyle = '#3f8a70'; c.fillRect(34, 190, 29, 2);                           // seam between the two booths
+  for (let y = 138; y < 250; y += 16) { c.fillStyle = '#3f8a70'; c.beginPath(); c.arc(40, y, 1.6, 0, Math.PI * 2); c.fill(); }
+  c.fillStyle = MUST; c.fillRect(47, 140, 9, 13); c.fillStyle = TERRA; c.fillRect(47, 202, 9, 13);
+  c.fillStyle = 'rgba(255,255,255,0.14)'; c.fillRect(46, 130, 3, 124);
+
+  // ---------------------------------------------------------------- tables + chairs
+  [[2, 5], [2, 7], [10, 6], [10, 8]].forEach(([tx, ty], i) => sbTable(c, tx, ty, i, tx === 2));
+
+  // potted monstera (12,8)
+  c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(386, 286, 26, 3);
+  c.fillStyle = '#c4622e'; c.fillRect(389, 268, 20, 19); c.fillStyle = '#9a4a20'; c.fillRect(387, 266, 24, 4);
+  c.fillStyle = 'rgba(255,255,255,0.12)'; c.fillRect(391, 272, 3, 12);
+  c.fillStyle = '#2d6a3a'; c.fillRect(398, 236, 3, 31);
+  for (const [lx, ly, rx, ry, rot] of [[386, 240, 12, 7, -0.5], [412, 238, 12, 7, 0.5], [399, 224, 11, 8, 0], [388, 256, 10, 6, -0.3], [411, 256, 10, 6, 0.3]]) {
+    c.fillStyle = '#2f7a3a'; c.beginPath(); c.ellipse(lx, ly, rx, ry, rot, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#4a9a4a'; c.beginPath(); c.ellipse(lx - 2, ly - 1, rx * 0.5, ry * 0.5, rot, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#16401f'; c.fillRect(lx - 1, ly - 1, 3, 1);
+  }
+
+  // ---------------------------------------------------------------- front wall: blue-framed windows onto the patio
+  const fy = 9 * TILE;
+  for (const [x0, x1] of [[TILE, 6 * TILE], [7 * TILE, 13 * TILE]]) {
+    c.fillStyle = NAVY; c.fillRect(x0, fy, x1 - x0, TILE);
+    const gg = c.createLinearGradient(0, fy + 4, 0, fy + 28);
+    gg.addColorStop(0, '#9fd4f2'); gg.addColorStop(1, '#e8f5fb');
+    c.fillStyle = gg; c.fillRect(x0 + 3, fy + 5, x1 - x0 - 6, 22);
+    for (let x = x0 + 14; x < x1 - 14; x += 38) {                                // patio umbrellas + tables seen through the glass
+      c.fillStyle = '#f0562a'; c.beginPath(); c.moveTo(x - 9, fy + 16); c.lineTo(x + 9, fy + 16); c.lineTo(x, fy + 9); c.closePath(); c.fill();
+      c.fillStyle = '#fbf5e6'; c.fillRect(x - 2, fy + 10, 4, 6);
+      c.fillStyle = '#2d6a45'; c.fillRect(x - 8, fy + 21, 16, 4);
+    }
+    c.fillStyle = NAVY; c.fillRect((x0 + x1) / 2 - 1, fy + 4, 3, 24);
+    c.fillStyle = '#3f8a3a';
+    for (let x = x0 + 8; x < x1 - 8; x += 26) { c.beginPath(); c.arc(x, fy + 24, 3.5, 0, Math.PI * 2); c.fill(); c.fillStyle = '#c4622e'; c.fillRect(x - 3, fy + 25, 6, 3); c.fillStyle = '#3f8a3a'; }
+  }
+  c.fillStyle = '#0c1650'; c.fillRect(4 * TILE - 14, fy + 8, 28, 12);
+  c.strokeStyle = '#ff5a4a'; c.lineWidth = 1; c.strokeRect(4 * TILE - 13.5, fy + 8.5, 27, 11);
+  c.fillStyle = '#ff7a6a'; c.font = '700 7px monospace'; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+  c.fillText('OPEN', 4 * TILE, fy + 17);
+  c.fillStyle = NAVY; c.fillRect(6 * TILE - 3, fy, 3, TILE); c.fillRect(7 * TILE, fy, 3, TILE);
+}
+
+let _sbInteriorCache = null;
+function drawSneakersInterior(time) {
+  if (!_sbInteriorCache) {
+    const cv = document.createElement('canvas');
+    cv.width = 14 * TILE; cv.height = 10 * TILE;
+    paintSneakersInterior(cv.getContext('2d'));
+    _sbInteriorCache = cv;
+  }
+  ctx.drawImage(_sbInteriorCache, 0, 0);
+  // the neon wall glows (and breathes a little)
+  const a = 0.5 + 0.5 * Math.sin(time * 1.6);
+  ctx.fillStyle = 'rgba(255,90,60,' + (0.10 + 0.05 * a).toFixed(3) + ')';
+  ctx.beginPath(); ctx.ellipse(105, 44, 46, 14, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(60,220,120,' + (0.07 + 0.03 * a).toFixed(3) + ')';
+  ctx.beginPath(); ctx.ellipse(105, 44, 56, 19, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(90,180,255,' + (0.10 + 0.04 * a).toFixed(3) + ')';
+  ctx.beginPath(); ctx.ellipse(105, 31, 30, 8, 0, 0, Math.PI * 2); ctx.fill();
+  // warm sunlight spilling through the front windows onto the checkerboard
+  ctx.fillStyle = 'rgba(255,236,170,' + (0.05 + 0.02 * a).toFixed(3) + ')';
+  ctx.beginPath(); ctx.moveTo(2 * TILE, 8 * TILE + 4); ctx.lineTo(6 * TILE, 8 * TILE + 4); ctx.lineTo(7 * TILE, 5 * TILE); ctx.lineTo(3 * TILE, 5 * TILE); ctx.closePath(); ctx.fill();
+}
+
+// ---------------------------------------------------------------- GOLDEN HOUR (Winooski, LEVEL 4)
+// A cute independent gift co. that sells art and all kinds of unique, fun gifts (see
+// makeWinooski()). Outside, modeled on photos of the real shop: a bubblegum-pink storefront
+// under a cream sign band with the orange retro "golden hour" script (and the little
+// sunburst mark), three white barn lights, two big street windows (a "YOU ARE MAGIC" felt
+// banner, a carrot garland, mannequins in overalls and floral pants, orange + pink palm-leaf
+// decals on the glass), an open pink door with hanging plants and a peach-and-cream checkered
+// entry floor, the street number 87, and a red-brick sidewalk crowded with potted plants.
+// Inside: wood pegboard + shelves of goodies, a disco ball, hanging pothos, a round glass
+// display table piled with candy boxes and a teddy bear, wire card racks, art-print bins,
+// gift tables and a pink-fronted counter with a register and tissue pom-poms.
+//
+// Static art is painted once into offscreen canvases; only the lamp glow, disco ball sparkle
+// and the sign's breathing glow are drawn live.
+const GH_PINK = '#f4a3c3', GH_PINKD = '#d97aa3', GH_PINKL = '#f9c9dc';
+const GH_ORANGE = '#ee8749', GH_ORANGED = '#c9622c', GH_CREAM = '#fdf6ea';
+
+// A palm-leaf fan decal (the real shop's window art): a stem and a spray of thin rays.
+function ghPalmFan(c, x, y, len, col) {
+  c.save(); c.translate(x, y);
+  c.strokeStyle = col; c.lineCap = 'round';
+  c.lineWidth = Math.max(1, len * 0.09);
+  c.beginPath(); c.moveTo(0, len * 0.85); c.lineTo(0, 0); c.stroke();
+  c.lineWidth = Math.max(0.9, len * 0.075);
+  for (let i = -4; i <= 4; i++) {
+    const a = -Math.PI / 2 + i * 0.27, l = len * (1 - Math.abs(i) * 0.055);
+    c.beginPath(); c.moveTo(0, 0); c.lineTo(Math.cos(a) * l, Math.sin(a) * l); c.stroke();
+  }
+  c.restore();
+}
+
+// The little half-sun-with-rays brand mark.
+function ghSunburst(c, cx, cy, r, col) {
+  c.fillStyle = col; c.strokeStyle = col; c.lineCap = 'round';
+  c.lineWidth = Math.max(1, r * 0.26);
+  c.beginPath(); c.arc(cx, cy, r, Math.PI, 0); c.closePath(); c.fill();
+  for (let i = 0; i <= 8; i++) {
+    const a = Math.PI + (i * Math.PI) / 8;
+    c.beginPath();
+    c.moveTo(cx + Math.cos(a) * (r + 1.8), cy + Math.sin(a) * (r + 1.8));
+    c.lineTo(cx + Math.cos(a) * (r + 1.8 + r * 0.85), cy + Math.sin(a) * (r + 1.8 + r * 0.85));
+    c.stroke();
+  }
+}
+
+// A store mannequin, x = center, y = top of the head (about 38px tall).
+function ghMannequin(c, x, y, top, bottom, hat, dots) {
+  c.fillStyle = '#e9ddd0'; c.beginPath(); c.arc(x, y + 3, 3.2, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#cdbfae'; c.fillRect(x - 1, y + 6, 2, 3);
+  c.fillStyle = top; c.fillRect(x - 6, y + 9, 12, 13); c.fillRect(x - 8, y + 10, 3, 10); c.fillRect(x + 5, y + 10, 3, 10);
+  c.fillStyle = bottom; c.fillRect(x - 6, y + 22, 12, 15);
+  c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(x - 0.5, y + 24, 1, 13);
+  if (dots) {
+    c.fillStyle = dots;
+    for (let i = 0; i < 7; i++) c.fillRect(x - 5 + ((i * 5) % 10), y + 24 + ((i * 3) % 12), 1.6, 1.6);
+  }
+  if (hat) { c.fillStyle = hat; c.fillRect(x - 4, y - 1, 8, 3); c.fillRect(x - 6, y + 1, 12, 1.5); }
+}
+
+// One street-front window, painted in a pink frame. kind 0 = the "YOU ARE MAGIC" window,
+// 1 = the carrot-garland window, 2 = the narrow plant window beside the door.
+function ghStreetWindow(c, x0, y0, gw, gh, kind) {
+  c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(x0 - 2, y0 - 1, gw + 7, gh + 7);
+  c.fillStyle = GH_PINKD; c.fillRect(x0 - 3, y0 - 3, gw + 6, gh + 6);
+  c.fillStyle = GH_PINKL; c.fillRect(x0 - 3, y0 - 3, gw + 6, 1);
+  // glass: leafy street reflections over a warm lit shop
+  const gg = c.createLinearGradient(0, y0, 0, y0 + gh);
+  gg.addColorStop(0, '#2f4a3a'); gg.addColorStop(0.35, '#516f55'); gg.addColorStop(1, '#e8d2b4');
+  c.fillStyle = gg; c.fillRect(x0, y0, gw, gh);
+  c.save(); c.beginPath(); c.rect(x0, y0, gw, gh); c.clip();
+  for (let i = 0; i < 9; i++) {                               // tree reflections (clipped to the glass)
+    const hx = arHash(x0 + i * 7, y0 + 3) % Math.max(1, gw - 6);
+    c.fillStyle = i % 2 ? 'rgba(30,60,40,0.55)' : 'rgba(80,120,80,0.45)';
+    c.beginPath(); c.arc(x0 + 3 + hx, y0 + 4 + (i % 3) * 5, 5 + (i % 3), 0, Math.PI * 2); c.fill();
+  }
+  c.restore();
+  c.fillStyle = 'rgba(255,236,190,0.9)';                       // ceiling spots
+  for (let x = x0 + 5; x < x0 + gw - 3; x += 12) c.fillRect(x, y0 + 2, 2, 2);
+  // warm shop interior along the bottom half
+  const wg = c.createLinearGradient(0, y0 + gh * 0.4, 0, y0 + gh);
+  wg.addColorStop(0, 'rgba(255,214,150,0)'); wg.addColorStop(1, 'rgba(255,200,130,0.85)');
+  c.fillStyle = wg; c.fillRect(x0, y0 + gh * 0.4, gw, gh * 0.6);
+
+  if (kind === 0) {
+    // felt banner: YOU ARE MAGIC
+    c.strokeStyle = '#6a4a40'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(x0, y0 + 4); c.quadraticCurveTo(x0 + gw / 2, y0 + 13, x0 + gw, y0 + 4); c.stroke();
+    // crisp 3x5 pixel lettering, each letter a different felt color, sagging with the string
+    const FONT = { Y: '101101010010010', O: '010101101101010', U: '101101101101010', A: '010101111101101', R: '110101110101101',
+                   E: '111100110100111', M: '101111111101101', G: '011100101101011', I: '111010010010111', C: '011100100100011' };
+    const cols = ['#f08ab8', '#7cc4ea', '#f4d35e', '#8fd49a', '#f4a261'];
+    const words = ['YOU', 'ARE', 'MAGIC'];
+    let lx0 = x0 + Math.floor((gw - 47) / 2), n = 0;
+    for (const word of words) {
+      for (const ch of word) {
+        const t = (lx0 - x0 + 1.5) / gw, ly = y0 + 5 + Math.round(Math.sin(t * Math.PI) * 5);
+        const bits = FONT[ch];
+        for (let k = 0; k < 15; k++) if (bits[k] === '1') {
+          c.fillStyle = 'rgba(30,15,25,0.8)'; c.fillRect(lx0 + (k % 3) + 1, ly + ((k / 3) | 0) + 1, 1, 1);
+        }
+        for (let k = 0; k < 15; k++) if (bits[k] === '1') {
+          c.fillStyle = cols[n % 5]; c.fillRect(lx0 + (k % 3), ly + ((k / 3) | 0), 1, 1);
+        }
+        lx0 += 4; n++;
+      }
+      lx0 += 3;
+    }
+    ghMannequin(c, x0 + 15, y0 + 14, '#ece3cf', '#d9c392', '#2e3b4e', '#e8873a');   // overalls + cap
+    ghMannequin(c, x0 + 36, y0 + 14, '#e9b3c4', '#e9b3c4', '#f4d2a8', '#f6e3ea');     // floral dress + bucket hat
+  } else if (kind === 1) {
+    // carrot garland
+    c.strokeStyle = '#6a4a40'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(x0, y0 + 3); c.quadraticCurveTo(x0 + gw / 2, y0 + 12, x0 + gw, y0 + 3); c.stroke();
+    for (let i = 0; i < 7; i++) {
+      const t = (i + 0.5) / 7, cx = x0 + t * gw, cy = y0 + 3 + Math.sin(t * Math.PI) * 4.6;
+      c.fillStyle = '#4f9a3a'; c.fillRect(cx - 1.5, cy - 1, 3, 2);
+      c.fillStyle = i % 2 ? '#f08a2a' : '#f4a03a';
+      c.beginPath(); c.moveTo(cx - 2, cy + 1); c.lineTo(cx + 2, cy + 1); c.lineTo(cx, cy + 8); c.closePath(); c.fill();
+    }
+    ghMannequin(c, x0 + 14, y0 + 14, '#b99f93', '#f1b6c6', null, '#e8566e');          // sweatshirt + floral pants
+    // clothes rail with a hoodie + a stripey tee
+    c.strokeStyle = '#8a8a90'; c.lineWidth = 1; c.beginPath(); c.moveTo(x0 + 26, y0 + 18); c.lineTo(x0 + gw - 2, y0 + 18); c.stroke();
+    c.fillStyle = '#6f7f95'; c.fillRect(x0 + 30, y0 + 19, 9, 16); c.fillRect(x0 + 28, y0 + 21, 3, 9); c.fillRect(x0 + 38, y0 + 21, 3, 9);
+    c.fillStyle = '#e9a3a3'; c.fillRect(x0 + 41, y0 + 19, 8, 14);
+    c.fillStyle = '#f6e3d8'; for (let y = y0 + 22; y < y0 + 33; y += 4) c.fillRect(x0 + 41, y, 8, 1.5);
+  } else {
+    // narrow window beside the door: a leafy plant on a little shelf
+    c.fillStyle = '#6a4a40'; c.fillRect(x0, y0 + gh - 20, gw, 2);
+    c.fillStyle = '#3f8a3a'; c.beginPath(); c.arc(x0 + gw / 2, y0 + gh - 28, 6, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#58b248'; c.beginPath(); c.arc(x0 + gw / 2 - 2, y0 + gh - 31, 4, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#e8c9a0'; c.fillRect(x0 + gw / 2 - 4, y0 + gh - 22, 8, 6);
+  }
+  // shelf of gifts along the sill
+  const sy = y0 + gh - 9;
+  c.fillStyle = 'rgba(120,70,40,0.55)'; c.fillRect(x0, sy + 6, gw, 3);
+  const goods = ['#e8a3d0', '#8fc9ea', '#f4d35e', '#a5d6a7', '#f4a261', '#ffffff', '#c9a3e8'];
+  for (let x = x0 + 2, i = 0; x < x0 + gw - 4; x += 6, i++) {
+    const gh2 = 4 + (arHash(x, y0) % 4);
+    c.fillStyle = goods[(i + kind) % goods.length]; c.fillRect(x, sy + 6 - gh2, 5, gh2);
+    c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(x, sy + 6 - gh2, 1, gh2);
+  }
+  // mullion + highlight
+  if (gw > 20) { c.fillStyle = GH_PINKD; c.fillRect(x0 + Math.floor(gw / 2) - 1, y0, 2, gh); }
+  c.fillStyle = 'rgba(255,255,255,0.28)'; c.fillRect(x0 + 2, y0 + 2, 5, gh * 0.55);
+  // palm-leaf decal on the glass (orange on one window, pink on the other)
+  if (kind === 0) ghPalmFan(c, x0 + gw - 8, y0 + gh - 10, 12, 'rgba(238,135,73,0.92)');
+  if (kind === 1) ghPalmFan(c, x0 + 8, y0 + gh - 10, 12, 'rgba(250,170,205,0.95)');
+}
+
+function paintGoldenHourExterior(c, w, h, doorLX) {
+  // ---- painted bubblegum-pink wood front with faint board lines
+  c.fillStyle = GH_PINK; c.fillRect(0, 0, w, h);
+  for (let x = 4; x < w; x += 8) { c.fillStyle = 'rgba(255,255,255,0.07)'; c.fillRect(x, 0, 1, h); }
+  c.fillStyle = 'rgba(0,0,0,0.10)'; c.fillRect(0, 0, 3, h); c.fillRect(w - 3, 0, 3, h);
+
+  // ---- cornice
+  c.fillStyle = GH_PINKL; c.fillRect(0, 0, w, 3);
+  c.fillStyle = GH_PINKD; c.fillRect(0, 8, w, 3);
+  c.fillStyle = 'rgba(0,0,0,0.14)'; c.fillRect(0, 11, w, 2);
+
+  // ---- cream sign band with the orange retro script + sunburst
+  c.fillStyle = GH_CREAM; c.fillRect(4, 13, w - 8, 38);
+  c.strokeStyle = GH_PINKD; c.lineWidth = 1; c.strokeRect(4.5, 13.5, w - 9, 37);
+  c.fillStyle = 'rgba(160,90,60,0.07)'; c.fillRect(5, 44, w - 10, 6);
+  ghSunburst(c, w / 2, 26, 4.2, GH_ORANGE);
+  const FAM = '"Cooper Black", "Bookman Old Style", "Palatino Linotype", Georgia, serif';
+  let fs = 22;
+  c.font = 'italic 800 ' + fs + 'px ' + FAM;
+  while (fs > 10 && c.measureText('golden hour').width > w - 56) { fs--; c.font = 'italic 800 ' + fs + 'px ' + FAM; }
+  c.textAlign = 'center'; c.textBaseline = 'alphabetic'; c.lineJoin = 'round';
+  c.fillStyle = 'rgba(201,98,44,0.30)'; c.fillText('golden hour', w / 2 + 1.2, 46 + 1.2);
+  c.strokeStyle = GH_ORANGE; c.lineWidth = 1.3; c.strokeText('golden hour', w / 2, 46);
+  c.fillStyle = GH_ORANGE; c.fillText('golden hour', w / 2, 46);
+
+  // ---- three white barn lights over the sign
+  for (const lx of [30, w / 2, w - 30]) {
+    c.strokeStyle = '#f2f2ee'; c.lineWidth = 2; c.beginPath(); c.moveTo(lx, 0); c.lineTo(lx, 6); c.stroke();
+    c.fillStyle = 'rgba(0,0,0,0.20)'; c.beginPath(); c.arc(lx + 1, 14, 8, Math.PI, 0); c.fill();
+    c.fillStyle = '#f6f6f2'; c.beginPath(); c.arc(lx, 13, 8, Math.PI, 0); c.closePath(); c.fill();
+    c.fillStyle = '#d8d8d2'; c.fillRect(lx - 9, 13, 18, 2);
+    c.fillStyle = '#ffe9a8'; c.beginPath(); c.ellipse(lx, 16, 4.5, 2, 0, 0, Math.PI * 2); c.fill();
+  }
+
+  // ---- trim under the sign
+  c.fillStyle = GH_PINKD; c.fillRect(0, 51, w, 3);
+  c.fillStyle = 'rgba(0,0,0,0.16)'; c.fillRect(0, 54, w, 3);
+
+  // ---- two big windows + a narrow one by the door
+  ghStreetWindow(c, 8, 60, 50, 48, 0);
+  ghStreetWindow(c, 65, 60, 50, 48, 1);
+  ghStreetWindow(c, 176, 60, 12, 48, 2);
+  // bulkhead panels under the glass
+  for (const [x0, gw] of [[8, 50], [65, 50], [176, 12]]) {
+    c.fillStyle = GH_PINKD; c.fillRect(x0 - 3, 111, gw + 6, 14);
+    c.fillStyle = GH_PINKL; c.fillRect(x0, 114, gw, 8);
+    c.fillStyle = GH_PINK; c.fillRect(x0 + 1, 115, gw - 2, 6);
+  }
+
+  // ---- the open door bay (centered on the door tile): transom sign, pink door leaf, hanging plants,
+  // warm shop beyond and the checkered entry floor
+  const bx = doorLX - 8, bw = 48;
+  c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(bx - 1, 59, bw + 7, h - 59);
+  c.fillStyle = GH_PINKD; c.fillRect(bx - 3, 57, bw + 6, h - 57 - 3);
+  c.fillStyle = GH_PINKL; c.fillRect(bx - 3, 57, bw + 6, 1);
+  c.fillStyle = '#2a3a36'; c.fillRect(bx, 60, bw, 13);                                  // transom glass
+  c.fillStyle = 'rgba(255,255,255,0.14)'; c.fillRect(bx + 2, 61, 6, 11);
+  c.font = 'italic 800 9px ' + FAM; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillStyle = GH_ORANGE; c.fillText('golden hour', bx + bw / 2, 67);
+  c.fillStyle = GH_PINK; c.fillRect(bx, 73, bw, 3);
+  c.fillStyle = '#e6c46a'; c.fillRect(bx + bw / 2 - 6, 53, 12, 6);                      // brass street number
+  c.fillStyle = '#6a4a14'; c.font = '700 6px Georgia, serif'; c.fillText('87', bx + bw / 2, 56.3);
+  const oy = 76, oh = h - 3 - oy;
+  const og = c.createLinearGradient(0, oy, 0, oy + oh);
+  og.addColorStop(0, '#2b1c22'); og.addColorStop(0.5, '#6e4a3c'); og.addColorStop(1, '#c79a72');
+  c.fillStyle = og; c.fillRect(bx, oy, bw, oh);
+  c.fillStyle = 'rgba(255,230,170,0.95)';                                               // ceiling track lights
+  for (let x = bx + 6; x < bx + bw - 3; x += 10) { c.fillRect(x, oy + 2, 2, 2); }
+  const rack = ['#e8a3d0', '#8fc9ea', '#f4d35e', '#a5d6a7', '#f4a261', '#ffffff'];       // racks of goods deeper in
+  for (let i = 0; i < 9; i++) { c.fillStyle = rack[i % 6]; c.fillRect(bx + 10 + i * 4, oy + 18 + (i % 3) * 3, 3, 14); }
+  c.fillStyle = 'rgba(40,20,20,0.5)'; c.fillRect(bx, oy + 30, bw, 2);
+  for (let y = oy + oh - 13; y < oy + oh; y += 5)                                        // peach + cream checkerboard
+    for (let x = bx, k = 0; x < bx + bw; x += 6, k++) {
+      c.fillStyle = ((k + ((y - oy) / 5 | 0)) % 2) ? '#f6e6d0' : '#e8a98a'; c.fillRect(x, y, 6, 5);
+    }
+  for (const [px2, side] of [[bx + 10, 0], [bx + bw - 9, 1]]) {                          // hanging plants
+    c.strokeStyle = '#2a1a1a'; c.lineWidth = 1; c.beginPath(); c.moveTo(px2, oy); c.lineTo(px2, oy + 5); c.stroke();
+    c.fillStyle = '#e8e2d6'; c.fillRect(px2 - 4, oy + 5, 8, 4);
+    for (let i = 0; i < 6; i++) {
+      c.fillStyle = i % 2 ? '#3f8a3a' : '#58b248';
+      c.beginPath(); c.arc(px2 - 5 + i * 2, oy + 9 + (i % 3) * 2, 2.6, 0, Math.PI * 2); c.fill();
+    }
+    c.fillStyle = '#3f8a3a'; c.fillRect(px2 - 3 + side * 4, oy + 11, 1, 10); c.fillRect(px2 + 2 - side * 3, oy + 11, 1, 7);
+  }
+  // pink door leaf swung open on the left of the bay
+  c.fillStyle = GH_PINKD; c.fillRect(bx, oy, 9, oh);
+  c.fillStyle = GH_PINK; c.fillRect(bx + 1, oy + 1, 7, oh - 2);
+  c.fillStyle = '#f6e9d8'; c.fillRect(bx + 2, oy + 4, 5, 18);
+  c.fillStyle = 'rgba(255,255,255,0.4)'; c.fillRect(bx + 3, oy + 5, 1, 14);
+  c.fillStyle = GH_PINKD; c.fillRect(bx + 2, oy + 28, 5, 14);
+  c.fillStyle = '#e6c46a'; c.fillRect(bx + 7, oy + 24, 1, 5);
+  // a sandwich-board style "OPEN" tag hanging in the door
+  c.fillStyle = '#fdf6ea'; c.fillRect(bx + bw - 17, oy + 22, 13, 8);
+  c.strokeStyle = GH_ORANGE; c.lineWidth = 0.8; c.strokeRect(bx + bw - 16.5, oy + 22.5, 12, 7);
+  c.fillStyle = GH_ORANGED; c.font = '700 5px monospace'; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillText('OPEN', bx + bw - 10.5, oy + 26.4);
+
+  // ---- foundation + threshold
+  c.fillStyle = '#b5587f'; c.fillRect(0, h - 3, w, 3);
+  c.fillStyle = '#6a4a40'; c.fillRect(bx, h - 3, bw, 3);
+}
+
+let _ghExteriorCache = null;
+function drawGoldenHourExterior(px, py, w, h, dx) {
+  const doorLX = dx - px;
+  if (!_ghExteriorCache || _ghExteriorCache.w !== w || _ghExteriorCache.h !== h || _ghExteriorCache.d !== doorLX) {
+    const cv = document.createElement('canvas');
+    cv.width = w; cv.height = h;
+    paintGoldenHourExterior(cv.getContext('2d'), w, h, doorLX);
+    _ghExteriorCache = { cv, w, h, d: doorLX };
+  }
+  ctx.drawImage(_ghExteriorCache.cv, px, py);
+}
+
+// Live bits of the storefront: the three barn lights pour a soft warm wash onto the sign.
+function drawGoldenHourLive(px, py, w, h) {
+  const t = performance.now() / 1000;
+  for (const [i, lx] of [30, w / 2, w - 30].entries()) {
+    const f = 0.85 + 0.15 * Math.sin(t * 1.3 + i * 1.9);
+    ctx.fillStyle = 'rgba(255,226,150,' + (0.10 * f).toFixed(3) + ')';
+    ctx.beginPath(); ctx.moveTo(px + lx - 4, py + 17); ctx.lineTo(px + lx + 4, py + 17); ctx.lineTo(px + lx + 22, py + 50); ctx.lineTo(px + lx - 22, py + 50); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(255,240,190,' + (0.35 * f).toFixed(3) + ')';
+    ctx.beginPath(); ctx.ellipse(px + lx, py + 16, 5, 2.4, 0, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+// ---------------------------------------------------------------- sidewalk props (outside)
+// Red-brown brick pavers with the odd grey one, like the real shop's sidewalk (called from
+// drawTiles' 'p' / 'x' cases).
+function drawGoldenHourBrick(px, py, tx, ty) {
+  ctx.fillStyle = '#9a8f88'; ctx.fillRect(px, py, TILE, TILE);                         // mortar
+  for (let r = 0; r < 4; r++) {
+    const off = ((r + ty) % 2) ? 8 : 0;
+    for (let x = off - 16; x < TILE; x += 16) {
+      const hv = mhHash(tx * 7 + (x >> 3) + 3, ty * 5 + r);
+      ctx.fillStyle = (hv % 7 === 0) ? '#8d8a8c' : (hv % 4 === 0) ? '#a85a45' : (hv % 3 === 0) ? '#bd6a52' : '#b2604a';
+      const bx0 = Math.max(0, x + 0.5), bx1 = Math.min(TILE, x + 15.5);
+      if (bx1 > bx0) ctx.fillRect(px + bx0, py + r * 8 + 0.5, bx1 - bx0, 7);
+    }
+  }
+  ctx.fillStyle = 'rgba(255,255,255,0.06)'; ctx.fillRect(px, py, TILE, 1);
+}
+
+// A potted-plant cluster on the brick (solid 'x' tile): rubber plant, flowers, trailing ivy...
+function drawGoldenHourPlanter(px, py, tx, ty) {
+  drawGoldenHourBrick(px, py, tx, ty);
+  const v = mhHash(tx * 13 + 5, ty * 3 + 1) % 4;
+  ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(px + 4, py + 27, TILE - 8, 3);
+  const pots = ['#f1e6d2', '#d98a62', '#8fb59c', '#f4b6c8'];
+  const pc = pots[v];
+  // pot
+  ctx.fillStyle = pc; ctx.fillRect(px + 8, py + 17, 16, 11);
+  ctx.fillStyle = 'rgba(0,0,0,0.16)'; ctx.fillRect(px + 8, py + 24, 16, 4);
+  ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(px + 9, py + 18, 2, 8);
+  ctx.fillStyle = shadeColor(pc, -22); ctx.fillRect(px + 7, py + 16, 18, 3);
+  if (v === 0 || v === 2) {                                   // big-leaf plant
+    ctx.fillStyle = '#2d6a3a'; ctx.fillRect(px + 15, py + 5, 2, 12);
+    for (const [lx, ly, rx, ry, rot] of [[10, 12, 6, 3.4, -0.6], [22, 11, 6, 3.4, 0.6], [16, 4, 5, 4, 0], [11, 7, 5, 3, -0.3], [21, 6, 5, 3, 0.3]]) {
+      ctx.fillStyle = '#2f7a3a'; ctx.beginPath(); ctx.ellipse(px + lx, py + ly, rx, ry, rot, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#58a448'; ctx.beginPath(); ctx.ellipse(px + lx - 1, py + ly - 1, rx * 0.5, ry * 0.5, rot, 0, Math.PI * 2); ctx.fill();
+    }
+  } else {                                                    // flowers: yellow or pink blooms on green
+    ctx.fillStyle = '#3f8a3a';
+    for (const [lx, ly] of [[11, 14], [16, 11], [21, 14], [14, 9], [19, 9]]) { ctx.beginPath(); ctx.arc(px + lx, py + ly, 4, 0, Math.PI * 2); ctx.fill(); }
+    ctx.fillStyle = v === 1 ? '#f4d23a' : '#f08aa8';
+    for (const [lx, ly] of [[10, 11], [15, 7], [20, 10], [13, 13], [18, 6], [22, 14], [8, 14]]) { ctx.fillRect(px + lx, py + ly, 3, 3); }
+    ctx.fillStyle = v === 1 ? '#c49a10' : '#c4607e';
+    for (const [lx, ly] of [[11, 12], [16, 8], [21, 11]]) ctx.fillRect(px + lx, py + ly, 1, 1);
+    ctx.fillStyle = '#3f8a3a'; ctx.fillRect(px + 7, py + 20, 2, 7); ctx.fillRect(px + 23, py + 20, 2, 5);   // trailing ivy
+  }
+}
+
+// ---------------------------------------------------------------- interior
+// Solid props are plain 'W'/'T' tiles in the shop def (blockTiles/extraTables) that this
+// painter dresses up: back wall (row 1), wood gift shelf (1,3)(1,4), wire card rack (1,6)(1,7),
+// plant stand (1,8), pink plush shelf (12,3)(12,4), art-print bins (12,6)(12,7), fiddle-leaf
+// (12,8); the counter is the default 'T' row at y=3 (x 4..9) with the shopkeeper behind it at
+// (6,2); the round glass display table is (6,5)(7,5); small gift tables at (3,5) and (10,5).
+function ghBox(c, x, y, w, h, col) {
+  c.fillStyle = col; c.fillRect(x, y, w, h);
+  c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(x, y, w, 1);
+  c.fillStyle = 'rgba(0,0,0,0.18)'; c.fillRect(x + w - 1, y, 1, h);
+}
+function ghPlush(c, x, y, s, body, sweater) {   // teddy bear, x/y = bottom-center, s = scale
+  c.fillStyle = 'rgba(0,0,0,0.18)'; c.beginPath(); c.ellipse(x, y, 8 * s, 2.5 * s, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = body;
+  c.beginPath(); c.ellipse(x, y - 6 * s, 7 * s, 6.5 * s, 0, 0, Math.PI * 2); c.fill();                  // body
+  c.beginPath(); c.arc(x, y - 15 * s, 5.5 * s, 0, Math.PI * 2); c.fill();                                 // head
+  c.beginPath(); c.arc(x - 4.5 * s, y - 19 * s, 2.2 * s, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.arc(x + 4.5 * s, y - 19 * s, 2.2 * s, 0, Math.PI * 2); c.fill();                       // ears
+  c.beginPath(); c.arc(x - 8 * s, y - 7 * s, 2.6 * s, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.arc(x + 8 * s, y - 7 * s, 2.6 * s, 0, Math.PI * 2); c.fill();                          // arms
+  c.fillStyle = sweater; c.fillRect(x - 6 * s, y - 10 * s, 12 * s, 8 * s);
+  c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(x - 6 * s, y - 10 * s, 12 * s, 1.2 * s);
+  c.fillStyle = '#e8d2b0'; c.beginPath(); c.ellipse(x, y - 13.5 * s, 2.6 * s, 2 * s, 0, 0, Math.PI * 2); c.fill();   // muzzle
+  c.fillStyle = '#2a1a14'; c.fillRect(x - 2.4 * s, y - 16.6 * s, 1.4 * s, 1.4 * s); c.fillRect(x + 1 * s, y - 16.6 * s, 1.4 * s, 1.4 * s);
+  c.fillRect(x - 0.8 * s, y - 14.6 * s, 1.6 * s, 1.2 * s);
+}
+function ghCandyCube(c, x, y) {   // clear candy box with an orange fill and a blue-dot label
+  c.fillStyle = 'rgba(210,235,245,0.8)'; c.fillRect(x, y, 9, 9);
+  c.fillStyle = '#f0883a'; c.fillRect(x + 1, y + 1, 7, 7);
+  c.fillStyle = 'rgba(255,255,255,0.4)'; c.fillRect(x + 1, y + 1, 2, 7);
+  c.fillStyle = '#3fb0d8'; c.beginPath(); c.arc(x + 4.5, y + 4.5, 1.8, 0, Math.PI * 2); c.fill();
+}
+
+function paintGoldenHourInterior(c) {
+  const W = 14 * TILE, H = 10 * TILE;
+  const WOODL = '#d8ac72', WOODD = '#b98a52', TAN = '#d9b07a';
+
+  // ---------------------------------------------------------------- wood plank floor + checkered entry
+  for (let y = 2 * TILE; y < 9 * TILE; y += 8) {
+    const row = (y - 2 * TILE) / 8;
+    let x = TILE - ((row * 29) % 40);
+    while (x < 13 * TILE) {
+      const len = 52 + ((arHash(x >> 2, row) % 4) * 14);
+      const x0 = Math.max(TILE, x), x1 = Math.min(13 * TILE, x + len);
+      if (x1 > x0) {
+        c.fillStyle = (arHash(x >> 3, row + 9) % 3) ? WOODL : '#cf9f66';
+        c.fillRect(x0, y, x1 - x0, 8);
+        c.fillStyle = 'rgba(80,40,10,0.22)'; c.fillRect(x0, y + 7, x1 - x0, 1); c.fillRect(x0, y, 1, 8);
+        c.fillStyle = 'rgba(255,255,255,0.10)'; c.fillRect(x0, y, x1 - x0, 1);
+      }
+      x += len;
+    }
+  }
+  c.fillStyle = 'rgba(0,0,0,0.08)'; c.fillRect(TILE, 2 * TILE, 12 * TILE, 3);
+  // peach + cream checkered entry mat
+  c.fillStyle = '#c0866a'; c.fillRect(158, 222, 100, 68);
+  for (let ty = 0; ty < 4; ty++) for (let tx = 0; tx < 6; tx++) {
+    c.fillStyle = ((tx + ty) % 2) ? '#fbf0e0' : '#eeb092'; c.fillRect(160 + tx * 16, 224 + ty * 16, 16, 16);
+  }
+
+  // ---------------------------------------------------------------- back wall: blush pink + cream cornice
+  c.fillStyle = GH_PINKL; c.fillRect(0, 0, W, 60);
+  c.fillStyle = GH_CREAM; c.fillRect(0, 0, W, 7); c.fillStyle = '#ecd9c4'; c.fillRect(0, 7, W, 2);
+  c.fillStyle = 'rgba(217,122,163,0.16)'; for (let x = 8; x < W; x += 16) c.fillRect(x, 9, 1, 51);
+  c.fillStyle = '#b5587f'; c.fillRect(0, 60, W, 4);                             // baseboard
+  c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(0, 60, W, 1);
+
+  // wood pegboard with shelves of mugs, jars and boxes (left)
+  c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(34, 14, 138, 46);
+  c.fillStyle = '#8a6238'; c.fillRect(30, 10, 138, 46);
+  c.fillStyle = TAN; c.fillRect(33, 13, 132, 40);
+  c.fillStyle = 'rgba(90,55,20,0.38)';
+  for (let y = 17; y < 52; y += 6) for (let x = 36; x < 163; x += 6) c.fillRect(x, y, 1.4, 1.4);
+  for (const sy of [32, 49]) {
+    c.fillStyle = '#7a532c'; c.fillRect(33, sy, 132, 3);
+    c.fillStyle = 'rgba(0,0,0,0.2)'; c.fillRect(33, sy + 3, 132, 2);
+  }
+  const mugCols = ['#f4a3c3', '#fdf6ea', '#ee8749', '#8fc9ea', '#f4d35e', '#a5d6a7'];
+  for (let x = 70, i = 0; x < 160; x += 11, i++) {                              // top shelf: mugs + candle jars
+    const col = mugCols[(i * 2) % 6];
+    c.fillStyle = col; c.fillRect(x, 23, 8, 9);
+    c.fillStyle = 'rgba(255,255,255,0.4)'; c.fillRect(x + 1, 24, 1, 7);
+    if (i % 2) { c.fillStyle = col; c.fillRect(x + 8, 25, 2, 4); }
+  }
+  for (let x = 38, i = 0; x < 160; x += 9, i++) {                               // bottom shelf: stacked boxes + bottles
+    const hh = 7 + (i * 5) % 8;
+    ghBox(c, x, 49 - hh, 7, hh, mugCols[(i + 3) % 6]);
+  }
+  // disco ball mounted at the pegboard's top-left (sparkle is live)
+  c.fillStyle = '#4a4a50'; c.fillRect(51, 8, 2, 8);
+  c.fillStyle = '#9aa0aa'; c.beginPath(); c.arc(52, 24, 8, 0, Math.PI * 2); c.fill();
+  for (let gy = 0; gy < 8; gy++) for (let gx = 0; gx < 8; gx++) {
+    const dx = gx * 2 - 7, dy = gy * 2 - 7;
+    if (dx * dx + dy * dy > 64) continue;
+    c.fillStyle = (gx + gy) % 2 ? '#e8ecf0' : '#7b828c'; c.fillRect(52 + dx - 1, 24 + dy - 1, 2, 2);
+  }
+  c.fillStyle = 'rgba(255,255,255,0.7)'; c.fillRect(48, 19, 3, 2);
+
+  // the logo plaque behind the shopkeeper: cream sign, orange script + sunburst
+  c.fillStyle = 'rgba(0,0,0,0.2)'; c.fillRect(182, 13, 84, 40);
+  c.fillStyle = GH_PINKD; c.fillRect(178, 10, 84, 40);
+  c.fillStyle = GH_CREAM; c.fillRect(181, 13, 78, 34);
+  ghSunburst(c, 220, 24, 3.6, GH_ORANGE);
+  const FAM = '"Cooper Black", "Bookman Old Style", "Palatino Linotype", Georgia, serif';
+  let fs = 15; c.font = 'italic 800 ' + fs + 'px ' + FAM;
+  while (fs > 8 && c.measureText('golden hour').width > 68) { fs--; c.font = 'italic 800 ' + fs + 'px ' + FAM; }
+  c.textAlign = 'center'; c.textBaseline = 'alphabetic'; c.lineJoin = 'round';
+  c.strokeStyle = GH_ORANGE; c.lineWidth = 1; c.strokeText('golden hour', 220, 42);
+  c.fillStyle = GH_ORANGE; c.fillText('golden hour', 220, 42);
+
+  // wood shelving unit with gifts, framed art + a plush on top (right)
+  c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(286, 14, 138, 46);
+  c.fillStyle = '#8a6238'; c.fillRect(282, 10, 138, 46);
+  c.fillStyle = '#e8d2b0'; c.fillRect(285, 13, 132, 40);
+  for (const sy of [30, 47]) { c.fillStyle = '#7a532c'; c.fillRect(285, sy, 132, 3); c.fillStyle = 'rgba(0,0,0,0.2)'; c.fillRect(285, sy + 3, 132, 2); }
+  c.fillStyle = '#6a4a2a'; c.fillRect(350, 13, 3, 40);
+  for (let x = 290, i = 0; x < 345; x += 10, i++) {                             // framed art prints leaning on the top shelf
+    const hh = 10 + (i * 3) % 6;
+    c.fillStyle = '#5a3a20'; c.fillRect(x, 30 - hh, 8, hh);
+    c.fillStyle = mugCols[(i + 1) % 6]; c.fillRect(x + 1, 31 - hh, 6, hh - 2);
+    c.fillStyle = 'rgba(255,255,255,0.45)'; c.fillRect(x + 1, 31 - hh, 2, 3);
+  }
+  for (let x = 358, i = 0; x < 414; x += 9, i++) {                              // jars, soaps, candles
+    ghBox(c, x, 30 - 8 - (i % 3) * 2, 7, 8 + (i % 3) * 2, mugCols[(i + 2) % 6]);
+  }
+  for (let x = 290, i = 0; x < 345; x += 9, i++) ghBox(c, x, 47 - 9, 7, 9, mugCols[(i + 4) % 6]);
+  ghPlush(c, 384, 47, 0.55, '#c9a37a', '#d94a4a');
+  ghPlush(c, 402, 47, 0.5, '#f4c8d8', '#8fc9ea');
+
+  // hanging pothos trailing down the wall (two of them)
+  for (const hx of [176, 274]) {
+    c.fillStyle = '#4a3a30'; c.fillRect(hx, 8, 1, 5);
+    c.fillStyle = '#f1e6d2'; c.fillRect(hx - 5, 13, 11, 6); c.fillStyle = '#d8cbb4'; c.fillRect(hx - 5, 17, 11, 2);
+    for (let i = 0; i < 20; i++) {
+      const vx = hx - 6 + ((i * 7) % 13), vy = 19 + i * 1.9 + ((i % 3) * 2);
+      c.fillStyle = (i % 2) ? '#3f8a3a' : '#5ab24a';
+      c.beginPath(); c.ellipse(vx, vy, 2.6, 2, 0.4, 0, Math.PI * 2); c.fill();
+    }
+  }
+  // fairy lights along the cornice
+  c.strokeStyle = '#6a4a40'; c.lineWidth = 0.8; c.beginPath();
+  for (let x = 0; x <= W; x += 3) { const y = 9 + 2.4 * Math.sin((x / W) * Math.PI * 12); if (!x) c.moveTo(x, y); else c.lineTo(x, y); }
+  c.stroke();
+  for (let x = 10, i = 0; x < W; x += 14, i++) {
+    const y = 9 + 2.4 * Math.sin((x / W) * Math.PI * 12);
+    c.fillStyle = 'rgba(255,225,150,0.35)'; c.fillRect(x - 2, y, 5, 5);
+    c.fillStyle = ['#ffe6a0', '#ffc2d8', '#ffd2a0'][i % 3]; c.fillRect(x - 1, y + 1, 3, 3);
+  }
+
+  // ---------------------------------------------------------------- side walls
+  c.fillStyle = GH_PINK; c.fillRect(0, 64, TILE, H - 64);
+  c.fillStyle = 'rgba(255,255,255,0.12)'; for (let x = 4; x < TILE; x += 8) c.fillRect(x, 64, 1, H - 64);
+  c.fillStyle = GH_PINKD; c.fillRect(TILE - 3, 64, 3, H - 64);
+  c.fillStyle = GH_CREAM; c.fillRect(13 * TILE, 64, TILE, H - 64);
+  c.fillStyle = 'rgba(217,122,163,0.14)'; for (let x = 4; x < TILE; x += 8) c.fillRect(13 * TILE + x, 64, 1, H - 64);
+  c.fillStyle = GH_PINKD; c.fillRect(13 * TILE, 64, 3, H - 64);
+  // framed prints on the left wall, an orange palm-leaf decal on the right
+  c.fillStyle = '#fdf6ea'; c.fillRect(5, 163, 20, 24); c.fillStyle = '#5a3a20'; c.fillRect(7, 165, 16, 20);
+  c.fillStyle = '#8fc9ea'; c.fillRect(8, 166, 14, 18); c.fillStyle = '#f4d35e'; c.beginPath(); c.arc(15, 172, 3.5, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#ee8749'; c.fillRect(8, 178, 14, 6);
+  c.fillStyle = '#fdf6ea'; c.fillRect(5, 100, 20, 24); c.fillStyle = '#5a3a20'; c.fillRect(7, 102, 16, 20);
+  c.fillStyle = '#f9c9dc'; c.fillRect(8, 103, 14, 18); c.fillStyle = '#ee8749'; c.fillRect(11, 108, 8, 8); c.fillStyle = '#fdf6ea'; c.fillRect(13, 110, 4, 4);
+  ghPalmFan(c, 13 * TILE + 19, 140, 22, 'rgba(238,135,73,0.9)');
+  c.fillStyle = '#fdf6ea'; c.fillRect(13 * TILE + 7, 230, 20, 24); c.fillStyle = '#5a3a20'; c.fillRect(13 * TILE + 9, 232, 16, 20);
+  c.fillStyle = '#a5d6a7'; c.fillRect(13 * TILE + 10, 233, 14, 18); c.fillStyle = '#2f7a3a'; c.fillRect(13 * TILE + 16, 238, 2, 12);
+  c.fillStyle = '#58b248'; c.beginPath(); c.ellipse(13 * TILE + 13, 241, 4, 2, -0.5, 0, Math.PI * 2); c.fill(); c.beginPath(); c.ellipse(13 * TILE + 21, 243, 4, 2, 0.5, 0, Math.PI * 2); c.fill();
+
+  // ---------------------------------------------------------------- the counter (tiles (4..9,3)) + goodies on it
+  c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(4 * TILE, 4 * TILE - 2, 6 * TILE, 3);
+  c.fillStyle = GH_CREAM; c.fillRect(4 * TILE, 3 * TILE, 6 * TILE, 11);                  // cream top
+  c.fillStyle = '#e6d2b8'; c.fillRect(4 * TILE, 3 * TILE + 9, 6 * TILE, 3);
+  c.fillStyle = GH_PINK; c.fillRect(4 * TILE, 3 * TILE + 12, 6 * TILE, 16);               // pink front
+  c.fillStyle = GH_PINKD; c.fillRect(4 * TILE, 3 * TILE + 12, 6 * TILE, 1);
+  for (let x = 4 * TILE + 6; x < 10 * TILE - 8; x += 24) {                                // little recessed panels
+    c.fillStyle = GH_PINKL; c.fillRect(x, 3 * TILE + 15, 18, 10);
+    c.fillStyle = GH_PINK; c.fillRect(x + 1, 3 * TILE + 16, 16, 8);
+  }
+  c.fillStyle = '#b5587f'; c.fillRect(4 * TILE, 3 * TILE + 28, 6 * TILE, 4);
+  // cream register + receipt
+  c.fillStyle = '#e8dcc6'; c.fillRect(140, 90, 22, 8); c.fillStyle = '#cdbfa6'; c.fillRect(140, 96, 22, 2);
+  c.fillStyle = '#d8ccb4'; c.fillRect(142, 82, 18, 9); c.fillStyle = '#26332e'; c.fillRect(144, 84, 14, 5);
+  c.fillStyle = '#9ad8a4'; c.fillRect(145, 85, 8, 1);
+  c.fillStyle = '#fdf6ea'; c.fillRect(158, 88, 4, 6);
+  // service bell + a jar of enamel pins
+  c.fillStyle = '#e6c46a'; c.beginPath(); c.arc(176, 97, 5, Math.PI, 0); c.fill(); c.fillRect(171, 97, 10, 2);
+  c.fillStyle = 'rgba(215,235,245,0.8)'; c.fillRect(240, 86, 12, 12);
+  for (let i = 0; i < 6; i++) { c.fillStyle = mugCols[i]; c.fillRect(242 + (i % 3) * 3, 89 + (i % 2) * 4, 2, 2); }
+  c.fillStyle = '#4a4a50'; c.fillRect(239, 85, 14, 2);
+  // pink + orange tissue pom-poms, kraft gift bags, a stack of cards
+  for (const [px2, col] of [[262, GH_PINK], [270, GH_ORANGE], [278, '#fdf6ea']]) {
+    c.fillStyle = col; c.beginPath(); c.arc(px2, 91, 5, 0, Math.PI * 2); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.3)'; c.beginPath(); c.arc(px2 - 1.5, 89, 2, 0, Math.PI * 2); c.fill();
+    c.fillStyle = 'rgba(0,0,0,0.12)'; c.fillRect(px2 - 1, 94, 2, 4);
+  }
+  c.fillStyle = '#c9a37a'; c.fillRect(292, 80, 12, 18); c.fillStyle = '#b58a60'; c.fillRect(292, 80, 12, 3);
+  c.fillStyle = GH_PINK; c.fillRect(295, 87, 6, 5);
+  c.fillStyle = '#c9a37a'; c.fillRect(306, 84, 11, 14); c.fillStyle = '#b58a60'; c.fillRect(306, 84, 11, 3);
+  c.fillStyle = '#ee8749'; c.fillRect(309, 90, 5, 4);
+
+  // ---------------------------------------------------------------- the round glass display table (6,5)(7,5)
+  const rtx = 224, rty = 177;
+  c.fillStyle = 'rgba(0,0,0,0.24)'; c.beginPath(); c.ellipse(rtx + 1, rty + 16, 34, 9, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#8a6238'; c.fillRect(rtx - 4, rty + 4, 8, 12);                          // pedestal
+  c.fillStyle = 'rgba(205,232,242,0.75)'; c.beginPath(); c.ellipse(rtx, rty, 33, 14, 0, 0, Math.PI * 2); c.fill();
+  c.strokeStyle = 'rgba(255,255,255,0.85)'; c.lineWidth = 1; c.beginPath(); c.ellipse(rtx, rty, 33, 14, 0, 0, Math.PI * 2); c.stroke();
+  c.fillStyle = 'rgba(160,200,215,0.55)'; c.beginPath(); c.ellipse(rtx, rty + 3, 33, 12, 0, 0, Math.PI); c.fill();
+  // pink gift boxes + rose-print bottles at the back
+  ghBox(c, rtx - 26, rty - 14, 9, 11, GH_PINK); ghBox(c, rtx - 16, rty - 18, 9, 15, GH_PINKL); ghBox(c, rtx - 6, rty - 12, 9, 9, '#f9a8c0');
+  for (const bx of [rtx + 6, rtx + 14, rtx + 22]) {                                       // floral lotion bottles
+    c.fillStyle = '#f6efe2'; c.fillRect(bx, rty - 20, 6, 15); c.fillStyle = '#4a4a4a'; c.fillRect(bx + 1, rty - 23, 4, 3);
+    c.fillStyle = '#e8566e'; c.fillRect(bx + 1, rty - 15, 4, 3); c.fillStyle = '#58a448'; c.fillRect(bx + 1, rty - 12, 4, 2);
+  }
+  // candy cubes + a cactus-shaped plant in a red pot
+  let ci = 0;
+  for (let cy = 0; cy < 2; cy++) for (let cx = 0; cx < 4; cx++, ci++) ghCandyCube(c, rtx + 4 + cx * 7, rty - 4 + cy * 5 - 3 + 4);
+  c.fillStyle = '#d94a4a'; c.fillRect(rtx - 3, rty - 2, 8, 6);
+  c.fillStyle = '#58a448'; c.fillRect(rtx - 1, rty - 8, 4, 7); c.fillRect(rtx - 4, rty - 6, 3, 2); c.fillRect(rtx + 3, rty - 5, 3, 2);
+  // glass sunglasses card + a stack of sticker packs
+  ghBox(c, rtx - 30, rty + 2, 8, 10, '#fdf6ea'); c.fillStyle = '#f08aa8'; c.fillRect(rtx - 29, rty + 5, 6, 2);
+  // teddy bear in a red sweater at the front of the table, a plum-pink one beside it
+  ghPlush(c, rtx - 14, rty + 14, 0.9, '#c9a37a', '#d94a4a');
+  ghPlush(c, rtx + 18, rty + 15, 0.75, '#f4c8d8', '#fdf6ea');
+
+  // ---------------------------------------------------------------- small gift tables (3,5) and (10,5)
+  for (const [tx, kind] of [[3, 0], [10, 1]]) {
+    const cx = tx * TILE + 16, cy = 5 * TILE + 16;
+    c.fillStyle = 'rgba(0,0,0,0.22)'; c.beginPath(); c.ellipse(cx + 1, cy + 11, 13, 5, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#8a6238'; c.fillRect(cx - 2, cy + 3, 4, 8);
+    c.fillStyle = GH_CREAM; c.beginPath(); c.ellipse(cx, cy, 14, 8, 0, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = GH_PINKD; c.lineWidth = 1; c.beginPath(); c.ellipse(cx, cy, 14, 8, 0, 0, Math.PI * 2); c.stroke();
+    if (kind === 0) {                                                                     // art books + puzzle boxes
+      ghBox(c, cx - 10, cy - 8, 12, 5, '#8fc9ea'); ghBox(c, cx - 9, cy - 12, 10, 5, '#f4d35e'); ghBox(c, cx - 8, cy - 15, 8, 4, GH_PINK);
+      ghBox(c, cx + 3, cy - 7, 9, 9, '#a5d6a7'); c.fillStyle = '#ee8749'; c.fillRect(cx + 5, cy - 4, 5, 3);
+    } else {                                                                              // candle jars + soaps
+      for (const [dx, col] of [[-9, '#f4a3c3'], [-3, '#ee8749'], [3, '#a5d6a7'], [9, '#8fc9ea']]) {
+        c.fillStyle = 'rgba(215,235,245,0.8)'; c.fillRect(cx + dx - 3, cy - 10, 6, 9);
+        c.fillStyle = col; c.fillRect(cx + dx - 2, cy - 7, 4, 6);
+        c.fillStyle = '#fdf6ea'; c.fillRect(cx + dx - 3, cy - 11, 6, 2);
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------- props on blockTiles
+  // wood gift shelf (1,3)(1,4): mugs, candles, boxes on four shelves
+  c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(34, 156, 30, 4);
+  c.fillStyle = '#8a6238'; c.fillRect(33, 98, 30, 58);
+  c.fillStyle = '#e8d2b0'; c.fillRect(35, 100, 26, 54);
+  for (let r = 0; r < 4; r++) {
+    c.fillStyle = '#7a532c'; c.fillRect(35, 100 + r * 14 + 11, 26, 3);
+    for (let q = 0; q < 4; q++) ghBox(c, 37 + q * 6, 100 + r * 14 + 2 + ((q + r) % 2), 5, 8 - ((q + r) % 2), mugCols[(q + r * 2) % 6]);
+  }
+  // white wire card rack (1,6)(1,7)
+  c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(34, 252, 30, 4);
+  c.fillStyle = '#e6e6e2'; c.fillRect(33, 194, 30, 58);
+  c.fillStyle = '#c2c2bc'; c.fillRect(33, 194, 30, 2); c.fillRect(33, 250, 30, 2);
+  c.fillStyle = '#f8f8f4'; c.fillRect(35, 197, 26, 52);
+  for (let r = 0; r < 5; r++) {
+    c.fillStyle = '#b8b8b0'; c.fillRect(35, 197 + r * 10 + 8, 26, 1.5);
+    for (let q = 0; q < 5; q++) { c.fillStyle = mugCols[(q + r) % 6]; c.fillRect(36 + q * 5, 198 + r * 10, 4, 7); c.fillStyle = 'rgba(255,255,255,0.4)'; c.fillRect(36 + q * 5, 198 + r * 10, 1, 7); }
+  }
+  c.strokeStyle = '#a8a8a0'; c.lineWidth = 1; c.beginPath(); c.moveTo(35.5, 197); c.lineTo(35.5, 249); c.moveTo(60.5, 197); c.lineTo(60.5, 249); c.stroke();
+  // plant stand with a trailing pothos (1,8)
+  c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(34, 286, 28, 3);
+  c.fillStyle = '#8a6238'; c.fillRect(40, 268, 16, 18); c.fillRect(38, 266, 20, 3);
+  c.fillStyle = '#f1e6d2'; c.fillRect(37, 252, 22, 14); c.fillStyle = '#d8cbb4'; c.fillRect(37, 262, 22, 4);
+  for (let i = 0; i < 9; i++) { c.fillStyle = i % 2 ? '#3f8a3a' : '#5ab24a'; c.beginPath(); c.ellipse(38 + i * 2.5, 250 + (i % 3) * 2, 4, 3, 0.3, 0, Math.PI * 2); c.fill(); }
+  for (const [vx, ln] of [[40, 10], [49, 8], [57, 12]]) for (let i = 0; i < ln; i++) { c.fillStyle = i % 2 ? '#3f8a3a' : '#5ab24a'; c.beginPath(); c.ellipse(vx, 258 + i * 2, 2.2, 1.8, 0, 0, Math.PI * 2); c.fill(); }
+  // pink plush shelf (12,3)(12,4)
+  c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(386, 156, 30, 4);
+  c.fillStyle = '#d97aa3'; c.fillRect(385, 98, 30, 58);
+  c.fillStyle = '#f9c9dc'; c.fillRect(387, 100, 26, 54);
+  for (let r = 0; r < 3; r++) {
+    c.fillStyle = '#b5587f'; c.fillRect(387, 100 + r * 19 + 17, 26, 3);
+    ghPlush(c, 394, 100 + r * 19 + 16, 0.62, ['#c9a37a', '#fdf6ea', '#a5d6a7'][r], ['#d94a4a', '#8fc9ea', '#f4d35e'][r]);
+    ghBox(c, 402, 100 + r * 19 + 6, 8, 10, mugCols[(r * 2 + 1) % 6]);
+  }
+  // art-print bins (12,6)(12,7): wooden crates with prints standing in them
+  c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(386, 252, 30, 4);
+  for (const by of [194, 224]) {
+    c.fillStyle = '#8a6238'; c.fillRect(385, by + 12, 30, 18);
+    c.fillStyle = '#a77a48'; c.fillRect(385, by + 12, 30, 3); c.fillStyle = 'rgba(0,0,0,0.2)'; c.fillRect(385, by + 24, 30, 2);
+    for (let i = 0; i < 6; i++) {
+      c.fillStyle = '#fdf6ea'; c.fillRect(387 + i * 5, by + (i % 3), 5, 14);
+      c.fillStyle = mugCols[(i + by) % 6]; c.fillRect(388 + i * 5, by + 1 + (i % 3), 3, 11);
+    }
+    c.fillStyle = '#5a3a20'; c.fillRect(385, by + 12, 30, 1);
+  }
+  c.fillStyle = '#fdf6ea'; c.fillRect(392, 211, 16, 9); c.fillStyle = GH_ORANGED; c.font = '700 5px monospace'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('ART', 400, 215.6);
+  // fiddle-leaf fig in a sage pot (12,8)
+  c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(386, 286, 26, 3);
+  c.fillStyle = '#8fb59c'; c.fillRect(390, 268, 18, 19); c.fillStyle = '#6e9a82'; c.fillRect(388, 266, 22, 4);
+  c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(392, 272, 3, 12);
+  c.fillStyle = '#5a4a30'; c.fillRect(398, 248, 3, 19);
+  for (const [lx, ly, rx, ry, rot] of [[391, 253, 7, 4, -0.7], [409, 252, 7, 4, 0.7], [399, 243, 7, 5, 0], [392, 262, 7, 4, -0.5], [408, 262, 7, 4, 0.5]]) {
+    c.fillStyle = '#3a8a3a'; c.beginPath(); c.ellipse(lx, ly, rx, ry, rot, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#5aae4a'; c.beginPath(); c.ellipse(lx - 1.5, ly - 1, rx * 0.5, ry * 0.5, rot, 0, Math.PI * 2); c.fill();
+  }
+
+  // ---------------------------------------------------------------- front wall: pink-framed windows with palm decals
+  const fy = 9 * TILE;
+  for (const [x0, x1, pink] of [[TILE, 6 * TILE, false], [7 * TILE, 13 * TILE, true]]) {
+    c.fillStyle = GH_PINKD; c.fillRect(x0, fy, x1 - x0, TILE);
+    c.fillStyle = GH_PINK; c.fillRect(x0, fy, x1 - x0, 2);
+    const gg = c.createLinearGradient(0, fy + 4, 0, fy + 28);
+    gg.addColorStop(0, '#9fc79a'); gg.addColorStop(1, '#e8f0dc');
+    c.fillStyle = gg; c.fillRect(x0 + 3, fy + 5, x1 - x0 - 6, 22);
+    for (let x = x0 + 12; x < x1 - 8; x += 22) {                                          // greenery + street light through the glass
+      c.fillStyle = 'rgba(40,90,50,0.55)'; c.beginPath(); c.arc(x, fy + 12, 6, 0, Math.PI * 2); c.fill();
+    }
+    c.fillStyle = GH_PINKD; c.fillRect((x0 + x1) / 2 - 1, fy + 4, 3, 24);
+    // hanging plants in the window + a palm-leaf decal (orange on the left, pink on the right)
+    c.fillStyle = '#3f8a3a'; for (let x = x0 + 8; x < x1 - 8; x += 30) { c.beginPath(); c.arc(x, fy + 24, 3.5, 0, Math.PI * 2); c.fill(); c.fillStyle = '#e8d8c0'; c.fillRect(x - 3, fy + 25, 6, 3); c.fillStyle = '#3f8a3a'; }
+    ghPalmFan(c, x0 + (x1 - x0) * 0.72, fy + 26, 17, pink ? 'rgba(250,150,195,0.95)' : 'rgba(238,135,73,0.95)');
+    c.fillStyle = '#b5587f'; c.fillRect(x0, fy + 28, x1 - x0, 4);
+  }
+  c.fillStyle = GH_PINKD; c.fillRect(6 * TILE - 3, fy, 3, TILE); c.fillRect(7 * TILE, fy, 3, TILE);
+}
+
+let _ghInteriorCache = null;
+function drawGoldenHourInterior(time) {
+  if (!_ghInteriorCache) {
+    const cv = document.createElement('canvas');
+    cv.width = 14 * TILE; cv.height = 10 * TILE;
+    paintGoldenHourInterior(cv.getContext('2d'));
+    _ghInteriorCache = cv;
+  }
+  ctx.drawImage(_ghInteriorCache, 0, 0);
+  // the logo plaque glows softly, as if the afternoon sun is hitting it
+  const a = 0.5 + 0.5 * Math.sin(time * 1.2);
+  ctx.fillStyle = 'rgba(255,190,110,' + (0.07 + 0.04 * a).toFixed(3) + ')';
+  ctx.beginPath(); ctx.ellipse(220, 34, 52, 22, 0, 0, Math.PI * 2); ctx.fill();
+  // disco ball: a ring of glints on the ball + drifting light flecks across the wall and floor
+  for (let i = 0; i < 7; i++) {
+    const ph = time * 1.6 + i * 0.9, gx = 52 + Math.cos(ph) * 6.2, gy = 24 + Math.sin(ph * 1.3 + i) * 6.2;
+    ctx.globalAlpha = 0.35 + 0.6 * Math.max(0, Math.sin(ph * 2.1));
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(Math.round(gx), Math.round(gy), 2, 2);
+  }
+  for (let i = 0; i < 14; i++) {
+    const ang = (i / 14) * Math.PI * 2 + time * 0.35;
+    const rr = 40 + ((i * 37) % 90);
+    const fx = 52 + Math.cos(ang) * rr, fy2 = 40 + Math.abs(Math.sin(ang * 0.8 + i)) * 200;
+    if (fx < TILE + 4 || fx > 13 * TILE - 4 || fy2 < 66 || fy2 > 9 * TILE - 6) continue;
+    ctx.globalAlpha = 0.10 + 0.14 * (0.5 + 0.5 * Math.sin(time * 2.4 + i * 1.7));
+    ctx.fillStyle = i % 3 === 0 ? '#ffd2e6' : i % 3 === 1 ? '#fff2c4' : '#d8ecff';
+    ctx.fillRect(Math.round(fx), Math.round(fy2), 3, 3);
+  }
+  ctx.globalAlpha = 1;
+  // late-afternoon "golden hour" light spilling through the front windows onto the floor
+  ctx.fillStyle = 'rgba(255,214,140,' + (0.05 + 0.02 * a).toFixed(3) + ')';
+  ctx.beginPath(); ctx.moveTo(2 * TILE, 8 * TILE + 4); ctx.lineTo(5 * TILE, 8 * TILE + 4); ctx.lineTo(6 * TILE, 6 * TILE); ctx.lineTo(3 * TILE, 6 * TILE); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(8 * TILE, 8 * TILE + 4); ctx.lineTo(12 * TILE, 8 * TILE + 4); ctx.lineTo(11 * TILE, 6 * TILE); ctx.lineTo(8 * TILE + 8, 6 * TILE); ctx.closePath(); ctx.fill();
+}
+
+// ---------------------------------------------------------------- BEVERAGE WAREHOUSE (Winooski, LEVEL 4)
+// A beer lover's dream come true: a massive warehouse-style bottle shop with beer from all
+// around the world (see makeWinooski()). Outside, modeled on photos of the real shop: a
+// white-painted brick front under a bold black name sign with a little grape leaf, a green
+// standing-seam metal awning, dark storefront windows crowded with neon beer signs and paper
+// flyers, a stone-block planter of orange daylilies, a painted grape in the end window and a
+// parking lot out front with a reserved accessible space.
+// Inside: long runs of wood shelving packed with bottles, black hanging country signs
+// (GERMANY, BELGIUM, MEXICO, JAPAN...), exposed ceiling ducts with fluorescent tubes, a
+// glass-door cooler wall, a reclaimed-wood "THIRSTY?" sign ringed with orange marquee bulbs,
+// a yellow safety mat by the door, a butcher-block checkout counter with a barn-wood front,
+// and a display of green beer cases around a wooden barrel.
+//
+// Static art is painted once into offscreen canvases; only the neon/tube glow and the
+// marquee sparkle are drawn live.
+const BW_WOODD = '#5a3a1c', BW_WOOD = '#8a5a2b', BW_WOODL = '#b98343';
+const BW_BOTTLES = ['#2f6a3a', '#3f7f45', '#9a5a1a', '#b9731f', '#4a2c14', '#d4e4e8', '#2f5fa0', '#6a2a2a'];
+const BW_LABELS = ['#f1e7cf', '#e8c85a', '#c0392b', '#f4f4f0', '#3fb0d8'];
+const BW_DOOR_TILE = 2;                       // the door is the 3rd tile of the 8-tile-wide storefront
+const BW_FAM = '"Georgia", "Palatino Linotype", "Times New Roman", serif';
+
+// One bottle, x = left edge, by = bottom edge (about 10px tall, 4px wide).
+function bwBottle(c, x, by, seed) {
+  x = Math.round(x);
+  c.fillStyle = BW_BOTTLES[seed % BW_BOTTLES.length]; c.fillRect(x, by - 7, 4, 7);          // body
+  c.fillRect(x + 1, by - 9, 2, 2);                                                           // neck
+  c.fillStyle = (seed % 3 === 0) ? '#d8b040' : '#c8c8c0'; c.fillRect(x + 1, by - 10, 2, 1);  // cap
+  c.fillStyle = BW_LABELS[(seed >> 2) % BW_LABELS.length]; c.fillRect(x, by - 5, 4, 3);      // label
+  c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(x, by - 7, 1, 6);                       // glint
+}
+
+// A tiny country flag (10x6) used as a shelf-talker on each bay.
+function bwFlag(c, x, y, k) {
+  k = k % 8;
+  if (k === 0) { c.fillStyle = '#111'; c.fillRect(x, y, 10, 2); c.fillStyle = '#d02a2a'; c.fillRect(x, y + 2, 10, 2); c.fillStyle = '#f0c030'; c.fillRect(x, y + 4, 10, 2); }          // DE
+  else if (k === 1) { c.fillStyle = '#111'; c.fillRect(x, y, 3, 6); c.fillStyle = '#f0c030'; c.fillRect(x + 3, y, 4, 6); c.fillStyle = '#d02a2a'; c.fillRect(x + 7, y, 3, 6); }         // BE
+  else if (k === 2) { c.fillStyle = '#2a8a3a'; c.fillRect(x, y, 3, 6); c.fillStyle = '#f4f4ee'; c.fillRect(x + 3, y, 4, 6); c.fillStyle = '#d02a2a'; c.fillRect(x + 7, y, 3, 6); }     // MX
+  else if (k === 3) { c.fillStyle = '#f4f4ee'; c.fillRect(x, y, 10, 6); c.fillStyle = '#d02a2a'; c.beginPath(); c.arc(x + 5, y + 3, 1.8, 0, Math.PI * 2); c.fill(); }                  // JP
+  else if (k === 4) { c.fillStyle = '#2a8a3a'; c.fillRect(x, y, 3, 6); c.fillStyle = '#f4f4ee'; c.fillRect(x + 3, y, 4, 6); c.fillStyle = '#ee8a2a'; c.fillRect(x + 7, y, 3, 6); }     // IE
+  else if (k === 5) { c.fillStyle = '#f4f4ee'; c.fillRect(x, y, 10, 6); c.fillStyle = '#d02a2a'; c.fillRect(x, y + 1, 10, 1); c.fillRect(x, y + 4, 10, 1); c.fillStyle = '#2a4a9a'; c.fillRect(x, y, 4, 3); }  // US
+  else if (k === 6) { c.fillStyle = '#f4f4ee'; c.fillRect(x, y, 10, 3); c.fillStyle = '#d02a2a'; c.fillRect(x, y + 3, 10, 3); c.fillStyle = '#2a4a9a'; c.beginPath(); c.moveTo(x, y); c.lineTo(x + 5, y + 3); c.lineTo(x, y + 6); c.closePath(); c.fill(); } // CZ
+  else { c.fillStyle = '#f4f4ee'; c.fillRect(x, y, 10, 6); c.fillStyle = '#d02a2a'; c.fillRect(x + 4, y, 2, 6); c.fillRect(x, y + 2, 10, 2); }                                         // GB
+  c.strokeStyle = 'rgba(0,0,0,0.45)'; c.lineWidth = 1; c.strokeRect(x + 0.5, y + 0.5, 9, 5);
+}
+
+// One 32x32 bay of wood shelving: three tiers of bottles (or the odd carton), a flag on the rail.
+function bwShelfBay(c, x, y, seed) {
+  c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(x + 1, y + 30, 31, 3);
+  c.fillStyle = BW_WOODD; c.fillRect(x, y, 32, 32);
+  c.fillStyle = '#2e1d10'; c.fillRect(x + 2, y + 2, 28, 28);
+  for (let t = 0; t < 3; t++) {
+    const base = y + 10 + t * 10, hv = mhHash(seed, t + 3);
+    if (hv % 7 === 0) {                                                                   // cartons of six-packs
+      for (let k = 0; k < 3; k++) {
+        c.fillStyle = ['#c0392b', '#2f7f45', '#e0a030', '#2f5fa0'][(hv + k) % 4]; c.fillRect(x + 3 + k * 9, base - 8, 8, 8);
+        c.fillStyle = '#f4f2ea'; c.fillRect(x + 4 + k * 9, base - 6, 6, 3);
+      }
+    } else {
+      for (let k = 0; k < 6; k++) bwBottle(c, x + 3 + k * 4.6, base, hv + k * 13);
+    }
+    c.fillStyle = BW_WOODL; c.fillRect(x + 2, base, 28, 2);                               // shelf board
+    c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(x + 2, base + 2, 28, 1);
+    if (hv % 3 === 0) { c.fillStyle = '#f4e46a'; c.fillRect(x + 4 + (hv % 20), base + 1, 4, 1); }   // price tag
+  }
+  c.fillStyle = BW_WOOD; c.fillRect(x, y, 32, 2); c.fillRect(x, y, 2, 32); c.fillRect(x + 30, y, 2, 32);
+  c.fillStyle = 'rgba(255,255,255,0.18)'; c.fillRect(x, y, 32, 1);
+  bwFlag(c, x + 11, y + 23, (seed * 5 + 1) >> 1);
+}
+
+// A black hanging country sign on two little chains (cx = center, y = top of the plate).
+function bwHangSign(c, cx, y, text) {
+  c.font = '700 6px monospace'; c.textAlign = 'center'; c.textBaseline = 'middle';
+  const sw = Math.max(30, Math.ceil(c.measureText(text).width) + 8);
+  c.fillStyle = '#6a6862'; c.fillRect(cx - sw / 2 + 3, y - 6, 1, 6); c.fillRect(cx + sw / 2 - 4, y - 6, 1, 6);
+  c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(cx - sw / 2 + 1, y + 2, sw, 10);
+  c.fillStyle = '#121212'; c.fillRect(cx - sw / 2, y, sw, 10);
+  c.fillStyle = '#f4f2ea'; c.fillText(text, cx, y + 5.5);
+}
+
+// The little grape leaf from the shop's sign.
+function bwGrapeLeaf(c, x, y, s) {
+  const k = s / 10;
+  const pts = [[0, -9], [3, -6], [8, -7], [6, -2], [10, 2], [5, 3], [5, 8], [0, 5], [-5, 8], [-5, 3], [-10, 2], [-6, -2], [-8, -7], [-3, -6]];
+  c.fillStyle = '#2d8a3a'; c.strokeStyle = '#17501f'; c.lineWidth = 0.8;
+  c.beginPath();
+  pts.forEach(([px, py], i) => { if (i) c.lineTo(x + px * k, y + py * k); else c.moveTo(x + px * k, y + py * k); });
+  c.closePath(); c.fill(); c.stroke();
+  c.strokeStyle = '#17501f'; c.beginPath();
+  c.moveTo(x, y + 5 * k); c.lineTo(x, y - 6 * k); c.moveTo(x, y + 2 * k); c.lineTo(x + 6 * k, y - 1 * k); c.moveTo(x, y + 2 * k); c.lineTo(x - 6 * k, y - 1 * k);
+  c.stroke();
+}
+
+// A little neon sign: dark plate, glowing outline + text.
+function bwNeon(c, x, y, w, h, col, text, fs) {
+  c.fillStyle = '#0d1016'; c.fillRect(x, y, w, h);
+  c.save();
+  c.shadowColor = col; c.shadowBlur = 4;
+  c.strokeStyle = col; c.lineWidth = 1.2; c.strokeRect(x + 1.5, y + 1.5, w - 3, h - 3);
+  c.fillStyle = '#ffffff'; c.font = '800 ' + (fs || 8) + 'px "Arial Black", Impact, sans-serif';
+  c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(text, x + w / 2, y + h / 2 + 0.5);
+  c.restore();
+}
+
+// A round tin beer sign (orange / red).
+function bwRoundSign(c, cx, cy, r, col, text) {
+  c.fillStyle = '#1b1b1b'; c.beginPath(); c.arc(cx, cy, r + 1.5, 0, Math.PI * 2); c.fill();
+  c.fillStyle = col; c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.fill();
+  c.strokeStyle = '#f4ecd6'; c.lineWidth = 1; c.beginPath(); c.arc(cx, cy, r - 2.2, 0, Math.PI * 2); c.stroke();
+  c.fillStyle = '#f4ecd6'; c.font = '800 5px "Arial Black", Impact, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillText(text, cx, cy + 0.5);
+}
+
+function paintBeverageWarehouseExterior(c, w, h, doorLX) {
+  // ---- white-painted brick with faint mortar lines
+  c.fillStyle = '#ebe8e0'; c.fillRect(0, 0, w, h);
+  c.fillStyle = 'rgba(120,116,108,0.20)';
+  for (let row = 0, y = 2; y < h; y += 7, row++) {
+    c.fillRect(0, y + 6, w, 1);
+    const off = row % 2 ? 8 : 0;
+    for (let x = off; x < w; x += 16) c.fillRect(x, y, 1, 7);
+  }
+  c.fillStyle = 'rgba(0,0,0,0.10)'; c.fillRect(0, 0, 3, h); c.fillRect(w - 3, 0, 3, h);
+  c.fillStyle = '#cfcbc0'; c.fillRect(0, 0, w, 3); c.fillStyle = '#f6f4ee'; c.fillRect(0, 0, w, 1);
+
+  // ---- name sign: bold black serif on a pale plate, with the grape leaf
+  c.fillStyle = '#f3e8ea'; c.fillRect(6, 7, w - 12, 25);
+  c.strokeStyle = '#4a3a3e'; c.lineWidth = 1; c.strokeRect(6.5, 7.5, w - 13, 24);
+  const NAME = 'BEVERAGE WAREHOUSE';
+  let fs = 17; c.font = '800 ' + fs + 'px ' + BW_FAM;
+  while (fs > 9 && c.measureText(NAME).width > w - 64) { fs--; c.font = '800 ' + fs + 'px ' + BW_FAM; }
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillText(NAME, (w - 30) / 2 + 1, 20.5);
+  c.fillStyle = '#16130f'; c.fillText(NAME, (w - 30) / 2, 19.5);
+  bwGrapeLeaf(c, w - 24, 19.5, 15);
+
+  // ---- green standing-seam metal awning over the door + the three windows
+  const awW = doorLX + 110;
+  c.fillStyle = 'rgba(0,0,0,0.20)'; c.fillRect(0, 66, awW, 6);
+  const ag = c.createLinearGradient(0, 34, 0, 66); ag.addColorStop(0, '#6fb09a'); ag.addColorStop(1, '#3f8571');
+  c.fillStyle = ag; c.fillRect(0, 34, awW, 30);
+  for (let x = 4; x < awW; x += 9) {
+    c.fillStyle = 'rgba(255,255,255,0.18)'; c.fillRect(x, 34, 1, 30);
+    c.fillStyle = 'rgba(0,0,0,0.20)'; c.fillRect(x + 1, 34, 1, 30);
+  }
+  c.fillStyle = '#8cc7b2'; c.fillRect(0, 34, awW, 2);
+  c.fillStyle = '#2f6a5a'; c.fillRect(0, 62, awW, 4); c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(0, 62, awW, 1);
+  c.fillStyle = '#2f6a5a'; c.fillRect(awW - 3, 34, 3, 32);
+
+  // ---- storefront windows (dark tinted glass, bottles glimpsed inside)
+  const win = (x0, x1) => {
+    c.fillStyle = '#202226'; c.fillRect(x0 - 2, 72, x1 - x0 + 4, 58);
+    const g2 = c.createLinearGradient(0, 74, 0, 128);
+    g2.addColorStop(0, '#6f93a0'); g2.addColorStop(0.55, '#3c5663'); g2.addColorStop(1, '#26323a');
+    c.fillStyle = g2; c.fillRect(x0, 74, x1 - x0, 54);
+    c.globalAlpha = 0.5;
+    for (let x = x0 + 3; x < x1 - 3; x += 5) {
+      const hv = mhHash(x, x0);
+      c.fillStyle = BW_BOTTLES[hv % BW_BOTTLES.length]; c.fillRect(x, 112 + (hv % 4), 3, 16 - (hv % 4));
+    }
+    c.globalAlpha = 1;
+    c.fillStyle = 'rgba(255,255,255,0.10)';
+    c.beginPath(); c.moveTo(x0 + 8, 74); c.lineTo(x0 + 16, 74); c.lineTo(x0 + 4, 128); c.lineTo(x0, 128); c.lineTo(x0, 118); c.closePath(); c.fill();
+  };
+  const flyer = (x, y, fw, fh, col) => {
+    c.fillStyle = col; c.fillRect(x, y, fw, fh);
+    c.fillStyle = 'rgba(0,0,0,0.28)'; for (let ly = y + 2; ly < y + fh - 1; ly += 3) c.fillRect(x + 1.5, ly, fw - 3, 1);
+  };
+  // left window: blue IPA neon + a spread of paper flyers
+  win(6, doorLX - 6);
+  bwNeon(c, 12, 80, 34, 15, '#5a7bff', 'IPA', 9);
+  flyer(10, 102, 9, 12, '#f4f2ea'); flyer(21, 100, 8, 13, '#f7e8c8'); flyer(32, 103, 9, 11, '#f4f2ea'); flyer(44, 101, 8, 12, '#f3c9d4');
+  // window A: orange round tin sign + flyers
+  win(doorLX + 36, doorLX + 68);
+  bwRoundSign(c, doorLX + 52, 90, 9, '#d9692a', 'PALE ALE');
+  flyer(doorLX + 40, 106, 8, 12, '#f4f2ea'); flyer(doorLX + 56, 108, 9, 11, '#f7e8c8');
+  // window B: red round sign + a green hop badge
+  win(doorLX + 72, doorLX + 104);
+  bwRoundSign(c, doorLX + 82, 88, 7, '#b52a2a', 'LOCAL');
+  c.fillStyle = '#1b1b1b'; c.fillRect(doorLX + 91, 82, 11, 14);
+  c.fillStyle = '#3f9a4a'; for (const [hx, hy] of [[96, 86], [94, 89], [98, 89], [96, 92]]) { c.beginPath(); c.ellipse(doorLX + hx, hy, 2.2, 2.8, 0, 0, Math.PI * 2); c.fill(); }
+  flyer(doorLX + 76, 106, 9, 12, '#f4f2ea'); flyer(doorLX + 90, 104, 10, 13, '#f3c9d4');
+
+  // ---- glass door (warm light inside), "OPEN" sign, push bar
+  c.fillStyle = '#1c1d20'; c.fillRect(doorLX - 2, 98, 36, h - 98);
+  const dg = c.createLinearGradient(0, 100, 0, h); dg.addColorStop(0, '#f0d9a0'); dg.addColorStop(1, '#b08850');
+  c.fillStyle = dg; c.fillRect(doorLX + 1, 101, 30, h - 101);
+  c.fillStyle = 'rgba(255,255,255,0.22)'; c.fillRect(doorLX + 3, 103, 4, h - 108);
+  c.fillStyle = '#1c1d20'; c.fillRect(doorLX + 15, 101, 2, h - 101);                 // center mullion
+  c.fillStyle = '#9a968c'; c.fillRect(doorLX + 11, 124, 2, 14); c.fillRect(doorLX + 19, 124, 2, 14);   // push bars
+  bwNeon(c, doorLX + 6, 106, 20, 9, '#ff4a3a', 'OPEN', 6);
+  c.fillStyle = '#3a2a20'; c.fillRect(doorLX, h - 4, 32, 4);                           // mat
+
+  // ---- stone-block planter under the windows
+  const block = (x0, x1) => {
+    c.fillStyle = '#8d8a84'; c.fillRect(x0, 130, x1 - x0, 22);
+    for (let row = 0; row < 3; row++) {
+      c.fillStyle = 'rgba(0,0,0,0.20)'; c.fillRect(x0, 136 + row * 7, x1 - x0, 1);
+      const off = row % 2 ? 8 : 0;
+      for (let x = x0 + off; x < x1; x += 16) c.fillRect(x, 130 + row * 7, 1, 7);
+    }
+    c.fillStyle = '#b9b5ac'; c.fillRect(x0 - 1, 128, x1 - x0 + 2, 3);
+    c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(x0 - 1, 128, x1 - x0 + 2, 1);
+  };
+  block(0, doorLX - 2); block(doorLX + 34, awW + 4);
+  // orange daylilies: green blade clumps with blooms
+  const lilies = (cx, ly) => {
+    c.strokeStyle = '#3f8a3a'; c.lineWidth = 1.4;
+    for (let i = -5; i <= 5; i++) { c.beginPath(); c.moveTo(cx + i * 1.4, ly + 14); c.quadraticCurveTo(cx + i * 3, ly + 4, cx + i * 3.6, ly - 6 + Math.abs(i)); c.stroke(); }
+    for (const [bx, by, col] of [[-9, -4, '#ee7a2a'], [-3, -9, '#f4a23a'], [4, -6, '#ee7a2a'], [9, -2, '#f4a23a'], [0, -1, '#e8641c']]) {
+      c.fillStyle = col; c.fillRect(cx + bx - 2, ly + by - 1, 4, 3); c.fillRect(cx + bx - 1, ly + by - 2, 2, 5);
+      c.fillStyle = '#c24a0c'; c.fillRect(cx + bx, ly + by, 1, 1);
+    }
+  };
+  lilies(24, 126); lilies(doorLX + 52, 128); lilies(doorLX + 96, 126);
+
+  // ---- end window: a lavender grape painted on the glass + OPEN neon
+  win(182, w - 8);
+  const sky = c.createLinearGradient(0, 74, 0, 128); sky.addColorStop(0, '#9cc6e6'); sky.addColorStop(1, '#6c92b4');
+  c.fillStyle = sky; c.fillRect(182, 74, w - 8 - 182, 54);
+  c.globalAlpha = 0.55; c.fillStyle = '#ffffff'; c.beginPath(); c.ellipse(204, 84, 10, 4, 0, 0, Math.PI * 2); c.ellipse(232, 96, 8, 3, 0, 0, Math.PI * 2); c.fill(); c.globalAlpha = 1;
+  const gx = 216, gy = 100;                                                           // grape cluster, widest at the top
+  for (const [ox, oy] of [[-12, 0], [-4, -1], [4, -1], [12, 0], [-8, 8], [0, 7], [8, 8], [-4, 15], [4, 15], [0, 22]]) {
+    c.fillStyle = '#7c66aa'; c.beginPath(); c.arc(gx + ox, gy + oy, 6.2, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#a58fcf'; c.beginPath(); c.arc(gx + ox - 1.2, gy + oy - 1.2, 4.6, 0, Math.PI * 2); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.45)'; c.fillRect(gx + ox - 3, gy + oy - 3, 2, 2);
+  }
+  c.fillStyle = '#5a4a2a'; c.fillRect(gx - 1, gy - 12, 3, 8);
+  bwGrapeLeaf(c, gx + 11, gy - 10, 14);
+  bwNeon(c, 190, 78, 22, 9, '#ff4a3a', 'OPEN', 6);
+
+  // ---- foundation strip
+  c.fillStyle = '#6e6b66'; c.fillRect(0, h - 8, w, 8);
+  c.fillStyle = '#6a4a40'; c.fillRect(doorLX, h - 4, 32, 4);
+}
+
+let _bwExteriorCache = null;
+function drawBeverageWarehouseExterior(px, py, w, h, dx) {
+  const doorLX = dx - px;
+  if (!_bwExteriorCache || _bwExteriorCache.w !== w || _bwExteriorCache.h !== h || _bwExteriorCache.d !== doorLX) {
+    const cv = document.createElement('canvas');
+    cv.width = w; cv.height = h;
+    paintBeverageWarehouseExterior(cv.getContext('2d'), w, h, doorLX);
+    _bwExteriorCache = { cv, w, h, d: doorLX };
+  }
+  ctx.drawImage(_bwExteriorCache.cv, px, py);
+}
+
+// Live bits of the storefront: the neon signs breathe (the IPA sign flickers now and then).
+function drawBeverageWarehouseLive(px, py, w, h) {
+  const t = performance.now() / 1000, dl = BW_DOOR_TILE * TILE;
+  const flick = (Math.sin(t * 0.8) > 0.97) ? 0.45 : 1;
+  const glow = (cx, cy, rx, ry, rgb, a) => {
+    ctx.fillStyle = 'rgba(' + rgb + ',' + a.toFixed(3) + ')';
+    ctx.beginPath(); ctx.ellipse(px + cx, py + cy, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
+  };
+  glow(29, 88, 26, 12, '106,123,255', 0.26 * flick);                                  // IPA
+  glow(dl + 52, 90, 16, 14, '255,150,70', 0.18 + 0.05 * Math.sin(t * 1.7));           // orange tin sign
+  glow(dl + 82, 88, 12, 11, '255,90,70', 0.14);
+  glow(dl + 16, 110, 18, 8, '255,74,58', 0.22 + 0.06 * Math.sin(t * 2.6));            // door OPEN
+  glow(201, 82, 16, 8, '255,74,58', 0.22 + 0.06 * Math.sin(t * 2.6 + 1));             // window OPEN
+}
+
+// The front parking lot (painted lines, wheel stops, reserved accessible space + sign). Called
+// from drawWinooskiDecorations(); L = map.winooski.bwLot in tile coords.
+function drawBeverageWarehouseLot(L, x0, x1, y0, y1) {
+  const ox = L.x * TILE, oy = L.y * TILE, lw = L.w * TILE, lh = L.h * TILE;
+  if (ox > x1 || ox + lw < x0 || oy - TILE > y1 || oy + lh < y0) return;
+  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+  for (let i = 0; i <= L.w; i += 2) ctx.fillRect(ox + i * TILE - 1, oy + 2, 3, 2 * TILE - 4);       // space dividers
+  for (let b = 0; b < L.w / 2; b++) {                                                                // wheel stops
+    ctx.fillStyle = '#8f8c86'; ctx.fillRect(ox + b * 2 * TILE + 16, oy + 6, 32, 5);
+    ctx.fillStyle = '#b9b6ae'; ctx.fillRect(ox + b * 2 * TILE + 16, oy + 6, 32, 1);
+  }
+  // accessible space: blue square with the white wheelchair symbol
+  const sx = ox + TILE, sy = oy + 36;
+  ctx.fillStyle = '#2f6fcb'; ctx.fillRect(sx - 12, sy - 12, 24, 24);
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath(); ctx.arc(sx - 1, sy - 7, 2.2, 0, Math.PI * 2); ctx.fill();
+  ctx.fillRect(sx - 2, sy - 4, 2.5, 7); ctx.fillRect(sx - 2, sy + 1, 7, 2.2);
+  ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(sx - 1, sy + 3, 5.5, 0.6, Math.PI * 1.35); ctx.stroke();
+  // RESERVED PARKING sign on a pole at the corner of the sidewalk
+  const px0 = ox + 6, py0 = (L.y - 1) * TILE + 6;
+  ctx.fillStyle = '#5a5e66'; ctx.fillRect(px0 + 5, py0 + 14, 3, 18);
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(px0, py0, 14, 17);
+  ctx.strokeStyle = '#2f6fcb'; ctx.lineWidth = 1; ctx.strokeRect(px0 + 0.5, py0 + 0.5, 13, 16);
+  ctx.fillStyle = '#2f6fcb'; ctx.fillRect(px0 + 3, py0 + 3, 8, 6);
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(px0 + 6, py0 + 4, 2, 3);
+  ctx.fillStyle = '#2a2a2a'; ctx.fillRect(px0 + 2, py0 + 11, 10, 1); ctx.fillRect(px0 + 3, py0 + 13, 8, 1);
+}
+
+// ---------------------------------------------------------------- interior
+// Solid props are plain 'W'/'T' tiles in the shop def (blockTiles/extraTables) that this painter
+// dresses up: back wall (row 1: coolers + THIRSTY? sign), left wall shelf (1,2)..(1,8), aisle
+// island A (4,3)..(4,7), island B (8,5)..(8,8), right wall shelf (12,5)..(12,8); the checkout
+// counter is the default 'T' row at y=3 (x 8..12) with the clerk behind it at (10,2); the barrel
+// + beer-case display is (10,6)(11,6).
+function paintBeverageWarehouseInterior(c) {
+  const W = 14 * TILE, H = 10 * TILE;
+
+  // ---------------------------------------------------------------- polished concrete floor + safety mat
+  c.fillStyle = '#a39d94'; c.fillRect(TILE, 2 * TILE, 12 * TILE, 7 * TILE);
+  c.fillStyle = 'rgba(0,0,0,0.12)';
+  for (let y = 2 * TILE; y < 9 * TILE; y += 64) c.fillRect(TILE, y, 12 * TILE, 1);
+  for (let x = TILE; x < 13 * TILE; x += 64) c.fillRect(x, 2 * TILE, 1, 7 * TILE);
+  for (let i = 0; i < 260; i++) {
+    const hv = mhHash(i, 77), fx = TILE + (hv % (12 * TILE)), fy = 2 * TILE + ((hv >>> 8) % (7 * TILE));
+    c.fillStyle = (hv & 1) ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)'; c.fillRect(fx, fy, 2, 1);
+  }
+  for (const ax of [2 * TILE, 5 * TILE + 8, 9 * TILE]) { c.fillStyle = 'rgba(255,255,255,0.05)'; c.fillRect(ax, 2 * TILE + 8, 48, 6 * TILE); }   // worn aisle lanes
+  // yellow safety mat just inside the door
+  c.fillStyle = '#7a6410'; c.fillRect(166, 254, 84, 34);
+  c.fillStyle = '#e6c230'; c.fillRect(168, 256, 80, 30);
+  c.fillStyle = 'rgba(0,0,0,0.25)'; for (let x = 172; x < 246; x += 6) for (let y = 260; y < 284; y += 6) c.fillRect(x, y, 2, 2);
+  c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(168, 256, 80, 1);
+
+  // ---------------------------------------------------------------- back wall: ceiling ducts, white brick, baseboard
+  c.fillStyle = '#e6e2d8'; c.fillRect(0, 0, W, 64);
+  c.fillStyle = 'rgba(0,0,0,0.07)';
+  for (let y = 10; y < 60; y += 6) { c.fillRect(0, y, W, 1); const off = (((y / 6) | 0) % 2) ? 8 : 0; for (let x = off; x < W; x += 16) c.fillRect(x, y, 1, 6); }
+  c.fillStyle = '#1d1917'; c.fillRect(0, 0, W, 9);
+  c.fillStyle = '#4a4742'; c.fillRect(0, 2, W, 3); c.fillStyle = '#6a665f'; c.fillRect(0, 2, W, 1);
+  c.fillStyle = '#8b8680'; c.fillRect(0, 7, W, 1);
+  for (let x = 40; x < W; x += 96) { c.fillStyle = '#2a2724'; c.fillRect(x, 0, 3, 9); }
+  c.fillStyle = BW_WOODD; c.fillRect(0, 60, W, 4); c.fillStyle = 'rgba(255,255,255,0.2)'; c.fillRect(0, 60, W, 1);
+
+  // cooler wall: two banks of three glass doors flanking the sign
+  const cooler = (x0, seed) => {
+    c.fillStyle = '#23262b'; c.fillRect(x0 - 2, 12, 3 * 26 + 2, 48);
+    for (let i = 0; i < 3; i++) {
+      const x = x0 + i * 26;
+      c.fillStyle = '#e9f4f6'; c.fillRect(x, 14, 24, 44);
+      for (let t = 0; t < 4; t++) {
+        const by = 24 + t * 10;
+        for (let k = 0; k < 5; k++) bwBottle(c, x + 2 + k * 4.4, by, seed + i * 31 + t * 7 + k * 5);
+        c.fillStyle = '#b8c4c8'; c.fillRect(x, by, 24, 1);
+      }
+      c.fillStyle = 'rgba(255,255,255,0.22)'; c.fillRect(x + 2, 14, 3, 44);
+      c.fillStyle = '#23262b'; c.fillRect(x + 22, 30, 2, 14);
+    }
+  };
+  cooler(36, 3); cooler(336, 11);
+
+  // "THIRSTY?" -- reclaimed-wood board with orange marquee bulbs
+  c.fillStyle = '#5b4030'; c.fillRect(122, 10, 204, 32);
+  for (const gy of [17, 24, 31, 38]) { c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(122, gy, 204, 1); }
+  c.fillStyle = 'rgba(255,255,255,0.06)'; for (let gx = 130; gx < 322; gx += 23) c.fillRect(gx, 10, 1, 32);
+  c.strokeStyle = '#2c1d12'; c.lineWidth = 2; c.strokeRect(123, 11, 202, 30);
+  let tfs = 24; c.font = '800 ' + tfs + 'px "Arial Black", Impact, sans-serif';
+  while (tfs > 12 && c.measureText('THIRSTY?').width > 176) { tfs--; c.font = '800 ' + tfs + 'px "Arial Black", Impact, sans-serif'; }
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillStyle = '#7a2f0c'; c.fillText('THIRSTY?', 224, 27);
+  c.save(); c.setLineDash([1.6, 3]); c.lineWidth = 2.4; c.strokeStyle = '#ffc95a'; c.strokeText('THIRSTY?', 224, 27); c.restore();
+  // chalkboard under the sign
+  c.fillStyle = '#2a1c12'; c.fillRect(148, 44, 152, 15);
+  c.fillStyle = '#26352c'; c.fillRect(150, 46, 148, 11);
+  c.fillStyle = '#f4f2e6'; c.font = '700 6px monospace'; c.fillText('BEER FROM EVERYWHERE', 224, 51.5);
+
+  // ---------------------------------------------------------------- checkout counter (x 8..12, row 3)
+  c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(258, 127, 156, 4);
+  c.fillStyle = '#6a4a34'; c.fillRect(256, 106, 160, 22);
+  for (let x = 256; x < 416; x += 10) {
+    c.fillStyle = (mhHash(x, 3) % 2) ? '#5c3f2b' : '#745238'; c.fillRect(x, 106, 9, 22);
+    c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(x + 9, 106, 1, 22);
+  }
+  c.fillStyle = '#c98a4a'; c.fillRect(254, 96, 164, 12);                              // butcher-block top
+  for (let x = 258; x < 416; x += 14) { c.fillStyle = 'rgba(120,70,20,0.35)'; c.fillRect(x, 96, 1, 12); }
+  c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(254, 96, 164, 1);
+  c.fillStyle = '#8a5a2b'; c.fillRect(254, 108, 164, 2);
+  // cash register + card reader
+  c.fillStyle = '#2a2d33'; c.fillRect(264, 84, 18, 13); c.fillStyle = '#6fb0c0'; c.fillRect(266, 86, 14, 6);
+  c.fillStyle = '#3a3e46'; c.fillRect(262, 92, 22, 6); c.fillStyle = '#d8d4c8'; for (let k = 0; k < 4; k++) c.fillRect(265 + k * 5, 94, 3, 2);
+  // sample pints + a stack of growlers (amber jugs with handles)
+  for (const gx of [296, 304]) { c.fillStyle = 'rgba(235,245,250,0.85)'; c.fillRect(gx, 88, 6, 9); c.fillStyle = '#e8a030'; c.fillRect(gx + 1, 90, 4, 6); c.fillStyle = '#fbf6e8'; c.fillRect(gx, 88, 6, 2); }
+  for (const gx of [376, 392, 404]) {
+    c.fillStyle = '#a9651c'; c.fillRect(gx, 80, 10, 17); c.fillRect(gx + 3, 76, 4, 5);
+    c.fillStyle = '#6a3a0c'; c.fillRect(gx + 2, 75, 6, 2);
+    c.strokeStyle = '#6a3a0c'; c.lineWidth = 1.4; c.beginPath(); c.arc(gx + 11.5, 85, 3.4, -1.3, 1.3); c.stroke();
+    c.fillStyle = '#f4ecd6'; c.fillRect(gx + 1.5, 86, 7, 5);
+    c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(gx + 1, 81, 2, 14);
+  }
+
+  // ---------------------------------------------------------------- shelving: wall runs + two aisle islands
+  let sd = 1;
+  for (let ty = 2; ty <= 8; ty++) bwShelfBay(c, TILE, ty * TILE, sd++);                // left wall
+  for (let ty = 3; ty <= 7; ty++) bwShelfBay(c, 4 * TILE, ty * TILE, sd++ + 20);       // island A
+  for (let ty = 5; ty <= 8; ty++) bwShelfBay(c, 8 * TILE, ty * TILE, sd++ + 40);       // island B
+  for (let ty = 5; ty <= 8; ty++) bwShelfBay(c, 12 * TILE, ty * TILE, sd++ + 60);      // right wall
+  bwHangSign(c, 48, 52, 'BELGIUM');
+  bwHangSign(c, 144, 84, 'GERMANY');
+  bwHangSign(c, 272, 148, 'MEXICO');
+  bwHangSign(c, 400, 148, 'JAPAN');
+
+  // ---------------------------------------------------------------- barrel + green beer-case display (10,6)(11,6)
+  c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(322, 222, 62, 4);
+  c.fillStyle = '#7a4a22'; c.beginPath(); c.ellipse(337, 214, 15, 9, 0, 0, Math.PI * 2); c.fill();              // barrel body
+  c.fillRect(322, 202, 30, 12);
+  c.fillStyle = '#9a6a38'; c.beginPath(); c.ellipse(337, 202, 15, 5, 0, 0, Math.PI * 2); c.fill();              // barrel top
+  c.fillStyle = '#3a2410'; c.beginPath(); c.ellipse(337, 202, 11, 3, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#3a3a3c'; c.fillRect(322, 206, 30, 2); c.fillRect(322, 216, 30, 2);                           // iron hoops
+  for (let k = 0; k < 4; k++) bwBottle(c, 328 + k * 5.5, 201, 5 + k * 3);
+  for (let i = 0; i < 3; i++) {                                                                                 // case stack
+    const cy = 214 - i * 9, cx = 357 + (i === 1 ? 2 : 0);
+    c.fillStyle = '#25873f'; c.fillRect(cx, cy, 26, 9);
+    c.fillStyle = '#3fb05a'; c.fillRect(cx, cy, 26, 2);
+    c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(cx + 25, cy, 1, 9);
+    c.fillStyle = '#f4f2ea'; c.fillRect(cx + 7, cy + 3, 12, 4);
+    c.fillStyle = '#c0392b'; c.fillRect(cx + 9, cy + 4, 8, 2);
+  }
+  c.fillStyle = '#b52a2a'; c.fillRect(361, 187, 22, 7); c.fillStyle = '#d84a4a'; c.fillRect(361, 187, 22, 2);   // red crate on top
+
+  // ---------------------------------------------------------------- front wall: white brick with windows (door gap at tile 6)
+  const fy = 9 * TILE;
+  for (const [x0, x1] of [[TILE, 6 * TILE], [7 * TILE, 13 * TILE]]) {
+    c.fillStyle = '#e6e2d8'; c.fillRect(x0, fy, x1 - x0, TILE);
+    c.fillStyle = '#cfcbc0'; c.fillRect(x0, fy, x1 - x0, 2);
+    c.fillStyle = '#202226'; c.fillRect(x0 + 8, fy + 4, x1 - x0 - 16, 22);
+    const gg = c.createLinearGradient(0, fy + 5, 0, fy + 25); gg.addColorStop(0, '#8fb4c4'); gg.addColorStop(1, '#d6e6ea');
+    c.fillStyle = gg; c.fillRect(x0 + 10, fy + 6, x1 - x0 - 20, 18);
+    c.fillStyle = '#202226'; c.fillRect((x0 + x1) / 2 - 1, fy + 4, 3, 22);
+    c.fillStyle = '#6e6b66'; c.fillRect(x0, fy + 28, x1 - x0, 4);
+  }
+  // neon seen from the inside of the windows
+  c.fillStyle = '#5a7bff'; c.fillRect(70, fy + 11, 24, 2); c.fillRect(70, fy + 17, 24, 2);
+  c.fillStyle = '#ff6a4a'; c.beginPath(); c.arc(330, fy + 15, 5, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#6e6b66'; c.fillRect(6 * TILE - 3, fy, 3, TILE); c.fillRect(7 * TILE, fy, 3, TILE);
+}
+
+let _bwInteriorCache = null;
+function drawBeverageWarehouseInterior(time) {
+  if (!_bwInteriorCache) {
+    const cv = document.createElement('canvas');
+    cv.width = 14 * TILE; cv.height = 10 * TILE;
+    paintBeverageWarehouseInterior(cv.getContext('2d'));
+    _bwInteriorCache = cv;
+  }
+  ctx.drawImage(_bwInteriorCache, 0, 0);
+  // fluorescent tubes along the ceiling (one flickers now and then) + a soft spill of cold light
+  [48, 178, 308].forEach((x0, i) => {
+    const f = (Math.sin(time * 0.9 + i * 5.1) > 0.985) ? 0.55 : 1;
+    ctx.fillStyle = 'rgba(235,245,255,' + (0.92 * f).toFixed(3) + ')'; ctx.fillRect(x0, 3, 92, 3);
+    ctx.fillStyle = 'rgba(220,235,255,' + (0.06 * f).toFixed(3) + ')';
+    ctx.beginPath(); ctx.moveTo(x0, 6); ctx.lineTo(x0 + 92, 6); ctx.lineTo(x0 + 120, 62); ctx.lineTo(x0 - 28, 62); ctx.closePath(); ctx.fill();
+  });
+  // marquee: the bulbs glow and a chase of sparkles runs along the sign's border
+  const a = 0.5 + 0.5 * Math.sin(time * 2.2);
+  ctx.fillStyle = 'rgba(255,170,70,' + (0.10 + 0.07 * a).toFixed(3) + ')';
+  ctx.beginPath(); ctx.ellipse(224, 27, 100, 20, 0, 0, Math.PI * 2); ctx.fill();
+  for (let i = 0; i < 12; i++) {
+    const sx = 126 + (((time * 46) + i * 17) % 196), top = i % 2 === 0;
+    ctx.fillStyle = 'rgba(255,230,150,' + (0.5 + 0.5 * Math.sin(time * 6 + i)).toFixed(3) + ')';
+    ctx.fillRect(Math.round(sx), top ? 12 : 39, 2, 2);
+  }
+  // cold glow from the glass-door coolers
+  ctx.fillStyle = 'rgba(190,230,255,' + (0.05 + 0.02 * a).toFixed(3) + ')';
+  ctx.fillRect(34, 12, 80, 48); ctx.fillRect(334, 12, 80, 48);
+}
+
+// ---------------------------------------------------------------- MISERY LOVES CO. (Winooski, LEVEL 4)
+// A rustic-chic comfort-food + craft-cocktail spot (Winooski Market, est. 2012), on the
+// north-east lawn next to BELLEVUE (see makeWinooski()). Outside, modeled on photos of the
+// real storefront: weathered red brick under a black cornice, a teal fascia, a black-framed
+// door on the left (46C) with a glass transom, one big black-framed window with the white
+// hand-lettered "Misery Loves Co. / est. 2012 / WINOOSKI MARKET" script, a cream pendant
+// lamp, potted succulents on a bistro stand, a hanging basket of orange mums, a wall A/C
+// unit and a swag of café string lights. Inside: exposed brick, Edison bulbs, a chalkboard
+// menu, a back-bar with bottle shelves and taps, a wood bar with a brass foot rail, bistro
+// tables, a pantry shelf and a potted topiary.
+//
+// Static art is painted once into offscreen canvases; only the string lights, the pendant
+// glow and the interior bulb glow are drawn live.
+
+function mlBulbX(i) { return 9 + 17.75 * (i + 0.5); }                       // 8 bulbs along the swag
+function mlWireY(x) { return 41 + 4 * Math.sin((((x - 9) % 17.75) + 17.75) % 17.75 / 17.75 * Math.PI); }
+
+function paintMiseryLovesExterior(c, w, h, doorLX) {
+  const BLK = '#14110f', BLK2 = '#241d18', CREAM = '#f4ecd6';
+  // ---- weathered red brick
+  c.fillStyle = '#9b4b38'; c.fillRect(0, 0, w, h);
+  for (let row = 0, y = 0; y < h; y += 6, row++) {
+    c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(0, y + 5, w, 1);
+    const off = row % 2 ? 6 : 0;
+    for (let x = -off; x < w; x += 12) {
+      c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(x + 11, y, 1, 5);
+      const hv = mhHash(x >> 2, row + 40);
+      if (hv % 5 === 0) { c.fillStyle = 'rgba(255,255,255,0.07)'; c.fillRect(x + 1, y + 1, 10, 4); }
+      else if (hv % 7 === 0) { c.fillStyle = 'rgba(0,0,0,0.12)'; c.fillRect(x + 1, y + 1, 10, 4); }
+    }
+  }
+  c.fillStyle = 'rgba(0,0,0,0.14)'; c.fillRect(0, 0, 3, h); c.fillRect(w - 3, 0, 3, h);
+
+  // ---- black cornice with recessed panels
+  c.fillStyle = BLK; c.fillRect(0, 0, w, 26);
+  c.fillStyle = '#3a312b'; c.fillRect(0, 0, w, 3);
+  for (let x = 6; x < w - 10; x += 14) {
+    c.fillStyle = BLK2; c.fillRect(x, 7, 10, 12);
+    c.fillStyle = 'rgba(255,255,255,0.05)'; c.fillRect(x, 7, 10, 2);
+  }
+  c.fillStyle = '#000'; c.fillRect(0, 24, w, 2);
+
+  // ---- teal fascia carrying the name
+  c.fillStyle = '#2b5a5c'; c.fillRect(0, 26, w, 14);
+  c.fillStyle = '#4a8a8a'; c.fillRect(0, 26, w, 1);
+  c.fillStyle = '#1d3f41'; c.fillRect(0, 38, w, 2);
+  let fs = 10;
+  c.font = '700 ' + fs + 'px Georgia, serif';
+  while (fs > 6 && c.measureText('MISERY LOVES CO.').width > w - 24) { fs--; c.font = '700 ' + fs + 'px Georgia, serif'; }
+  c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+  c.fillStyle = 'rgba(0,0,0,0.45)'; c.fillText('MISERY LOVES CO.', w / 2 + 1, 37 + 1);
+  c.fillStyle = CREAM; c.fillText('MISERY LOVES CO.', w / 2, 37);
+
+  // ---- swag wire for the string lights (bulbs are live; see drawMiseryLovesLive)
+  c.strokeStyle = BLK; c.lineWidth = 1; c.beginPath();
+  for (let x = 0; x <= w; x += 1) { const y = mlWireY(x) + 0.5; if (x === 0) c.moveTo(x, y); else c.lineTo(x, y); }
+  c.stroke();
+
+  // ---- wall A/C unit (upper left, over the door side)
+  c.fillStyle = '#0c0c0e'; c.fillRect(4, 47, 26, 16);
+  c.fillStyle = '#26282c'; c.fillRect(5, 48, 24, 14);
+  c.fillStyle = '#34373c'; c.fillRect(5, 48, 24, 2);
+  c.fillStyle = '#121316'; for (let y = 52; y < 61; y += 3) c.fillRect(7, y, 20, 1.5);
+  c.fillStyle = '#3a3d42'; c.fillRect(4, 63, 26, 2);
+
+  // ---- hanging basket of orange mums on an iron bracket
+  c.fillStyle = BLK; c.fillRect(3, 62, 2, 26); c.fillRect(3, 62, 17, 2);
+  c.strokeStyle = BLK; c.lineWidth = 1;
+  c.beginPath(); c.moveTo(19, 64); c.lineTo(10, 77); c.moveTo(19, 64); c.lineTo(26, 77); c.stroke();
+  c.fillStyle = '#2f6a2a'; c.beginPath(); c.ellipse(18, 79, 11, 4, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#5a4a3a'; c.beginPath(); c.ellipse(18, 82, 9, 4, 0, 0, Math.PI); c.fill();
+  c.fillStyle = '#3a2e24'; c.fillRect(9, 80, 18, 1);
+  for (const [dx, dy, r, col] of [[10, 75, 4, '#e8601c'], [16, 72, 4.5, '#f08a30'], [22, 74, 4, '#e8601c'], [26, 78, 3.5, '#f08a30'],
+                                  [13, 78, 3.5, '#f08a30'], [20, 77, 3.5, '#e8601c'], [8, 79, 3, '#e8601c']]) {
+    c.fillStyle = col; c.beginPath(); c.arc(dx, dy, r, 0, Math.PI * 2); c.fill();
+    c.fillStyle = 'rgba(255,230,160,0.35)'; c.beginPath(); c.arc(dx - 1, dy - 1, r * 0.4, 0, Math.PI * 2); c.fill();
+  }
+
+  // ---- the big window: black frame, warm interior glow, plant stand, bistro table
+  c.fillStyle = BLK; c.fillRect(68, 45, 86, 70);
+  c.fillStyle = '#2a221c'; c.fillRect(68, 45, 86, 2);
+  const gl = c.createLinearGradient(0, 49, 0, 111);
+  gl.addColorStop(0, '#f2b862'); gl.addColorStop(0.55, '#c9803a'); gl.addColorStop(1, '#7a4220');
+  c.fillStyle = gl; c.fillRect(72, 49, 78, 62);
+  c.fillStyle = 'rgba(60,30,14,0.35)'; c.fillRect(72, 49, 78, 6);
+  // shelves of books and jars on the far wall
+  c.fillStyle = '#4a2c18'; c.fillRect(120, 54, 28, 22);
+  for (let i = 0; i < 9; i++) { c.fillStyle = ['#8a2a2a', '#2a5a7a', '#c4a040', '#3a6a3a'][i % 4]; c.fillRect(121 + i * 3, 56 + (i % 3), 2, 14 - (i % 3)); }
+  // left: a wooden shelf unit with trailing vines
+  c.fillStyle = '#c9a060'; c.fillRect(74, 52, 3, 58); c.fillRect(88, 52, 2, 58);
+  for (let y = 62; y < 108; y += 12) { c.fillStyle = '#b08848'; c.fillRect(74, y, 16, 2); }
+  c.fillStyle = '#3f8a3a'; for (const [vx, vy] of [[80, 58], [84, 64], [78, 76], [85, 88], [80, 98]]) { c.beginPath(); c.arc(vx, vy, 2.6, 0, Math.PI * 2); c.fill(); }
+  // pendant lamp (cream cone) on a cord
+  c.fillStyle = '#2a1a10'; c.fillRect(110, 49, 1, 6);
+  c.fillStyle = '#f3dfb0'; c.beginPath(); c.moveTo(102, 62); c.lineTo(119, 62); c.lineTo(115, 55); c.lineTo(106, 55); c.closePath(); c.fill();
+  c.fillStyle = '#fff4d6'; c.fillRect(102, 61, 17, 2);
+  // brass plant stand with terracotta succulents
+  c.fillStyle = '#b08a3a'; c.fillRect(100, 84, 1, 22); c.fillRect(113, 84, 1, 22); c.fillRect(100, 84, 14, 1);
+  for (const [px, py, ph] of [[96, 80, 7], [106, 74, 8], [116, 80, 7], [104, 90, 6]]) {
+    c.fillStyle = '#c4622e'; c.fillRect(px, py, 9, ph); c.fillStyle = '#9a4a20'; c.fillRect(px, py, 9, 2);
+    c.fillStyle = '#4f9a4a'; c.beginPath(); c.moveTo(px + 1, py); c.lineTo(px + 4.5, py - 8); c.lineTo(px + 8, py); c.closePath(); c.fill();
+    c.fillStyle = '#7cc070'; c.fillRect(px + 4, py - 6, 1, 6);
+  }
+  // dark wood table + stool under it, a crate on the right, a toy cart in the corner
+  c.fillStyle = '#3a2214'; c.fillRect(98, 98, 30, 4); c.fillRect(100, 102, 3, 9); c.fillRect(123, 102, 3, 9);
+  c.fillStyle = '#d6b27a'; c.fillRect(130, 84, 18, 12); c.fillStyle = '#b8935a'; c.fillRect(130, 84, 18, 2);
+  c.fillStyle = '#2f8f5a'; c.fillRect(146, 49, 4, 62);
+  c.fillStyle = '#c4202e'; c.fillRect(134, 100, 12, 2); c.fillStyle = '#8a8d90'; c.fillRect(134, 102, 12, 7);
+  c.fillStyle = '#e0b030'; c.fillRect(137, 104, 6, 3);
+  // hand-lettered white script on the glass
+  c.textAlign = 'center';
+  let sf = 18;
+  c.font = 'italic 700 ' + sf + 'px "Brush Script MT", "Segoe Script", "Snell Roundhand", cursive';
+  while (sf > 9 && c.measureText('Misery Loves Co.').width > 70) { sf--; c.font = 'italic 700 ' + sf + 'px "Brush Script MT", "Segoe Script", "Snell Roundhand", cursive'; }
+  c.fillStyle = 'rgba(40,20,8,0.45)'; c.fillText('Misery Loves Co.', 111 + 1, 70 + 1);
+  c.fillStyle = '#fffaf0'; c.fillText('Misery Loves Co.', 111, 70);
+  c.fillStyle = '#fffaf0';
+  c.font = 'italic 600 5px Georgia, serif'; c.textAlign = 'left'; c.fillText('est. 2012', 76, 79);
+  c.font = '700 4px Arial, sans-serif'; c.textAlign = 'right'; c.fillText('WINOOSKI MARKET', 146, 79);
+  c.textAlign = 'center';
+  // glass reflection streaks
+  c.fillStyle = 'rgba(255,255,255,0.10)';
+  c.beginPath(); c.moveTo(78, 111); c.lineTo(96, 49); c.lineTo(104, 49); c.lineTo(88, 111); c.closePath(); c.fill();
+  c.beginPath(); c.moveTo(118, 111); c.lineTo(130, 49); c.lineTo(134, 49); c.lineTo(124, 111); c.closePath(); c.fill();
+  // black bulkhead + sill under the window
+  c.fillStyle = BLK; c.fillRect(66, 111, 90, h - 111);
+  c.fillStyle = '#3a312b'; c.fillRect(66, 111, 90, 3);
+  c.fillStyle = BLK2; c.fillRect(72, 118, 36, 8); c.fillRect(114, 118, 36, 8);
+  c.fillStyle = 'rgba(255,255,255,0.05)'; c.fillRect(72, 118, 36, 1); c.fillRect(114, 118, 36, 1);
+
+  // ---- the door (left): black frame, glass transom with the street number, glass door
+  const dX = doorLX + 3, dW = 26;
+  c.fillStyle = BLK; c.fillRect(dX - 3, 64, dW + 6, h - 64);
+  const tg = c.createLinearGradient(0, 68, 0, 92);
+  tg.addColorStop(0, '#e8a850'); tg.addColorStop(1, '#8a5a2a');
+  c.fillStyle = tg; c.fillRect(dX, 68, dW, 24);
+  c.fillStyle = '#3a2616'; c.fillRect(dX, 76, dW, 1); c.fillRect(dX, 84, dW, 1);
+  for (let i = 0; i < 5; i++) { c.fillStyle = ['#e8c070', '#c4622e', '#f0d8a0', '#8a4a2a', '#e0a040'][i]; c.fillRect(dX + 2 + i * 5, 79, 3, 4); c.fillRect(dX + 3 + i * 5, 70, 3, 5); }
+  c.fillStyle = '#f4ecd6'; c.font = '700 8px Arial, sans-serif'; c.textAlign = 'center';
+  c.fillText('46C', dX + dW / 2, 90);
+  c.fillStyle = BLK2; c.fillRect(dX, 92, dW, 6);
+  const dg = c.createLinearGradient(0, 98, 0, 120);
+  dg.addColorStop(0, '#6a4a2c'); dg.addColorStop(1, '#2a1a10');
+  c.fillStyle = dg; c.fillRect(dX, 98, dW, 22);
+  c.fillStyle = 'rgba(255,255,255,0.08)'; c.fillRect(dX + 3, 98, 3, 22);
+  c.fillStyle = CREAM; c.font = '700 4px Arial, sans-serif'; c.fillText('10am-7pm', dX + dW / 2 + 2, 110);
+  c.fillStyle = '#c9a04a'; c.fillRect(dX + 2, 106, 2, 8);
+  c.fillStyle = BLK2; c.fillRect(dX, 120, dW, h - 120);
+
+  // ---- foundation + mat
+  c.fillStyle = '#0e0b09'; c.fillRect(0, h - 3, w, 3);
+  c.fillStyle = '#3a2616'; c.fillRect(dX, h - 3, dW, 3);
+}
+
+let _mlExteriorCache = null;
+function drawMiseryLovesExterior(px, py, w, h, dx) {
+  const doorLX = dx - px;
+  if (!_mlExteriorCache || _mlExteriorCache.w !== w || _mlExteriorCache.h !== h || _mlExteriorCache.d !== doorLX) {
+    const cv = document.createElement('canvas');
+    cv.width = w; cv.height = h;
+    paintMiseryLovesExterior(cv.getContext('2d'), w, h, doorLX);
+    _mlExteriorCache = { cv, w, h, d: doorLX };
+  }
+  ctx.drawImage(_mlExteriorCache.cv, px, py);
+}
+
+// Live bits of the storefront: twinkling café bulbs on the swag + the pendant lamp's glow.
+function drawMiseryLovesLive(px, py, w, h) {
+  const t = performance.now() / 1000;
+  for (let i = 0; i < 8; i++) {
+    const bx = px + mlBulbX(i), by = py + mlWireY(mlBulbX(i)) + 2;
+    const a = 0.65 + 0.25 * Math.sin(t * 2.2 + i * 1.3);
+    ctx.fillStyle = 'rgba(255,214,120,' + (0.22 * a).toFixed(3) + ')';
+    ctx.beginPath(); ctx.arc(bx, by + 2, 7, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#1a1612'; ctx.fillRect(bx - 1, by - 1, 2, 2);
+    ctx.fillStyle = 'rgba(255,238,175,' + a.toFixed(3) + ')';
+    ctx.fillRect(bx - 1.5, by + 1, 3, 4);
+  }
+  const g = 0.14 + 0.04 * Math.sin(t * 1.5);
+  ctx.fillStyle = 'rgba(255,226,160,' + g.toFixed(3) + ')';
+  ctx.beginPath(); ctx.ellipse(px + 111, py + 64, 18, 10, 0, 0, Math.PI * 2); ctx.fill();
+}
+
+function mlChair(c, x, y) {
+  c.fillStyle = 'rgba(0,0,0,0.22)'; c.beginPath(); c.ellipse(x, y + 6, 7, 3, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#1e120a'; c.beginPath(); c.arc(x, y, 6.5, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#8a6038'; c.beginPath(); c.arc(x, y, 5, 0, Math.PI * 2); c.fill();
+  c.fillStyle = 'rgba(255,255,255,0.12)'; c.beginPath(); c.arc(x - 1.5, y - 1.5, 2, 0, Math.PI * 2); c.fill();
+}
+function mlBistroTable(c, tx, ty) {
+  const cx = tx * TILE + TILE / 2, cy = ty * TILE + TILE / 2;
+  mlChair(c, cx - 23, cy); mlChair(c, cx + 23, cy);
+  c.fillStyle = 'rgba(0,0,0,0.25)'; c.beginPath(); c.ellipse(cx + 1, cy + 5, 13, 8, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#1e120a'; c.beginPath(); c.arc(cx, cy, 13, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#5a3820'; c.beginPath(); c.arc(cx, cy, 11.5, 0, Math.PI * 2); c.fill();
+  c.fillStyle = 'rgba(255,255,255,0.10)'; c.beginPath(); c.arc(cx - 3, cy - 3, 6, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#e8d8b0'; c.beginPath(); c.arc(cx - 1, cy - 1, 2.6, 0, Math.PI * 2); c.fill();      // candle jar
+  c.fillStyle = '#ffcf60'; c.fillRect(cx - 1.5, cy - 2.5, 1.5, 2);
+  c.fillStyle = '#e0702a'; c.beginPath(); c.arc(cx + 5, cy + 3, 2.2, 0, Math.PI * 2); c.fill();      // cocktail
+  c.fillStyle = '#f4ecd6'; c.fillRect(cx - 8, cy + 3, 4, 3);                                         // napkin
+}
+
+function paintMiseryLovesInterior(c) {
+  const W = 14 * TILE, H = 10 * TILE;
+  const DARK = '#2a1a10', BRASS = '#c8963c', CREAM = '#f4ecd6';
+
+  // ---------------------------------------------------------------- back wall: exposed brick
+  c.fillStyle = '#8a3d2e'; c.fillRect(0, 0, W, 64);
+  for (let row = 0, y = 10; y < 60; y += 6, row++) {
+    c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(0, y + 5, W, 1);
+    const off = row % 2 ? 6 : 0;
+    for (let x = -off; x < W; x += 12) {
+      c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(x + 11, y, 1, 5);
+      const hv = mhHash(x >> 2, row + 90);
+      if (hv % 5 === 0) { c.fillStyle = 'rgba(255,255,255,0.07)'; c.fillRect(x + 1, y + 1, 10, 4); }
+      else if (hv % 7 === 0) { c.fillStyle = 'rgba(0,0,0,0.14)'; c.fillRect(x + 1, y + 1, 10, 4); }
+    }
+  }
+  c.fillStyle = DARK; c.fillRect(0, 0, W, 9);                                // ceiling beam
+  c.fillStyle = '#4a3020'; c.fillRect(0, 9, W, 1);
+  c.fillStyle = DARK; c.fillRect(0, 60, W, 4);                               // baseboard
+  c.fillStyle = BRASS; c.fillRect(0, 60, W, 1);
+  // Edison string lights (bulbs glow live)
+  c.strokeStyle = '#1a110a'; c.lineWidth = 1; c.beginPath();
+  for (let x = 4; x <= W - 4; x += 4) { const y = 12 + 4 * Math.sin((x / W) * Math.PI * 6); if (x === 4) c.moveTo(x, y); else c.lineTo(x, y); }
+  c.stroke();
+  for (let x = 12; x < W - 8; x += 16) {
+    const y = 12 + 4 * Math.sin((x / W) * Math.PI * 6);
+    c.fillStyle = '#ffe6a0'; c.fillRect(x - 1, y + 1, 3, 4);
+  }
+
+  // ---------------------------------------------------------------- chalkboard menu (left)
+  c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(42, 15, 158, 46);
+  c.fillStyle = '#6a4a2a'; c.fillRect(40, 13, 158, 46);
+  c.fillStyle = '#1b1c1e'; c.fillRect(43, 16, 152, 40);
+  c.fillStyle = CREAM; c.font = 'italic 700 9px Georgia, serif'; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+  c.fillText('Misery Loves Co.', 119, 26);
+  c.fillRect(66, 29, 106, 1);
+  c.font = '700 5px monospace'; c.fillStyle = '#e0b040';
+  c.fillText('COMFORT', 80, 35); c.fillText('CRAFT COCKTAILS', 150, 35);
+  c.fillStyle = CREAM; c.font = '700 5px monospace'; c.textAlign = 'left';
+  ['MAC & CHEESE', 'FRIED CHICKEN', 'LOADED TOTS', 'BRISKET MELT'].forEach((t, i) => c.fillText(t, 49, 41 + i * 5));
+  ['OLD FASHIONED', 'MAPLE SOUR', 'SPICY MARG', 'NEGRONI'].forEach((t, i) => c.fillText(t, 120, 41 + i * 5));
+  c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(112, 33, 1, 22);
+
+  // ---------------------------------------------------------------- back-bar bottle shelves (right)
+  c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(254, 14, 168, 46);
+  c.fillStyle = '#3a2616'; c.fillRect(250, 11, 168, 49);
+  c.fillStyle = '#150d08'; c.fillRect(253, 14, 162, 43);
+  for (const sy of [26, 40, 54]) {
+    c.fillStyle = '#7a5230'; c.fillRect(253, sy, 162, 3);
+    c.fillStyle = 'rgba(255,255,255,0.12)'; c.fillRect(253, sy, 162, 1);
+    for (let x = 257; x < 410; x += 8 + ((x * 7 + sy) % 4)) {
+      const hv = mhHash(x, sy);
+      const col = ['#3a7a4a', '#a8601c', '#7a2a2a', '#c8b060', '#2a5a7a', '#8a3a6a'][hv % 6];
+      const bh = 8 + (hv % 5);
+      c.fillStyle = col; c.fillRect(x, sy - bh, 4, bh);
+      c.fillStyle = col; c.fillRect(x + 1, sy - bh - 3, 2, 3);
+      c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(x, sy - bh + 1, 1, bh - 2);
+      c.fillStyle = CREAM; c.fillRect(x, sy - 5, 4, 2);
+    }
+  }
+  // back-bar cabinet + tap tower (tiles (8,2)(9,2))
+  c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(256, 94, 64, 3);
+  c.fillStyle = '#2a1a10'; c.fillRect(256, 72, 64, 24);
+  c.fillStyle = '#5a3a22'; c.fillRect(256, 70, 64, 4);
+  c.fillStyle = '#1a100a'; c.fillRect(259, 77, 28, 16); c.fillRect(290, 77, 27, 16);
+  c.fillStyle = BRASS; c.fillRect(272, 82, 3, 6); c.fillRect(301, 82, 3, 6);
+  c.fillStyle = '#b8bcc0'; c.fillRect(262, 62, 44, 3); c.fillRect(264, 62, 2, 9); c.fillRect(302, 62, 2, 9);
+  for (const [tx, col] of [[270, '#c4202e'], [284, '#e0b030'], [298, '#2a7a4a']]) {
+    c.fillStyle = '#8a8d90'; c.fillRect(tx, 65, 2, 7);
+    c.fillStyle = col; c.fillRect(tx - 1, 58, 4, 7);
+  }
+
+  // hanging pendant lamps (cream cones; glow is live)
+  for (const lx of [224, 286, 392]) {
+    c.fillStyle = '#1a110a'; c.fillRect(lx, 9, 1, 25);
+    c.fillStyle = '#f3dfb0'; c.beginPath(); c.moveTo(lx - 9, 46); c.lineTo(lx + 10, 46); c.lineTo(lx + 5, 34); c.lineTo(lx - 4, 34); c.closePath(); c.fill();
+    c.fillStyle = '#fff4d6'; c.fillRect(lx - 9, 45, 19, 2);
+  }
+
+  // ---------------------------------------------------------------- side walls
+  c.fillStyle = '#3a2418'; c.fillRect(0, 64, TILE, H - 64);
+  for (let y = 66; y < H; y += 12) { c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(0, y + 10, TILE, 2); }
+  c.fillStyle = BRASS; c.fillRect(TILE - 3, 64, 2, H - 64);
+  c.fillStyle = '#5a2a20'; c.fillRect(13 * TILE, 64, TILE, H - 64);
+  for (let y = 66; y < H; y += 12) { c.fillStyle = 'rgba(0,0,0,0.2)'; c.fillRect(13 * TILE, y + 10, TILE, 2); }
+  c.fillStyle = BRASS; c.fillRect(13 * TILE + 1, 64, 2, H - 64);
+
+  // worn entry rug
+  c.fillStyle = '#c8963c'; c.fillRect(160, 232, 128, 56);
+  c.fillStyle = '#4a2430'; c.fillRect(164, 236, 120, 48);
+  c.fillStyle = '#d8b070'; c.beginPath(); c.moveTo(224, 242); c.lineTo(250, 260); c.lineTo(224, 278); c.lineTo(198, 260); c.closePath(); c.fill();
+  c.fillStyle = '#4a2430'; c.beginPath(); c.moveTo(224, 249); c.lineTo(240, 260); c.lineTo(224, 271); c.lineTo(208, 260); c.closePath(); c.fill();
+
+  // ---------------------------------------------------------------- the bar (tiles (8..12,3))
+  c.fillStyle = '#3a2416'; c.fillRect(8 * TILE, 3 * TILE, 5 * TILE, 12);
+  c.fillStyle = '#6a4428'; c.fillRect(8 * TILE, 3 * TILE + 1, 5 * TILE, 2);
+  c.fillStyle = BRASS; c.fillRect(8 * TILE, 3 * TILE, 5 * TILE, 1);
+  c.fillStyle = '#5b3a22'; c.fillRect(8 * TILE, 3 * TILE + 12, 5 * TILE, 20);
+  for (let x = 8 * TILE; x < 13 * TILE; x += 16) { c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(x, 3 * TILE + 12, 1, 20); }
+  c.fillStyle = 'rgba(255,255,255,0.06)'; c.fillRect(8 * TILE, 3 * TILE + 12, 5 * TILE, 2);
+  c.fillStyle = BRASS; c.fillRect(8 * TILE, 3 * TILE + 28, 5 * TILE, 3);
+  c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(8 * TILE, 4 * TILE - 2, 5 * TILE, 2);
+  // things on the bar: copper shaker, coupes, limes, succulent, tip jar
+  c.fillStyle = '#b8662e'; c.fillRect(268, 86, 8, 11); c.fillStyle = '#d8884a'; c.fillRect(268, 86, 3, 11);
+  c.fillStyle = '#8a4a1e'; c.fillRect(269, 83, 6, 3);
+  for (const gx of [290, 302]) {
+    c.fillStyle = 'rgba(220,235,240,0.75)'; c.beginPath(); c.moveTo(gx - 5, 88); c.lineTo(gx + 5, 88); c.lineTo(gx, 94); c.closePath(); c.fill();
+    c.fillRect(gx - 0.5, 94, 1, 3); c.fillRect(gx - 3, 96, 6, 1);
+    c.fillStyle = '#e0702a'; c.fillRect(gx - 3, 88, 6, 2);
+  }
+  c.fillStyle = '#7cc43a'; c.beginPath(); c.arc(318, 93, 2.5, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#4a8a1a'; c.beginPath(); c.arc(318, 93, 1.2, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#c4622e'; c.fillRect(374, 88, 9, 8); c.fillStyle = '#4f9a4a'; c.beginPath(); c.moveTo(375, 88); c.lineTo(378.5, 80); c.lineTo(382, 88); c.closePath(); c.fill();
+  c.fillStyle = 'rgba(220,235,240,0.7)'; c.fillRect(398, 86, 9, 11); c.fillStyle = '#e8c070'; c.fillRect(399, 91, 7, 5);
+  c.fillStyle = '#2a1a10'; c.fillRect(397, 85, 11, 2);
+
+  // ---------------------------------------------------------------- bistro tables (extraTables)
+  for (const [tx, ty] of [[3, 5], [3, 7], [10, 6], [10, 8]]) mlBistroTable(c, tx, ty);
+
+  // ---------------------------------------------------------------- props on blockTiles
+  // pantry shelf (1,2)(1,3) -- market goods + trailing plant
+  c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(33, 126, 30, 3);
+  c.fillStyle = '#8a6038'; c.fillRect(33, 66, 30, 60);
+  c.fillStyle = '#2a1a10'; c.fillRect(35, 68, 26, 56);
+  for (const sy of [82, 100, 118]) {
+    c.fillStyle = '#b08848'; c.fillRect(35, sy, 26, 3);
+    for (let i = 0; i < 5; i++) {
+      c.fillStyle = ['#c4202e', '#e0b040', '#3f8a3a', '#f4ecd6', '#c4622e'][(i + sy) % 5];
+      c.fillRect(37 + i * 5, sy - 9, 4, 9); c.fillStyle = '#2a1a10'; c.fillRect(37 + i * 5, sy - 10, 4, 1.5);
+    }
+  }
+  c.fillStyle = '#3f8a3a'; for (const [vx, vy] of [[38, 72], [44, 74], [52, 71], [57, 75], [41, 79]]) { c.beginPath(); c.arc(vx, vy, 3, 0, Math.PI * 2); c.fill(); }
+  // potted topiary in a black planter (12,8)
+  c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(386, 286, 26, 3);
+  c.fillStyle = '#16120f'; c.fillRect(388, 268, 22, 19); c.fillStyle = '#2a221c'; c.fillRect(386, 266, 26, 4);
+  c.fillStyle = 'rgba(255,255,255,0.08)'; c.fillRect(390, 272, 3, 12);
+  c.fillStyle = '#5a3a20'; c.fillRect(398, 244, 3, 24);
+  for (const [lx, ly, r] of [[399, 236, 9], [399, 252, 8], [399, 222, 7]]) {
+    c.fillStyle = '#2f7a34'; c.beginPath(); c.arc(lx, ly, r, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#4a9a42'; c.beginPath(); c.arc(lx - 2, ly - 2, r * 0.55, 0, Math.PI * 2); c.fill();
+  }
+
+  // ---------------------------------------------------------------- front wall: black-framed windows
+  const fy = 9 * TILE;
+  for (const [x0, x1] of [[TILE, 6 * TILE], [7 * TILE, 13 * TILE]]) {
+    c.fillStyle = '#14110f'; c.fillRect(x0, fy, x1 - x0, TILE);
+    const gg = c.createLinearGradient(0, fy + 4, 0, fy + 28);
+    gg.addColorStop(0, '#2a4a46'); gg.addColorStop(1, '#10201e');
+    c.fillStyle = gg; c.fillRect(x0 + 3, fy + 5, x1 - x0 - 6, 22);
+    for (const gx of [x0 + (x1 - x0) * 0.25, x0 + (x1 - x0) * 0.75]) {
+      const rg = c.createRadialGradient(gx, fy + 20, 1, gx, fy + 20, 14);
+      rg.addColorStop(0, 'rgba(255,200,130,0.5)'); rg.addColorStop(1, 'rgba(255,200,130,0)');
+      c.fillStyle = rg; c.fillRect(gx - 14, fy + 6, 28, 21);
+    }
+    c.fillStyle = '#14110f'; c.fillRect((x0 + x1) / 2 - 1, fy + 4, 3, 24);
+    c.fillStyle = '#3f8a3a';                                              // plants on the sill
+    for (let x = x0 + 8; x < x1 - 8; x += 22) { c.beginPath(); c.arc(x, fy + 24, 3.5, 0, Math.PI * 2); c.fill(); c.fillStyle = '#c4622e'; c.fillRect(x - 3, fy + 25, 6, 3); c.fillStyle = '#3f8a3a'; }
+  }
+  c.fillStyle = '#ff5a4a'; c.font = '700 6px monospace'; c.textAlign = 'center'; c.fillText('OPEN', 4 * TILE, fy + 17);
+  c.fillStyle = '#14110f'; c.fillRect(6 * TILE - 3, fy, 3, TILE); c.fillRect(7 * TILE, fy, 3, TILE);
+}
+
+let _mlInteriorCache = null;
+function drawMiseryLovesInterior(time) {
+  if (!_mlInteriorCache) {
+    const cv = document.createElement('canvas');
+    cv.width = 14 * TILE; cv.height = 10 * TILE;
+    paintMiseryLovesInterior(cv.getContext('2d'));
+    _mlInteriorCache = cv;
+  }
+  ctx.drawImage(_mlInteriorCache, 0, 0);
+
+  // Edison bulbs glow along the beam
+  const W = 14 * TILE;
+  for (let x = 12, i = 0; x < W - 8; x += 16, i++) {
+    const y = 12 + 4 * Math.sin((x / W) * Math.PI * 6);
+    const a = 0.10 + 0.06 * Math.sin(time * 2 + i * 1.4);
+    ctx.fillStyle = 'rgba(255,205,120,' + a.toFixed(3) + ')';
+    ctx.beginPath(); ctx.arc(x + 0.5, y + 3, 7, 0, Math.PI * 2); ctx.fill();
+  }
+  // pendant lamp pools of light
+  for (const lx of [224, 286, 392]) {
+    const a = 0.10 + 0.03 * Math.sin(time * 1.3 + lx);
+    ctx.fillStyle = 'rgba(255,224,160,' + a.toFixed(3) + ')';
+    ctx.beginPath(); ctx.ellipse(lx + 0.5, 52, 22, 12, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  // candle flames flicker on the bistro tables
+  for (const [tx, ty] of [[3, 5], [3, 7], [10, 6], [10, 8]]) {
+    const f = 0.35 + 0.15 * Math.sin(time * 7 + tx * 3 + ty);
+    ctx.fillStyle = 'rgba(255,200,100,' + f.toFixed(3) + ')';
+    ctx.beginPath(); ctx.arc(tx * TILE + 15, ty * TILE + 14, 5, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+
+// ---------------------------------------------------------------- THE MILL (Winooski, LEVEL 4)
+// The long red-brick Champlain Mill along the river: orange-red brick, a green
+// copper cornice, tall pale-green-framed windows in tidy columns (one per tile, so
+// the columns line up from wing to wing), and a concrete river wall at the foot.
+// The corner TOWER by the bridge is taller and carries the name plaque plus a
+// striped-awning entrance (decorative only -- the mill is not enterable).
+const _millCache = new Map();
+function drawMillWing(b, px, py, w, h) {
+  const key = b.mill + ':' + b.x + ',' + b.y + ':' + w + 'x' + h;
+  let cv = _millCache.get(key);
+  if (!cv) {
+    cv = document.createElement('canvas');
+    cv.width = w; cv.height = h;
+    paintMillWing(cv.getContext('2d'), b, w, h);
+    _millCache.set(key, cv);
+  }
+  ctx.drawImage(cv, px, py);
+}
+
+function paintMillWing(c, b, w, h) {
+  const tower = b.mill === 'tower';
+  const BRICK = '#b04e2b', GREEN = '#2d7468', GREEN_L = '#4a9a88', GREEN_D = '#1d4f47';
+  const STONE = '#b4ae9c', STONE_D = '#8a8576', SAGE = '#a9c4b0', SILL = '#d2ccb8';
+  const col0 = b.x;                                    // tile column, so the textures line up across wings
+
+  // ---- brick body: courses + staggered joints + a little per-brick tint
+  c.fillStyle = BRICK; c.fillRect(0, 0, w, h);
+  for (let y = 0, row = 0; y < h; y += 4, row++) {
+    c.fillStyle = 'rgba(40,16,8,0.20)'; c.fillRect(0, y + 3, w, 1);
+    const off = row % 2 ? 4 : 0;
+    for (let x = -off; x < w; x += 8) {
+      c.fillStyle = 'rgba(40,16,8,0.14)'; c.fillRect(x + 7, y, 1, 3);
+      const hv = mhHash((x + off) / 8 + col0 * 4, row + 7000);
+      if (hv % 6 === 0) { c.fillStyle = 'rgba(255,170,110,0.10)'; c.fillRect(x, y, 7, 3); }
+      else if (hv % 7 === 0) { c.fillStyle = 'rgba(40,10,4,0.13)'; c.fillRect(x, y, 7, 3); }
+    }
+  }
+
+  // ---- cornice / roof cap
+  const capH = tower ? 16 : 11;
+  c.fillStyle = GREEN; c.fillRect(0, 0, w, capH);
+  c.fillStyle = GREEN_L; c.fillRect(0, 0, w, 3);
+  c.fillStyle = GREEN_D; c.fillRect(0, capH - 3, w, 3);
+  c.fillStyle = 'rgba(0,0,0,0.28)'; c.fillRect(0, capH, w, 3);                  // shadow under the overhang
+  c.fillStyle = '#8f3d20'; c.fillRect(0, capH + 3, w, 2);                       // brick corbel course
+  if (tower) {                                                                  // stepped cap on the tower
+    c.fillStyle = GREEN_D; c.fillRect(0, 0, w, 1);
+    c.fillStyle = GREEN_L; c.fillRect(6, 3, w - 12, 1);
+  }
+
+  // ---- concrete river wall at the foot
+  const baseH = 14;
+  c.fillStyle = STONE; c.fillRect(0, h - baseH, w, baseH);
+  c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(0, h - baseH, w, 2);
+  c.fillStyle = STONE_D; c.fillRect(0, h - 3, w, 3);
+  for (let x = 0; x < w; x += 32) { c.fillStyle = 'rgba(60,56,46,0.35)'; c.fillRect(x, h - baseH + 2, 1, baseH - 5); }
+  c.fillStyle = 'rgba(60,56,46,0.25)'; c.fillRect(0, h - baseH + 6, w, 1);
+
+  // ---- name plaque on the tower
+  let y0 = capH + 8;
+  if (tower) {
+    const pw = w - 20, ph = 26, pxl = 10, pyt = capH + 8;
+    c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(pxl + 2, pyt + 2, pw, ph);
+    c.fillStyle = '#1d4f47'; c.fillRect(pxl - 2, pyt - 2, pw + 4, ph + 4);
+    c.fillStyle = '#efe6cc'; c.fillRect(pxl, pyt, pw, ph);
+    c.fillStyle = '#2d7468'; c.fillRect(pxl, pyt + ph - 3, pw, 3);
+    c.textAlign = 'center'; c.textBaseline = 'alphabetic'; c.fillStyle = '#1d4f47';
+    c.font = 'bold 10px monospace'; c.fillText('CHAMPLAIN', w / 2, pyt + 11);
+    c.font = 'bold 10px monospace'; c.fillText('MILL', w / 2, pyt + 21);
+    y0 = pyt + ph + 8;
+  }
+
+  // ---- window grid: one tall window per tile column, 5 floors (tower: 5 below the plaque)
+  const y1 = h - baseH - 3, floors = 5, pitch = (y1 - y0) / floors;
+  const winH = Math.floor(pitch - 8), winW = 14;
+  const ground = tower ? [Math.floor(w / TILE / 2)] : [];                        // tower: middle column's ground floor is the entrance
+  for (let col = 0; col < w / TILE; col++) {
+    const wx = col * TILE + (TILE - winW) / 2;
+    for (let f = 0; f < floors; f++) {
+      if (tower && f === floors - 1 && ground.includes(col)) continue;
+      const wy = Math.round(y0 + f * pitch + 3);
+      c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(wx - 1, wy - 1, winW + 3, winH + 3);   // recess shadow
+      c.fillStyle = SAGE; c.fillRect(wx - 1, wy - 1, winW + 2, winH + 2);                // pale-green frame
+      const hv = mhHash(col + col0, f + 91);
+      const lit = hv % 9 === 0;
+      c.fillStyle = lit ? '#e8c978' : '#2b3b42'; c.fillRect(wx + 1, wy + 1, winW - 2, winH - 2);
+      if (!lit) { c.fillStyle = 'rgba(150,190,205,0.30)'; c.fillRect(wx + 1, wy + 1, winW - 2, Math.floor((winH - 2) * 0.42)); }
+      c.fillStyle = SAGE; c.fillRect(wx + 1, wy + Math.floor(winH * 0.45), winW - 2, 1);   // meeting rail
+      c.fillRect(wx + Math.floor(winW / 2), wy + 1, 1, winH - 2);                          // center mullion
+      c.fillStyle = SILL; c.fillRect(wx - 2, wy + winH + 1, winW + 4, 2);                  // stone sill
+    }
+  }
+
+  // ---- tower entrance: glass door under a green-and-cream striped awning (decorative)
+  if (tower) {
+    const dxc = Math.floor(w / 2), doorW = 18, doorH = 26;
+    const dTop = h - baseH - doorH;
+    c.fillStyle = '#1c140f'; c.fillRect(dxc - doorW / 2 - 2, dTop - 2, doorW + 4, doorH + 2);
+    c.fillStyle = '#26363c'; c.fillRect(dxc - doorW / 2, dTop, doorW, doorH);
+    c.fillStyle = 'rgba(150,190,205,0.30)'; c.fillRect(dxc - doorW / 2 + 1, dTop + 1, doorW - 2, 9);
+    c.fillStyle = SAGE; c.fillRect(dxc, dTop, 1, doorH);
+    const aw = 40, ax = dxc - aw / 2, ay = dTop - 12;
+    for (let i = 0; i < 8; i++) { c.fillStyle = i % 2 ? '#f1ead2' : '#1f6b3c'; c.fillRect(ax + i * 5, ay, 5, 9); }
+    c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(ax, ay + 9, aw, 2);
+    c.fillStyle = '#1c140f'; c.fillRect(ax - 1, ay - 1, aw + 2, 1);
+  }
+
+  // ---- edge lines: dark top/bottom, soft seams where wings meet
+  c.fillStyle = '#1c140f'; c.fillRect(0, 0, w, 1); c.fillRect(0, h - 1, w, 1);
+  c.fillStyle = 'rgba(28,20,15,0.6)'; c.fillRect(0, 0, 1, h); c.fillRect(w - 1, 0, 1, h);
+}
+
+function drawBuildings(map) {
+  for (const b of map.buildings) {
+    const px = b.x * TILE, py = b.y * TILE, w = b.w * TILE, h = b.h * TILE;
+    // THE MILL (Winooski): scenery only -- no door, sign plate or roof/window pass of its own
+    if (b.mill) { drawMillWing(b, px, py, w, h); continue; }
+    const isGreenDoorStudio = b.name === 'Green Door Studio';
+    const isHeyBud = b.name === 'Hey Bud';
+    const isThrift = b.name === 'Pure Pop Records';
+    const isNectars = b.name === 'Nectars';
+    const isJuniors = b.name === "Junior's";
+    const isHenrys = b.name === "Henry's Diner";
+    const isComedyClub = b.name === 'VT COMEDY CLUB';
+    const isDeli = b.name === 'Kountry Kart Deli';
+    const isBurlington = b.name === 'BURLINGTON RECORDS';
+    const isSwampFood = b.name === 'SWAMP FOOD';
+    const isVillageScoop = b.name === 'VILLAGE SCOOP';
+    const isJohnnysFunPark = b.name === "JOHNNY'S FUN PARK";
+    const isJohnnysPool = b.name === "JOHNNY'S POOL";
+    const isFoamBrewersSign = b.name === 'FOAM BREWERS';
+    const isSpeakingVolumesSign = b.name === 'SPEAKING VOLUMES';
+    const isCBPrintsSign = b.name === 'CB PRINTS';
+    const isEchoCenter = b.name === 'ECHO CENTER';
+    const isTalentSign = b.name === 'TALENT';
+    const isAutumnRecords = b.name === 'AUTUMN RECORDS';
+    const isTinyThai = b.name === 'TINY THAI';
+    const isMonkeyHouse = b.name === 'THE MONKEY HOUSE';
+    const isBellevue = b.name === 'BELLEVUE';
+    const isMiseryLoves = b.name === 'MISERY LOVES CO.';
+    const isSneakers = b.name === 'SNEAKERS BISTRO';
+    const isGoldenHour = b.name === 'GOLDEN HOUR';
+    const isBeverageWarehouse = b.name === 'BEVERAGE WAREHOUSE';
+
+    // wall/roof shade colors: each building's wall/roof color never changes,
+    // so compute these once per building and cache them on the building
+    // object instead of re-parsing hex + re-building strings in shadeColor()
+    // for every building, every single frame. drawBuildings only runs for
+    // outdoor maps, so this churn was pure GC pressure sitting on exactly
+    // the main thread the music scheduler needs to stay on time (see the
+    // LOOKAHEAD comment on the `music` object) — and it scaled with the
+    // number of buildings on screen, which is why it only ever showed up
+    // outside, never indoors.
+    if (!b._shades) {
+      b._shades = {
+        wallDark: shadeColor(b.wall, -30),
+        wallLight: shadeColor(b.wall, 18),
+        roofDark: shadeColor(b.roof, -35),
+        roofLight: shadeColor(b.roof, 25),
+      };
+    }
+    // wall: outline, base fill, side shading bands, and a darker foundation
+    // strip along the bottom — same layered look as the keeper sprites.
+    const wallDark = b._shades.wallDark;
+    const wallLight = b._shades.wallLight;
+    ctx.fillStyle = '#1c140f';
+    ctx.fillRect(px - 1, py - 1, w + 2, h + 2);
+    ctx.fillStyle = b.wall;
+    ctx.fillRect(px, py, w, h);
+    ctx.fillStyle = wallLight;
+    ctx.fillRect(px, py, 5, h);
+    ctx.fillStyle = wallDark;
+    ctx.fillRect(px + w - 5, py, 5, h);
+    ctx.fillRect(px, py + h - 8, w, 8);
+
+    if (isGreenDoorStudio) {
+      for (let row = 0; row < 4; row++) {
+        const brickY = py + 34 + row * 17;
+        ctx.strokeStyle = '#5b3b2e';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(px, brickY);
+        ctx.lineTo(px + w, brickY);
+        ctx.stroke();
+        const offset = row % 2 === 0 ? 0 : 16;
+        for (let bx = offset; bx < w; bx += 32) {
+          ctx.beginPath();
+          ctx.moveTo(px + bx, brickY);
+          ctx.lineTo(px + bx, brickY + 17);
+          ctx.stroke();
+        }
+      }
+      ctx.fillStyle = 'rgba(30,20,18,0.22)';
+      ctx.fillRect(px + 4, py + 38, 5, 26);
+      ctx.fillRect(px + w - 10, py + 48, 5, 18);
+    }
+
+    const roofDark = b._shades.roofDark;
+    const roofLight = b._shades.roofLight;
+    ctx.fillStyle = '#1c140f';
+    ctx.fillRect(px - 1, py - 1, w + 2, TILE + 10);
+    ctx.fillStyle = b.roof;
+    ctx.fillRect(px, py, w, TILE + 8);
+    ctx.fillStyle = roofLight;
+    ctx.fillRect(px, py, w, 4);
+    ctx.fillStyle = roofDark;
+    ctx.fillRect(px, py + TILE + 2, w, 6);
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillRect(px, py + TILE + 8, w, 3);
+
+    // (ECHO CENTER skips these too: its two big aquarium windows are painted
+    // by drawEchoCenterExterior() instead.)
+    if (!isDeli && !isBurlington && !isJohnnysPool && !isVillageScoop && !isEchoCenter && !isAutumnRecords && !isTinyThai && !isMonkeyHouse && !isBellevue && !isMiseryLoves && !isSneakers && !isGoldenHour && !isBeverageWarehouse) {
+      for (let i = 0; i < b.w; i++) {
+        if (b.x + i === b.doorX) continue;
+        if (i === 0 || i === b.w - 1) continue;
+        const wx = px + i * TILE + 8, wy = py + h - TILE - 14;
+        ctx.fillStyle = '#3a2a1c';                          // frame
+        ctx.fillRect(wx - 2, wy - 2, 20, 22);
+        ctx.fillStyle = '#ffe9a0';                           // glass base
+        ctx.fillRect(wx, wy, 16, 18);
+        ctx.fillStyle = 'rgba(0,0,0,0.22)';                  // lower pane in shadow
+        ctx.fillRect(wx, wy + 9, 16, 9);
+        ctx.fillStyle = 'rgba(255,255,255,0.5)';             // glint, upper-left
+        ctx.fillRect(wx + 1, wy + 1, 5, 5);
+        ctx.fillStyle = '#3a2a1c';                           // muntin cross
+        ctx.fillRect(wx + 7, wy, 2, 18);
+        ctx.fillRect(wx, wy + 8, 16, 2);
+        ctx.fillStyle = '#2a1c12';                           // sill
+        ctx.fillRect(wx - 3, wy + 19, 22, 3);
+      }
+    }
+
+    if (isGreenDoorStudio) {
+      drawGraffiti(px, py, w, h);
+    }
+
+    // Garage door on left side of Green Door Studio (closed, graffiti-covered)
+    if (isGreenDoorStudio) {
+      const garageDoorX = px + TILE + 2;
+      const garageDoorY = py + h - TILE + 2;
+      const garageDoorW = TILE + 22;   // a little wider so it reads as a proper garage door
+      const garageDoorH = TILE - 2;
+      
+      // Garage door panels: outline, base fill, top highlight, bottom shadow
+      ctx.fillStyle = '#1c140f';
+      ctx.fillRect(garageDoorX - 2, garageDoorY - 2, garageDoorW + 4, garageDoorH + 2);
+      ctx.fillStyle = '#3a3a3e';
+      ctx.fillRect(garageDoorX, garageDoorY, garageDoorW, garageDoorH);
+      ctx.fillStyle = 'rgba(255,255,255,0.06)';
+      ctx.fillRect(garageDoorX, garageDoorY, garageDoorW, 5);
+      ctx.fillStyle = 'rgba(0,0,0,0.22)';
+      ctx.fillRect(garageDoorX, garageDoorY + garageDoorH - 6, garageDoorW, 6);
+      
+      // Panel lines (horizontal + vertical ribs)
+      ctx.strokeStyle = '#2a2a2e';
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 5; i++) {
+        ctx.beginPath();
+        ctx.moveTo(garageDoorX, garageDoorY + i * (garageDoorH / 5));
+        ctx.lineTo(garageDoorX + garageDoorW, garageDoorY + i * (garageDoorH / 5));
+        ctx.stroke();
+      }
+      ctx.beginPath();
+      ctx.moveTo(garageDoorX + garageDoorW / 2, garageDoorY);
+      ctx.lineTo(garageDoorX + garageDoorW / 2, garageDoorY + garageDoorH);
+      ctx.stroke();
+      
+      // Graffiti on garage door
+      ctx.strokeStyle = '#e06a38';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(garageDoorX + 4, garageDoorY + 8);
+      ctx.lineTo(garageDoorX + 12, garageDoorY + 4);
+      ctx.lineTo(garageDoorX + 18, garageDoorY + 10);
+      ctx.stroke();
+      
+      ctx.fillStyle = '#3d83b8';
+      ctx.font = 'bold 10px monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText('BEAT', garageDoorX + 5, garageDoorY + 22);
+      
+      ctx.strokeStyle = '#9b4f9f';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(garageDoorX + 24, garageDoorY + 5);
+      ctx.lineTo(garageDoorX + 32, garageDoorY + 12);
+      ctx.lineTo(garageDoorX + 26, garageDoorY + 18);
+      ctx.stroke();
+      
+      ctx.fillStyle = '#f0a83c';
+      ctx.fillRect(garageDoorX + 30, garageDoorY + 24, 3, 3);
+
+      // a few more tags to fill out the wider door
+      ctx.fillStyle = '#3d83b8';
+      ctx.fillRect(garageDoorX + garageDoorW - 12, garageDoorY + 8, 5, 4);
+      ctx.fillStyle = '#f0a83c';
+      ctx.fillRect(garageDoorX + garageDoorW - 9, garageDoorY + 18, 4, 3);
+      ctx.strokeStyle = '#e06a38';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(garageDoorX + garageDoorW - 20, garageDoorY + 26);
+      ctx.lineTo(garageDoorX + garageDoorW - 14, garageDoorY + 26);
+      ctx.stroke();
+    }
+
+    const dx = b.doorX * TILE;
+    
+    // Special mural door for Green Door Studio
+    if (isGreenDoorStudio) {
+      drawGreenDoorMural(dx, py + h - TILE);
+      drawOpenDoorSign(dx, py + h - TILE);
+      // "3rd Thursdays" hip-hop night flyer taped in a window near the entrance
+      drawThursPoster(dx - TILE - 4, py + h - TILE - 18);
+    } else if (isAutumnRecords || isTinyThai || isMonkeyHouse || isBellevue || isMiseryLoves || isSneakers || isGoldenHour || isBeverageWarehouse) {
+      // door is part of the storefront painted by drawAutumnRecordsExterior()/drawTinyThaiExterior()
+    } else if (isDeli) {
+      // No separate wood door here — the deli's whole front is one glass
+      // storefront, entry included, drawn by drawDeliDecor() below.
+    } else if (isHeyBud) {
+      // red-framed glass door, matching the reference storefront's red door
+      const doorXi = dx + 4, doorY = py + h - TILE + 2, doorW = TILE - 8, doorH = TILE - 2;
+      ctx.fillStyle = '#1c140f';
+      ctx.fillRect(doorXi - 2, doorY - 3, doorW + 4, doorH + 3);
+      ctx.fillStyle = '#a8281f';
+      ctx.fillRect(doorXi, doorY, doorW, doorH);
+      ctx.fillStyle = 'rgba(0,0,0,0.28)';                  // shadowed half
+      ctx.fillRect(doorXi, doorY, doorW / 2, doorH);
+      ctx.fillStyle = 'rgba(255,255,255,0.1)';             // lit half
+      ctx.fillRect(doorXi + doorW / 2, doorY, doorW / 2 - 1, doorH);
+      ctx.fillStyle = 'rgba(20,18,22,0.55)';               // dark glass insert
+      ctx.fillRect(doorXi + 3, doorY + 4, doorW - 6, doorH * 0.6);
+      ctx.fillStyle = '#e0c060';
+      ctx.fillRect(dx + TILE - 12, py + h - 16, 3, 3);
+    } else if (isBurlington) {
+      // Black-framed glass door, matching the reference storefront's dark
+      // aluminum-and-glass entrance (drawBurlingtonRecordsDecor below draws
+      // the matching glass windows either side of it).
+      const doorXi = dx + 3, doorY = py + h - TILE + 2, doorW = TILE - 6, doorH = TILE - 2;
+      ctx.fillStyle = '#0c0a08';
+      ctx.fillRect(doorXi - 2, doorY - 3, doorW + 4, doorH + 3);
+      ctx.fillStyle = '#1a1a1c';                           // dark metal frame
+      ctx.fillRect(doorXi, doorY, doorW, doorH);
+      ctx.fillStyle = 'rgba(20,26,28,0.85)';               // glass pane
+      ctx.fillRect(doorXi + 3, doorY + 2, doorW - 6, doorH - 4);
+      ctx.fillStyle = 'rgba(180,210,220,0.18)';            // glass glint
+      ctx.fillRect(doorXi + 4, doorY + 3, 4, doorH - 8);
+      ctx.fillStyle = '#0c0a08';                           // center mullion
+      ctx.fillRect(doorXi + doorW / 2 - 1, doorY, 2, doorH);
+      ctx.fillStyle = '#8a8478';                           // push bar handle
+      ctx.fillRect(doorXi + doorW - 8, doorY + 5, 3, doorH - 10);
+    } else if (isJohnnysPool) {
+      // Beach-hut plank door with a round porthole window, matching the
+      // tiki/cabana look drawJohnnysPoolDecor() puts on the rest of the
+      // exterior -- reads as a tourist swim shack door, not a plain shop.
+      const doorXi = dx + 4, doorY = py + h - TILE + 2, doorW = TILE - 8, doorH = TILE - 2;
+      ctx.fillStyle = '#0e4a52';
+      ctx.fillRect(doorXi - 2, doorY - 3, doorW + 4, doorH + 3);
+      ctx.fillStyle = '#c88a4a';                           // light beach-wood plank
+      ctx.fillRect(doorXi, doorY, doorW, doorH);
+      ctx.strokeStyle = 'rgba(0,0,0,0.18)';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(doorXi + doorW / 2, doorY); ctx.lineTo(doorXi + doorW / 2, doorY + doorH); ctx.stroke();
+      ctx.fillStyle = '#1a5a66';                           // round porthole window
+      ctx.beginPath(); ctx.arc(doorXi + doorW / 2, doorY + doorH * 0.4, 6, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#e8d8a8';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(doorXi + doorW / 2, doorY + doorH * 0.4, 6, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = '#e0c060';
+      ctx.fillRect(dx + TILE - 12, py + h - 16, 3, 3);
+    } else {
+      // Standard door for other buildings: outline, frame, shaded panels, handle
+      const doorXi = dx + 4, doorY = py + h - TILE + 2, doorW = TILE - 8, doorH = TILE - 2;
+      ctx.fillStyle = '#1c140f';
+      ctx.fillRect(doorXi - 2, doorY - 3, doorW + 4, doorH + 3);
+      ctx.fillStyle = '#3a2414';
+      ctx.fillRect(doorXi, doorY, doorW, doorH);
+      ctx.fillStyle = 'rgba(0,0,0,0.28)';                  // shadowed half
+      ctx.fillRect(doorXi, doorY, doorW / 2, doorH);
+      ctx.fillStyle = 'rgba(255,255,255,0.08)';            // lit half
+      ctx.fillRect(doorXi + doorW / 2, doorY, doorW / 2 - 1, doorH);
+      ctx.fillStyle = '#241811';                           // recessed panels
+      ctx.fillRect(doorXi + 3, doorY + 4, doorW - 6, doorH * 0.4);
+      ctx.fillRect(doorXi + 3, doorY + doorH * 0.5, doorW - 6, doorH * 0.4);
+      ctx.fillStyle = '#e0c060';
+      ctx.fillRect(dx + TILE - 12, py + h - 16, 3, 3);
+    }
+
+    if (isHeyBud) drawHeyBudDecor(px, py, w, h);
+    if (isDeli) drawDeliDecor(px, py, w, h, dx);
+    if (isNectars) {
+      drawNectarsDecor(px, py, w, h);
+      drawWallPoster(px, py, w, h);
+    }
+    if (isJuniors) drawJuniorsDecor(px, py, w, h);
+    if (isHenrys) drawHenrysDecor(px, py, w, h);
+    if (isComedyClub) drawComedyClubDecor(px, py, w, h);
+    if (isBurlington) drawBurlingtonRecordsDecor(px, py, w, h, dx);
+    if (isJohnnysPool) drawJohnnysPoolDecor(px, py, w, h, dx);
+    // "3rd Thursdays" flyer on the outside wall of Pure Pop Records
+    if (isThrift) drawThursPoster(px + 6, py + 40);
+
+    // Draw building name sign (skip for Nectar's - uses neon sign instead).
+    // High-contrast dark plate + bright bold lettering, auto-sized to the
+    // name so it always fits cleanly and never overlaps or crowds.
+    if (isBeverageWarehouse) {
+      // whole white-brick storefront (name sign, green awning, neon windows, door, daylilies) in one cached blit, then the live neon glow
+      drawBeverageWarehouseExterior(px, py, w, h, dx);
+      drawBeverageWarehouseLive(px, py, w, h);
+    } else if (isGoldenHour) {
+      // whole pink storefront (barn-lit sign band, windows, open door) in one cached blit, then the live lamp glow
+      drawGoldenHourExterior(px, py, w, h, dx);
+      drawGoldenHourLive(px, py, w, h);
+    } else if (isSneakers) {
+      // whole sky-blue storefront (name board, neon window, brick pillar, door) in one cached blit, then the live neon glow
+      drawSneakersExterior(px, py, w, h, dx);
+      drawSneakersLive(px, py, w, h);
+    } else if (isMiseryLoves) {
+      // whole red-brick storefront (fascia, windows, door, mums) in one cached blit, then the live string lights
+      drawMiseryLovesExterior(px, py, w, h, dx);
+      drawMiseryLovesLive(px, py, w, h);
+    } else if (isBellevue) {
+      // whole teal storefront + sign plate in one cached blit, then the live logo
+      drawBellevueExterior(px, py, w, h, dx);
+    } else if (isTinyThai) {
+      // whole teal storefront (roof, sign, awning, windows, door) in one cached blit
+      drawTinyThaiExterior(px, py, w, h, dx);
+    } else if (isMonkeyHouse) {
+      // whole painted-brick storefront in one cached blit, then the live neon + swinging monkey
+      drawMonkeyHouseExterior(px, py, w, h, dx);
+      drawMonkeyHouseLive(px, py, w, h, dx);
+    } else if (isAutumnRecords) {
+      // whole brick facade, orange sign, lamps, storefront + door in one cached blit
+      drawAutumnRecordsExterior(px, py, w, h, dx);
+    } else if (isComedyClub) {
+      // The building is only 2 tiles wide, so a single-line plate for "VT
+      // COMEDY CLUB" would have to grow wide enough to creep into Junior's
+      // sign next door. Wrap onto two lines and grow the plate DOWN instead
+      // of sideways so it stays clear of the neighbors.
+      const lines = ['VT COMEDY', 'CLUB'];
+      const maxTextW = w + 26;
+      let fsize = 13;
+      ctx.font = 'bold ' + fsize + 'px monospace';
+      let lineW = Math.max(...lines.map((l) => ctx.measureText(l).width));
+      while (fsize > 9 && lineW > maxTextW) {
+        fsize--;
+        ctx.font = 'bold ' + fsize + 'px monospace';
+        lineW = Math.max(...lines.map((l) => ctx.measureText(l).width));
+      }
+      const lineH = fsize + 4;
+      const sw = lineW + 14, sh = lineH * lines.length + 8;
+      const sx = px + (w - sw) / 2, sy = py + 3;
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.fillRect(sx + 2, sy + 3, sw, sh);
+      ctx.fillStyle = '#120e0a';
+      ctx.fillRect(sx, sy, sw, sh);
+      ctx.fillStyle = b.roof || '#e0b040';
+      ctx.fillRect(sx, sy + sh - 3, sw, 3);
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#f9f2e0';
+      lines.forEach((line, i) => {
+        ctx.fillText(line, px + w / 2, sy + lineH * (i + 1) - 3);
+      });
+    } else if (isVillageScoop) {
+      // Ice cream parlor front: a cream sign plate with a strawberry-pink
+      // border (name + a little DRIVE-THRU tag), a striped awning over the
+      // pickup window, and a mini menu board beside the door.
+      const maxTextW = w + 20;
+      let fsize = 15;
+      ctx.font = 'bold ' + fsize + 'px monospace';
+      while (fsize > 10 && ctx.measureText(b.name).width > maxTextW) {
+        fsize--;
+        ctx.font = 'bold ' + fsize + 'px monospace';
+      }
+      const textW = ctx.measureText(b.name).width;
+      const sw = textW + 24, sh = fsize + 22;
+      const sx = px + (w - sw) / 2, sy = py + 3;
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.fillRect(sx + 2, sy + 3, sw, sh);
+      ctx.fillStyle = '#e0508a';
+      ctx.fillRect(sx - 3, sy - 3, sw + 6, sh + 6);
+      ctx.fillStyle = '#fff4e0';
+      ctx.fillRect(sx, sy, sw, sh);
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#b02a60';
+      ctx.font = 'bold ' + fsize + 'px monospace';
+      ctx.fillText(b.name, px + w / 2, sy + 5 + fsize);
+      ctx.fillStyle = '#3a9a8a';
+      ctx.font = 'bold 8px monospace';
+      ctx.fillText('DRIVE-THRU', px + w / 2, sy + fsize + 17);
+
+      // pickup window (the tile left of the door) with a striped awning
+      const wx = px + TILE + 3, wy = py + h - TILE - 14;
+      ctx.fillStyle = '#3a2a1c';
+      ctx.fillRect(wx - 2, wy - 2, 28, 24);
+      ctx.fillStyle = '#ffe9f0';
+      ctx.fillRect(wx, wy, 24, 20);
+      ctx.fillStyle = 'rgba(0,0,0,0.18)';
+      ctx.fillRect(wx, wy + 11, 24, 9);
+      ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      ctx.fillRect(wx + 2, wy + 2, 6, 6);
+      ctx.fillStyle = '#e0508a';                            // counter ledge
+      ctx.fillRect(wx - 3, wy + 20, 30, 3);
+      for (let i = 0; i < 5; i++) {                         // awning stripes
+        ctx.fillStyle = i % 2 === 0 ? '#e0508a' : '#fff4e0';
+        ctx.fillRect(wx - 4 + i * 6.4, wy - 9, 6.4, 8);
+      }
+      ctx.fillStyle = '#1c140f';
+      ctx.fillRect(wx - 4, wy - 1, 32, 1);
+
+      // mini menu board with a little cone
+      const mx = px + 3 * TILE + 6, my = py + h - TILE - 12;
+      ctx.fillStyle = '#2a1c12';
+      ctx.fillRect(mx - 2, my - 2, 24, 28);
+      ctx.fillStyle = '#3a2a3a';
+      ctx.fillRect(mx, my, 20, 24);
+      ctx.fillStyle = '#e8c07a';                            // cone
+      ctx.beginPath();
+      ctx.moveTo(mx + 5, my + 11); ctx.lineTo(mx + 15, my + 11); ctx.lineTo(mx + 10, my + 22);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#ff8fb8';                            // scoops
+      ctx.beginPath(); ctx.arc(mx + 10, my + 8, 5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#8fe0c8';
+      ctx.beginPath(); ctx.arc(mx + 10, my + 4, 3.5, 0, Math.PI * 2); ctx.fill();
+    } else if (isSwampFood) {
+      // Weathered wooden plank sign, roped up over the doorway -- reads as
+      // a hand-built swamp-shack sign rather than the standard dark plate
+      // every other building gets, so SWAMP FOOD stands apart from GUT HUT/
+      // JOHNNY'S FUN PARK/TRUTH LAB next door.
+      const maxTextW = w + 26;
+      let fsize = 15;
+      ctx.font = 'bold ' + fsize + 'px monospace';
+      while (fsize > 10 && ctx.measureText(b.name).width > maxTextW) {
+        fsize--;
+        ctx.font = 'bold ' + fsize + 'px monospace';
+      }
+      const textW = ctx.measureText(b.name).width;
+      const sw = textW + 26, sh = fsize + 18;
+      const sx = px + (w - sw) / 2, sy = py + 6;
+
+      // two ropes hanging the plank from the roofline
+      ctx.strokeStyle = '#4a3820';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(sx + 7, py - 1); ctx.lineTo(sx + 7, sy);
+      ctx.moveTo(sx + sw - 7, py - 1); ctx.lineTo(sx + sw - 7, sy);
+      ctx.stroke();
+
+      // drop shadow + weathered wood plank body
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.fillRect(sx + 2, sy + 3, sw, sh);
+      ctx.fillStyle = '#5c3f24';
+      ctx.fillRect(sx, sy, sw, sh);
+      ctx.fillStyle = '#7a5730';
+      ctx.fillRect(sx, sy, sw, 3);
+      ctx.fillStyle = '#2e2010';
+      ctx.fillRect(sx, sy + sh - 3, sw, 3);
+
+      // plank grain + a couple of visible nail heads at the rope points
+      ctx.strokeStyle = 'rgba(0,0,0,0.18)';
+      ctx.lineWidth = 1;
+      for (let gx = sx + 10; gx < sx + sw - 4; gx += 11) {
+        ctx.beginPath(); ctx.moveTo(gx, sy + 2); ctx.lineTo(gx, sy + sh - 2); ctx.stroke();
+      }
+      ctx.fillStyle = '#2a1c10';
+      ctx.beginPath(); ctx.arc(sx + 7, sy + 4, 1.6, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(sx + sw - 7, sy + 4, 1.6, 0, Math.PI * 2); ctx.fill();
+
+      // slightly tilted hand-painted lettering
+      ctx.textAlign = 'center';
+      ctx.save();
+      ctx.translate(px + w / 2, sy + sh / 2 + fsize * 0.36);
+      ctx.rotate(-0.025);
+      ctx.fillStyle = '#e8d8a8';
+      ctx.fillText(b.name, 0, 0);
+      ctx.restore();
+    } else if (isJohnnysFunPark) {
+      // Carnival-marquee sign: candy-striped border, gold panel, and a ring
+      // of alternating "bulb" lights -- a boardwalk fun-park look instead
+      // of the standard dark plate every other building gets.
+      const maxTextW = w + 30;
+      let fsize = 15;
+      ctx.font = 'bold ' + fsize + 'px monospace';
+      while (fsize > 10 && ctx.measureText(b.name).width > maxTextW) {
+        fsize--;
+        ctx.font = 'bold ' + fsize + 'px monospace';
+      }
+      const textW = ctx.measureText(b.name).width;
+      const sw = textW + 26, sh = fsize + 20;
+      const sx = px + (w - sw) / 2, sy = py + 2;
+
+      // red/white candy-striped border
+      ctx.fillStyle = '#c81e2e';
+      ctx.fillRect(sx - 4, sy - 4, sw + 8, sh + 8);
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(sx - 4, sy - 4, sw + 8, sh + 8);
+      ctx.clip();
+      ctx.fillStyle = '#f4ecd8';
+      for (let i = -sh; i < sw + sh; i += 10) {
+        ctx.beginPath();
+        ctx.moveTo(sx - 4 + i, sy - 4);
+        ctx.lineTo(sx - 4 + i + 5, sy - 4);
+        ctx.lineTo(sx - 4 + i + 5 - (sh + 8), sy + sh + 4);
+        ctx.lineTo(sx - 4 + i - (sh + 8), sy + sh + 4);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.restore();
+
+      // gold marquee panel
+      ctx.fillStyle = '#e0b040';
+      ctx.fillRect(sx, sy, sw, sh);
+      ctx.fillStyle = 'rgba(255,255,255,0.25)';
+      ctx.fillRect(sx, sy, sw, 3);
+
+      // alternating bulb lights ringing the panel
+      const bulbLit = Math.floor(performance.now() / 300) % 2 === 0;
+      for (let bx = sx + 4; bx < sx + sw - 2; bx += 9) {
+        const idx = Math.round((bx - sx) / 9);
+        const lit = (idx % 2 === 0) === bulbLit;
+        ctx.fillStyle = lit ? '#fff6c0' : '#8a6a20';
+        ctx.beginPath(); ctx.arc(bx, sy, 1.8, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(bx, sy + sh, 1.8, 0, Math.PI * 2); ctx.fill();
+      }
+
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#2a1810';
+      ctx.fillText(b.name, px + w / 2, sy + sh / 2 + fsize * 0.36);
+    } else if (isBurlington) {
+      // Standalone marquee above the storefront, distinct from every sign
+      // drawBurlingtonRecordsDecor puts in the windows/by the door: those
+      // are black plates with flat cream lettering (ROCK/JAZZ, HIP-HOP/
+      // REGGAE, RECORDS, SOUL) or the small purple OPEN tube, so this one
+      // uses a warm glowing amber neon instead -- same cheap offset-glow
+      // trick as Henry's sign -- so BURLINGTON RECORDS reads first, above
+      // all of it, at a glance.
+      const maxTextW = w + 30;
+      let fsize = 15;
+      ctx.font = 'bold ' + fsize + 'px monospace';
+      while (fsize > 10 && ctx.measureText(b.name).width > maxTextW) {
+        fsize--;
+        ctx.font = 'bold ' + fsize + 'px monospace';
+      }
+      const textW = ctx.measureText(b.name).width;
+      const sw = textW + 22, sh = fsize + 15;
+      const sx = px + (w - sw) / 2, sy = py + 3;
+
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.fillRect(sx + 2, sy + 3, sw, sh);
+      ctx.fillStyle = '#120e0a';
+      ctx.fillRect(sx, sy, sw, sh);
+      ctx.strokeStyle = '#e0a030';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(sx + 1, sy + 1, sw - 2, sh - 2);
+
+      const tx2 = px + w / 2, ty2 = sy + sh / 2 + fsize * 0.36;
+      ctx.textAlign = 'center';
+      ctx.fillStyle = 'rgba(224,160,48,0.35)';
+      for (const [ox, oy] of NEON_GLOW_OFFSETS) ctx.fillText(b.name, tx2 + ox, ty2 + oy);
+      ctx.fillStyle = '#e0a030';
+      ctx.fillText(b.name, tx2, ty2);
+      ctx.fillStyle = '#fff3d4';
+      ctx.fillText(b.name, tx2, ty2);
+    } else if (isJohnnysPool) {
+      // Life-ring-and-rope sign instead of the standard dark plate: a round
+      // red/white ring buoy with the name lettered across a wooden plaque
+      // hung underneath it, so JOHNNY'S POOL reads as the beach/tourist-swim
+      // spot the rest of drawJohnnysPoolDecor() sets up.
+      const maxTextW = w + 30;
+      let fsize = 13;
+      ctx.font = 'bold ' + fsize + 'px monospace';
+      while (fsize > 9 && ctx.measureText(b.name).width > maxTextW) {
+        fsize--;
+        ctx.font = 'bold ' + fsize + 'px monospace';
+      }
+      const textW = ctx.measureText(b.name).width;
+      const sw = textW + 20, sh = fsize + 12;
+      const sx = px + (w - sw) / 2, sy = py + 22;
+
+      const ringCx = px + w / 2, ringCy = py + 10, ringR = 9;
+      ctx.strokeStyle = '#e8d8a8';                          // rope loop
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(ringCx, ringCy + ringR); ctx.lineTo(ringCx, sy); ctx.stroke();
+      for (let seg = 0; seg < 8; seg++) {                   // red/white ring segments
+        ctx.fillStyle = seg % 2 === 0 ? '#c8241e' : '#f4ecd8';
+        ctx.beginPath();
+        ctx.arc(ringCx, ringCy, ringR, (seg / 8) * Math.PI * 2, ((seg + 1) / 8) * Math.PI * 2);
+        ctx.arc(ringCx, ringCy, ringR - 4, ((seg + 1) / 8) * Math.PI * 2, (seg / 8) * Math.PI * 2, true);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.fillStyle = '#155a66';
+      ctx.beginPath(); ctx.arc(ringCx, ringCy, ringR - 4, 0, Math.PI * 2); ctx.fill();
+
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.fillRect(sx + 2, sy + 2, sw, sh);
+      ctx.fillStyle = '#c88a4a';
+      ctx.fillRect(sx, sy, sw, sh);
+      ctx.fillStyle = '#8a5a30';
+      ctx.fillRect(sx, sy + sh - 3, sw, 3);
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#1a2418';
+      ctx.fillText(b.name, px + w / 2, sy + sh / 2 + fsize * 0.36);
+    } else if (isFoamBrewersSign) {
+      // Matches the real Foam Brewers entrance sign: a dark, matte-black
+      // steel plate with a domed top and a little bump on the upper right,
+      // rusty copper cursive script cut out and standing off the metal,
+      // Edison bulbs strung along the top, and two small black spotlights
+      // aimed up at the lettering from the lower corners.
+      const sw = Math.min(w - 6, 176), sh = 40;
+      const sx = px + (w - sw) / 2, sy = py + 4;
+      const sr = sx + sw, sb = sy + sh;
+      const tw = performance.now() / 1000;
+
+      // drop shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.fillRect(sx + 3, sy + 6, sw, sh - 2);
+
+      // plate silhouette: flat bottom, rounded shoulders, domed top, bump
+      const plate = () => {
+        ctx.beginPath();
+        ctx.moveTo(sx, sb);
+        ctx.lineTo(sx, sy + 16);
+        ctx.quadraticCurveTo(sx, sy + 8, sx + 12, sy + 8);
+        ctx.lineTo(sx + sw * 0.52, sy + 8);
+        ctx.quadraticCurveTo(sx + sw * 0.56, sy + 8, sx + sw * 0.58, sy + 3);
+        ctx.quadraticCurveTo(sx + sw * 0.62, sy - 2, sx + sw * 0.68, sy);
+        ctx.quadraticCurveTo(sx + sw * 0.74, sy + 2, sx + sw * 0.74, sy + 8);
+        ctx.lineTo(sr - 12, sy + 8);
+        ctx.quadraticCurveTo(sr, sy + 8, sr, sy + 16);
+        ctx.lineTo(sr, sb);
+        ctx.closePath();
+      };
+      plate();
+      ctx.fillStyle = '#26221f';
+      ctx.fill();
+      ctx.strokeStyle = '#0e0b09';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      // faint lit edge along the top, like the sign catching the bulbs
+      ctx.save();
+      plate();
+      ctx.clip();
+      ctx.fillStyle = 'rgba(255,190,110,0.10)';
+      ctx.fillRect(sx, sy - 2, sw, 14);
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.fillRect(sx, sb - 8, sw, 8);
+      ctx.restore();
+
+      // string of Edison bulbs draped along the top of the plate
+      const bulbs = [0.10, 0.28, 0.46, 0.64, 0.82, 0.94];
+      ctx.strokeStyle = '#0e0b09';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(sx + 4, sy + 9);
+      bulbs.forEach((u, i) => {
+        const bx = sx + sw * u;
+        const by = sy + (u > 0.58 && u < 0.76 ? 3 : 9) + 5;
+        ctx.quadraticCurveTo(bx - 8, by - 3, bx, by - 3);
+      });
+      ctx.stroke();
+      bulbs.forEach((u, i) => {
+        const bx = sx + sw * u;
+        const by = sy + (u > 0.58 && u < 0.76 ? 3 : 9) + 6;
+        const tk = 0.75 + 0.25 * Math.sin(tw * 2.6 + i * 1.9);
+        ctx.fillStyle = 'rgba(255,200,110,' + (0.16 * tk).toFixed(3) + ')';
+        ctx.beginPath(); ctx.arc(bx, by, 6, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#3a2f26';
+        ctx.fillRect(bx - 1, by - 5, 2, 3);
+        ctx.fillStyle = 'rgba(255,226,160,' + (0.7 + 0.3 * tk).toFixed(3) + ')';
+        ctx.beginPath(); ctx.ellipse(bx, by, 1.8, 2.6, 0, 0, Math.PI * 2); ctx.fill();
+      });
+
+      // little black spotlights at the lower corners, angled up at the text
+      const spot = (cx, dir) => {
+        ctx.fillStyle = '#0e0b09';
+        ctx.fillRect(cx - 4, sb - 10, 8, 6);
+        ctx.fillRect(cx + dir * 4, sb - 12, 4, 8);
+        ctx.fillStyle = 'rgba(255,210,140,0.85)';
+        ctx.fillRect(cx + dir * 5, sb - 10, 2, 4);
+      };
+      spot(sx + 12, 1);
+      spot(sr - 12, -1);
+
+      // rusty cursive cut-out lettering
+      const label = 'Foam Brewers';
+      const maxTextW = sw - 24;
+      let fsize = 22;
+      const face = (n) => 'italic bold ' + n + 'px "Brush Script MT", "Segoe Script", "Lucida Handwriting", cursive';
+      ctx.font = face(fsize);
+      while (fsize > 12 && ctx.measureText(label).width > maxTextW) {
+        fsize--;
+        ctx.font = face(fsize);
+      }
+      const tx2 = px + w / 2, ty2 = sy + 8 + (sb - sy - 8) / 2 + fsize * 0.30;
+      ctx.textAlign = 'center';
+      ctx.fillStyle = 'rgba(255,150,60,0.22)';           // soft warm halo
+      for (const [ox, oy] of NEON_GLOW_OFFSETS) ctx.fillText(label, tx2 + ox, ty2 + oy);
+      ctx.fillStyle = '#0e0b09';                         // standoff shadow
+      ctx.fillText(label, tx2 + 1.5, ty2 + 1.5);
+      ctx.fillStyle = '#a4501f';                         // dark rust body
+      ctx.fillText(label, tx2, ty2);
+      ctx.fillStyle = '#d0752e';                         // lit copper face
+      ctx.fillText(label, tx2, ty2 - 0.8);
+      ctx.fillStyle = 'rgba(255,205,140,0.35)';          // highlight where the bulbs hit
+      ctx.fillText(label, tx2 - 0.4, ty2 - 1.6);
+    } else if (isCBPrintsSign) {
+      // CB PRINTS' storefront sign: a cream paper-stock plate with a CMYK
+      // color-bar strip along the bottom, and the name "mis-registered" the
+      // way a bad four-color print comes off the press -- cyan, magenta and
+      // yellow ghosts slightly offset behind a black top layer.
+      const sw = Math.min(w - 12, 172), sh = 30;
+      const sx = px + (w - sw) / 2, sy = py + 4;
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.fillRect(sx + 2, sy + 3, sw, sh);
+      ctx.fillStyle = '#120f14';
+      ctx.fillRect(sx - 2, sy - 2, sw + 4, sh + 4);
+      ctx.fillStyle = '#f2ead6';
+      ctx.fillRect(sx, sy, sw, sh);
+      const barW = sw / 4;
+      ['#00aeef', '#ec008c', '#ffd400', '#16141a'].forEach((c, i) => {
+        ctx.fillStyle = c;
+        ctx.fillRect(sx + i * barW, sy + sh - 5, barW, 5);
+      });
+      const cbLabel = 'CB PRINTS';
+      let cbSize = 20;
+      ctx.font = 'bold ' + cbSize + 'px monospace';
+      while (cbSize > 11 && ctx.measureText(cbLabel).width > sw - 16) {
+        cbSize--;
+        ctx.font = 'bold ' + cbSize + 'px monospace';
+      }
+      const cbx = px + w / 2, cby = sy + 2 + (sh - 7) / 2 + cbSize * 0.36;
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#ffd400'; ctx.fillText(cbLabel, cbx, cby + 2);
+      ctx.fillStyle = '#00aeef'; ctx.fillText(cbLabel, cbx - 2, cby + 1);
+      ctx.fillStyle = '#ec008c'; ctx.fillText(cbLabel, cbx + 2, cby - 1);
+      ctx.fillStyle = '#16141a'; ctx.fillText(cbLabel, cbx, cby);
+    } else if (isTalentSign && getTalentSign(Math.min(w - 26, 134), Math.round(Math.min(w - 26, 134) * 525 / 1828))) {
+      // The real TALENT SKATEPARK logo, centered in the roof band (see
+      // getTalentSign() just above drawTalentInterior()). Falls through to
+      // the plain plate sign below until the PNG has loaded.
+      const sw = Math.min(w - 26, 134), sh = Math.round(sw * 525 / 1828);
+      const spr = getTalentSign(sw, sh);
+      const sx = px + (w - sw) / 2, sy = py + 2;
+      ctx.save();
+      ctx.imageSmoothingEnabled = true;
+      ctx.drawImage(spr.img, sx, sy, sw, sh);
+      ctx.restore();
+    } else if (isEchoCenter) {
+      // ECHO CENTER's marquee: a deep-sea plate with a wavy bright-teal edge,
+      // the name in glowing sonar-cyan, and a little LAKE CHAMPLAIN AQUARIUM
+      // tagline underneath. (The Champ sculpture humping over the roofline
+      // and the aquarium windows are painted by drawEchoCenterExterior().)
+      const sw = Math.min(w - 40, 176), sh = 36;
+      const sx = px + (w - sw) / 2, sy = py + 4;
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.fillRect(sx + 2, sy + 3, sw, sh);
+      ctx.fillStyle = '#04141e';
+      ctx.fillRect(sx - 2, sy - 2, sw + 4, sh + 4);
+      ctx.fillStyle = '#0a3a52';
+      ctx.fillRect(sx, sy, sw, sh);
+      ctx.fillStyle = '#0d4d6a';
+      ctx.fillRect(sx, sy, sw, 9);
+      ctx.fillStyle = '#1fd0e0';
+      for (let wx = 0; wx < sw; wx += 8) {
+        ctx.fillRect(sx + wx, sy + sh - 4 - ((wx / 8) % 2) * 2, 8, 3);
+      }
+      const ecLabel = 'ECHO CENTER';
+      let ecSize = 19;
+      ctx.font = 'bold ' + ecSize + 'px monospace';
+      while (ecSize > 11 && ctx.measureText(ecLabel).width > sw - 14) {
+        ecSize--;
+        ctx.font = 'bold ' + ecSize + 'px monospace';
+      }
+      const ecx = px + w / 2, ecy = sy + 20;
+      ctx.textAlign = 'center';
+      ctx.fillStyle = 'rgba(60,230,255,0.30)';
+      for (const [ox, oy] of NEON_GLOW_OFFSETS) ctx.fillText(ecLabel, ecx + ox, ecy + oy);
+      ctx.fillStyle = '#35e0f5'; ctx.fillText(ecLabel, ecx, ecy);
+      ctx.fillStyle = '#e4fdff'; ctx.fillText(ecLabel, ecx, ecy - 0.6);
+      ctx.font = 'bold 7px monospace';
+      ctx.fillStyle = '#9fe8f2';
+      ctx.fillText('LAKE CHAMPLAIN AQUARIUM', ecx, sy + sh - 8);
+    } else if (isSpeakingVolumesSign && getSpeakingVolumesSign(Math.min(w - 24, 168), Math.round(Math.min(w - 24, 168) * 328 / 560))) {
+      // The real Speaking Volumes badge, big and centered on the storefront,
+      // overlapping the roof band and the wall below it (the record emblem
+      // over the door is drawn lower down -- see drawSpeakingVolumesExterior).
+      const sw = Math.min(w - 24, 168), sh = Math.round(sw * 328 / 560);
+      const spr = getSpeakingVolumesSign(sw, sh);
+      const sx = px + (w - sw) / 2, sy = py + 3;
+      ctx.save();
+      ctx.imageSmoothingEnabled = true;
+      ctx.globalAlpha = 0.32;
+      ctx.drawImage(spr.shadow, sx + 2, sy + 4, sw, sh);
+      ctx.globalAlpha = 1;
+      ctx.drawImage(spr.img, sx, sy, sw, sh);
+      ctx.restore();
+    } else if (!isNectars && !isBurlington) {
+      const maxTextW = w + 26;
+      let fsize = 17;
+      ctx.font = 'bold ' + fsize + 'px monospace';
+      while (fsize > 11 && ctx.measureText(b.name).width > maxTextW) {
+        fsize--;
+        ctx.font = 'bold ' + fsize + 'px monospace';
+      }
+      const textW = ctx.measureText(b.name).width;
+      const sw = textW + 22, sh = fsize + 15;
+      const sx = px + (w - sw) / 2, sy = py + 3;
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.fillRect(sx + 2, sy + 3, sw, sh);
+      ctx.fillStyle = '#120e0a';
+      ctx.fillRect(sx, sy, sw, sh);
+      ctx.fillStyle = b.roof || '#e0b040';
+      ctx.fillRect(sx, sy + sh - 3, sw, 3);
+      ctx.textAlign = 'center';
+      if (isHenrys) {
+        // glowing red neon-tube look: a soft outer glow under a brighter
+        // pink-white core, so the lettering reads like a lit neon sign
+        // against the dark plate instead of flat printed text.
+        //
+        // This used to use ctx.shadowBlur, which is drawn every outdoor
+        // frame (this building's sign is on screen constantly while
+        // outside) and is one of the most expensive things you can ask
+        // Canvas2D to do per-pixel — on slower/mobile GPUs it can eat
+        // several ms every frame, all on the same main thread the music
+        // scheduler needs. A handful of cheap offset fillText passes gives
+        // a near-identical glow for a fraction of the cost.
+        const tx2 = px + w / 2, ty2 = sy + sh / 2 + fsize * 0.36;
+        ctx.save();
+        ctx.fillStyle = 'rgba(255,42,60,0.35)';
+        for (const [ox, oy] of NEON_GLOW_OFFSETS) ctx.fillText(b.name, tx2 + ox, ty2 + oy);
+        ctx.fillStyle = '#ff2a3c';
+        ctx.fillText(b.name, tx2, ty2);
+        ctx.fillStyle = '#ffc4cb';
+        ctx.fillText(b.name, tx2, ty2);
+        ctx.restore();
+      } else {
+        ctx.fillStyle = '#f9f2e0';
+        ctx.fillText(b.name, px + w / 2, sy + sh / 2 + fsize * 0.36);
+      }
+    }
+  }
+}
+
+// Cheap stand-in for shadowBlur's glow on Henry's neon sign — see the call
+// site for why. A small fixed ring of offsets drawn at low opacity.
+const NEON_GLOW_OFFSETS = [
+  [-2, 0], [2, 0], [0, -2], [0, 2], [-1.5, -1.5], [1.5, -1.5], [-1.5, 1.5], [1.5, 1.5],
+];
+
+function drawOpenDoorSign(doorX, doorY) {
+  // "OPEN" sign with a glowing arrow above the Green Door Studio entrance.
+  // doorX/doorY is the top-left of the door tile; the sign hangs in the wall
+  // row directly above it and points down at the doorway.
+  const cx = doorX + TILE / 2;
+  const signY = doorY - 24;
+  const sw = 30, sh = 15;
+
+  // soft glow behind the sign so it pops off the brick wall
+  ctx.fillStyle = 'rgba(255,233,160,0.28)';
+  ctx.fillRect(cx - sw / 2 - 4, signY - 3, sw + 8, sh + 8);
+
+  // wooden hanger/mount
+  ctx.fillStyle = '#4a3020';
+  ctx.fillRect(cx - 3, signY - 3, 6, 3);
+
+  // the glowing plaque
+  ctx.fillStyle = '#ffe9a0';
+  ctx.fillRect(cx - sw / 2, signY, sw, sh);
+  ctx.strokeStyle = '#a8782a';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(cx - sw / 2, signY, sw, sh);
+  ctx.fillStyle = '#4a2006';
+  ctx.font = 'bold 11px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('OPEN', cx, signY + 13);
+
+  // small lit bulb above the "O" for a neon vibe
+  ctx.fillStyle = '#fff6c8';
+  ctx.beginPath();
+  ctx.arc(cx - 7, signY + 3, 1.6, 0, Math.PI * 2);
+  ctx.fill();
+
+  // downward arrow pointing at the doorway
+  const ay = signY + sh + 3;
+  ctx.strokeStyle = '#ffe9a0';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(cx, ay);
+  ctx.lineTo(cx, ay + 10);
+  ctx.stroke();
+  ctx.fillStyle = '#ffe9a0';
+  ctx.beginPath();
+  ctx.moveTo(cx - 6, ay + 5);
+  ctx.lineTo(cx, ay + 11);
+  ctx.lineTo(cx + 6, ay + 5);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawGreenDoorMural(doorX, doorY) {
+  // Vibrant mural on Green Door Studio entrance
+  // Based on the green character with purple hair and blue background
+  
+  const w = TILE;
+  const h = TILE;
+  
+  ctx.save();
+  
+  // Bright cyan/turquoise background
+  ctx.fillStyle = '#20c0d8';
+  ctx.fillRect(doorX, doorY, w, h);
+  
+  // Add some texture/splatter to background
+  ctx.fillStyle = '#18a8c0';
+  ctx.fillRect(doorX + 2, doorY + 4, 4, 3);
+  ctx.fillRect(doorX + w - 8, doorY + 8, 5, 4);
+  ctx.fillRect(doorX + 5, doorY + h - 10, 3, 3);
+  
+  // Purple hair swirls (left side)
+  ctx.fillStyle = '#9060b0';
+  ctx.beginPath();
+  ctx.ellipse(doorX + 8, doorY + 10, 6, 8, -0.3, 0, Math.PI * 2);
+  ctx.fill();
+  
+  ctx.fillStyle = '#b080d0';
+  ctx.beginPath();
+  ctx.ellipse(doorX + 6, doorY + 12, 4, 6, -0.4, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Purple hair swirls (right side)
+  ctx.fillStyle = '#9060b0';
+  ctx.beginPath();
+  ctx.ellipse(doorX + w - 10, doorY + 11, 6, 8, 0.3, 0, Math.PI * 2);
+  ctx.fill();
+  
+  ctx.fillStyle = '#b080d0';
+  ctx.beginPath();
+  ctx.ellipse(doorX + w - 8, doorY + 13, 4, 6, 0.4, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Green face (center)
+  ctx.fillStyle = '#40d050';
+  ctx.beginPath();
+  ctx.ellipse(doorX + w/2, doorY + h/2 - 2, 10, 12, 0, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Face outline/shadow
+  ctx.strokeStyle = '#2a9838';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.ellipse(doorX + w/2, doorY + h/2 - 2, 10, 12, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  
+  // Left eye (bright blue)
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.ellipse(doorX + w/2 - 4, doorY + h/2 - 4, 3, 3.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  
+  ctx.fillStyle = '#20d0f0';
+  ctx.beginPath();
+  ctx.ellipse(doorX + w/2 - 4, doorY + h/2 - 4, 2, 2.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  
+  ctx.fillStyle = '#1a1a1e';
+  ctx.beginPath();
+  ctx.ellipse(doorX + w/2 - 4, doorY + h/2 - 4, 1, 1.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Right eye (bright blue)
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.ellipse(doorX + w/2 + 4, doorY + h/2 - 4, 3, 3.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  
+  ctx.fillStyle = '#20d0f0';
+  ctx.beginPath();
+  ctx.ellipse(doorX + w/2 + 4, doorY + h/2 - 4, 2, 2.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  
+  ctx.fillStyle = '#1a1a1e';
+  ctx.beginPath();
+  ctx.ellipse(doorX + w/2 + 4, doorY + h/2 - 4, 1, 1.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Nose (small)
+  ctx.fillStyle = '#2a9838';
+  ctx.beginPath();
+  ctx.moveTo(doorX + w/2, doorY + h/2);
+  ctx.lineTo(doorX + w/2 - 1, doorY + h/2 + 2);
+  ctx.lineTo(doorX + w/2 + 1, doorY + h/2 + 2);
+  ctx.closePath();
+  ctx.fill();
+  
+  // Big smile (pink/magenta lips)
+  ctx.fillStyle = '#f060a0';
+  ctx.beginPath();
+  ctx.ellipse(doorX + w/2, doorY + h/2 + 5, 6, 3, 0, 0, Math.PI);
+  ctx.fill();
+  
+  // Teeth highlight
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(doorX + w/2 - 3, doorY + h/2 + 4, 6, 2);
+  
+  // Yellow sunflower (right side of hair)
+  ctx.fillStyle = '#f0d060';
+  for (let i = 0; i < 6; i++) {
+    const angle = (i / 6) * Math.PI * 2;
+    const petalX = doorX + w - 6 + Math.cos(angle) * 3;
+    const petalY = doorY + 8 + Math.sin(angle) * 3;
+    ctx.beginPath();
+    ctx.ellipse(petalX, petalY, 2, 3, angle, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  
+  // Flower center
+  ctx.fillStyle = '#8a5a3a';
+  ctx.beginPath();
+  ctx.arc(doorX + w - 6, doorY + 8, 2, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Earring/jewelry (yellow)
+  ctx.fillStyle = '#f0d860';
+  ctx.beginPath();
+  ctx.arc(doorX + w/2 + 8, doorY + h/2 + 2, 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillRect(doorX + w/2 + 7, doorY + h/2 + 4, 2, 3);
+  
+  // Green body/shoulders (bottom)
+  ctx.fillStyle = '#40d050';
+  ctx.fillRect(doorX + w/2 - 8, doorY + h - 8, 16, 8);
+  
+  // Darker outfit/belt area
+  ctx.fillStyle = '#2a5a30';
+  ctx.fillRect(doorX + w/2 - 8, doorY + h - 4, 16, 4);
+  
+  // Belt studs
+  ctx.fillStyle = '#7a7a7e';
+  for (let i = 0; i < 3; i++) {
+    ctx.beginPath();
+    ctx.arc(doorX + w/2 - 4 + i * 4, doorY + h - 2, 1, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  
+  // Door handle (small circle)
+  ctx.fillStyle = '#8a8a8e';
+  ctx.beginPath();
+  ctx.arc(doorX + w - 8, doorY + h/2 + 8, 2, 0, Math.PI * 2);
+  ctx.fill();
+  
+  ctx.restore();
+}
+
+function drawGraffiti(px, py, w, h) {
+  ctx.save();
+  ctx.strokeStyle = '#e06a38';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(px + 10, py + 57);
+  ctx.lineTo(px + 32, py + 44);
+  ctx.lineTo(px + 48, py + 59);
+  ctx.lineTo(px + 65, py + 43);
+  ctx.lineTo(px + 82, py + 56);
+  ctx.stroke();
+
+  ctx.fillStyle = '#3d83b8';
+  ctx.font = 'bold 15px monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText('GDS', px + 12, py + 73);
+
+  ctx.strokeStyle = '#9b4f9f';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(px + 86, py + 38);
+  ctx.lineTo(px + 102, py + 48);
+  ctx.lineTo(px + 88, py + 58);
+  ctx.lineTo(px + 105, py + 67);
+  ctx.stroke();
+
+  ctx.strokeStyle = '#e6d9c4';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(px + 16, py + 47);
+  ctx.lineTo(px + 29, py + 40);
+  ctx.stroke();
+
+  ctx.fillStyle = '#f0a83c';
+  ctx.fillRect(px + 103, py + 39, 4, 4);
+  ctx.fillRect(px + 109, py + 47, 3, 3);
+
+  ctx.fillStyle = '#64a4d0';
+  ctx.fillRect(px + 20, py + 82, 4, 4);
+  ctx.fillRect(px + 28, py + 85, 3, 3);
+  ctx.restore();
+}
+
+function drawHeyBudDecor(px, py, w, h) {
+  ctx.save();
+
+  // Wavy teal / white / orange mural band across the top of the wall —
+  // echoes the real storefront's abstract paint job wrapping the top edge.
+  const muralY = py + 46, muralH = 20;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(px, muralY, w, muralH);
+  ctx.clip();
+  ctx.fillStyle = '#2f8fa8';
+  ctx.fillRect(px, muralY, w, muralH);
+  const blobs = [
+    [8, 6, 14], [30, 12, 10], [52, 4, 16], [76, 14, 9],
+    [98, 6, 15], [122, 13, 10], [146, 4, 14], [170, 13, 9],
+    [194, 6, 15], [214, 12, 10],
+  ];
+  blobs.forEach(([bx, by, r], i) => {
+    ctx.fillStyle = i % 2 === 0 ? '#eef1ea' : '#dd6a38';
+    ctx.beginPath();
+    ctx.ellipse(px + bx, muralY + by, r, r * 0.55, 0.35, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.restore();
+
+  // red corrugated kickplate band along the base, under the windows/door —
+  // matches the real building's red ribbed metal skirt
+  const bandY = py + h - 14;
+  ctx.fillStyle = '#a8281f';
+  ctx.fillRect(px, bandY, w, 14);
+  ctx.fillStyle = 'rgba(0,0,0,0.18)';
+  for (let x = 0; x < w; x += 8) ctx.fillRect(px + x, bandY, 4, 14);
+
+  drawPlantPot(px + 8, py + h - 14);
+  drawPlantPot(px + w - 20, py + h - 14);
+
+  ctx.restore();
+}
+
+// Kountry Kart Deli: replaces the standard punch-windows + door with one
+// continuous floor-to-ceiling glass storefront across the whole front wall,
+// door included — styled after the real shop's black-and-red storefront,
+// with hand-painted Vermont farm murals over the two side windows.
+function drawDeliDecor(px, py, w, h, doorPx) {
+  ctx.save();
+
+  const top = py + 40;       // just below the roof/eave trim
+  const bottom = py + h - 4; // just above the foundation shading
+  const left = px + 4, right = px + w - 4;
+  const glassH = bottom - top;
+
+  const BLACK = '#141210', RED = '#a8281f', RED_DK = '#7c1a14';
+  const CREAM = '#f4ecd8';
+
+  // black recess behind the glazing so the panes read as inset
+  ctx.fillStyle = BLACK;
+  ctx.fillRect(left - 2, top - 2, (right - left) + 4, glassH + 4);
+
+  const doorW = TILE - 10, doorL = doorPx + 5;
+  const leftX = left, leftW = doorL - 4 - left;
+  const rightX = doorL + doorW + 4, rightW = right - rightX;
+
+  // -- hand-painted farm mural over one side window: green rolling hills
+  // under a pale sky, a scatter of round hay bales
+  function drawHillMural(bx, bw, by, bh) {
+    ctx.save();
+    ctx.beginPath(); ctx.rect(bx, by, bw, bh); ctx.clip();
+    ctx.fillStyle = '#bfe0ea';
+    ctx.fillRect(bx, by, bw, bh);
+    ctx.fillStyle = '#3f8f4a';
+    ctx.beginPath();
+    ctx.moveTo(bx, by + bh);
+    ctx.lineTo(bx, by + bh * 0.6);
+    for (let i = 0; i <= bw; i += 6) {
+      ctx.lineTo(bx + i, by + bh * 0.55 - 5 * Math.sin(i / 9));
+    }
+    ctx.lineTo(bx + bw, by + bh);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#7a5a2c';
+    for (let i = 0; i < 3; i++) {
+      ctx.beginPath();
+      ctx.ellipse(bx + bw * (0.25 + i * 0.28), by + bh * 0.8, 3, 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // -- hand-painted farm mural: red barn with a white roofline, on a
+  // green field
+  function drawBarnMural(bx, bw, by, bh) {
+    ctx.save();
+    ctx.beginPath(); ctx.rect(bx, by, bw, bh); ctx.clip();
+    ctx.fillStyle = '#bfe0ea';
+    ctx.fillRect(bx, by, bw, bh);
+    ctx.fillStyle = '#3f8f4a';
+    ctx.fillRect(bx, by + bh * 0.62, bw, bh * 0.4);
+    const bcx = bx + bw * 0.5;
+    ctx.fillStyle = RED;
+    ctx.fillRect(bcx - bw * 0.26, by + bh * 0.4, bw * 0.52, bh * 0.3);
+    ctx.beginPath();
+    ctx.moveTo(bcx - bw * 0.3, by + bh * 0.4);
+    ctx.lineTo(bcx, by + bh * 0.2);
+    ctx.lineTo(bcx + bw * 0.3, by + bh * 0.4);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = CREAM;
+    ctx.fillRect(bcx - 2, by + bh * 0.42, 4, bh * 0.14);
+    ctx.restore();
+  }
+
+  const muralTop = top, muralH = 30;
+  drawHillMural(leftX, leftW, muralTop, muralH);
+  drawBarnMural(rightX, rightW, muralTop, muralH);
+
+  // -- text pane below the mural: cream panel with red hand-lettering,
+  // like the shop's painted window signage
+  const textTop = muralTop + muralH, textH = 26;
+  ctx.fillStyle = CREAM;
+  ctx.fillRect(leftX, textTop, leftW, textH);
+  ctx.fillRect(rightX, textTop, rightW, textH);
+
+  ctx.fillStyle = RED;
+  ctx.textAlign = 'center';
+  ctx.font = 'italic bold 8px Georgia, serif';
+  ctx.fillText('Kountry Kart', leftX + leftW / 2, textTop + 12);
+  ctx.font = 'italic bold 7px Georgia, serif';
+  ctx.fillText('Deli', leftX + leftW / 2, textTop + 21);
+
+  ctx.font = 'bold 5px monospace';
+  ctx.fillText('SUBS \u00b7 WRAPS', rightX + rightW / 2, textTop + 10);
+  ctx.fillText('GYROS \u00b7 SALADS', rightX + rightW / 2, textTop + 18);
+  ctx.font = '5px monospace';
+  ctx.fillText('BEVERAGES', rightX + rightW / 2, textTop + 25);
+
+  // -- lower glass: dim interior glow, cool blue-tinted glass over both
+  // side windows, running down to the kickplate
+  const interiorTop = textTop + textH, interiorH = bottom - 16 - interiorTop;
+  [[leftX, leftW], [rightX, rightW]].forEach(([bx, bw]) => {
+    const grad = ctx.createLinearGradient(0, interiorTop, 0, interiorTop + interiorH);
+    grad.addColorStop(0, 'rgba(214,236,244,0.5)');
+    grad.addColorStop(1, 'rgba(110,150,175,0.55)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(bx, interiorTop, bw, interiorH);
+  });
+
+  // -- red pillars framing each window bay and the door, echoing the
+  // real storefront's red-painted structural columns
+  ctx.fillStyle = RED;
+  [left - 2, leftX + leftW, doorL + doorW + 1, right - 1].forEach((cxp) => {
+    ctx.fillRect(cxp, top, 4, glassH);
+  });
+  ctx.fillStyle = RED_DK;
+  [left - 2, leftX + leftW, doorL + doorW + 1, right - 1].forEach((cxp) => {
+    ctx.fillRect(cxp, top, 4, 4);
+  });
+
+  // -- glass entry door: black frame, dark glass, small round push plate,
+  // "OPEN 24 HRS" placard above it
+  ctx.fillStyle = 'rgba(50,60,64,0.55)';
+  ctx.fillRect(doorL, top, doorW, glassH);
+  ctx.strokeStyle = BLACK;
+  ctx.lineWidth = 2;
+  ctx.strokeRect(doorL, top, doorW, glassH);
+  ctx.fillStyle = CREAM;
+  ctx.fillRect(doorL + 2, top + glassH * 0.32, doorW - 4, 9);
+  ctx.fillStyle = RED;
+  ctx.font = 'bold 5px monospace';
+  ctx.fillText('OPEN', doorL + doorW / 2, top + glassH * 0.32 + 7);
+  ctx.fillStyle = '#cfd8da';
+  ctx.fillRect(doorL + doorW - 7, top + glassH * 0.6, 3, glassH * 0.24);
+
+  // -- black-and-white striped kickplate along the very bottom, matching
+  // the real storefront's painted base band
+  const kickTop = bottom - 16;
+  ctx.fillStyle = BLACK;
+  ctx.fillRect(left, kickTop, right - left, 16);
+  ctx.save();
+  ctx.beginPath(); ctx.rect(left, kickTop, right - left, 16); ctx.clip();
+  ctx.strokeStyle = CREAM;
+  ctx.lineWidth = 2;
+  for (let sx = left - 16; sx < right + 16; sx += 10) {
+    ctx.beginPath();
+    ctx.moveTo(sx, kickTop + 16);
+    ctx.lineTo(sx + 16, kickTop);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // small red call button near the door, low on the kickplate
+  ctx.fillStyle = RED;
+  ctx.beginPath(); ctx.arc(doorL + doorW + 8, kickTop + 8, 3, 0, Math.PI * 2); ctx.fill();
+
+  ctx.restore();
+}
+
+// BURLINGTON RECORDS: floor-to-ceiling black-framed glass storefront with
+// hand-lettered genre signs in the windows, a purple neon "OPEN" sign by the
+// door, brick-red trim peeking above the glass line, and a flower box at the
+// entrance -- styled after the real shop's storefront (dark green paint over
+// brick, ROCK/JAZZ, HIP-HOP/REGGAE and SOUL window signs, purple neon OPEN).
+function drawBurlingtonRecordsDecor(px, py, w, h, doorPx) {
+  ctx.save();
+
+  const top = py + 38;        // just below the roof/eave trim
+  const bottom = py + h - 8;  // just above the foundation shading
+  const glassH = bottom - top;
+  const left = px + 4, right = px + w - 4;
+
+  const BLACK = '#0c0a08', CREAM = '#f4ecd8', PURPLE = '#9a4fd8';
+
+  // exposed brick sliver above the glass line, under the roof eave --
+  // echoes the real building's brick upper story peeking over the dark paint
+  ctx.fillStyle = '#7a4a3a';
+  ctx.fillRect(px + 2, py + 40 - 8, w - 4, 8);
+  for (let bx = 0; bx < w - 4; bx += 10) {
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.fillRect(px + 2 + bx, py + 40 - 8, 1, 8);
+  }
+
+  // black recess behind the glazing so the panes read as inset
+  ctx.fillStyle = BLACK;
+  ctx.fillRect(left - 2, top - 2, (right - left) + 4, glassH + 4);
+
+  // door bay in the middle; a glass window bay on either side of it
+  const doorW = TILE - 6, doorL = doorPx + 3;
+  const leftX = left, leftW = doorL - 3 - left;
+  const rightX = doorL + doorW + 3, rightW = right - rightX;
+
+  function glassPane(gx, gw) {
+    if (gw <= 0) return;
+    ctx.fillStyle = 'rgba(30,42,44,0.88)';
+    ctx.fillRect(gx, top, gw, glassH);
+    ctx.fillStyle = 'rgba(180,210,220,0.14)';           // glare streak
+    ctx.fillRect(gx + gw * 0.15, top + 2, Math.max(3, gw * 0.12), glassH - 4);
+    ctx.strokeStyle = '#1a1a1c';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(gx + 1, top + 1, gw - 2, glassH - 2);
+  }
+  glassPane(leftX, leftW);
+  glassPane(rightX, rightW);
+
+  // small dark plate with bold white lettering, sized to fit inside a
+  // window bay -- same look for each of the three genre signs
+  function windowSign(cx, cy, lines, maxW) {
+    let fsize = 10;
+    ctx.font = 'bold ' + fsize + 'px monospace';
+    let lineW = Math.max(...lines.map((l) => ctx.measureText(l).width));
+    while (fsize > 6 && lineW > maxW) {
+      fsize--;
+      ctx.font = 'bold ' + fsize + 'px monospace';
+      lineW = Math.max(...lines.map((l) => ctx.measureText(l).width));
+    }
+    const lineH = fsize + 3;
+    const sw = lineW + 8, sh = lineH * lines.length + 4;
+    ctx.fillStyle = BLACK;
+    ctx.fillRect(cx - sw / 2, cy - sh / 2, sw, sh);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = CREAM;
+    lines.forEach((line, i) => {
+      ctx.fillText(line, cx, cy - sh / 2 + lineH * (i + 1) - 3);
+    });
+  }
+  // "ROCK / JAZZ" high in the left window, "HIP-HOP / REGGAE" high in the
+  // right window -- same stacked two-line plates as the reference photo
+  windowSign(leftX + leftW / 2, top + 10, ['ROCK', 'JAZZ'], leftW - 6);
+  windowSign(rightX + rightW / 2, top + 10, ['HIP-HOP', 'REGGAE'], rightW - 6);
+  // "RECORDS" lettering visible through the glass above the door, and
+  // "SOUL" tucked in the lower corner of the right window
+  windowSign(px + w / 2, top + glassH - 12, ['RECORDS'], (right - left) - 10);
+  windowSign(rightX + rightW - 16, top + glassH - 12, ['SOUL'], 36);
+
+  // vertical purple neon "OPEN" sign mounted beside the door, glowing
+  // against the dark glass -- cheap offset-fillText glow, same trick used
+  // for Henry's neon sign rather than an expensive shadowBlur every frame
+  const neonX = doorL - 10, neonY = top + glassH / 2;
+  ctx.save();
+  ctx.translate(neonX, neonY);
+  ctx.rotate(-Math.PI / 2);
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 11px monospace';
+  ctx.fillStyle = 'rgba(154,79,216,0.35)';
+  for (const [ox, oy] of NEON_GLOW_OFFSETS) ctx.fillText('OPEN', ox, oy);
+  ctx.fillStyle = PURPLE;
+  ctx.fillText('OPEN', 0, 0);
+  ctx.fillStyle = '#e8d4fa';
+  ctx.fillText('OPEN', 0, 0);
+  ctx.restore();
+  ctx.restore();
+
+  // flower box at the base by the entrance, with a scatter of pink/red
+  // blooms -- matches the potted flowers out front of the real shop
+  const boxX = doorL - 14, boxY = py + h - 6, boxW = 22, boxH = 7;
+  ctx.fillStyle = '#141414';
+  ctx.fillRect(boxX, boxY, boxW, boxH);
+  ctx.fillStyle = '#3a3a3e';
+  ctx.fillRect(boxX, boxY, boxW, 2);
+  const blooms = [
+    [3, -3, '#d81f6e'], [8, -6, '#e0468a'], [13, -3, '#c81858'],
+    [17, -6, '#e0468a'], [6, -8, '#f06aa8'], [15, -9, '#d81f6e'],
+  ];
+  blooms.forEach(([bx, by, col]) => {
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.arc(boxX + bx, boxY + by, 2, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.fillStyle = '#3f8f4a';
+  ctx.fillRect(boxX + 1, boxY - 4, 2, 4);
+  ctx.fillRect(boxX + boxW - 4, boxY - 5, 2, 5);
+}
+
+// JOHNNY'S POOL exterior dressing -- gives the shrunk-down building a
+// tourist-swim-spot look instead of the old plain teal box: candy-striped
+// cabana awning over the door, a couple of lit tiki torches flanking the
+// entrance, and potted palms in the corners (reusing drawTruthLabPottedPalm,
+// the same potted-palm prop TRUTH LAB's pool deck uses). Called from
+// drawBuildings() right after the wall/roof/door for this building are
+// drawn, same "isX -> drawXDecor()" pattern as drawBurlingtonRecordsDecor.
+function drawJohnnysPoolDecor(px, py, w, h, doorPx) {
+  ctx.save();
+
+  // candy-striped cabana awning, angled out over the doorway
+  const awnY = py + h - TILE - 4, awnH = 12;
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(doorPx - 4, awnY + awnH);
+  ctx.lineTo(doorPx - 2, awnY);
+  ctx.lineTo(doorPx + TILE + 2, awnY);
+  ctx.lineTo(doorPx + TILE + 4, awnY + awnH);
+  ctx.closePath();
+  ctx.clip();
+  ctx.fillStyle = '#f4ecd8';
+  ctx.fillRect(doorPx - 4, awnY, TILE + 10, awnH + 4);
+  for (let i = 0, sx = doorPx - 8; sx < doorPx + TILE + 8; i++, sx += 7) {
+    if (i % 2 === 0) {
+      ctx.fillStyle = '#c8241e';
+      ctx.fillRect(sx, awnY, 7, awnH + 4);
+    }
+  }
+  ctx.restore();
+  // scalloped shadow edge under the awning
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx.fillRect(doorPx - 3, awnY + awnH, TILE + 6, 2);
+
+  // two lit tiki torches flanking the door
+  drawJohnnysPoolTikiTorch(doorPx - 12, py + h - 4);
+  drawJohnnysPoolTikiTorch(doorPx + TILE + 8, py + h - 4);
+
+  // potted palms tucked in the building's own corners
+  drawTruthLabPottedPalm(px - 6, py + h - 6);
+  drawTruthLabPottedPalm(px + w - 10, py + h - 6);
+
+  ctx.restore();
+}
+
+// Small lit tiki torch -- bamboo pole, thatched cap, and a flickering
+// flame -- planted beside JOHNNY'S POOL's door (see drawJohnnysPoolDecor()).
+function drawJohnnysPoolTikiTorch(x, y) {
+  ctx.fillStyle = '#6a4a28';
+  ctx.fillRect(x - 1, y - 22, 3, 22);
+  ctx.fillStyle = '#8a6a3a';
+  ctx.beginPath();
+  ctx.moveTo(x - 6, y - 20);
+  ctx.lineTo(x + 6, y - 20);
+  ctx.lineTo(x, y - 30);
+  ctx.closePath();
+  ctx.fill();
+  const flick = Math.floor(performance.now() / 150) % 2;
+  ctx.fillStyle = flick ? '#f0a030' : '#e0862a';
+  ctx.beginPath();
+  ctx.moveTo(x, y - 40);
+  ctx.quadraticCurveTo(x + 4, y - 33, x, y - 30);
+  ctx.quadraticCurveTo(x - 4, y - 33, x, y - 40);
+  ctx.fill();
+}
+
+function drawPlantPot(x, y) {
+  ctx.fillStyle = '#70432d';
+  ctx.fillRect(x, y - 10, 12, 8);
+  ctx.fillStyle = '#4d8c3d';
+  ctx.fillRect(x + 2, y - 18, 4, 9);
+  ctx.fillRect(x + 7, y - 22, 4, 13);
+  ctx.fillRect(x - 2, y - 15, 5, 5);
+  ctx.fillRect(x + 9, y - 18, 5, 5);
+}
+
+// ---------------------------------------------------------------- town decorations
+function drawTownDecorations(time) {
+  drawSwampPortalArrows(time);
+  drawSkateparkPortalArrows(time);
+  drawLabCarpet(time);
+  drawGreenDoorArtArea();
+  drawWallPainter(time);
+  drawDeliScene(time);
+  drawCoffeeCart();
+  drawAnthillBillboard();
+  drawOldLotByHeyBud();
+  drawHeyBudParkedCars();
+  drawSmokingPerson(time);
+  // Widened sign: shifted left of its old anchor so its right edge still lines
+  // up with the flea-market crate at tile (26,20) instead of growing into it.
+  drawYardSign(25 * TILE - 10, 20 * TILE);
+  drawFountainArea(time);
+  drawCenterStretch();
+  drawJazzFestBanner(time);
+  drawStadium();
+  drawIceCreamVan();
+  drawNewsstands();
+}
+
+// A single pulsing up-arrow, drawn centered on world-space point (px, py).
+// Used by drawSwampPortalArrows() below to flag the new swamp portal.
+function drawSwampPortalArrow(px, py, time) {
+  const t = time || 0;
+  const bob = Math.sin(t * 3 + px * 0.01) * 3;
+  const cy = py + bob;
+  ctx.save();
+  ctx.globalAlpha = 0.75 + 0.25 * Math.sin(t * 3 + px * 0.01);
+  ctx.fillStyle = '#a8e078';
+  ctx.strokeStyle = '#2f4a26';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(px, cy - 12);
+  ctx.lineTo(px - 11, cy + 6);
+  ctx.lineTo(px - 5, cy + 6);
+  ctx.lineTo(px - 5, cy + 16);
+  ctx.lineTo(px + 5, cy + 16);
+  ctx.lineTo(px + 5, cy + 6);
+  ctx.lineTo(px + 11, cy + 6);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+}
+
+// A single pulsing arrow marker planted on the vertical cross-street
+// (column 19), pointing straight up toward the new swamp portal at the top
+// of the Main Map (row 0) -- so a level 2 that just opened up is obvious
+// even to a player who never wanders that far north on their own. Purely
+// cosmetic decoration, same as the rest of drawTownDecorations() -- no
+// interact logic of their own.
+function drawSwampPortalArrows(time) {
+  // Row 2 -- just south of the portal (row 0) and well clear of the
+  // church, which sits a little further south at rows 6-8 on this same
+  // column (CHURCH_X/Y/W/H in makeOverworld).
+  drawSwampPortalArrow(19 * TILE + TILE / 2, 2 * TILE, time);
+}
+
+// A single pulsing right-pointing arrow, drawn centered on world-space point
+// (px, py). Used by drawSkateparkPortalArrows() below to flag the new
+// SKATEPARK portal -- same bob/pulse as drawSwampPortalArrow(), but pointing
+// east and in the skatepark's cyan/orange colors.
+function drawSkateparkPortalArrow(px, py, time, phase) {
+  const t = time || 0;
+  const bob = Math.sin(t * 3 + (phase || 0)) * 3;
+  const cx = px + bob; // bobs toward the door
+  ctx.save();
+  ctx.globalAlpha = 0.8 + 0.2 * Math.sin(t * 3 + (phase || 0));
+  ctx.fillStyle = '#5ae2f0';
+  ctx.strokeStyle = '#a14a12';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(cx + 12, py);
+  ctx.lineTo(cx - 6, py - 11);
+  ctx.lineTo(cx - 6, py - 5);
+  ctx.lineTo(cx - 16, py - 5);
+  ctx.lineTo(cx - 16, py + 5);
+  ctx.lineTo(cx - 6, py + 5);
+  ctx.lineTo(cx - 6, py + 11);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+}
+
+// Two pulsing arrow markers planted on Main Street (row 9) pointing east
+// toward the new SKATEPARK portal at the right edge of the Main Map -- so a
+// level 3 that just opened up is obvious even to a player who never wanders
+// that far east on their own. Purely cosmetic decoration, same as
+// drawSwampPortalArrows().
+function drawSkateparkPortalArrows(time) {
+  const y = 9 * TILE + TILE / 2;
+  drawSkateparkPortalArrow(34.5 * TILE, y, time, 0);
+  drawSkateparkPortalArrow(36.5 * TILE, y, time, 0.8);
+}
+
+// Little curbside newspaper boxes scattered around town. Purely a sprite;
+// the interact logic lives in facingTarget()/doInteract() keyed off
+// map.newsstands, matched by tile coordinate exactly like the NPCs are.
+function drawNewsstand(px, py) {
+  const W = 26, H = 30;
+  // ground shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.fillRect(px + 1, py + H - 5, W - 2, 5);
+  // metal box body
+  ctx.fillStyle = '#2c5a8a';
+  ctx.fillRect(px, py + 10, W, H - 10);
+  ctx.fillStyle = 'rgba(0,0,0,0.18)';
+  ctx.fillRect(px, py + H - 12, W, 3);
+  // front window showing the paper stack
+  ctx.fillStyle = '#dcd6c4';
+  ctx.fillRect(px + 3, py + 15, W - 6, 10);
+  ctx.strokeStyle = '#16324e';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(px + 3.5, py + 15.5, W - 7, 9);
+  ctx.fillStyle = '#9a9284';
+  ctx.fillRect(px + 4, py + 17, W - 8, 1.5);
+  ctx.fillRect(px + 4, py + 20, W - 8, 1.5);
+  // coin slot
+  ctx.fillStyle = '#16324e';
+  ctx.fillRect(px + W / 2 - 4, py + 27, 8, 2);
+  // slanted headline sign on top
+  ctx.fillStyle = '#e8e2cf';
+  ctx.beginPath();
+  ctx.moveTo(px - 2, py + 10);
+  ctx.lineTo(px + W + 2, py + 10);
+  ctx.lineTo(px + W - 3, py);
+  ctx.lineTo(px + 3, py);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#16324e';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.fillStyle = '#16324e';
+  ctx.font = 'bold 6px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('NEWS', px + W / 2, py + 7);
+}
+
+function drawNewsstands() {
+  const map = maps[player.map];
+  if (!map || !map.newsstands) return;
+  for (const ns of map.newsstands) {
+    drawNewsstand(ns.tx * TILE + 3, ns.ty * TILE);
+  }
+}
+
+// ----------------------------------------------------------------------
+// Decor buildings around the center road (purely cosmetic, no doors).
+// ----------------------------------------------------------------------
+function drawCobblePath(tx, ty, w, h) {
+  // a narrow single-strip grey & red cobblestone footpath over w x h tiles
+  // starting at tile (tx,ty). Each tile shows one column of stones, so a
+  // 1-wide path reads as one clean middle strip.
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const px = (tx + x) * TILE, py = (ty + y) * TILE;
+      // narrow strip base
+      ctx.fillStyle = '#9a9da1';
+      ctx.fillRect(px + 8, py, TILE - 16, TILE);
+      // grey stones (one column)
+      ctx.fillStyle = '#c4c7cc';
+      ctx.fillRect(px + 9, py + 2, 11, 13);
+      ctx.fillRect(px + 9, py + 17, 11, 13);
+      // mortar
+      ctx.fillStyle = '#7d8085';
+      ctx.fillRect(px + 8, py + 16, TILE - 16, 2);
+      // red accent stones
+      ctx.fillStyle = '#c06a55';
+      ctx.fillRect(px + 12, py + 5, 6, 6);
+      ctx.fillRect(px + 13, py + 19, 6, 6);
+    }
+  }
+}
+
+function drawChurch() {
+  // Positioned so its front steps sit right at the Main Street crossroads
+  // (the vertical road meets the horizontal road here), so the road leads
+  // straight up to the church door.
+  // Styled after a New England red-brick meetinghouse: brick facade, a
+  // tall white tiered steeple (louvered belfry + open colonnade + lantern),
+  // a weathered green conical spire with weathervane, a tower clock, an
+  // arched window, and a white pedimented entrance porch.
+  const px = 18 * TILE, py = 6 * TILE;
+  const w = 3 * TILE, h = 3 * TILE;
+  const cx = px + w / 2;
+
+  const BRICK = '#a8442c', BRICK_DK = '#8a3620';
+  const WHITE = '#f4efe3', WHITE_DK = '#d3c9b8';
+  const SPIRE = '#55836c', SPIRE_DK = '#3f6353';
+  const GLASS = '#37456a';
+
+  // ground shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.18)';
+  ctx.fillRect(px - 4, py + h - 8, w + 8, 12);
+
+  // brick body
+  ctx.fillStyle = BRICK;
+  ctx.fillRect(px, py + 13, w, h - 13);
+  ctx.fillStyle = 'rgba(0,0,0,0.12)';
+  ctx.fillRect(px, py + h - 8, w, 8);
+  // subtle brick coursing
+  ctx.fillStyle = BRICK_DK;
+  for (let ly = py + 20; ly < py + h - 6; ly += 8) ctx.fillRect(px, ly, w, 1);
+  // white corner pilasters
+  ctx.fillStyle = WHITE;
+  ctx.fillRect(px, py + 13, 5, h - 13);
+  ctx.fillRect(px + w - 5, py + 13, 5, h - 13);
+
+  // white cornice band under the tower
+  ctx.fillStyle = WHITE;
+  ctx.fillRect(px, py + 8, w, 6);
+  ctx.fillStyle = WHITE_DK;
+  ctx.fillRect(px, py + 13, w, 2);
+
+  // === steeple ===
+  // louvered belfry tier (widest, sits on the cornice)
+  ctx.fillStyle = WHITE;
+  ctx.fillRect(cx - 12, py - 6, 24, 14);
+  ctx.fillStyle = BRICK_DK;
+  ctx.fillRect(cx - 8, py - 3, 3, 9);
+  ctx.fillRect(cx - 1, py - 3, 3, 9);
+  ctx.fillRect(cx + 6, py - 3, 3, 9);
+  // ledge
+  ctx.fillStyle = WHITE_DK;
+  ctx.fillRect(cx - 13, py - 8, 26, 3);
+
+  // open colonnade tier (narrower, columns visible)
+  ctx.fillStyle = WHITE;
+  ctx.fillRect(cx - 9, py - 20, 18, 12);
+  ctx.fillStyle = '#8a97a8';
+  ctx.fillRect(cx - 7, py - 18, 2, 9);
+  ctx.fillRect(cx - 1, py - 18, 2, 9);
+  ctx.fillRect(cx + 5, py - 18, 2, 9);
+  // ledge
+  ctx.fillStyle = WHITE_DK;
+  ctx.fillRect(cx - 10, py - 22, 20, 3);
+
+  // small octagonal lantern drum
+  ctx.fillStyle = WHITE;
+  ctx.fillRect(cx - 6, py - 31, 12, 10);
+  ctx.fillStyle = GLASS;
+  ctx.fillRect(cx - 2, py - 28, 4, 6);
+
+  // conical spire (weathered green)
+  ctx.fillStyle = SPIRE;
+  ctx.beginPath();
+  ctx.moveTo(cx, py - 48);
+  ctx.lineTo(cx - 8, py - 31);
+  ctx.lineTo(cx + 8, py - 31);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = SPIRE_DK;
+  ctx.beginPath();
+  ctx.moveTo(cx, py - 48);
+  ctx.lineTo(cx, py - 31);
+  ctx.lineTo(cx + 8, py - 31);
+  ctx.closePath();
+  ctx.fill();
+
+  // finial + weathervane
+  ctx.strokeStyle = '#2a2420';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(cx, py - 48); ctx.lineTo(cx, py - 55); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx - 3, py - 53); ctx.lineTo(cx + 4, py - 53); ctx.stroke();
+
+  // tower clock
+  ctx.fillStyle = WHITE;
+  ctx.beginPath(); ctx.arc(cx, py + 30, 11, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#2a2420';
+  ctx.beginPath(); ctx.arc(cx, py + 30, 8, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = WHITE;
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(cx, py + 30); ctx.lineTo(cx, py + 25); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx, py + 30); ctx.lineTo(cx + 5, py + 32); ctx.stroke();
+
+  // arched window below the clock
+  ctx.fillStyle = WHITE;
+  ctx.fillRect(cx - 10, py + 46, 20, 18);
+  ctx.beginPath(); ctx.arc(cx, py + 46, 10, Math.PI, 0); ctx.fill();
+  ctx.fillStyle = GLASS;
+  ctx.fillRect(cx - 7, py + 50, 14, 13);
+  ctx.beginPath(); ctx.arc(cx, py + 50, 7, Math.PI, 0); ctx.fill();
+
+  // entrance porch: pediment + columns + arched door
+  ctx.fillStyle = WHITE;
+  ctx.beginPath();
+  ctx.moveTo(cx - 22, py + 74);
+  ctx.lineTo(cx, py + 64);
+  ctx.lineTo(cx + 22, py + 74);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillRect(cx - 22, py + 74, 44, 4);
+  ctx.fillStyle = WHITE_DK;
+  ctx.fillRect(cx - 18, py + 78, 4, h - 84);
+  ctx.fillRect(cx + 14, py + 78, 4, h - 84);
+
+  ctx.fillStyle = '#5a3d22';
+  ctx.fillRect(cx - 11, py + 80, 22, h - 86);
+  ctx.beginPath(); ctx.arc(cx, py + 80, 11, Math.PI, 0); ctx.fill();
+  ctx.fillStyle = '#e0b460';
+  ctx.fillRect(cx + 5, py + h - 20, 2, 3);
+
+  // stone steps
+  ctx.fillStyle = '#d9d2c2';
+  ctx.fillRect(cx - 26, py + h - 4, 52, 6);
+}
+
+// Simple rounded-rect path helper (canvas has no built-in one we can rely on
+// consistently, so build it from lines + corner arcs). Starts a fresh path;
+// caller fills/strokes it.
+function roundRectPath(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.arcTo(x + w, y, x + w, y + r, r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+  ctx.lineTo(x + r, y + h);
+  ctx.arcTo(x, y + h, x, y + h - r, r);
+  ctx.lineTo(x, y + r);
+  ctx.arcTo(x, y, x + r, y, r);
+  ctx.closePath();
+}
+
+// A small stadium floodlight tower: pole + lamp head, gold-tinted bulbs.
+function drawFloodlight(x, y) {
+  // Warm halo behind the fixture, cheap: a single drawImage against the
+  // shared glow-sprite cache (see top of file) instead of a fresh
+  // per-call gradient.
+  drawGlow(x + 9, y + 6, 34, 'rgba(224,176,64,ALPHA)');
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx.fillRect(x + 5, y + 34, 10, 4);
+  ctx.fillStyle = '#3a3a3e';
+  ctx.fillRect(x + 7, y + 12, 5, 26);
+  ctx.fillStyle = '#1c1c1f';
+  ctx.fillRect(x - 2, y, 22, 12);
+  ctx.fillStyle = '#e0b030';
+  for (let i = 0; i < 4; i++) ctx.fillRect(x + 1 + i * 5, y + 3, 3, 3);
+}
+
+// Vermont Green FC soccer stadium — a big decorative outdoor landmark, not
+// an enterable building (no door, never added to the `buildings` list so it
+// never gets the automatic door/sign treatment other shops get).
+//
+// Only the top 3/4 of the stadium bowl is drawn here: the shape is built at
+// its full height, then clipped to the map's solid footprint so the bottom
+// 1/4 is cut off flush with the bottom of the footprint. That's deliberate —
+// the remaining 1/4 is meant to reappear in the map area planned for
+// directly south of this one, once it's built and the two are connected.
+function drawStadium() {
+  const TX = 17, TY = 17, TW = 6, TH = 7; // must match STADIUM_* in makeOverworld()
+  const px = TX * TILE, py = TY * TILE;
+  const w = TW * TILE, hVis = TH * TILE;
+  const hFull = hVis / 0.75; // full stadium height if it weren't cut off
+  const cx = px + w / 2;
+
+  const GREEN_DK = '#0f3323';
+  const GREEN_MD = '#1c4a30';
+  const GREEN_LT = '#2c6b45';
+  const GOLD     = '#e0b030';
+  const PITCH    = '#2d8a3e';
+  const PITCH_LN = 'rgba(255,255,255,0.85)';
+
+  ctx.save();
+  // Clip to (slightly beyond) the stadium's solid footprint — this is what
+  // actually produces the "cut off at 3/4 height" look, since the shape
+  // below is drawn at full height and simply never gets to render.
+  ctx.beginPath();
+  ctx.rect(px - 24, py - 56, w + 48, hVis + 56);
+  ctx.clip();
+
+  // floodlight towers, top two corners (the only two that read at this scale)
+  drawFloodlight(px - 6, py - 34);
+  drawFloodlight(px + w - 16, py - 34);
+
+  // outer wall / facade, rounded corners, full height (bottom gets clipped)
+  ctx.fillStyle = GREEN_DK;
+  roundRectPath(px - 8, py, w + 16, hFull, 16);
+  ctx.fill();
+
+  // facade band across the top with the team name
+  ctx.fillStyle = GREEN_MD;
+  ctx.fillRect(px - 8, py, w + 16, 42);
+  ctx.fillStyle = GOLD;
+  ctx.fillRect(px - 8, py + 42, w + 16, 4);
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = GOLD;
+  ctx.font = 'bold 13px monospace';
+  ctx.fillText('VERMONT GREEN', cx, py + 20);
+  ctx.font = 'bold 10px monospace';
+  ctx.fillText('\u2605\u2605 CHAMPIONS', cx, py + 34);
+
+  // west & east entrance gaps in the outer wall, at the same map row as the
+  // walkable openings carved into the collision grid (STADIUM_OPEN_Y in
+  // makeOverworld) so the visual lines up with where the player can walk in.
+  const gateY = py + TILE * Math.floor(TH / 2), gateH = TILE;
+  ctx.fillStyle = '#3e7c34';
+  ctx.fillRect(px - 12, gateY, 26, gateH);       // west gate
+  ctx.fillRect(px + w - 14, gateY, 26, gateH);   // east gate
+
+  // inner stand ring, lighter green, with a faint row of seat-dot texture
+  ctx.fillStyle = GREEN_LT;
+  ctx.fillRect(px + 14, py + 52, w - 28, hFull - 60);
+  ctx.fillStyle = 'rgba(0,0,0,0.14)';
+  for (let ty = py + 60; ty < py + hVis - 6; ty += 8) {
+    for (let tx = px + 20; tx < px + w - 16; tx += 7) ctx.fillRect(tx, ty, 3, 3);
+  }
+
+  // pitch (soccer field) at the center, with basic line markings
+  const fx = px + 34, fy = py + 76, fw = w - 68, fh = hFull - 108;
+  ctx.fillStyle = PITCH;
+  ctx.fillRect(fx, fy, fw, fh);
+  ctx.strokeStyle = PITCH_LN;
+  ctx.lineWidth = 2;
+  ctx.strokeRect(fx, fy, fw, fh);
+  // goal box at the visible (north) end of the pitch
+  ctx.strokeRect(fx + fw * 0.28, fy, fw * 0.44, 22);
+  // halfway line + center circle, roughly at the pitch's midpoint
+  const midY = fy + fh * 0.42;
+  ctx.beginPath();
+  ctx.moveTo(fx, midY);
+  ctx.lineTo(fx + fw, midY);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(cx, midY, 18, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+// The Vermont Lake Monsters ballpark out in the swamp -- same overall recipe
+// as drawStadium() above (solid rounded facade, corner floodlights, a gate
+// gap on each side lined up with the walkable openings carved into the
+// collision grid), just re-themed for baseball: a dirt infield diamond and
+// pitcher's mound sit inside a grass outfield instead of a soccer pitch, and
+// the facade carries the team's own colors and name plus a small original
+// monster-head crest (an in-the-team's-colors silhouette, not a
+// reproduction of the club's actual logo art). Unlike the soccer stadium,
+// nothing south of this map is planned yet, so the bowl is drawn at its
+// full height rather than clipped to 3/4.
+function drawBaseballStadium() {
+  const TX = 24, TY = 2, TW = 7, TH = 7; // must match BB_* in makeSwamp()
+  const px = TX * TILE, py = TY * TILE;
+  const w = TW * TILE, h = TH * TILE;
+  const cx = px + w / 2;
+
+  const NAVY_DK  = '#0b2540';
+  const NAVY_MD  = '#123a63';
+  const BLUE_LT  = '#2f7bbd';
+  const GREEN    = '#5cb247';
+  const GREEN_DK = '#2f7a3a';
+  const STAND    = '#1c4a30';
+  const GOLD     = '#e8952c';
+  const DIRT     = '#b98a54';
+  const GRASS    = '#3f9142';
+  const FIELD_LN = 'rgba(255,255,255,0.85)';
+
+  ctx.save();
+
+  // floodlight towers, top two corners
+  drawFloodlight(px - 6, py - 34);
+  drawFloodlight(px + w - 16, py - 34);
+
+  // outer wall / facade, rounded corners
+  ctx.fillStyle = NAVY_DK;
+  roundRectPath(px - 8, py, w + 16, h, 16);
+  ctx.fill();
+
+  // facade band across the top with the team name
+  ctx.fillStyle = NAVY_MD;
+  ctx.fillRect(px - 8, py, w + 16, 42);
+  ctx.fillStyle = GOLD;
+  ctx.fillRect(px - 8, py + 42, w + 16, 4);
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = GREEN;
+  ctx.font = 'bold 11px monospace';
+  ctx.fillText('VERMONT', cx + 8, py + 15);
+  ctx.fillStyle = GOLD;
+  ctx.font = 'bold 11px monospace';
+  ctx.fillText('LAKE MONSTERS', cx + 8, py + 29);
+
+  // small original monster-head crest on the facade, left of the text: a
+  // couple of curved blue "mane" spikes over a green head with two white,
+  // gold-pupilled eyes -- built from the team's own colors, not traced from
+  // any existing artwork.
+  const crestX = px + 8, crestY = py + 22;
+  ctx.fillStyle = BLUE_LT;
+  ctx.beginPath();
+  ctx.moveTo(crestX - 7, crestY + 7);
+  ctx.lineTo(crestX - 3, crestY - 9);
+  ctx.lineTo(crestX + 1, crestY + 1);
+  ctx.lineTo(crestX + 5, crestY - 8);
+  ctx.lineTo(crestX + 8, crestY + 6);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = GREEN;
+  ctx.beginPath();
+  ctx.ellipse(crestX, crestY + 8, 9, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#f4f4ea';
+  ctx.beginPath(); ctx.ellipse(crestX - 3, crestY + 6, 2.6, 3, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(crestX + 4, crestY + 5, 2.6, 3, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = GOLD;
+  ctx.beginPath(); ctx.arc(crestX - 3, crestY + 6, 1.1, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(crestX + 4, crestY + 5, 1.1, 0, Math.PI * 2); ctx.fill();
+
+  // west & east entrance gaps in the outer wall, at the same map row as the
+  // walkable openings carved into the collision grid (BB_OPEN_Y in
+  // makeSwamp) so the visual lines up with where the player can walk in.
+  const gateY = py + TILE * Math.floor(TH / 2), gateH = TILE;
+  ctx.fillStyle = GREEN_DK;
+  ctx.fillRect(px - 12, gateY, 26, gateH);       // west gate
+  ctx.fillRect(px + w - 14, gateY, 26, gateH);   // east gate
+
+  // inner stand ring, with a faint row of seat-dot texture
+  ctx.fillStyle = STAND;
+  ctx.fillRect(px + 14, py + 52, w - 28, h - 60);
+  ctx.fillStyle = 'rgba(0,0,0,0.14)';
+  for (let ty = py + 60; ty < py + h - 6; ty += 8) {
+    for (let tx = px + 20; tx < px + w - 16; tx += 7) ctx.fillRect(tx, ty, 3, 3);
+  }
+
+  // field: grass outfield, dirt infield diamond, pitcher's mound, home plate
+  const fx = px + 30, fy = py + 74, fw = w - 60, ffh = h - 104;
+  ctx.fillStyle = GRASS;
+  ctx.fillRect(fx, fy, fw, ffh);
+
+  const homeX = fx + fw / 2, homeY = fy + ffh - 8;
+  const diaR = Math.min(fw, ffh) * 0.42;
+  ctx.fillStyle = DIRT;
+  ctx.beginPath();
+  ctx.moveTo(homeX, homeY);
+  ctx.lineTo(homeX - diaR, homeY - diaR);
+  ctx.lineTo(homeX, homeY - diaR * 2);
+  ctx.lineTo(homeX + diaR, homeY - diaR);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = FIELD_LN;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // pitcher's mound
+  ctx.fillStyle = DIRT;
+  ctx.beginPath();
+  ctx.arc(homeX, homeY - diaR, 5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = FIELD_LN;
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // home plate
+  ctx.fillStyle = '#e8e4d8';
+  ctx.beginPath();
+  ctx.moveTo(homeX - 4, homeY);
+  ctx.lineTo(homeX + 4, homeY);
+  ctx.lineTo(homeX + 4, homeY - 3);
+  ctx.lineTo(homeX, homeY - 6);
+  ctx.lineTo(homeX - 4, homeY - 3);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.restore();
+}
+
+function drawStand(px, py, c) {
+  // a small street stall: c = {top, top2, body, a, b}
+  const W = 30, H = 32;
+  // shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.fillRect(px + 2, py + H - 6, W, 5);
+  // posts
+  ctx.fillStyle = '#5a3a22';
+  ctx.fillRect(px + 3, py + 16, 3, H - 18);
+  ctx.fillRect(px + W - 6, py + 16, 3, H - 18);
+  // counter
+  ctx.fillStyle = c.body;
+  ctx.fillRect(px, py + 16, W, H - 16);
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.fillRect(px, py + 16, W, 3);
+  // items on the counter
+  ctx.fillStyle = c.a;
+  ctx.fillRect(px + 5, py + 9, 6, 4);
+  ctx.fillRect(px + 13, py + 8, 4, 5);
+  ctx.fillStyle = c.b;
+  ctx.fillRect(px + 20, py + 10, 5, 3);
+  // awning
+  ctx.fillStyle = c.top;
+  ctx.fillRect(px, py, W, 9);
+  ctx.fillStyle = c.top2;
+  for (let i = 0; i < 3; i++) ctx.fillRect(px + 4 + i * 10, py, 4, 9);
+  // scalloped edge
+  for (let i = 0; i < 3; i++) {
+    ctx.fillStyle = c.top;
+    ctx.beginPath(); ctx.arc(px + 6 + i * 10, py + 9, 5, 0, Math.PI); ctx.fill();
+    ctx.fillStyle = c.top2;
+    ctx.fillRect(px + 5 + i * 10, py + 5, 3, 4);
+  }
+}
+
+function drawCenterStretch() {
+  // the little white church, now at the top of Main Street
+  drawChurch();
+  // cobblestone strip leading away from the church door (south), down to
+  // where it meets the main road at the crossroads
+  drawCobblePath(19, 9, 1, 3);
+
+  // small row of food stands / shops running along the center road
+  drawStand(21 * TILE, 4 * TILE + 6,   { top: '#d84030', top2: '#f4efe3', body: '#8a5a32', a: '#e06a38', b: '#c8d84a' });
+  drawStand(21 * TILE, 8 * TILE + 6,   { top: '#d0a02c', top2: '#f4efe3', body: '#4a7ab0', a: '#c8443c', b: '#9ac84a' });
+  drawStand(21 * TILE, 16 * TILE + 6,  { top: '#7a5a92', top2: '#f4efe3', body: '#b89878', a: '#d8b050', b: '#c8785a' });
+  drawStand(21 * TILE, 19 * TILE + 6,  { top: '#3f6fb0', top2: '#f4efe3', body: '#e8e0d0', a: '#7a4a2a', b: '#d0c06a' });
+}
+
+// A banner strung between two poles across the main crossroads, announcing
+// the town's annual summer jazz festival. Purely decorative — it hangs above
+// the road tiles rather than modifying the grid, so it never blocks movement.
+function drawJazzFestBanner(time) {
+  const polL = 17 * TILE, polR = 23 * TILE;
+  const poleTopY = 11 * TILE, poleBotY = 13 * TILE + 16;
+
+  ctx.save();
+
+  // wooden poles anchoring the banner on either side of the road
+  ctx.fillStyle = '#5a3a20';
+  ctx.fillRect(polL - 3, poleTopY, 6, poleBotY - poleTopY);
+  ctx.fillRect(polR - 3, poleTopY, 6, poleBotY - poleTopY);
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.fillRect(polL - 3, poleBotY - 4, 6, 4);
+  ctx.fillRect(polR - 3, poleBotY - 4, 6, 4);
+
+  // banner cloth, gently swaying, strung between the poles above the road
+  const sway = Math.sin(time * 1.3) * 3;
+  const topY = poleTopY + 12, bh = 34;
+  const x0 = polL + 4, x1 = polR - 4;
+  const teeth = 6;
+
+  ctx.fillStyle = '#4a1e5e';
+  ctx.beginPath();
+  ctx.moveTo(x0, topY);
+  ctx.lineTo(x1, topY);
+  for (let i = 0; i <= teeth; i++) {
+    const tx = x1 - (i / teeth) * (x1 - x0);
+    const ty = topY + bh + sway + (i % 2 === 0 ? 0 : -6);
+    ctx.lineTo(tx, ty);
+  }
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = '#f0c840';
+  ctx.fillRect(x0, topY, x1 - x0, 4);
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#f4ecd8';
+  ctx.font = 'bold 15px monospace';
+  ctx.fillText('BTV JAZZ FEST', (x0 + x1) / 2, topY + bh / 2 - 3 + sway * 0.3);
+  ctx.fillStyle = '#e0b040';
+  ctx.font = 'bold 8px monospace';
+  ctx.fillText('ANNUAL SUMMER FESTIVAL', (x0 + x1) / 2, topY + bh / 2 + 11 + sway * 0.3);
+
+  ctx.fillStyle = '#f0c840';
+  ctx.font = '12px monospace';
+  ctx.fillText('\u266a', x0 + 12, topY + 14);
+  ctx.fillText('\u266b', x1 - 12, topY + 14);
+
+  ctx.restore();
+}
+
+function drawFountainArea(time) {
+  // Fountain and seating area in lower left (near coordinates 3,20-22)
+  // Positioned to avoid blocking paths
+  const baseX = 2 * TILE + 8;
+  const baseY = 20 * TILE;
+  
+  // Concrete seating area (patio)
+  const patioW = 3 * TILE + 8;
+  const patioH = 2 * TILE + 8;
+  
+  ctx.fillStyle = '#9a9a9e';
+  ctx.fillRect(baseX, baseY, patioW, patioH);
+  
+  // Concrete texture (subtle lines)
+  ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 4; i++) {
+    ctx.beginPath();
+    ctx.moveTo(baseX, baseY + i * 18);
+    ctx.lineTo(baseX + patioW, baseY + i * 18);
+    ctx.stroke();
+  }
+  
+  // Fountain (center-left of patio)
+  const fountainX = baseX + 18;
+  const fountainY = baseY + 20;
+  const fountainR = 16;
+  
+  // Fountain base (stone)
+  ctx.fillStyle = '#7a7a7e';
+  ctx.beginPath();
+  ctx.arc(fountainX, fountainY, fountainR, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Water (blue with shimmer)
+  ctx.fillStyle = '#4890d0';
+  ctx.beginPath();
+  ctx.arc(fountainX, fountainY, fountainR - 4, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Water shimmer effect
+  const shimmer = Math.floor(time * 3) % 3;
+  ctx.fillStyle = 'rgba(200,230,255,0.4)';
+  ctx.beginPath();
+  ctx.arc(fountainX - 4 + shimmer * 2, fountainY - 3, 3, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Center fountain spout
+  ctx.fillStyle = '#5a5a5e';
+  ctx.fillRect(fountainX - 2, fountainY - 8, 4, 8);
+  
+  // Water spray (animated)
+  ctx.save();
+  ctx.fillStyle = 'rgba(180,220,255,0.6)';
+  const spray = Math.sin(time * 4) * 2;
+  ctx.fillRect(fountainX - 1, fountainY - 12 - spray, 2, 4 + spray);
+  ctx.fillStyle = 'rgba(180,220,255,0.3)';
+  ctx.fillRect(fountainX - 3, fountainY - 10 - spray, 1, 3);
+  ctx.fillRect(fountainX + 2, fountainY - 10 - spray, 1, 3);
+  ctx.restore();
+  
+  // Bench (right side of patio)
+  const benchX = baseX + patioW - TILE - 10;
+  const benchY = baseY + 16;
+  
+  // Bench seat
+  ctx.fillStyle = '#6a4a3a';
+  ctx.fillRect(benchX, benchY, 32, 6);
+  
+  // Bench back
+  ctx.fillStyle = '#6a4a3a';
+  ctx.fillRect(benchX + 2, benchY - 12, 28, 4);
+  
+  // Bench legs
+  ctx.fillStyle = '#5a3a2a';
+  ctx.fillRect(benchX + 4, benchY + 6, 4, 8);
+  ctx.fillRect(benchX + 24, benchY + 6, 4, 8);
+  
+  // Person sitting on bench
+  const personX = benchX + 12;
+  const personY = benchY - 6;
+  
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx.fillRect(personX - 4, benchY + 6, 10, 3);
+  
+  // Legs (sitting position)
+  ctx.fillStyle = '#3a4a6a';
+  ctx.fillRect(personX - 2, benchY + 6, 3, 8);
+  ctx.fillRect(personX + 3, benchY + 6, 3, 8);
+  
+  // Body
+  ctx.fillStyle = '#7a5a4a';
+  ctx.fillRect(personX - 3, personY, 10, 10);
+  
+  // Head
+  ctx.fillStyle = '#c89a72';
+  ctx.fillRect(personX - 2, personY - 6, 7, 7);
+  
+  // Hair
+  ctx.fillStyle = '#5a3a2a';
+  ctx.fillRect(personX - 2, personY - 8, 7, 3);
+  
+  // Arm resting on bench back
+  ctx.fillStyle = '#c89a72';
+  ctx.fillRect(personX + 7, personY + 2, 6, 2);
+  
+  // Small decorative plants around fountain
+  const plants = [
+    [fountainX - 24, fountainY + 8],
+    [fountainX + 20, fountainY + 10]
+  ];
+  
+  for (const [px, py] of plants) {
+    ctx.fillStyle = '#4d8c3d';
+    ctx.fillRect(px, py - 8, 3, 8);
+    ctx.fillRect(px - 2, py - 10, 2, 4);
+    ctx.fillRect(px + 3, py - 9, 2, 4);
+  }
+}
+
+function drawGreenDoorArtArea() {
+  const baseX = 3 * TILE;
+  const baseY = 7 * TILE + 4;
+
+  ctx.fillStyle = '#513628';
+  ctx.fillRect(baseX + 6, baseY + 17, 52, 4);
+  ctx.fillRect(baseX + 10, baseY + 21, 4, 18);
+  ctx.fillRect(baseX + 49, baseY + 21, 4, 18);
+
+  drawSprayCan(baseX + 3, baseY + 2, '#e34b3c');
+  drawSprayCan(baseX + 20, baseY + 1, '#3f82c0');
+  drawSprayCan(baseX + 36, baseY + 4, '#d7a52f');
+
+  drawCanvas(baseX + 63, baseY + 5, 25, 31, 0);
+  drawCanvas(baseX + 93, baseY + 1, 28, 35, 1);
+
+  ctx.fillStyle = '#d9c7a2';
+  ctx.beginPath();
+  ctx.ellipse(baseX + 42, baseY + 29, 10, 6, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#d84b38';
+  ctx.fillRect(baseX + 37, baseY + 27, 3, 3);
+  ctx.fillStyle = '#3d82bd';
+  ctx.fillRect(baseX + 42, baseY + 25, 3, 3);
+  ctx.fillStyle = '#e0b33c';
+  ctx.fillRect(baseX + 47, baseY + 28, 3, 3);
+
+  // Artist 1 - painting on canvas
+  drawArtist1(baseX + 75, baseY + 28);
+  
+  // Artist 2 - sitting with spray can
+  drawArtist2(baseX + 105, baseY + 30);
+}
+
+function drawArtist1(x, y) {
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.fillRect(x - 8, y + 14, 16, 4);
+  
+  // Legs
+  ctx.fillStyle = '#2a3a46';
+  ctx.fillRect(x - 5, y + 2, 4, 12);
+  ctx.fillRect(x + 1, y + 2, 4, 12);
+  
+  // Body/shirt
+  ctx.fillStyle = '#c86a3c';
+  ctx.fillRect(x - 6, y - 8, 12, 11);
+  
+  // Arm reaching toward canvas
+  ctx.fillStyle = '#c86a3c';
+  ctx.fillRect(x + 5, y - 4, 8, 4);
+  
+  // Head/skin
+  ctx.fillStyle = '#b87954';
+  ctx.fillRect(x - 4, y - 16, 8, 8);
+  
+  // Hair
+  ctx.fillStyle = '#2a2020';
+  ctx.fillRect(x - 4, y - 18, 8, 4);
+}
+
+function drawArtist2(x, y) {
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.fillRect(x - 8, y + 14, 16, 4);
+  
+  // Legs (sitting position)
+  ctx.fillStyle = '#3a3a46';
+  ctx.fillRect(x - 6, y + 6, 5, 8);
+  ctx.fillRect(x + 1, y + 6, 5, 8);
+  
+  // Body/shirt
+  ctx.fillStyle = '#4a7ab0';
+  ctx.fillRect(x - 6, y - 4, 12, 11);
+  
+  // Arm with spray can
+  ctx.fillStyle = '#4a7ab0';
+  ctx.fillRect(x - 10, y, 6, 4);
+  
+  // Spray can in hand
+  ctx.fillStyle = '#e34b3c';
+  ctx.fillRect(x - 12, y - 2, 4, 6);
+  ctx.fillStyle = '#202026';
+  ctx.fillRect(x - 12, y - 4, 4, 2);
+  
+  // Head/skin
+  ctx.fillStyle = '#c89a72';
+  ctx.fillRect(x - 4, y - 12, 8, 8);
+  
+  // Hair
+  ctx.fillStyle = '#4a3a2a';
+  ctx.fillRect(x - 4, y - 14, 8, 4);
+}
+
+function drawSprayCan(x, y, color) {
+  ctx.fillStyle = '#202026';
+  ctx.fillRect(x + 2, y + 5, 10, 19);
+  ctx.fillStyle = color;
+  ctx.fillRect(x + 3, y + 8, 8, 12);
+  ctx.fillStyle = '#cfc7b5';
+  ctx.fillRect(x + 4, y + 2, 6, 4);
+  ctx.fillStyle = '#141218';
+  ctx.fillRect(x + 5, y, 4, 3);
+}
+
+function drawWallPainter(time) {
+  // A painter on a scaffold up against the side of the Green Door Studio,
+  // rolling paint onto the wall with a fresh coat dripping down.
+  const wallBase = 4 * TILE + 6;  // where the roller meets the building wall
+  const groundY  = 7 * TILE;      // ground below the building
+  const platY    = 5 * TILE + 12; // scaffold platform height (high on the wall)
+  const rollerY  = 4 * TILE + 10; // roller height on the wall
+
+  // scaffold frame
+  ctx.fillStyle = '#7a4a34';
+  ctx.fillRect(wallBase + 2, platY - 3, 3, groundY - platY + 8);
+  ctx.fillRect(wallBase + 28, platY - 3, 3, groundY - platY + 8);
+  ctx.fillStyle = '#8a6a3a';
+  ctx.fillRect(wallBase - 1, platY - 3, 36, 5);
+
+  // painter standing on the platform
+  const px = wallBase + 18, py = platY;
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.fillRect(px - 8, py - 2, 16, 4);            // shadow
+  ctx.fillStyle = '#2c2c3a';                       // legs
+  ctx.fillRect(px - 6, py - 30, 5, 28);
+  ctx.fillRect(px + 1, py - 30, 5, 28);
+  ctx.fillStyle = '#e8e4dc';                       // paint overalls / body
+  ctx.fillRect(px - 7, py - 42, 14, 14);
+  ctx.fillStyle = '#b87954';                       // head
+  ctx.fillRect(px - 4, py - 50, 9, 9);
+  ctx.fillStyle = '#2a2020';                       // hair
+  ctx.fillRect(px - 5, py - 52, 11, 3);
+  ctx.fillStyle = '#f0d060';                       // cap
+  ctx.fillRect(px - 5, py - 53, 11, 2);
+
+  // arm + roller pole reaching up to the wall
+  ctx.strokeStyle = '#5a4a30';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(px + 5, py - 38);
+  ctx.lineTo(wallBase + 2, rollerY + 6);
+  ctx.stroke();
+
+  // roller head against the wall
+  ctx.fillStyle = '#d04030';
+  ctx.fillRect(wallBase + 2, rollerY, 11, 13);
+  ctx.fillStyle = '#a03020';
+  ctx.fillRect(wallBase + 2, rollerY + 9, 11, 4);
+
+  // paint splatter on the wall around the roller
+  ctx.fillStyle = 'rgba(208,64,48,0.6)';
+  ctx.fillRect(wallBase - 2, rollerY + 3, 3, 3);
+  ctx.fillRect(wallBase + 15, rollerY + 8, 3, 3);
+  ctx.fillRect(wallBase - 4, rollerY + 13, 2, 2);
+
+  // paint drips rolling down the wall
+  ctx.fillStyle = '#d04030';
+  for (let i = 0; i < 3; i++) {
+    const dx = wallBase + 5 + i * 4;
+    ctx.fillRect(dx, rollerY + 15, 2, 5 + i * 2);
+  }
+  // an animated drip that slides down the wall
+  const drip = (time * 14) % 42;
+  ctx.fillStyle = '#c84030';
+  ctx.fillRect(wallBase + 11, rollerY + 16 + drip, 2, 6);
+}
+
+function drawCanvas(x, y, w, h, style) {
+  ctx.strokeStyle = '#69472d';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(x + w / 2, y + h);
+  ctx.lineTo(x + 2, y + h + 12);
+  ctx.moveTo(x + w / 2, y + h);
+  ctx.lineTo(x + w - 2, y + h + 12);
+  ctx.stroke();
+
+  ctx.fillStyle = '#d9cdb8';
+  ctx.fillRect(x, y, w, h);
+  ctx.strokeStyle = '#4a3427';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x, y, w, h);
+
+  if (style === 0) {
+    ctx.strokeStyle = '#db4d3e';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(x + 3, y + h - 5);
+    ctx.lineTo(x + 10, y + 9);
+    ctx.lineTo(x + 16, y + 20);
+    ctx.lineTo(x + 22, y + 5);
+    ctx.stroke();
+    ctx.strokeStyle = '#397bb4';
+    ctx.beginPath();
+    ctx.moveTo(x + 3, y + 8);
+    ctx.lineTo(x + 19, y + 26);
+    ctx.stroke();
+  } else {
+    ctx.fillStyle = '#d35a42';
+    ctx.fillRect(x + 3, y + 5, 9, 10);
+    ctx.fillStyle = '#407eb6';
+    ctx.fillRect(x + 12, y + 16, 12, 11);
+    ctx.fillStyle = '#d5a531';
+    ctx.beginPath();
+    ctx.arc(x + 10, y + 25, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#6b4592';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(x + 4, y + 28);
+    ctx.lineTo(x + 23, y + 7);
+    ctx.stroke();
+  }
+}
+
+function drawDeliScene(time) {
+  const x = 3 * TILE;
+  const y = 18 * TILE + 2;
+
+  // Garbage can - moved to the left side of deli
+  ctx.fillStyle = '#41454a';
+  ctx.fillRect(x + 7, y + 8, 20, 25);
+  ctx.fillStyle = '#5c6267';
+  ctx.fillRect(x + 5, y + 6, 24, 5);
+  ctx.fillStyle = '#303338';
+  ctx.fillRect(x + 9, y + 13, 3, 15);
+  ctx.fillRect(x + 17, y + 13, 3, 15);
+  ctx.fillRect(x + 25, y + 13, 2, 15);
+
+  // Small table with items - positioned in front of deli
+  ctx.fillStyle = '#d8d0b8';
+  ctx.fillRect(x + 11, y + 2, 8, 8);
+  ctx.fillStyle = '#9a4038';
+  ctx.fillRect(x + 18, y + 4, 6, 5);
+
+  // Guitar player - positioned next to garbage can
+  drawGuitarPlayer(x + 50, y + 12, time);
+}
+
+function drawGuitarPlayer(x, y, time) {
+  ctx.fillStyle = 'rgba(0,0,0,0.28)';
+  ctx.fillRect(x - 13, y + 27, 31, 5);
+
+  ctx.fillStyle = '#252638';
+  ctx.fillRect(x - 10, y + 18, 8, 13);
+  ctx.fillRect(x + 4, y + 17, 8, 14);
+
+  ctx.fillStyle = '#1c1a20';
+  ctx.fillRect(x - 13, y + 28, 10, 4);
+  ctx.fillRect(x + 9, y + 28, 10, 4);
+
+  ctx.fillStyle = '#bd5745';
+  ctx.fillRect(x - 8, y + 7, 17, 14);
+
+  ctx.fillStyle = '#b87954';
+  ctx.fillRect(x - 5, y - 1, 11, 11);
+
+  ctx.fillStyle = '#2b211e';
+  ctx.fillRect(x - 6, y - 4, 13, 5);
+  ctx.fillRect(x - 7, y - 1, 3, 7);
+
+  ctx.fillStyle = '#c8903e';
+  ctx.beginPath();
+  ctx.ellipse(x + 4, y + 13, 10, 8, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#704525';
+  ctx.beginPath();
+  ctx.arc(x + 4, y + 13, 3, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#704525';
+  ctx.fillRect(x - 19, y + 5, 22, 3);
+
+  ctx.strokeStyle = '#ead8a4';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x - 18, y + 5);
+  ctx.lineTo(x + 10, y + 13);
+  ctx.moveTo(x - 18, y + 7);
+  ctx.lineTo(x + 10, y + 14);
+  ctx.stroke();
+
+  const strum = Math.floor(time * 5) % 2;
+  ctx.fillStyle = '#b87954';
+  ctx.fillRect(x + 9, y + 7 + strum, 5, 6);
+}
+
+function drawCoffeeCart() {
+  const x = 27 * TILE + 5;
+  const y = 18 * TILE + 4;
+
+  ctx.fillStyle = '#202126';
+  ctx.beginPath();
+  ctx.arc(x + 8, y + 27, 5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(x + 48, y + 27, 5, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#e8d4a3';
+  ctx.fillRect(x + 3, y + 5, 50, 23);
+  ctx.strokeStyle = '#594432';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x + 3, y + 5, 50, 23);
+
+  ctx.fillStyle = '#9a513d';
+  ctx.fillRect(x, y, 56, 7);
+  ctx.fillStyle = '#f0d4a0';
+  for (let i = 0; i < 4; i++) ctx.fillRect(x + 4 + i * 13, y, 7, 7);
+
+  ctx.fillStyle = '#493326';
+  ctx.fillRect(x + 17, y + 9, 24, 8);
+  ctx.fillStyle = '#f4ecd8';
+  ctx.font = 'bold 6px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('COFFEE', x + 29, y + 15);
+
+  ctx.fillStyle = '#666a6d';
+  ctx.fillRect(x + 7, y + 18, 12, 8);
+
+  ctx.fillStyle = '#f2e5c7';
+  ctx.fillRect(x + 25, y + 19, 7, 7);
+  ctx.fillStyle = '#5c3928';
+  ctx.fillRect(x + 26, y + 18, 5, 3);
+
+  ctx.fillStyle = '#70432d';
+  ctx.fillRect(x + 37, y + 18, 10, 8);
+  ctx.fillStyle = '#e9d5ad';
+  ctx.fillRect(x + 39, y + 20, 6, 1);
+  ctx.fillRect(x + 39, y + 23, 5, 1);
+}
+
+// A little hippie-creamery ice cream van, tucked into the map's lower-right
+// corner. Purely cosmetic (like the coffee cart / deli scene), not a
+// building — the player can't walk into it or enter it.
+function drawIceCreamVan() {
+  const x = 35.2 * TILE, y = 21.4 * TILE;
+  const w = 92, h = 48;
+
+  // ground shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.beginPath();
+  ctx.ellipse(x + w / 2, y + h + 4, w / 2 + 2, 6, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // wheels — green-painted hubs to match the body
+  ctx.fillStyle = '#1c1a20';
+  ctx.beginPath(); ctx.arc(x + 18, y + h - 2, 8, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(x + w - 18, y + h - 2, 8, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#4a8a3a';
+  ctx.beginPath(); ctx.arc(x + 18, y + h - 2, 3, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(x + w - 18, y + h - 2, 3, 0, Math.PI * 2); ctx.fill();
+
+  // van body — grass-green lower panel under a sky-blue upper band, split
+  // by a rolling horizon line (a nod to a classic Vermont dairy-farm van
+  // paint job, not any one brand's exact trade dress)
+  ctx.fillStyle = '#5cae5a';
+  ctx.fillRect(x, y + 14, w, h - 22);
+  ctx.fillStyle = '#8ec6e6';
+  ctx.fillRect(x, y, w, 20);
+  ctx.fillStyle = '#5cae5a';
+  ctx.beginPath();
+  ctx.moveTo(x, y + 20);
+  for (let i = 0; i <= w; i += 8) {
+    ctx.lineTo(x + i, y + 20 - 3 * Math.sin(i / 14));
+  }
+  ctx.lineTo(x + w, y + 26);
+  ctx.lineTo(x, y + 26);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = 'rgba(0,0,0,0.12)';
+  ctx.fillRect(x, y + h - 22, w, 3);
+
+  // standing black-and-white cows across the green panel, callback to
+  // Vermont dairy country rather than any specific brand's trade dress
+  function drawCow(cxp, cyp, s) {
+    // legs
+    ctx.fillStyle = '#f4ecd8';
+    ctx.fillRect(cxp - 7 * s, cyp + 2 * s, 2 * s, 6 * s);
+    ctx.fillRect(cxp + 5 * s, cyp + 2 * s, 2 * s, 6 * s);
+    // body
+    ctx.beginPath();
+    ctx.ellipse(cxp, cyp, 9 * s, 5 * s, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // head + ears + snout
+    ctx.beginPath();
+    ctx.ellipse(cxp + 10 * s, cyp - 2 * s, 4 * s, 3.6 * s, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#211c18';
+    ctx.beginPath(); ctx.ellipse(cxp + 8 * s, cyp - 5 * s, 1.6 * s, 1.4 * s, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(cxp + 12.5 * s, cyp - 5 * s, 1.6 * s, 1.4 * s, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#f4ecd8';
+    ctx.beginPath(); ctx.ellipse(cxp + 13 * s, cyp - 1 * s, 2 * s, 1.6 * s, 0, 0, Math.PI * 2); ctx.fill();
+    // black patches on the body
+    ctx.fillStyle = '#211c18';
+    ctx.beginPath(); ctx.ellipse(cxp - 4 * s, cyp - 1 * s, 3 * s, 2.4 * s, 0.4, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(cxp + 3 * s, cyp + 1 * s, 2.4 * s, 1.8 * s, -0.3, 0, Math.PI * 2); ctx.fill();
+  }
+  drawCow(x + w * 0.14, y + h - 15, 1.05);
+  drawCow(x + w * 0.34, y + h - 15, 1.1);
+  drawCow(x + w * 0.53, y + h - 15, 1.0);
+
+  // serving window with an awning
+  const winX = x + w - 34, winY = y + 16, winW = 26, winH = 14;
+  ctx.fillStyle = '#dff0ea';
+  ctx.fillRect(winX, winY, winW, winH);
+  ctx.strokeStyle = '#3a2e20';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(winX, winY, winW, winH);
+  ctx.fillStyle = '#d8604a';
+  for (let i = 0; i < 4; i++) {
+    ctx.beginPath();
+    ctx.moveTo(winX + i * (winW / 4), winY - 1);
+    ctx.lineTo(winX + (i + 0.5) * (winW / 4), winY - 8);
+    ctx.lineTo(winX + (i + 1) * (winW / 4), winY - 1);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // windshield up front
+  ctx.fillStyle = '#cfe6f2';
+  ctx.fillRect(x + 4, y + 17, 16, 11);
+  ctx.strokeStyle = '#3a2e20';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(x + 4, y + 17, 16, 11);
+
+  // roof vent stack
+  ctx.fillStyle = '#b8bcc0';
+  ctx.fillRect(x + w * 0.42 - 5, y - 9, 10, 9);
+  ctx.fillStyle = '#8e9296';
+  ctx.fillRect(x + w * 0.42 - 6, y - 10, 12, 3);
+
+  // hand-painted name banner along the body — kept to generic wording
+  ctx.fillStyle = '#211c18';
+  ctx.font = 'bold 9px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('ICE CREAM', x + w * 0.5, y + 10);
+}
+
+// Smaller now, and moved off the riverbank to the open ground between Green
+// Door Studio's east wall and the river — still just west of the water.
+function drawAnthillBillboard() {
+  const x = 12 * TILE;
+  const y = 4 * TILE;
+  const w = 80, h = 30;
+
+  ctx.fillStyle = '#553c2b';
+  ctx.fillRect(x + 8, y + h, 4, 21);
+  ctx.fillRect(x + w - 12, y + h, 4, 21);
+
+  ctx.fillStyle = '#29242a';
+  ctx.fillRect(x - 2, y - 2, w + 4, h + 4);
+
+  ctx.fillStyle = '#d6c35e';
+  ctx.fillRect(x, y, w, h);
+
+  // Graffiti mural artwork fills the board (cover-fit, cropped to the frame)
+  if (anthillBillboardImg.complete && anthillBillboardImg.naturalWidth) {
+    const ix = x + 3, iy = y + 3, iw = w - 6, ih = h - 6;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(ix, iy, iw, ih);
+    ctx.clip();
+    const scale = Math.max(iw / anthillBillboardImg.naturalWidth, ih / anthillBillboardImg.naturalHeight);
+    const dw = anthillBillboardImg.naturalWidth * scale;
+    const dh = anthillBillboardImg.naturalHeight * scale;
+    const dx = ix + (iw - dw) / 2;
+    const dy = iy + (ih - dh) / 2;
+    ctx.drawImage(anthillBillboardImg, dx, dy, dw, dh);
+    ctx.restore();
+  }
+
+  ctx.strokeStyle = '#4b3928';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x + 3, y + 3, w - 6, h - 6);
+}
+
+function drawOldLotByHeyBud() {
+  const x = 28 * TILE, y = 7 * TILE;
+  const w = 9 * TILE, h = 2 * TILE;
+
+  ctx.fillStyle = '#5a5a5e';
+  ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = '#4c4c50';
+  for (let i = 0; i < 14; i++) {
+    ctx.fillRect(x + (i * 37) % w, y + (i * 23) % h, 10, 3);
+  }
+
+  ctx.strokeStyle = 'rgba(230,220,180,0.35)';
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 5; i++) {
+    const lx = x + 14 + i * 34;
+    ctx.beginPath();
+    ctx.moveTo(lx, y + 6);
+    ctx.lineTo(lx, y + h - 6);
+    ctx.stroke();
+  }
+
+  ctx.strokeStyle = 'rgba(20,20,22,0.5)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x + 10, y + 4);
+  ctx.lineTo(x + 40, y + h - 10);
+  ctx.lineTo(x + 70, y + 8);
+  ctx.moveTo(x + 120, y + 6);
+  ctx.lineTo(x + 150, y + h - 6);
+  ctx.stroke();
+
+  ctx.fillStyle = '#4a8a3e';
+  const weeds = [[18,10],[62,44],[130,20],[190,50],[230,12]];
+  for (const [wx, wy] of weeds) {
+    ctx.fillRect(x + wx, y + wy, 2, 6);
+    ctx.fillRect(x + wx - 3, y + wy + 2, 2, 5);
+    ctx.fillRect(x + wx + 3, y + wy + 2, 2, 5);
+  }
+
+  ctx.fillStyle = '#7a3a26';
+  ctx.fillRect(x + w - 30, y + 8, 14, 20);
+  ctx.fillStyle = '#5a2818';
+  ctx.fillRect(x + w - 30, y + 12, 14, 3);
+  ctx.fillRect(x + w - 30, y + 20, 14, 3);
+
+  ctx.save();
+  ctx.translate(x + 6, y + h - 4);
+  ctx.rotate(-0.25);
+  ctx.fillStyle = '#8a7a5a';
+  ctx.fillRect(-2, -22, 16, 22);
+  ctx.restore();
+}
+
+function drawParkedCar(x, y, color) {
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.fillRect(x + 1, y + 23, 32, 6);
+
+  ctx.fillStyle = '#161616';
+  ctx.fillRect(x - 1, y + 5, 4, 8);
+  ctx.fillRect(x - 1, y + 16, 4, 8);
+  ctx.fillRect(x + 31, y + 5, 4, 8);
+  ctx.fillRect(x + 31, y + 16, 4, 8);
+
+  ctx.fillStyle = color;
+  ctx.fillRect(x, y + 3, 34, 20);
+  ctx.fillRect(x + 4, y, 26, 8);
+  ctx.fillStyle = 'rgba(0,0,0,0.18)';
+  ctx.fillRect(x, y + 19, 34, 4);
+
+  ctx.fillStyle = '#bcd6e8';
+  ctx.fillRect(x + 7, y + 1, 8, 6);
+  ctx.fillRect(x + 19, y + 1, 8, 6);
+
+  ctx.fillStyle = '#f0e090';
+  ctx.fillRect(x + 30, y + 5, 3, 3);
+  ctx.fillStyle = '#c04040';
+  ctx.fillRect(x + 1, y + 17, 3, 3);
+}
+
+function drawHeyBudParkedCars() {
+  // a couple of cars parked in the gravel lot right beside Hey Bud,
+  // kept clear of the doorway path through the middle of the lot
+  drawParkedCar(28 * TILE + 18, 7 * TILE + 8, '#4a7a8c');
+  drawParkedCar(28 * TILE + 168, 7 * TILE + 4, '#8a3f3a');
+}
+
+function drawSmokingPerson(time) {
+  // Person smoking outside Hey Bud on the right side
+  const x = 35 * TILE - 10;
+  const y = 6 * TILE + 8;
+  
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.fillRect(x - 6, y + 20, 12, 4);
+  
+  // Legs
+  ctx.fillStyle = '#2a3a5a';
+  ctx.fillRect(x - 3, y + 10, 3, 10);
+  ctx.fillRect(x + 1, y + 10, 3, 10);
+  
+  // Body
+  ctx.fillStyle = '#5a4a6a';
+  ctx.fillRect(x - 4, y, 9, 12);
+  
+  // Head
+  ctx.fillStyle = '#c89a72';
+  ctx.fillRect(x - 3, y - 6, 7, 7);
+  
+  // Hair
+  ctx.fillStyle = '#3a2a1a';
+  ctx.fillRect(x - 3, y - 8, 7, 3);
+  
+  // Arm holding cigarette
+  ctx.fillStyle = '#c89a72';
+  ctx.fillRect(x + 5, y + 2, 8, 2);
+  
+  // Cigarette with glowing tip
+  ctx.fillStyle = '#e8e8e8';
+  ctx.fillRect(x + 13, y + 2, 6, 1);
+  
+  // Glowing cigarette tip (flickers)
+  const glow = Math.floor(time * 4) % 3 !== 0;
+  if (glow) {
+    ctx.fillStyle = '#ff6030';
+    ctx.fillRect(x + 19, y + 2, 2, 1);
+  }
+  
+  // Smoke wisps rising
+  ctx.save();
+  ctx.strokeStyle = 'rgba(180,180,190,0.4)';
+  ctx.lineWidth = 1;
+  const smokeOffset = (time * 20) % 15;
+  ctx.beginPath();
+  ctx.moveTo(x + 20, y + 2);
+  ctx.lineTo(x + 21 + Math.sin(smokeOffset) * 2, y - 8 - smokeOffset);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawWallPoster(px, py, w, h) {
+  // portrait poster on the side of the storefront wall, between the
+  // shop sign and the windows
+  const pw = 34, ph = Math.round(pw * 806 / 555);
+  const x = px + w - pw - 14;
+  const y = py + 100; // moved down to make room for neon sign
+
+  ctx.fillStyle = '#1c1a20';
+  ctx.fillRect(x - 3, y - 3, pw + 6, ph + 6);
+  ctx.fillStyle = '#f4ecd8';
+  ctx.fillRect(x - 1, y - 1, pw + 2, ph + 2);
+
+  if (purePopPosterImg.complete && purePopPosterImg.naturalWidth) {
+    ctx.drawImage(purePopPosterImg, x, y, pw, ph);
+  } else {
+    ctx.fillStyle = '#c0392b';
+    ctx.fillRect(x, y, pw, ph);
+  }
+
+  ctx.fillStyle = 'rgba(230,224,200,0.6)';
+  ctx.fillRect(x - 4, y - 4, 8, 4);
+  ctx.fillRect(x + pw - 4, y - 4, 8, 4);
+}
+
+function drawThursPoster(x, y) {
+  // "3rd Thursdays" monthly hip-hop night flyer (SK1's event) taped to a window/wall.
+  const pw = 28, ph = 38;
+
+  // tape corners
+  ctx.fillStyle = 'rgba(230,224,200,0.75)';
+  ctx.fillRect(x - 3, y - 4, 7, 4);
+  ctx.fillRect(x + pw - 4, y - 4, 7, 4);
+  ctx.fillRect(x - 3, y + ph - 1, 7, 4);
+  ctx.fillRect(x + pw - 4, y + ph - 1, 7, 4);
+
+  // paper
+  ctx.fillStyle = '#efe6c9';
+  ctx.fillRect(x, y, pw, ph);
+  ctx.strokeStyle = '#a9a876';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x, y, pw, ph);
+
+  // red header ribbon
+  ctx.fillStyle = '#c92c2a';
+  ctx.fillRect(x, y, pw, 9);
+  ctx.fillStyle = '#fbe6b0';
+  ctx.font = 'bold 8px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('3RD', x + pw / 2, y + 8);
+
+  // body lines
+  ctx.fillStyle = '#20232c';
+  ctx.font = 'bold 7px monospace';
+  ctx.fillText('THURS', x + pw / 2, y + 16);
+  ctx.font = 'bold 5px monospace';
+  ctx.fillText('HIP HOP', x + pw / 2, y + 23);
+  ctx.font = 'bold 7px monospace';
+  ctx.fillText('NIGHT', x + pw / 2, y + 29);
+
+  // little vinyl record icon
+  ctx.fillStyle = '#1a1a1e';
+  ctx.beginPath();
+  ctx.arc(x + pw / 2, y + 33, 3.4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#c92b2a';
+  ctx.beginPath();
+  ctx.arc(x + pw / 2, y + 33, 1.2, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+// Cheap stand-in for shadowBlur's glow on the Nectar's sign — see the call
+// site for why. A wider ring than Henry's since this sign is bigger (32px).
+const NECTARS_GLOW_OFFSETS = [
+  [-4, 0], [4, 0], [0, -4], [0, 4], [-3, -3], [3, -3], [-3, 3], [3, 3],
+  [-2, 0], [2, 0], [0, -2], [0, 2],
+];
+
+function drawNectarsDecor(px, py, w, h) {
+  ctx.save();
+  
+  // Dark brick texture for taller rock club building
+  ctx.fillStyle = '#1a1a24';
+  for (let by = 0; by < 6; by++) {
+    const brickY = py + 34 + by * 16;
+    ctx.strokeStyle = '#0a0a14';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(px, brickY);
+    ctx.lineTo(px + w, brickY);
+    ctx.stroke();
+  }
+  
+  // Neon script sign - "Nectar's"
+  //
+  // This used to stack three ctx.shadowBlur passes (20/15/10px) on a 32px
+  // strokeText/fillText, every single outdoor frame — this building's sign
+  // is on screen the whole time you're outside. shadowBlur is a per-pixel
+  // blur and one of the most expensive things Canvas2D can do; three passes
+  // of it running every frame was a steady drain on the same main thread
+  // the music scheduler needs to stay on time (see the LOOKAHEAD comment in
+  // the `music` object), which is what caused the outdoor audio glitches.
+  // A small ring of low-opacity offset copies reads as the same glow for a
+  // fraction of the cost, no shadowBlur required.
+  const signX = px + w/2;
+  const signY = py + 60;
+  ctx.font = 'italic bold 32px cursive';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  ctx.fillStyle = 'rgba(255,32,64,0.22)';
+  for (const [ox, oy] of NECTARS_GLOW_OFFSETS) ctx.fillText("Nectar's", signX + ox, signY + oy);
+  ctx.strokeStyle = '#ff4060';
+  ctx.lineWidth = 2;
+  ctx.strokeText("Nectar's", signX, signY);
+  ctx.fillStyle = '#ffe0e6';
+  ctx.fillText("Nectar's", signX, signY);
+  
+  // Windows with warm glow
+  ctx.fillStyle = '#ffe090';
+  ctx.fillRect(px + 8, py + h - TILE - 14, 14, 16);
+  ctx.fillRect(px + w - 22, py + h - TILE - 14, 14, 16);
+  ctx.fillRect(px + 8, py + h - TILE * 2 - 14, 14, 16);
+  ctx.fillRect(px + w - 22, py + h - TILE * 2 - 14, 14, 16);
+  
+  // Window panes
+  ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(px + 15, py + h - TILE - 14);
+  ctx.lineTo(px + 15, py + h - TILE + 2);
+  ctx.moveTo(px + w - 15, py + h - TILE - 14);
+  ctx.lineTo(px + w - 15, py + h - TILE + 2);
+  ctx.stroke();
+  
+  ctx.restore();
+}
+
+function drawJuniorsDecor(px, py, w, h) {
+  ctx.save();
+  
+  // Red brick pattern
+  ctx.fillStyle = '#c84030';
+  for (let by = 0; by < 4; by++) {
+    const brickY = py + 34 + by * 16;
+    ctx.strokeStyle = '#a83020';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(px, brickY);
+    ctx.lineTo(px + w, brickY);
+    ctx.stroke();
+  }
+  
+  // Pizza slice sign on front
+  const signX = px + w/2;
+  const signY = py + 55;
+  
+  // Pizza slice shape
+  ctx.fillStyle = '#f0d060';
+  ctx.beginPath();
+  ctx.moveTo(signX, signY - 10);
+  ctx.lineTo(signX + 15, signY + 10);
+  ctx.lineTo(signX - 15, signY + 10);
+  ctx.closePath();
+  ctx.fill();
+  
+  // Pizza toppings (pepperoni dots)
+  ctx.fillStyle = '#d04030';
+  ctx.fillRect(signX - 5, signY, 4, 4);
+  ctx.fillRect(signX + 3, signY + 4, 3, 3);
+  ctx.fillRect(signX - 8, signY + 6, 3, 3);
+  
+  // Cheese highlights
+  ctx.fillStyle = '#ffe890';
+  ctx.fillRect(signX - 2, signY - 4, 4, 2);
+  ctx.fillRect(signX + 6, signY + 2, 3, 2);
+  
+  // Window with checkered curtain pattern
+  ctx.fillStyle = '#e8f0f8';
+  ctx.fillRect(px + 8, py + h - TILE - 14, 20, 18);
+  
+  // Checkered curtain
+  ctx.fillStyle = '#d84848';
+  for (let cy = 0; cy < 3; cy++) {
+    for (let cx = 0; cx < 3; cx++) {
+      if ((cx + cy) % 2 === 0) {
+        ctx.fillRect(px + 8 + cx * 6, py + h - TILE - 14 + cy * 6, 6, 6);
+      }
+    }
+  }
+  
+  ctx.restore();
+}
+
+// Round sign with a cartoon cow face on it — VT Comedy Club's mascot/logo,
+// mounted on the wall between the name plate up top and the door below.
+// The building footprint is only 2 tiles wide, so everything here is sized
+// small and centered on the wall rather than spread out.
+function drawComedyClubDecor(px, py, w, h) {
+  ctx.save();
+
+  const cx = px + w / 2;
+  const cy = py + 76;
+  const r = 13;
+
+  // glow + chrome-style ring, echoing the round signs elsewhere in town
+  ctx.fillStyle = 'rgba(224,176,64,0.18)';
+  ctx.beginPath(); ctx.arc(cx, cy, r + 5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#e8e4dc';
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#8a6a20';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // cow face: white head, black patches, pink snout, big goofy grin
+  ctx.fillStyle = '#f4ecd8';
+  ctx.beginPath(); ctx.arc(cx, cy + 1, r - 3, 0, Math.PI * 2); ctx.fill();
+
+  ctx.fillStyle = '#241a1a';                      // black patches
+  ctx.beginPath(); ctx.ellipse(cx - 7, cy - 5, 4, 5, 0.4, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(cx + 6, cy + 4, 3, 4, -0.3, 0, Math.PI * 2); ctx.fill();
+
+  ctx.fillStyle = '#f4ecd8';                       // ears
+  ctx.beginPath(); ctx.ellipse(cx - r + 2, cy - 3, 3, 5, 0.6, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(cx + r - 2, cy - 3, 3, 5, -0.6, 0, Math.PI * 2); ctx.fill();
+
+  ctx.fillStyle = '#f0b8c8';                       // snout
+  ctx.beginPath(); ctx.ellipse(cx, cy + 7, 8, 5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#3a2222';                        // nostrils
+  ctx.beginPath(); ctx.ellipse(cx - 3, cy + 7, 1.2, 1.6, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(cx + 3, cy + 7, 1.2, 1.6, 0, 0, Math.PI * 2); ctx.fill();
+
+  ctx.fillStyle = '#1c1414';                        // eyes
+  ctx.beginPath(); ctx.arc(cx - 4, cy - 2, 1.6, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + 4, cy - 2, 1.6, 0, Math.PI * 2); ctx.fill();
+
+  ctx.strokeStyle = '#3a2222';                      // grin, laughing wide
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.arc(cx, cy + 3, 5, 0.15 * Math.PI, 0.85 * Math.PI);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+function drawHenrysDecor(px, py, w, h) {
+  ctx.save();
+
+  // black & white checkerboard trim band along the base — classic diner look
+  const bandY = py + h - 14, sq = 8;
+  for (let i = 0; i * sq < w; i++) {
+    ctx.fillStyle = (i % 2 === 0) ? '#f4ecd8' : '#1c1c1e';
+    ctx.fillRect(px + i * sq, bandY, sq, 8);
+  }
+
+  // red-and-white striped awning over the door
+  const awnY = py + h - TILE - 16;
+  for (let i = 0; i * 8 < w; i++) {
+    ctx.fillStyle = (i % 2 === 0) ? '#c23b30' : '#f4ecd8';
+    ctx.fillRect(px + i * 8, awnY, 8, 10);
+  }
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.fillRect(px, awnY + 10, w, 3);
+
+  // round chrome-ringed "EAT" sign, diner-style
+  const cx = px + w / 2, cy = py + 46;
+  ctx.fillStyle = '#c8ccd0';
+  ctx.beginPath(); ctx.arc(cx, cy, 15, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#e04030';
+  ctx.beginPath(); ctx.arc(cx, cy, 11, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#f4ecd8';
+  ctx.font = 'bold 10px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('EAT', cx, cy + 4);
+
+  ctx.restore();
+}
+
+function drawJuniorsInterior(time) {
+  // Classic NY style pizza shop interior
+  
+  // Pizza oven (left side, back wall)
+  const ovenX = 1 * TILE + 8;
+  const ovenY = 1 * TILE + 8;
+  const ovenW = 2 * TILE;
+  const ovenH = TILE + 8;
+  
+  // Oven body (brick)
+  ctx.fillStyle = '#8a4a3a';
+  ctx.fillRect(ovenX, ovenY, ovenW, ovenH);
+  
+  // Oven opening with glow
+  ctx.save();
+  ctx.fillStyle = '#ff6030';
+  ctx.shadowColor = '#ff6030';
+  ctx.shadowBlur = 12;
+  ctx.fillRect(ovenX + 12, ovenY + 10, ovenW - 24, ovenH - 20);
+  ctx.shadowBlur = 0;
+  ctx.restore();
+  
+  // Oven door frame
+  ctx.strokeStyle = '#3a2a1a';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(ovenX + 10, ovenY + 8, ovenW - 20, ovenH - 16);
+  
+  // Pizza peel leaning against wall
+  const peelX = ovenX + ovenW + 6;
+  const peelY = ovenY + ovenH - 30;
+  ctx.fillStyle = '#9a7050';
+  ctx.fillRect(peelX, peelY, 4, 30);
+  ctx.fillRect(peelX - 6, peelY - 4, 16, 6);
+  
+  // Counter (right side)
+  const counterX = 9 * TILE;
+  const counterY = 4 * TILE;
+  const counterW = 3 * TILE;
+  const counterH = 2 * TILE;
+  
+  ctx.fillStyle = '#6a4a3a';
+  ctx.fillRect(counterX, counterY, counterW, counterH);
+  ctx.fillStyle = '#8a6a4a';
+  ctx.fillRect(counterX, counterY, counterW, 8);
+  
+  // Glass display case on counter
+  ctx.fillStyle = 'rgba(200,220,240,0.3)';
+  ctx.fillRect(counterX + 6, counterY + 10, counterW - 12, 24);
+  ctx.strokeStyle = '#9a9a9e';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(counterX + 6, counterY + 10, counterW - 12, 24);
+  
+  // Pizza slices in display
+  ctx.fillStyle = '#f0d060';
+  for (let i = 0; i < 3; i++) {
+    const sliceX = counterX + 12 + i * 14;
+    const sliceY = counterY + 20;
+    ctx.beginPath();
+    ctx.moveTo(sliceX, sliceY - 4);
+    ctx.lineTo(sliceX + 8, sliceY + 4);
+    ctx.lineTo(sliceX, sliceY + 4);
+    ctx.closePath();
+    ctx.fill();
+    
+    // Pepperoni
+    ctx.fillStyle = '#d04030';
+    ctx.fillRect(sliceX + 2, sliceY, 2, 2);
+    ctx.fillStyle = '#f0d060';
+  }
+  
+  // "PIZZA" sign on back wall
+  const signX = 6 * TILE;
+  const signY = 1 * TILE + 2;
+  
+  ctx.fillStyle = '#e8e030';
+  ctx.font = 'bold 16px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('PIZZA', signX, signY + 12);
+  
+  // Menu board
+  ctx.fillStyle = '#2a2a2a';
+  ctx.fillRect(signX + TILE, signY - 8, TILE + 12, 32);
+  ctx.fillStyle = '#f0f0f0';
+  ctx.font = '8px monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText('SLICE $3', signX + TILE + 4, signY + 4);
+  ctx.fillText('PIE $18', signX + TILE + 4, signY + 14);
+  
+  // Napkin dispenser on counter
+  ctx.fillStyle = '#c0c0c8';
+  ctx.fillRect(counterX + counterW - 20, counterY + 36, 12, 10);
+  
+  // Oregano shaker
+  ctx.fillStyle = '#d04030';
+  ctx.fillRect(counterX + 10, counterY + 38, 6, 10);
+  ctx.fillStyle = '#e8e8e8';
+  ctx.fillRect(counterX + 11, counterY + 40, 4, 2);
+  
+  // Parmesan shaker  
+  ctx.fillStyle = '#60a060';
+  ctx.fillRect(counterX + 20, counterY + 38, 6, 10);
+  ctx.fillStyle = '#e8e8e8';
+  ctx.fillRect(counterX + 21, counterY + 40, 4, 2);
+  
+  // Checkered floor accent (a few tiles near entrance for NY vibe)
+  const floorChecks = [[6, 8], [7, 8], [6, 9], [7, 9]];
+  for (const [fx, fy] of floorChecks) {
+    if ((fx + fy) % 2 === 0) {
+      ctx.fillStyle = 'rgba(0,0,0,0.1)';
+      ctx.fillRect(fx * TILE, fy * TILE, TILE, TILE);
+    }
+  }
+}
+
+// Kountry Kart Deli: classic sandwich-shop interior dressing layered on top
+// of the generic shop shell (counter/keeper/crates/jukebox are already
+// placed by makeShop()). Adds a glass deli case up front with cold cuts and
+// salad tubs, twin glass-door beverage coolers, a wire newspaper rack by
+// the door, and a heat-lamp case of wrapped breakfast sandwiches at the end
+// of Rosie's counter. Positions are chosen to sit clear of the jukebox
+// (11,2), the counter/keeper (row 2-3), and the dig crates in the corners.
+function drawKountryKartDeliInterior(time) {
+  // --- glass deli case: meats & salads, front-and-center on the floor,
+  // clear of the corner crates at (12,4)/(12,6)
+  const caseX = 9 * TILE, caseY = 5 * TILE, caseW = 3 * TILE, caseH = 2 * TILE;
+  ctx.fillStyle = '#888e96';
+  ctx.fillRect(caseX, caseY, caseW, caseH);
+  ctx.fillStyle = '#585d64';
+  ctx.fillRect(caseX, caseY + caseH - 8, caseW, 8);
+  ctx.fillStyle = 'rgba(200,225,245,0.28)';
+  ctx.fillRect(caseX + 4, caseY + 6, caseW - 8, caseH - 18);
+  ctx.strokeStyle = '#c8d0d8';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(caseX + 4, caseY + 6, caseW - 8, caseH - 18);
+  // rolled cold cuts along the back of the case
+  const meatColors = ['#d8776a', '#c8543f', '#e0a06a'];
+  for (let i = 0; i < 3; i++) {
+    const mx = caseX + 14 + i * 26;
+    ctx.fillStyle = meatColors[i % meatColors.length];
+    ctx.beginPath();
+    ctx.arc(mx, caseY + 15, 7, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    ctx.beginPath();
+    ctx.arc(mx - 2, caseY + 12, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // salad tubs up front
+  const saladColors = ['#8ab84a', '#e8c840', '#e8dcc0'];
+  for (let i = 0; i < 3; i++) {
+    const sx = caseX + 8 + i * 28;
+    ctx.fillStyle = '#e8e8e8';
+    ctx.fillRect(sx, caseY + caseH - 24, 22, 12);
+    ctx.fillStyle = saladColors[i];
+    ctx.fillRect(sx + 2, caseY + caseH - 22, 18, 6);
+  }
+  ctx.fillStyle = '#241608';
+  ctx.font = 'bold 9px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('DELI MEATS & SALADS', caseX + caseW / 2, caseY - 6);
+
+  // --- pickle barrel tucked beside the case -- a nod to Rosie's "behind
+  // the pickle barrels" line
+  drawPickleBarrel(caseX - 20, caseY + caseH - 24);
+
+  // --- twin glass-door beverage coolers against the left wall, above the
+  // crates so nothing overlaps
+  const coolerX = 2 * TILE, coolerY = TILE + 4, coolerW = TILE * 2 - 4, coolerH = TILE * 2 + 10;
+  ctx.fillStyle = '#3a3f46';
+  ctx.fillRect(coolerX, coolerY, coolerW, coolerH);
+  const canColors = ['#c8302a', '#2a68b0', '#e0b030', '#3a9450'];
+  for (let i = 0; i < 2; i++) {
+    const dx = coolerX + 3 + i * (coolerW / 2);
+    const dw = coolerW / 2 - 6;
+    ctx.fillStyle = 'rgba(160,210,240,0.3)';
+    ctx.fillRect(dx, coolerY + 4, dw, coolerH - 8);
+    ctx.strokeStyle = '#c8d8e0';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(dx, coolerY + 4, dw, coolerH - 8);
+    for (let row = 0; row < 3; row++) {
+      for (let col = 0; col < 2; col++) {
+        ctx.fillStyle = canColors[(row + col + i) % canColors.length];
+        ctx.fillRect(dx + 3 + col * 9, coolerY + 10 + row * 14, 7, 10);
+      }
+    }
+  }
+  ctx.fillStyle = 'rgba(255,255,255,0.12)';
+  ctx.fillRect(coolerX, coolerY, coolerW, 3);
+  ctx.fillStyle = '#e8e8e8';
+  ctx.font = 'bold 8px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('COLD DRINKS', coolerX + coolerW / 2, coolerY - 4);
+
+  // --- wire newspaper rack, tucked in the front corner near the door
+  const rackX = 4 * TILE, rackY = 7 * TILE;
+  ctx.strokeStyle = '#8a8f96';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(rackX, rackY + 26); ctx.lineTo(rackX, rackY);
+  ctx.lineTo(rackX + 20, rackY); ctx.lineTo(rackX + 20, rackY + 26);
+  ctx.stroke();
+  const paperColors = ['#f4f0e6', '#eee8da'];
+  for (let i = 0; i < 3; i++) {
+    const py2 = rackY - 2 - i * 5;
+    ctx.fillStyle = paperColors[i % 2];
+    ctx.fillRect(rackX - 2 + i, py2, 24, 14);
+    ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(rackX - 2 + i, py2, 24, 14);
+    ctx.fillStyle = '#181818';
+    ctx.font = 'bold 5px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('DAILY NEWS', rackX, py2 + 8);
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    for (let l = 0; l < 3; l++) ctx.fillRect(rackX, py2 + 10 + l * 2, 18 - l * 3, 1);
+  }
+
+  // --- breakfast sandwiches under the heat lamp, at the end of Rosie's
+  // counter (clear of the jukebox at col 11)
+  const wx = 9 * TILE, wy = 2 * TILE + 4, ww = TILE + 12, wh = TILE - 10;
+  ctx.save();
+  ctx.fillStyle = '#ff9a40';
+  ctx.shadowColor = '#ff9a40';
+  ctx.shadowBlur = 10;
+  ctx.beginPath();
+  ctx.ellipse(wx + ww / 2, wy - 4, ww / 2, 4, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.restore();
+  ctx.strokeStyle = '#7a4a2a';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(wx, wy - 6); ctx.lineTo(wx + ww, wy - 6);
+  ctx.stroke();
+  ctx.fillStyle = '#6a4a30';
+  ctx.fillRect(wx, wy, ww, wh);
+  ctx.fillStyle = 'rgba(255,210,140,0.25)';
+  ctx.fillRect(wx + 3, wy + 3, ww - 6, wh - 6);
+  const foilColors = ['#e8d888', '#d8e8e0'];
+  for (let i = 0; i < 3; i++) {
+    ctx.fillStyle = foilColors[i % 2];
+    const bx = wx + 6 + i * 12;
+    ctx.beginPath();
+    ctx.moveTo(bx, wy + wh - 4);
+    ctx.lineTo(bx + 9, wy + wh - 4);
+    ctx.lineTo(bx + 4.5, wy + 6);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.fillStyle = '#f4ecd8';
+  ctx.font = 'bold 7px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('B\'FAST', wx + ww / 2, wy + wh + 9);
+}
+
+// Small wooden pickle barrel prop -- (px, py) is its top-left corner.
+function drawPickleBarrel(px, py) {
+  ctx.fillStyle = '#5c4326';
+  ctx.fillRect(px, py, 18, 22);
+  ctx.fillStyle = '#3a2c18';
+  ctx.fillRect(px, py, 18, 3);
+  ctx.fillRect(px, py + 19, 18, 3);
+  ctx.fillStyle = '#4a8a3a';
+  for (let i = 0; i < 3; i++) {
+    ctx.beginPath();
+    ctx.ellipse(px + 4 + i * 5, py + 2, 2.5, 4, 0.3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawComedyClubInterior(time) {
+  // Small brick-backed stage with a spotlight, mic stand, a row of stools
+  // facing it, and a curtain along the side wall — plus a little cow-face
+  // callback to the sign outside.
+
+  // back wall brick, exposed-brick comedy-club look
+  ctx.fillStyle = '#3a2830';
+  ctx.fillRect(0, 0, 14 * TILE, 3 * TILE);
+  ctx.strokeStyle = '#2a1c22';
+  ctx.lineWidth = 1;
+  for (let row = 0; row < 4; row++) {
+    const by = 8 + row * 16;
+    ctx.beginPath(); ctx.moveTo(0, by); ctx.lineTo(14 * TILE, by); ctx.stroke();
+    const offset = row % 2 === 0 ? 0 : 14;
+    for (let bx = offset; bx < 14 * TILE; bx += 28) {
+      ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx, by + 16); ctx.stroke();
+    }
+  }
+
+  // stage platform
+  const stageX = 3 * TILE, stageY = 2 * TILE + 20, stageW = 8 * TILE, stageH = 10;
+  ctx.fillStyle = '#5a3a48';
+  ctx.fillRect(stageX, stageY, stageW, stageH);
+  ctx.fillStyle = '#40222e';
+  ctx.fillRect(stageX, stageY + stageH - 3, stageW, 3);
+
+  // spotlight cone, gently flickers
+  const flick = 0.75 + 0.25 * Math.sin(time * 3);
+  ctx.save();
+  ctx.fillStyle = `rgba(255, 233, 160, ${0.16 * flick})`;
+  ctx.beginPath();
+  ctx.moveTo(6.5 * TILE, 0);
+  ctx.lineTo(5 * TILE, stageY);
+  ctx.lineTo(8 * TILE, stageY);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+
+  // mic stand, center stage
+  const micX = 6.5 * TILE, micBaseY = stageY;
+  ctx.strokeStyle = '#1c1c1e';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(micX, micBaseY); ctx.lineTo(micX, micBaseY - 28); ctx.stroke();
+  ctx.fillStyle = '#2a2a2e';
+  ctx.fillRect(micX - 10, micBaseY - 2, 20, 3);
+  ctx.fillStyle = '#c8c8cc';
+  ctx.beginPath(); ctx.arc(micX, micBaseY - 32, 5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#1c1c1e';
+  ctx.beginPath(); ctx.arc(micX, micBaseY - 32, 3, 0, Math.PI * 2); ctx.fill();
+
+  // deep purple curtain along the right wall
+  const curtX = 11 * TILE;
+  for (let i = 0; i < 3; i++) {
+    ctx.fillStyle = i % 2 === 0 ? '#4a2060' : '#3a1850';
+    ctx.fillRect(curtX + i * 10, 0, 10, 6 * TILE);
+  }
+
+  // a few stools facing the stage
+  ctx.fillStyle = '#8a5a30';
+  [[4, 7], [6.5, 7.5], [9, 7]].forEach(([tx, ty]) => {
+    const sx = tx * TILE, sy = ty * TILE;
+    ctx.beginPath(); ctx.ellipse(sx, sy, 9, 5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#5a3a1e';
+    ctx.fillRect(sx - 2, sy + 3, 4, 10);
+    ctx.fillStyle = '#8a5a30';
+  });
+
+  // the club's cow mascot standee, perched up on top of the far-left
+  // stool rather than parked on the floor
+  drawCow(4 * TILE - 16, 7 * TILE - 34);
+
+  // "COMEDY NIGHT" marquee lettering above the stage
+  ctx.fillStyle = '#e0b040';
+  ctx.font = 'bold 15px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('COMEDY NIGHT', 7 * TILE, 1 * TILE + 4);
+
+  // little cow-face plaque on the brick wall, echoing the sign outside
+  const ccx = 12 * TILE, ccy = 1 * TILE + 8, cr = 9;
+  ctx.fillStyle = '#f4ecd8';
+  ctx.beginPath(); ctx.arc(ccx, ccy, cr, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#241a1a';
+  ctx.beginPath(); ctx.ellipse(ccx - 4, ccy - 3, 2.4, 3, 0.4, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#f0b8c8';
+  ctx.beginPath(); ctx.ellipse(ccx, ccy + 4, 4.5, 3, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#1c1414';
+  ctx.beginPath(); ctx.arc(ccx - 2, ccy - 1, 1, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(ccx + 2, ccy - 1, 1, 0, Math.PI * 2); ctx.fill();
+}
+
+// ------------------------------------------------------- church "big top"
+// The church interior masquerades as a full Ringling Bros. and Barnum &
+// Bailey style big top: a trapeze flyer swinging from the rafters, an
+// elephant and lion flanking the ring, and a pair of juggling clowns
+// working the floor. Purely original pixel art — no real circus branding.
+
+// A trapeze artist mid-swing above the ring: two rigging ropes from the
+// rafters down to a swinging bar, with a tiny sequined flyer riding it.
+// The swing angle oscillates with `time` so it reads as motion overhead
+// rather than a static prop.
+function drawTrapezeArtist(time) {
+  const anchorX = 7 * TILE, anchorY = 2;
+  const swing = Math.sin(time * 1.6) * 46;
+  const barY = 1.3 * TILE;
+  const barX = anchorX + swing;
+
+  // rigging ropes down from the rafters
+  ctx.strokeStyle = '#c8b088';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(anchorX - 30, anchorY); ctx.lineTo(barX - 12, barY);
+  ctx.moveTo(anchorX + 30, anchorY); ctx.lineTo(barX + 12, barY);
+  ctx.stroke();
+
+  // trapeze bar
+  ctx.strokeStyle = '#3a2c18';
+  ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(barX - 12, barY); ctx.lineTo(barX + 12, barY); ctx.stroke();
+
+  // flyer: sequined performer hooked over the bar by the knees, arms flung
+  // out mid-trick
+  const flip = Math.sin(time * 1.6 + 1) * 0.3;
+  ctx.save();
+  ctx.translate(barX, barY);
+  ctx.rotate(flip);
+  ctx.fillStyle = '#ffd23f';
+  ctx.fillRect(-3, -4, 6, 10);
+  ctx.fillStyle = '#ff3b5c';
+  ctx.fillRect(-4, 6, 8, 12);
+  ctx.strokeStyle = '#f0c8a0';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(-4, 10); ctx.lineTo(-16, 4);
+  ctx.moveTo(4, 10); ctx.lineTo(16, 4);
+  ctx.stroke();
+  ctx.fillStyle = '#f0c8a0';
+  ctx.beginPath(); ctx.arc(0, 20, 4, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+// Gray circus elephant, trunk raised in a showy curl, plumed headdress and
+// all — a nod to the classic Ringling Bros. menagerie acts.
+function drawCircusElephant(px, py) {
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.beginPath(); ctx.ellipse(px, py + 30, 26, 6, 0, 0, Math.PI * 2); ctx.fill();
+
+  ctx.fillStyle = '#7a828a';
+  [[-10, 12], [6, 12], [-14, 10], [12, 10]].forEach(([dx, dy]) => {
+    ctx.fillRect(px + dx, py + dy, 6, 14);
+  });
+
+  ctx.fillStyle = '#9098a0';
+  ctx.beginPath(); ctx.ellipse(px, py, 24, 18, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(px - 22, py - 6, 14, 13, 0, 0, Math.PI * 2); ctx.fill();
+
+  ctx.fillStyle = '#7a828a';
+  ctx.beginPath(); ctx.ellipse(px - 24, py - 14, 11, 13, -0.3, 0, Math.PI * 2); ctx.fill();
+
+  ctx.strokeStyle = '#9098a0';
+  ctx.lineWidth = 7;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(px - 34, py - 2);
+  ctx.quadraticCurveTo(px - 44, py - 18, px - 34, py - 26);
+  ctx.stroke();
+  ctx.lineCap = 'butt';
+
+  // showgirl-style plume headdress
+  ctx.fillStyle = '#ff3b5c';
+  ctx.beginPath();
+  ctx.moveTo(px - 22, py - 20); ctx.lineTo(px - 26, py - 32); ctx.lineTo(px - 18, py - 30);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#ffe14d';
+  ctx.beginPath(); ctx.arc(px - 22, py - 20, 3, 0, Math.PI * 2); ctx.fill();
+
+  ctx.fillStyle = '#1c1a1e';
+  ctx.beginPath(); ctx.arc(px - 26, py - 8, 1.6, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#f4ecd8';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.moveTo(px - 30, py); ctx.lineTo(px - 34, py + 6); ctx.stroke();
+}
+
+// Circus lion perched on a striped pedestal stool, mane framing its face —
+// paired with the elephant to flank the ring.
+function drawCircusLion(px, py) {
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.beginPath(); ctx.ellipse(px, py + 22, 20, 5, 0, 0, Math.PI * 2); ctx.fill();
+
+  ctx.fillStyle = '#ff3b5c';
+  ctx.fillRect(px - 16, py + 6, 32, 14);
+  ctx.fillStyle = '#fff6f0';
+  ctx.fillRect(px - 16, py + 6, 32, 4);
+
+  ctx.fillStyle = '#e0a850';
+  ctx.beginPath(); ctx.ellipse(px, py - 2, 16, 14, 0, 0, Math.PI * 2); ctx.fill();
+
+  ctx.fillStyle = '#a85a20';
+  ctx.beginPath(); ctx.arc(px, py - 10, 15, 0, Math.PI * 2); ctx.fill();
+
+  ctx.fillStyle = '#e8c078';
+  ctx.beginPath(); ctx.arc(px, py - 10, 9, 0, Math.PI * 2); ctx.fill();
+
+  ctx.fillStyle = '#a85a20';
+  ctx.beginPath(); ctx.arc(px - 8, py - 20, 3.5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(px + 8, py - 20, 3.5, 0, Math.PI * 2); ctx.fill();
+
+  ctx.fillStyle = '#1c1a1e';
+  ctx.beginPath(); ctx.arc(px - 3, py - 11, 1.3, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(px + 3, py - 11, 1.3, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(px - 2, py - 6); ctx.lineTo(px + 2, py - 6); ctx.lineTo(px, py - 3);
+  ctx.closePath(); ctx.fill();
+
+  ctx.strokeStyle = '#e0a850';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(px + 14, py); ctx.quadraticCurveTo(px + 26, py + 4, px + 24, py - 8);
+  ctx.stroke();
+  ctx.fillStyle = '#a85a20';
+  ctx.beginPath(); ctx.arc(px + 24, py - 8, 3, 0, Math.PI * 2); ctx.fill();
+}
+
+// A juggling clown, tossing three balls in a looping arc timed to `time` —
+// `phase` offsets each clown so a pair of them don't juggle in lockstep.
+function drawJugglingClown(px, py, time, phase) {
+  const t = time * 3 + phase;
+
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx.beginPath(); ctx.ellipse(px, py + 26, 12, 4, 0, 0, Math.PI * 2); ctx.fill();
+
+  ctx.fillStyle = '#ffe14d';
+  ctx.fillRect(px - 7, py + 10, 5, 14);
+  ctx.fillRect(px + 2, py + 10, 5, 14);
+  ctx.fillStyle = '#241a1a';
+  ctx.fillRect(px - 9, py + 22, 8, 4);
+  ctx.fillRect(px + 1, py + 22, 8, 4);
+
+  ctx.fillStyle = '#5fd0ff';
+  ctx.beginPath(); ctx.ellipse(px, py, 11, 13, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#fff6f0';
+  for (let i = -2; i <= 2; i++) {
+    ctx.beginPath(); ctx.arc(px + i * 4.5, py - 10, 3, 0, Math.PI * 2); ctx.fill();
+  }
+
+  ctx.fillStyle = '#f0c8a0';
+  ctx.beginPath(); ctx.arc(px, py - 20, 8, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#ff5fa2';
+  ctx.beginPath(); ctx.arc(px - 9, py - 20, 3.5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(px + 9, py - 20, 3.5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#ff3b5c';
+  ctx.beginPath(); ctx.arc(px, py - 18, 3, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#1c1a1e';
+  ctx.beginPath(); ctx.arc(px - 3, py - 22, 1, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(px + 3, py - 22, 1, 0, Math.PI * 2); ctx.fill();
+
+  // three juggling balls looping overhead, 120 degrees apart
+  const ballColors = ['#ff5fa2', '#5fd0ff', '#ffe14d'];
+  for (let i = 0; i < 3; i++) {
+    const a = t + (i * Math.PI * 2) / 3;
+    const bx = px + Math.cos(a) * 12;
+    const by = py - 34 + Math.sin(a) * 10;
+    ctx.fillStyle = ballColors[i];
+    ctx.beginPath(); ctx.arc(bx, by, 3, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+function drawChurchCircusInterior(time) {
+  drawTrapezeArtist(time);
+  drawCircusElephant(3.4 * TILE, 8.2 * TILE);
+  drawCircusLion(10.6 * TILE, 8.2 * TILE);
+  drawJugglingClown(5.1 * TILE, 8.5 * TILE, time, 0);
+  drawJugglingClown(8.9 * TILE, 8.5 * TILE, time, 2.1);
+}
+
+// The big poster hanging on the wall behind Hey Bud's counter — a large
+// hand-rolled "99" in hot neon pink, painted with a real paint roller
+// rather than printed: streaky uneven bands of coverage, visible roller-
+// nap texture, a soft bleedy edge where the roller overshot the letter
+// shapes, and a few drips running down where the paint pooled before it
+// dried. Purely original pixel art, not a real logo/brand.
+function drawHeyBudRollerPoster(x, y, w, h) {
+  ctx.save();
+
+  // dark backing shadow + cream canvas/paper the "99" is rolled onto
+  ctx.fillStyle = '#241f2c';
+  ctx.fillRect(x - 3, y - 3, w + 6, h + 6);
+  ctx.fillStyle = '#efe8d6';
+  ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = 'rgba(0,0,0,0.06)';
+  ctx.fillRect(x, y, w, 4);
+  ctx.fillRect(x, y + h - 4, w, 4);
+  ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = `900 ${Math.floor(h * 0.74)}px Impact, "Arial Black", sans-serif`;
+  const cx = x + w / 2, cy = y + h / 2 + h * 0.03;
+
+  // soft bleedy underlay so the roller reads as having overshot the
+  // letterforms slightly, like real paint spreading on paper
+  ctx.save();
+  ctx.shadowColor = 'rgba(255,40,160,0.5)';
+  ctx.shadowBlur = 5;
+  ctx.fillStyle = 'rgba(255,60,170,0.85)';
+  ctx.fillText('99', cx, cy);
+  ctx.restore();
+
+  // solid hot-pink base coat for the numerals
+  ctx.fillStyle = '#ff2ea6';
+  ctx.fillText('99', cx, cy);
+
+  // roller streaks + nap texture, clipped to only the painted numerals
+  // (source-atop only draws over existing opaque pixels)
+  ctx.save();
+  ctx.globalCompositeOperation = 'source-atop';
+  const bandH = Math.max(3, h * 0.055);
+  let by = y - h * 0.1, i = 0;
+  while (by < y + h * 1.1) {
+    const wobble = Math.sin(i * 1.7) * 2;
+    ctx.fillStyle = i % 2 === 0 ? 'rgba(255,150,205,0.35)' : 'rgba(190,10,105,0.30)';
+    ctx.fillRect(x - 4, by + wobble, w + 8, bandH);
+    by += bandH * 1.6;
+    i++;
+  }
+  ctx.fillStyle = 'rgba(255,255,255,0.10)';
+  for (let ny = y; ny < y + h; ny += 2.4) ctx.fillRect(x, ny, w, 0.8);
+  ctx.restore();
+
+  // a few drips trailing down from the bottom of the numerals, like
+  // excess roller paint that ran before it dried
+  ctx.fillStyle = '#ff2ea6';
+  [{ fx: 0.28, len: 12 }, { fx: 0.45, len: 7 }, { fx: 0.63, len: 16 }, { fx: 0.80, len: 6 }]
+    .forEach((d) => {
+      const dx = x + w * d.fx, dy0 = y + h * 0.87;
+      ctx.beginPath();
+      ctx.moveTo(dx - 2, dy0);
+      ctx.lineTo(dx + 2, dy0);
+      ctx.lineTo(dx + 1.3, dy0 + d.len);
+      ctx.quadraticCurveTo(dx, dy0 + d.len + 3, dx - 1.3, dy0 + d.len);
+      ctx.closePath();
+      ctx.fill();
+    });
+
+  ctx.restore();
+}
+
+// Small framed street-art print (flat, hung — not on an easel) for the
+// gallery wall inside Hey Bud.
+function drawStreetArtPrint(x, y, w, h, style) {
+  ctx.fillStyle = '#241a14';
+  ctx.fillRect(x - 2, y - 2, w + 4, h + 4);
+  ctx.fillStyle = '#efe6cf';
+  ctx.fillRect(x, y, w, h);
+  if (style === 0) {
+    // spray-paint drip tag
+    ctx.fillStyle = '#d94f9a';
+    ctx.font = 'bold 10px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('VT', x + 4, y + h * 0.5);
+    ctx.fillStyle = '#3fa8d4';
+    ctx.fillRect(x + 4, y + h * 0.55, w - 8, 2);
+  } else if (style === 1) {
+    // abstract mountain-line print
+    ctx.strokeStyle = '#3f8a44';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x + 3, y + h - 5);
+    ctx.lineTo(x + w * 0.35, y + 6);
+    ctx.lineTo(x + w * 0.6, y + h * 0.5);
+    ctx.lineTo(x + w - 3, y + h - 5);
+    ctx.stroke();
+    ctx.fillStyle = '#e0a030';
+    ctx.beginPath();
+    ctx.arc(x + w - 10, y + 10, 4, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    // wheatpaste-style stencil face/leaf motif
+    ctx.fillStyle = '#5fa862';
+    ctx.beginPath();
+    ctx.ellipse(x + w / 2, y + h / 2, w * 0.28, h * 0.34, 0.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#2a2016';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(x + w / 2, y + h * 0.2);
+    ctx.lineTo(x + w / 2, y + h * 0.8);
+    ctx.stroke();
+  }
+}
+
+// A glass display case up on legs, showing off a couple of prized exotic
+// specimens on a lit shelf — the shop's rare-plant centerpiece.
+function drawGlassPlantCase(x, y, w, h) {
+  ctx.save();
+
+  // wooden base/legs
+  const legY = y + h;
+  ctx.fillStyle = '#5a3d22';
+  ctx.fillRect(x + 4, legY, 5, 10);
+  ctx.fillRect(x + w - 9, legY, 5, 10);
+  ctx.fillStyle = '#4a3018';
+  ctx.fillRect(x, legY - 4, w, 6);
+
+  // metal frame
+  ctx.strokeStyle = '#8a8e92';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
+
+  // glass panes — a cool, faintly luminous tint with a soft inner glow
+  ctx.fillStyle = 'rgba(170,215,225,0.22)';
+  ctx.fillRect(x + 2, y + 2, w - 4, h - 4);
+  ctx.fillStyle = 'rgba(140,240,200,0.08)';
+  ctx.fillRect(x + 2, y + 2, w - 4, h - 4);
+
+  // interior shelf, a third of the way up from the base
+  const shelfY = y + h * 0.62;
+  ctx.fillStyle = 'rgba(90,70,50,0.85)';
+  ctx.fillRect(x + 3, shelfY, w - 6, 3);
+
+  // a couple of prized exotic specimens sitting on the shelf, each a
+  // different jungle color so they read as rare/collectible
+  const specimens = [
+    { fx: 0.28, color: '#d94f9a', color2: '#3fa8d4' }, // pink & blue variegated
+    { fx: 0.68, color: '#e0483c', color2: '#2f8a44' }, // red anthurium-style
+  ];
+  specimens.forEach((s) => {
+    const px = x + w * s.fx, py = shelfY;
+    ctx.fillStyle = '#8a5a30';
+    ctx.fillRect(px - 5, py - 8, 10, 8);
+    ctx.fillStyle = s.color2;
+    ctx.beginPath(); ctx.ellipse(px - 3, py - 14, 5, 8, -0.4, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(px + 4, py - 16, 4, 7, 0.3, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = s.color;
+    ctx.beginPath(); ctx.ellipse(px, py - 20, 4, 7, 0, 0, Math.PI * 2); ctx.fill();
+  });
+
+  // glass highlight streak, diagonal
+  ctx.fillStyle = 'rgba(255,255,255,0.12)';
+  ctx.beginPath();
+  ctx.moveTo(x + 4, y + h - 4);
+  ctx.lineTo(x + w * 0.35, y + 4);
+  ctx.lineTo(x + w * 0.48, y + 4);
+  ctx.lineTo(x + w * 0.18, y + h - 4);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.restore();
+}
+
+// A second glass display case, this one showing off vivid exotic
+// flowers rather than foliage — tall orchid sprays and a spiky
+// bird-of-paradise bloom, each in its own bright petal color, sitting in
+// small pots on the case's lit shelf. Same case construction as
+// drawGlassPlantCase (wooden base, metal frame, tinted glass, highlight
+// streak) so the two read as a matched pair of display cases.
+function drawGlassFlowerCase(x, y, w, h) {
+  ctx.save();
+
+  const legY = y + h;
+  ctx.fillStyle = '#5a3d22';
+  ctx.fillRect(x + 4, legY, 5, 10);
+  ctx.fillRect(x + w - 9, legY, 5, 10);
+  ctx.fillStyle = '#4a3018';
+  ctx.fillRect(x, legY - 4, w, 6);
+
+  ctx.strokeStyle = '#8a8e92';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
+
+  ctx.fillStyle = 'rgba(225,190,225,0.20)';
+  ctx.fillRect(x + 2, y + 2, w - 4, h - 4);
+  ctx.fillStyle = 'rgba(255,210,140,0.08)';
+  ctx.fillRect(x + 2, y + 2, w - 4, h - 4);
+
+  const shelfY = y + h * 0.62;
+  ctx.fillStyle = 'rgba(90,70,50,0.85)';
+  ctx.fillRect(x + 3, shelfY, w - 6, 3);
+
+  // three flowering specimens: a hot-pink orchid spray, a spiky
+  // orange-and-blue bird-of-paradise, and a deep-purple orchid spray
+  const blooms = [
+    { fx: 0.2, kind: 'orchid', color: '#ff5fb0', color2: '#3fa8d4' },
+    { fx: 0.52, kind: 'bird', color: '#e0a030', color2: '#3f6ad4' },
+    { fx: 0.82, kind: 'orchid', color: '#b15fe0', color2: '#5fb862' },
+  ];
+  blooms.forEach((s) => {
+    const px = x + w * s.fx, py = shelfY;
+    // small terracotta pot
+    ctx.fillStyle = '#8a5a30';
+    ctx.fillRect(px - 4, py - 7, 8, 7);
+    // leafy base
+    ctx.fillStyle = s.color2;
+    ctx.beginPath(); ctx.ellipse(px - 2, py - 10, 4, 6, -0.3, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(px + 3, py - 9, 3.5, 5, 0.4, 0, Math.PI * 2); ctx.fill();
+    if (s.kind === 'orchid') {
+      // a spray of petal blossoms along a thin arching stem
+      ctx.strokeStyle = '#3f7a3f';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(px, py - 9);
+      ctx.quadraticCurveTo(px + 6, py - 22, px + 3, py - 32);
+      ctx.stroke();
+      const petalSpots = [[px + 1, py - 15], [px + 4, py - 21], [px + 2, py - 27], [px + 4, py - 32]];
+      petalSpots.forEach(([bx, by]) => {
+        ctx.fillStyle = s.color;
+        for (let k = 0; k < 4; k++) {
+          const ang = (k / 4) * Math.PI * 2;
+          ctx.beginPath();
+          ctx.ellipse(bx + Math.cos(ang) * 3, by + Math.sin(ang) * 3, 2.4, 1.6, ang, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.fillStyle = '#f4ecd8';
+        ctx.beginPath(); ctx.arc(bx, by, 1, 0, Math.PI * 2); ctx.fill();
+      });
+    } else {
+      // bird-of-paradise: a beak-shaped sheath with flame-like orange
+      // and blue petals fanning up and out
+      ctx.strokeStyle = '#3f7a3f';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(px, py - 9); ctx.lineTo(px + 2, py - 26); ctx.stroke();
+      ctx.fillStyle = '#7a4a30';
+      ctx.beginPath();
+      ctx.moveTo(px + 2, py - 24);
+      ctx.lineTo(px + 12, py - 30);
+      ctx.lineTo(px + 3, py - 34);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = s.color;
+      [[px + 4, py - 32], [px + 7, py - 34], [px + 10, py - 30]].forEach(([bx, by]) => {
+        ctx.beginPath();
+        ctx.moveTo(bx, by);
+        ctx.lineTo(bx + 5, by - 3);
+        ctx.lineTo(bx + 1, by + 2);
+        ctx.closePath();
+        ctx.fill();
+      });
+      ctx.fillStyle = s.color2;
+      ctx.beginPath();
+      ctx.moveTo(px + 3, py - 30);
+      ctx.lineTo(px + 8, py - 33);
+      ctx.lineTo(px + 4, py - 27);
+      ctx.closePath();
+      ctx.fill();
+    }
+  });
+
+  ctx.fillStyle = 'rgba(255,255,255,0.12)';
+  ctx.beginPath();
+  ctx.moveTo(x + 4, y + h - 4);
+  ctx.lineTo(x + w * 0.35, y + 4);
+  ctx.lineTo(x + w * 0.48, y + 4);
+  ctx.lineTo(x + w * 0.18, y + h - 4);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.restore();
+}
+
+
+function drawHoodieRack(x, y) {
+  const w = 46;
+  ctx.strokeStyle = '#6a5a44';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + w, y); ctx.stroke();
+
+  const hoodieColors = ['#3a4a6a', '#8a2a2a', '#2f6a44'];
+  hoodieColors.forEach((c, i) => {
+    const hx = x + 6 + i * 16;
+    // hanger
+    ctx.strokeStyle = '#9a9a9e';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(hx, y);
+    ctx.lineTo(hx - 3, y + 4);
+    ctx.lineTo(hx + 3, y + 4);
+    ctx.closePath();
+    ctx.stroke();
+    // body
+    ctx.fillStyle = c;
+    ctx.fillRect(hx - 7, y + 4, 14, 18);
+    // hood
+    ctx.beginPath();
+    ctx.ellipse(hx, y + 5, 6, 4, 0, 0, Math.PI, true);
+    ctx.fill();
+    // sleeves flaring out
+    ctx.fillRect(hx - 11, y + 5, 4, 11);
+    ctx.fillRect(hx + 7, y + 5, 4, 11);
+    // drawstrings
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.fillRect(hx - 2, y + 6, 1, 6);
+    ctx.fillRect(hx + 1, y + 6, 1, 6);
+    // front pocket
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.fillRect(hx - 5, y + 15, 10, 5);
+  });
+}
+
+// A low wooden display table with a small stack of folded tees on top —
+// a second, more retail-shelf-y way tees show up in the shop besides the
+// tee row already folded onto the books/tees shelf.
+function drawFoldedTeeTable(x, y) {
+  const w = 40, h = 8;
+  ctx.fillStyle = 'rgba(0,0,0,0.18)';
+  ctx.fillRect(x, y + 22, w, 4);
+  ctx.fillStyle = '#6a4a2c';
+  ctx.fillRect(x, y + 16, w, h);
+  ctx.fillStyle = '#5a3d22';
+  ctx.fillRect(x + 3, y + 24, 4, 6);
+  ctx.fillRect(x + w - 7, y + 24, 4, 6);
+
+  const teeColors = ['#e0a030', '#3a4a6a', '#c0392b'];
+  let ty = y + 12;
+  teeColors.forEach((c, i) => {
+    const inset = i * 2;
+    ctx.fillStyle = c;
+    ctx.fillRect(x + 2 + inset, ty, w - 4 - inset * 2, 5);
+    ctx.fillStyle = 'rgba(0,0,0,0.15)';
+    ctx.fillRect(x + 2 + inset, ty + 4, w - 4 - inset * 2, 1);
+    ctx.fillStyle = 'rgba(255,255,255,0.18)';
+    ctx.fillRect(x + 2 + inset, ty, w - 4 - inset * 2, 1);
+    ty -= 5;
+  });
+}
+
+// A cascading vine trailing down from a ceiling corner, thick with
+// leaves — part of the "overflowing" jungle-shop dressing. dir flips it
+// to hang from the left or right corner.
+function drawVineCorner(x, y, dir, time, seed) {
+  const sway = Math.sin(time * 0.8 + seed) * 3;
+  ctx.strokeStyle = '#3f7a3f';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.quadraticCurveTo(x + dir * 14, y + 26, x + dir * 6 + sway, y + 52);
+  ctx.stroke();
+  const leafSpots = [10, 22, 34, 46];
+  leafSpots.forEach((dy, i) => {
+    const lx = x + dir * (10 + (i % 2) * 4) + sway * (dy / 52);
+    ctx.fillStyle = i % 2 === 0 ? '#4f9a52' : '#5fb862';
+    ctx.beginPath();
+    ctx.ellipse(lx, y + dy, 6, 3, dir * 0.6, 0, Math.PI * 2);
+    ctx.fill();
+  });
+}
+
+function drawHeyBudInterior(time) {
+  // Exotic-plant-shop redesign: hanging macrame planters up top, big
+  // tropical potted plants flanking the entrance, a wooden shelf stocked
+  // with books and folded tees, a folded-tee display table, a hoodie rack,
+  // a small gallery of street-art prints, twin glass display cases (one of
+  // rare exotic plants, one of exotic flowering blooms), and the "99"
+  // Vermont-silhouette poster behind the counter.
+
+  // --- hanging macrame plant pots, gently swaying from the rafters ---
+  const hangs = [[2 * TILE + 16, 0.3], [4 * TILE + 8, 1.4], [10 * TILE + 16, 0.7], [12 * TILE + 16, 2.1]];
+  hangs.forEach(([hx, seed]) => {
+    const sway = Math.sin(time * 1.1 + seed) * 2;
+    ctx.strokeStyle = '#8a7a5a';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(hx, 3); ctx.lineTo(hx + sway, 32); ctx.stroke();
+    ctx.fillStyle = '#c9a876';
+    ctx.beginPath();
+    ctx.moveTo(hx + sway - 8, 32); ctx.lineTo(hx + sway + 8, 32);
+    ctx.lineTo(hx + sway + 5, 44); ctx.lineTo(hx + sway - 5, 44);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#5fb862';
+    ctx.beginPath(); ctx.ellipse(hx + sway, 38, 8, 6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#4f9a52';
+    for (let j = -1; j <= 1; j += 2) {
+      ctx.beginPath();
+      ctx.ellipse(hx + sway + j * 6, 48 + Math.abs(j), 3, 8, j * 0.35, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  });
+
+  // --- big tropical potted plants flanking the doorway, spilling well
+  // past their pots so the greenery reads as overflowing the space ---
+  [[4 * TILE, 8 * TILE + 10], [9 * TILE, 8 * TILE + 10]].forEach(([bx, by]) => {
+    drawPlantPot(bx, by);
+    ctx.fillStyle = '#3f8a44';
+    ctx.beginPath(); ctx.ellipse(bx + 6, by - 22, 12, 6, 0.6, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(bx + 6, by - 32, 11, 5, -0.5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(bx - 4, by - 16, 9, 4.5, 1.0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#57a85c';
+    ctx.beginPath(); ctx.ellipse(bx + 2, by - 26, 8, 4, 0.2, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(bx + 14, by - 18, 7, 3.5, -0.3, 0, Math.PI * 2); ctx.fill();
+  });
+
+  // --- extra floor greenery tucked along the front wall, so plants read
+  // as overflowing the whole shop rather than just flanking the door ---
+  [[1 * TILE + 6, 7 * TILE + 20], [12 * TILE + 6, 6 * TILE + 22]].forEach(([bx, by]) => {
+    drawPlantPot(bx, by);
+    ctx.fillStyle = '#4f9a52';
+    ctx.beginPath(); ctx.ellipse(bx + 6, by - 20, 8, 4, 0.5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(bx + 2, by - 27, 6, 3, -0.4, 0, Math.PI * 2); ctx.fill();
+  });
+
+  // --- cascading vines trailing down from both ceiling corners ---
+  drawVineCorner(1 * TILE, 0, 1, time, 0.5);
+  drawVineCorner(13 * TILE, 0, -1, time, 1.8);
+
+  // --- wooden shelving unit: books up top, folded tees on the lower shelf ---
+  const shelfX = 2 * TILE, shelfY = 5 * TILE, shelfW = 2 * TILE + 12, shelfH = 2 * TILE - 4;
+  ctx.fillStyle = '#6a4a2c';
+  ctx.fillRect(shelfX, shelfY, shelfW, shelfH);
+  ctx.fillStyle = '#8a6438';
+  ctx.fillRect(shelfX + 3, shelfY + 3, shelfW - 6, shelfH - 6);
+  ctx.fillStyle = '#5a3d22';
+  ctx.fillRect(shelfX, shelfY + shelfH / 2 - 1, shelfW, 3);
+  const bookColors = ['#c0392b', '#2980b9', '#27ae60', '#e0a030', '#8e44ad'];
+  let bkx = shelfX + 6;
+  bookColors.forEach((c, i) => {
+    const bw = 6, bh = 18 - (i % 3) * 3;
+    ctx.fillStyle = c;
+    ctx.fillRect(bkx, shelfY + shelfH / 2 - 3 - bh, bw, bh);
+    bkx += bw + 1;
+  });
+  const teeColors = ['#e8e4dc', '#3a4a6a', '#c0392b'];
+  let tly = shelfY + shelfH / 2 + 4;
+  teeColors.forEach((c) => {
+    ctx.fillStyle = c;
+    ctx.fillRect(shelfX + 6, tly, shelfW - 16, 6);
+    ctx.fillStyle = 'rgba(0,0,0,0.15)';
+    ctx.fillRect(shelfX + 6, tly + 5, shelfW - 16, 1);
+    tly += 8;
+  });
+
+  // --- hoodie rack, hanging right beside the shelf ---
+  drawHoodieRack(shelfX + shelfW + 8, shelfY + 6);
+
+  // --- a small folded-tee display table out on the floor, a second
+  // dedicated spot for tees besides the shelf's lower row ---
+  drawFoldedTeeTable(5 * TILE + 12, 7 * TILE + 22);
+
+  // --- street-art gallery: three prints, one tucked above the hoodie
+  // rack and a pair stacked on the right-hand wall ---
+  drawStreetArtPrint(4 * TILE + 20, 4 * TILE + 8, 26, 26, 0);
+  drawStreetArtPrint(10 * TILE + 4, 5 * TILE + 6, 26, 30, 1);
+  drawStreetArtPrint(10 * TILE + 4, 6 * TILE + 10, 26, 26, 2);
+
+  // --- glass display case of prized exotic plant specimens, on the floor
+  // below the street-art wall ---
+  drawGlassPlantCase(10 * TILE, 7 * TILE + 2, 3 * TILE, 2 * TILE - 10);
+
+  // --- a second glass case, front and center in the room, showing off
+  // vivid exotic flowering blooms -- orchid sprays and a bird-of-paradise ---
+  drawGlassFlowerCase(6 * TILE + 18, 5 * TILE, 2 * TILE + 6, 1 * TILE + 22);
+
+  // --- the big roller-painted neon-pink "99" poster, centered on the wall
+  // directly behind the keeper (keeper sits at tile 6,2) ---
+  const posterW = 76, posterH = 72;
+  const posterX = (6 * TILE + TILE / 2) - posterW / 2;
+  drawHeyBudRollerPoster(posterX, 6, posterW, posterH);
+}
+
+// ------------------------------------------------------------------
+// THE SOUL SHACK interior: a pair of woven tapestries hung over the back
+// wall, glowing crystal clusters flanking the doorway, a smoking incense
+// burner and a laid-out tarot spread on the counter, and a scatter of
+// drifting mystic sparkles overhead -- turns MRKBH's otherwise-plain
+// paintings-and-gear room into a proper curio shop. Called from render()
+// whenever map.soulShack is set (see the `soulshack` shop def above), same
+// one-function-per-shop pattern as drawHeyBudInterior()/drawPurePopInterior().
+// ------------------------------------------------------------------
+function drawSoulShackInterior(time) {
+  // --- hanging tapestries draped from the rafters, between/behind the two
+  // framed paintings on the back wall (paintings sit at cols 2 and 9,
+  // row 0) -- deep violet fabric with a woven gold sunburst and a
+  // tasseled fringe, swaying gently on their own independent phase ---
+  [[5 * TILE + 16, 0.4], [8 * TILE + 16, 1.6]].forEach(([tx, seed]) => {
+    const sway = Math.sin(time * 0.8 + seed) * 1.5;
+    const w = 22, h = 46;
+    ctx.save();
+    ctx.translate(tx + sway, 0);
+    const grad = ctx.createLinearGradient(0, 0, 0, h);
+    grad.addColorStop(0, '#4a1e6e');
+    grad.addColorStop(1, '#2a1040');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.moveTo(-w / 2, 0); ctx.lineTo(w / 2, 0);
+    ctx.lineTo(w / 2 - 3, h); ctx.lineTo(-w / 2 + 3, h);
+    ctx.closePath(); ctx.fill();
+    // gold sunburst emblem woven into the fabric
+    ctx.strokeStyle = 'rgba(240,195,62,0.8)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(0, h * 0.4, 6, 0, Math.PI * 2); ctx.stroke();
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(a) * 7, h * 0.4 + Math.sin(a) * 7);
+      ctx.lineTo(Math.cos(a) * 11, h * 0.4 + Math.sin(a) * 11);
+      ctx.stroke();
+    }
+    // tasseled fringe along the bottom edge
+    ctx.strokeStyle = '#f0c33e';
+    for (let i = -w / 2 + 4; i <= w / 2 - 4; i += 5) {
+      ctx.beginPath(); ctx.moveTo(i, h); ctx.lineTo(i, h + 6); ctx.stroke();
+    }
+    ctx.restore();
+  });
+
+  // --- crystal clusters flanking the doorway, standing in for the big
+  // potted plants other shops use to dress their entrance -- amethyst on
+  // the left, citrine-gold on the right ---
+  drawCrystalCluster(4 * TILE, 8 * TILE + 8, 'rgba(168,85,247,ALPHA)',
+    ['#a855f7', '#c98cf9', '#7a2fd8'], time, 0);
+  drawCrystalCluster(9 * TILE, 8 * TILE + 8, 'rgba(240,195,62,ALPHA)',
+    ['#f0c33e', '#f7dd8c', '#c99a1a'], time, 1);
+
+  // --- incense burner and a laid-out tarot spread, both on the near end
+  // of the counter table (table spans row 3, cols 4-9) ---
+  drawTarotSpread(4 * TILE + 10, 3 * TILE - 6);
+  drawIncenseBurner(8 * TILE + 6, 3 * TILE - 2, time);
+
+  // --- a scatter of small floating sparkles drifting lazily through the
+  // upper half of the room, reading as ambient "mystic charge" rather
+  // than any one prop ---
+  for (let i = 0; i < 10; i++) {
+    const sx = (i * 71 + 40) % (13 * TILE);
+    const sy = TILE + ((i * 53) % (4 * TILE));
+    const flicker = 0.3 + 0.3 * Math.sin(time * 2 + i * 1.7);
+    ctx.fillStyle = `rgba(200,160,255,${flicker.toFixed(2)})`;
+    ctx.beginPath();
+    ctx.arc(sx, sy + Math.sin(time * 0.6 + i) * 4, 1.4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+// ------------------------------------------------------------------
+// VILLAGE SCOOP interior: a hip hop ice cream parlor. Pink-and-mint
+// checkerboard floor with a giant vinyl-record rug and scattered sprinkles,
+// a pulsing neon cone sign over Queen B's window, graffiti tags and gold
+// record plaques along the back wall, a flavor chalkboard, sneakers
+// tossed over a wire, thumping speaker stacks in the corners, and a
+// counter dressed with a boombox, sundaes, a cone rack and a tip jar.
+// Called from render() whenever map.villageScoop is set (see the
+// `villagescoop` shop def above), same one-function-per-shop pattern as
+// drawSoulShackInterior()/drawFoamBrewersInterior().
+// ------------------------------------------------------------------
+function drawVillageScoopInterior(time) {
+  const map = maps.villagescoop;
+  const RW = 14 * TILE, RH = 10 * TILE;
+  const beat = time * 7.5;
+  const pulse = Math.max(0, Math.sin(beat));
+
+  // --- checkerboard floor: mint squares over the pink planks, floor tiles
+  // only so the counter, crates and door are never painted over ---
+  for (let ty = 1; ty < 9; ty++) {
+    for (let tx = 1; tx < 13; tx++) {
+      if (map.grid[ty][tx] !== '=') continue;
+      const px = tx * TILE, py = ty * TILE;
+      if ((tx + ty) % 2 === 0) {
+        ctx.fillStyle = 'rgba(120,225,200,0.30)';
+        ctx.fillRect(px, py, TILE, TILE);
+      } else {
+        ctx.fillStyle = 'rgba(255,255,255,0.22)';
+        ctx.fillRect(px, py, TILE, TILE);
+      }
+      // sprinkles dropped on the floor
+      const h = hash2(tx, ty);
+      if (h % 3 === 0) {
+        const cols = ['#ff4f9a', '#ffd23f', '#2ecfcf', '#8a4ab0', '#ffffff'];
+        for (let i = 0; i < 2; i++) {
+          ctx.fillStyle = cols[(h >>> (i * 3)) % cols.length];
+          const sx = px + 4 + ((h >>> (i + 2)) % 22), sy = py + 4 + ((h >>> (i + 5)) % 22);
+          ctx.save();
+          ctx.translate(sx, sy);
+          ctx.rotate(((h >>> i) % 8) * 0.4);
+          ctx.fillRect(-2, -0.5, 4, 1.5);
+          ctx.restore();
+        }
+      }
+    }
+  }
+
+  // --- giant vinyl-record rug in the middle of the open floor, with a
+  // pink "cone" label and a slow-turning highlight sweep ---
+  {
+    const rx = 7 * TILE, ry = 6 * TILE + 8, rr = 46;
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.beginPath(); ctx.ellipse(rx, ry + 3, rr, rr * 0.62 + 2, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#17121c';
+    ctx.beginPath(); ctx.ellipse(rx, ry, rr, rr * 0.62, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+    ctx.lineWidth = 1;
+    [0.88, 0.76, 0.64, 0.52].forEach((k) => {
+      ctx.beginPath(); ctx.ellipse(rx, ry, rr * k, rr * k * 0.62, 0, 0, Math.PI * 2); ctx.stroke();
+    });
+    const ang = time * 0.7;
+    ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.ellipse(rx, ry, rr * 0.82, rr * 0.82 * 0.62, 0, ang, ang + 0.7); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(rx, ry, rr * 0.82, rr * 0.82 * 0.62, 0, ang + Math.PI, ang + Math.PI + 0.7); ctx.stroke();
+    ctx.fillStyle = '#ff4f9a';
+    ctx.beginPath(); ctx.ellipse(rx, ry, rr * 0.3, rr * 0.3 * 0.62, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ffd23f';
+    ctx.beginPath(); ctx.arc(rx, ry - 3, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(rx - 4, ry - 1); ctx.lineTo(rx + 4, ry - 1); ctx.lineTo(rx, ry + 8);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#17121c';
+    ctx.beginPath(); ctx.arc(rx, ry, 1.2, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // --- back wall: graffiti tags, gold record plaques, flavor board ---
+  drawScoopGraffiti(2 * TILE - 2, 4, 'FRESH', '#ffd23f', '#ff4f9a');
+  drawScoopGoldRecord(4 * TILE + 6, 12, 10, time, 0);
+  drawScoopFlavorBoard(3 * TILE + 8, 18);
+  drawScoopGoldRecord(8 * TILE + 26, 12, 10, time, 1.4);
+  drawScoopGraffiti(9 * TILE + 8, 4, 'SCOOP', '#2ecfcf', '#ffd23f');
+  drawScoopGoldRecord(11 * TILE + 8, 12, 9, time, 2.6);
+
+  // --- neon cone sign glowing over Queen B's window (keeper at 6,2) ---
+  drawScoopNeon(6 * TILE + 16, 6, time);
+
+  // --- sneakers tossed over a power wire strung across the wall ---
+  ctx.strokeStyle = '#1a120c';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(TILE, 3);
+  ctx.quadraticCurveTo(7 * TILE, 15, 13 * TILE, 3);
+  ctx.stroke();
+  drawScoopSneakers(5 * TILE + 4, 15, time, 0.3, '#ff4f9a');
+  drawScoopSneakers(10 * TILE + 2, 14, time, 1.7, '#2ecfcf');
+
+  // --- speaker stacks in the back corners (solid blockTiles at 1,1/12,1);
+  // woofers thump on the beat ---
+  drawScoopSpeaker(1 * TILE, 0, beat);
+  drawScoopSpeaker(12 * TILE, 0, beat + 1.1);
+
+  // --- the counter (table spans row 3, cols 4-9): boombox, tip jar,
+  // cone rack, sundaes ---
+  drawScoopBoombox(4 * TILE + 2, 3 * TILE + 8, beat);
+  drawScoopTipJar(5 * TILE + 14, 3 * TILE + 9);
+  drawScoopConeRack(7 * TILE + 8, 3 * TILE + 9);
+  drawScoopSundae(8 * TILE + 16, 3 * TILE + 9, '#ff8fb8');
+  drawScoopSundae(9 * TILE + 8, 3 * TILE + 9, '#8be0c8');
+
+  // --- pink/cyan neon spill on the floor, pulsing with the beat ---
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(TILE, TILE, RW - 2 * TILE, RH - 2 * TILE);
+  ctx.clip();
+  ctx.globalCompositeOperation = 'lighter';
+  const pools = [['255,79,154', 0.0], ['46,207,207', 2.4], ['255,210,63', 4.6]];
+  pools.forEach(([rgb, ph]) => {
+    const cx = 7 * TILE + Math.sin(time * 0.8 + ph) * 3.4 * TILE;
+    const cy = 6 * TILE + Math.cos(time * 0.6 + ph * 1.3) * 1.5 * TILE;
+    const glow = getGlowSprite(64, `rgba(${rgb},ALPHA)`);
+    ctx.globalAlpha = 0.22 + 0.10 * pulse;
+    ctx.drawImage(glow, cx - 64, cy - 64, 128, 128);
+  });
+  ctx.restore();
+  ctx.globalAlpha = 1;
+}
+
+// Tilted spray-paint tag on the back wall: chunky outlined letters over a
+// color block, with a drip or two.
+function drawScoopGraffiti(x, y, word, c1, c2) {
+  const w = word.length * 9 + 8;
+  ctx.save();
+  ctx.translate(x, y + 12);
+  ctx.rotate(-0.06);
+  ctx.fillStyle = c2;
+  ctx.beginPath();
+  ctx.moveTo(-2, 2); ctx.lineTo(w * 0.6, -4); ctx.lineTo(w + 2, 0);
+  ctx.lineTo(w, 20); ctx.lineTo(w * 0.4, 22); ctx.lineTo(-3, 18);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = 'rgba(10,8,6,0.6)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.textAlign = 'left';
+  ctx.font = 'bold 11px monospace';
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = '#120a14';
+  ctx.strokeText(word, 4, 16);
+  ctx.fillStyle = c1;
+  ctx.fillText(word, 4, 16);
+  ctx.strokeStyle = c1;
+  ctx.lineWidth = 1;
+  [8, w - 10].forEach((dx, i) => {
+    ctx.beginPath(); ctx.moveTo(dx, 22); ctx.lineTo(dx, 27 + i * 3); ctx.stroke();
+  });
+  ctx.restore();
+}
+
+// A gold record plaque, small and glinting.
+function drawScoopGoldRecord(cx, cy, r, time, seed) {
+  ctx.fillStyle = '#120a14';
+  ctx.fillRect(cx - r - 2, cy - r - 2, r * 2 + 4, r * 2 + 4);
+  ctx.fillStyle = '#6a3a5a';
+  ctx.fillRect(cx - r - 1, cy - r - 1, r * 2 + 2, r * 2 + 2);
+  ctx.fillStyle = '#e8b830';
+  ctx.beginPath(); ctx.arc(cx, cy, r - 1, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = 'rgba(120,80,10,0.55)';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.arc(cx, cy, r * 0.65, 0, Math.PI * 2); ctx.stroke();
+  ctx.fillStyle = '#ff4f9a';
+  ctx.beginPath(); ctx.arc(cx, cy, r * 0.28, 0, Math.PI * 2); ctx.fill();
+  const glint = 0.25 + 0.25 * Math.sin(time * 2 + seed);
+  ctx.fillStyle = `rgba(255,255,255,${glint.toFixed(2)})`;
+  ctx.fillRect(cx - r + 3, cy - r + 3, 3, 3);
+}
+
+// Chalkboard flavor menu, with a colored scoop dot per flavor.
+function drawScoopFlavorBoard(x, y) {
+  ctx.fillStyle = '#1c140f';
+  ctx.fillRect(x - 1, y - 1, 52, 40);
+  ctx.fillStyle = '#5a3d20';
+  ctx.fillRect(x, y, 50, 38);
+  ctx.fillStyle = '#1e2a24';
+  ctx.fillRect(x + 2, y + 2, 46, 34);
+  ctx.textAlign = 'left';
+  ctx.font = 'bold 7px monospace';
+  ctx.fillStyle = '#f4efe0';
+  ctx.fillText('FLAVORS', x + 8, y + 10);
+  ctx.font = 'bold 6px monospace';
+  const rows = [['MINT CHIP', '#7be0b0'], ['GATOR GOLD', '#e8b830'], ['FROG FUDGE', '#8a5a3a']];
+  rows.forEach(([name, col], i) => {
+    ctx.fillStyle = col;
+    ctx.beginPath(); ctx.arc(x + 7, y + 17 + i * 7, 2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#f4efe0';
+    ctx.fillText(name, x + 12, y + 19 + i * 7);
+  });
+}
+
+// Neon ice cream cone sign with a flickering glow.
+function drawScoopNeon(cx, y, time) {
+  const flick = 0.88 + 0.12 * Math.sin(time * 9) * Math.sin(time * 2.3);
+  const glow = getGlowSprite(34, 'rgba(255,79,154,ALPHA)');
+  ctx.save();
+  ctx.globalAlpha = 0.6 * flick;
+  ctx.drawImage(glow, cx - 34, y + 14 - 34, 68, 68);
+  ctx.restore();
+  ctx.fillStyle = '#120b12';
+  ctx.fillRect(cx - 20, y, 40, 30);
+  ctx.strokeStyle = '#3a1a30';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(cx - 19.5, y + 0.5, 39, 29);
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = `rgba(255,190,80,${flick.toFixed(2)})`;
+  ctx.beginPath();
+  ctx.moveTo(cx - 6, y + 14); ctx.lineTo(cx, y + 27); ctx.lineTo(cx + 6, y + 14);
+  ctx.stroke();
+  ctx.strokeStyle = `rgba(255,79,154,${flick.toFixed(2)})`;
+  ctx.beginPath(); ctx.arc(cx, y + 11, 6, Math.PI, 0); ctx.stroke();
+  ctx.strokeStyle = `rgba(46,207,207,${flick.toFixed(2)})`;
+  ctx.beginPath(); ctx.arc(cx, y + 6, 3.5, Math.PI, 0); ctx.stroke();
+  ctx.lineCap = 'butt';
+  ctx.lineJoin = 'miter';
+}
+
+// A pair of sneakers hanging by their laces from the wire, swaying.
+function drawScoopSneakers(x, y, time, seed, col) {
+  const sway = Math.sin(time * 1.2 + seed) * 2;
+  ctx.save();
+  ctx.translate(x + sway * 0.4, y);
+  ctx.rotate(sway * 0.03);
+  ctx.strokeStyle = '#e8e0d0';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-3, 9); ctx.moveTo(0, 0); ctx.lineTo(7, 9); ctx.stroke();
+  [[-9, 0], [3, 1]].forEach(([dx, dy]) => {
+    ctx.fillStyle = '#f4efe0';
+    ctx.fillRect(dx, 9 + dy, 10, 6);
+    ctx.fillStyle = col;
+    ctx.fillRect(dx, 9 + dy, 4, 5);
+    ctx.fillStyle = '#120a14';
+    ctx.fillRect(dx, 15 + dy, 11, 2);
+  });
+  ctx.restore();
+}
+
+// Tall speaker stack in a back corner; the woofer pushes out on the beat.
+function drawScoopSpeaker(x, y, beat) {
+  const w = TILE - 2, h = 2 * TILE - 2;
+  const px = x + 1;
+  ctx.fillStyle = '#0e0c10';
+  ctx.fillRect(px - 1, y + 1, w + 2, h + 2);
+  ctx.fillStyle = '#25202a';
+  ctx.fillRect(px, y + 2, w, h);
+  ctx.fillStyle = 'rgba(255,255,255,0.06)';
+  ctx.fillRect(px, y + 2, w, 2);
+  const cx = px + w / 2;
+  ctx.fillStyle = '#0e0c10';
+  ctx.beginPath(); ctx.arc(cx, y + 16, 5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#ff4f9a';
+  ctx.beginPath(); ctx.arc(cx, y + 16, 2.2, 0, Math.PI * 2); ctx.fill();
+  const pulse = Math.max(0, Math.sin(beat)) * 1.6;
+  ctx.fillStyle = '#0e0c10';
+  ctx.beginPath(); ctx.arc(cx, y + 44, 11 + pulse, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#3a3440';
+  ctx.beginPath(); ctx.arc(cx, y + 44, 7 + pulse * 0.6, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#2ecfcf';
+  ctx.beginPath(); ctx.arc(cx, y + 44, 2.5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#ffd23f';
+  ctx.fillRect(px + w - 6, y + h - 4, 3, 3);
+}
+
+// Chunky boombox on the counter, twin speakers bouncing to the beat.
+function drawScoopBoombox(x, y, beat) {
+  const pulse = Math.max(0, Math.sin(beat)) * 1.2;
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.fillRect(x + 1, y + 1, 30, 3);
+  ctx.fillStyle = '#120a14';
+  ctx.fillRect(x, y - 15, 30, 16);
+  ctx.fillStyle = '#c93a7a';
+  ctx.fillRect(x + 1, y - 14, 28, 14);
+  ctx.strokeStyle = '#120a14';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(x + 5, y - 15); ctx.lineTo(x + 8, y - 20); ctx.lineTo(x + 22, y - 20); ctx.lineTo(x + 25, y - 15); ctx.stroke();
+  [[8, 0], [22, 0]].forEach(([dx]) => {
+    ctx.fillStyle = '#120a14';
+    ctx.beginPath(); ctx.arc(x + dx, y - 6, 5 + pulse * 0.5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#4a4452';
+    ctx.beginPath(); ctx.arc(x + dx, y - 6, 3 + pulse * 0.4, 0, Math.PI * 2); ctx.fill();
+  });
+  ctx.fillStyle = '#ffd23f';
+  ctx.fillRect(x + 12, y - 11, 6, 3);
+  ctx.fillStyle = '#2ecfcf';
+  ctx.fillRect(x + 12, y - 6, 2, 2);
+  ctx.fillRect(x + 16, y - 6, 2, 2);
+}
+
+// Tip jar -- "TIPS" label, a few coins and a bill inside.
+function drawScoopTipJar(x, y) {
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.fillRect(x - 5, y - 1, 12, 3);
+  ctx.fillStyle = 'rgba(200,235,240,0.75)';
+  ctx.fillRect(x - 5, y - 12, 11, 12);
+  ctx.fillStyle = '#e8b830';
+  ctx.fillRect(x - 3, y - 3, 3, 2);
+  ctx.fillRect(x + 1, y - 4, 3, 2);
+  ctx.fillStyle = '#7bc47b';
+  ctx.fillRect(x - 3, y - 8, 7, 4);
+  ctx.fillStyle = '#ff4f9a';
+  ctx.fillRect(x - 6, y - 14, 13, 3);
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  ctx.fillRect(x - 4, y - 11, 1, 8);
+}
+
+// Little stand holding a row of waffle cones, scoops on top.
+function drawScoopConeRack(x, y) {
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.fillRect(x - 2, y - 1, 22, 3);
+  ctx.fillStyle = '#5a3d20';
+  ctx.fillRect(x - 2, y - 4, 22, 4);
+  const scoops = ['#ff8fb8', '#8be0c8', '#ffd23f'];
+  scoops.forEach((c, i) => {
+    const cx = x + 3 + i * 7;
+    ctx.fillStyle = '#d9a35a';
+    ctx.beginPath();
+    ctx.moveTo(cx - 3, y - 12); ctx.lineTo(cx + 3, y - 12); ctx.lineTo(cx, y - 4);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = c;
+    ctx.beginPath(); ctx.arc(cx, y - 14, 3.6, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.fillRect(cx - 2, y - 16, 1, 1);
+  });
+}
+
+// Sundae in a tulip glass with a cherry on top.
+function drawScoopSundae(x, y, scoopCol) {
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.fillRect(x - 5, y - 1, 11, 3);
+  ctx.fillStyle = 'rgba(210,235,245,0.85)';
+  ctx.fillRect(x - 1, y - 5, 3, 5);
+  ctx.beginPath();
+  ctx.moveTo(x - 6, y - 12); ctx.lineTo(x + 6, y - 12); ctx.lineTo(x + 2, y - 5); ctx.lineTo(x - 2, y - 5);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = scoopCol;
+  ctx.beginPath(); ctx.arc(x, y - 13, 5, Math.PI, 0); ctx.fill();
+  ctx.fillStyle = '#5a2a18';
+  ctx.fillRect(x - 4, y - 13, 8, 2);
+  ctx.fillStyle = '#d6242c';
+  ctx.beginPath(); ctx.arc(x, y - 19, 2, 0, Math.PI * 2); ctx.fill();
+}
+
+// ------------------------------------------------------------------
+// FOAM BREWERS interior: a working microbrewery with a party going on --
+// stainless fermentation tanks along the back wall, a chalkboard tap list
+// and a glowing neon mug sign, speaker stacks flanking Fattie B's decks
+// (woofers thump on the beat), tap handles / a beer flight / pints along
+// the bar, barrel high-tops out on the floor, Edison-bulb string lights
+// across the ceiling, and colored light pools + sweeping beams from the
+// booth over the dance floor. Called from render() whenever map.foamBrewers
+// is set (see the `foambrewers` shop def above), same one-function-per-shop
+// pattern as drawSoulShackInterior()/drawHeyBudInterior().
+// ------------------------------------------------------------------
+function drawFoamBrewersInterior(time) {
+  const RW = 14 * TILE, RH = 10 * TILE;
+  const beat = time * 7.5;
+
+  // --- dim the floor a touch so the party lights pop
+  ctx.fillStyle = 'rgba(24,10,34,0.20)';
+  ctx.fillRect(TILE, TILE, RW - 2 * TILE, RH - 2 * TILE);
+
+  // --- back wall dressing: fermentation tanks, tap-list chalkboard, neon
+  drawFoamTank(30, 4, 28, 60, time, 0);
+  drawFoamTank(62, 4, 28, 60, time, 1.3);
+  drawFoamChalkboard(94, 6);
+  drawFoamSpeaker(4 * TILE + 1, TILE + 2, beat);
+  drawFoamSpeaker(8 * TILE + 1, TILE + 2, beat + 1.1);
+  drawFoamNeon(292, 6, time);
+  drawFoamTank(344, 4, 28, 60, time, 2.6);
+  drawFoamTank(376, 4, 28, 60, time, 3.9);
+  drawFoamBeatBrewStation(11 * TILE, 2 * TILE, time);
+
+  // --- the bar (counter table spans row 3, cols 4-9): pints, a beer
+  // flight in front of Fattie B, and a chrome tap tower at the right end
+  drawFoamPint(4 * TILE + 16, 3 * TILE + 9);
+  drawFoamFlight(6 * TILE + 16, 3 * TILE + 10);
+  drawFoamPint(8 * TILE + 16, 3 * TILE + 9);
+  drawFoamTapTower(9 * TILE + 4, 3 * TILE + 2);
+
+  // --- barrel high-top tables out on the dance floor
+  [[3, 7], [10, 7]].forEach(([tx, ty]) => {
+    const bx = tx * TILE + 16, by = ty * TILE + 20;
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.beginPath(); ctx.ellipse(bx, by + 8, 13, 4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#1c140f';
+    ctx.fillRect(bx - 12, by - 12, 24, 22);
+    ctx.fillStyle = '#7a4a25';
+    ctx.fillRect(bx - 11, by - 11, 22, 20);
+    ctx.fillStyle = '#5a3418';
+    ctx.fillRect(bx - 11, by - 11, 5, 20);
+    ctx.fillStyle = '#2a1c10';
+    ctx.fillRect(bx - 11, by - 6, 22, 2);
+    ctx.fillRect(bx - 11, by + 3, 22, 2);
+    ctx.fillStyle = '#a06a38';
+    ctx.beginPath(); ctx.ellipse(bx, by - 11, 12, 4, 0, 0, Math.PI * 2); ctx.fill();
+    drawFoamPint(bx + 2, by - 10);
+  });
+
+  // --- string lights across the ceiling
+  const nSeg = 4, segW = RW / nSeg;
+  ctx.strokeStyle = '#1a120c';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let i = 0; i < nSeg; i++) {
+    const x0 = i * segW;
+    ctx.moveTo(x0, 3);
+    ctx.quadraticCurveTo(x0 + segW / 2, 17, x0 + segW, 3);
+  }
+  ctx.stroke();
+  const bulbCols = ['255,210,120', '255,140,180', '140,225,255', '190,255,140'];
+  for (let i = 0; i < nSeg; i++) {
+    for (let j = 1; j <= 7; j++) {
+      const u = j / 8;
+      const bx = i * segW + u * segW;
+      const by = 3 + 28 * u * (1 - u) + 2;
+      const tw = 0.65 + 0.35 * Math.sin(time * 3 + i * 2 + j * 1.3);
+      const rgb = bulbCols[(i + j) % bulbCols.length];
+      ctx.fillStyle = `rgba(${rgb},${(0.16 * tw).toFixed(3)})`;
+      ctx.beginPath(); ctx.arc(bx, by, 5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = `rgba(${rgb},${(0.6 + 0.4 * tw).toFixed(3)})`;
+      ctx.beginPath(); ctx.arc(bx, by, 1.8, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  // --- party lights over the dance floor: colored pools drifting around
+  // plus a few beams fanning out from the DJ booth, all clipped to the
+  // room's floor and blended additively
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(TILE, TILE, RW - 2 * TILE, RH - 2 * TILE);
+  ctx.clip();
+  ctx.globalCompositeOperation = 'lighter';
+  const pools = [['255,60,140', 0.0], ['60,200,255', 2.1], ['255,190,50', 4.2], ['120,255,90', 5.5]];
+  pools.forEach(([rgb, ph], i) => {
+    const cx = 7 * TILE + Math.sin(time * 0.9 + ph) * 3.2 * TILE;
+    const cy = 6 * TILE + Math.cos(time * 0.7 + ph * 1.3) * 1.4 * TILE;
+    const r = 2.1 * TILE;
+    const gr = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+    const a = 0.20 + 0.08 * Math.sin(beat + i);
+    gr.addColorStop(0, `rgba(${rgb},${a.toFixed(3)})`);
+    gr.addColorStop(1, `rgba(${rgb},0)`);
+    ctx.fillStyle = gr;
+    ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+  });
+  const ox = 6 * TILE + 16, oy = 2 * TILE;
+  const beams = ['255,80,160', '80,210,255', '255,200,70', '150,255,110'];
+  beams.forEach((rgb, i) => {
+    const ang = Math.PI / 2 + Math.sin(time * 0.8 + i * 1.6) * 0.85;
+    const len = 190, spread = 0.07;
+    ctx.fillStyle = `rgba(${rgb},0.11)`;
+    ctx.beginPath();
+    ctx.moveTo(ox, oy);
+    ctx.lineTo(ox + Math.cos(ang - spread) * len, oy + Math.sin(ang - spread) * len);
+    ctx.lineTo(ox + Math.cos(ang + spread) * len, oy + Math.sin(ang + spread) * len);
+    ctx.closePath();
+    ctx.fill();
+  });
+  ctx.restore();
+
+  // --- music notes drifting up off the speakers
+  ctx.fillStyle = 'rgba(255, 210, 60, 0.85)';
+  ctx.font = 'bold 11px monospace';
+  ctx.textAlign = 'center';
+  for (let i = 0; i < 4; i++) {
+    const ph = (time * 0.5 + i * 0.27) % 1;
+    const nx = (i % 2 === 0 ? 4 * TILE + 16 : 8 * TILE + 16) + Math.sin(ph * 6 + i) * 6;
+    const ny = 3 * TILE - 4 - ph * 30;
+    ctx.globalAlpha = Math.max(0, 1 - ph);
+    ctx.fillText(i % 2 === 0 ? '\u266A' : '\u266B', nx, ny);
+  }
+  ctx.globalAlpha = 1;
+}
+
+// BEAT BREWING station on tile (11,2): a copper brew kettle on a stand with
+// a glowing EQ screen, a pressure gauge and a little "BEAT BREW" plate.
+// Called from drawFoamBrewersInterior().
+function drawFoamBeatBrewStation(bx, by, time) {
+  const cx = bx + 16;
+  ctx.fillStyle = '#6a4426';                                   // cover the wall-tile texture
+  ctx.fillRect(bx, by, 32, 32);
+  ctx.fillStyle = 'rgba(0,0,0,0.28)';                          // floor shadow
+  ctx.beginPath(); ctx.ellipse(cx, by + 29, 16, 4, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#2a1a0e';                                   // stand legs
+  ctx.fillRect(bx + 5, by + 22, 3, 7); ctx.fillRect(bx + 24, by + 22, 3, 7);
+  const kg = ctx.createLinearGradient(bx + 3, 0, bx + 29, 0);  // copper kettle body
+  kg.addColorStop(0, '#8a4a1a'); kg.addColorStop(0.35, '#e8933a'); kg.addColorStop(1, '#7a3f16');
+  ctx.fillStyle = kg;
+  ctx.beginPath(); ctx.moveTo(bx + 5, by + 2); ctx.lineTo(bx + 27, by + 2);
+  ctx.quadraticCurveTo(bx + 31, by + 12, bx + 27, by + 23); ctx.lineTo(bx + 5, by + 23);
+  ctx.quadraticCurveTo(bx + 1, by + 12, bx + 5, by + 2); ctx.fill();
+  ctx.strokeStyle = '#3a1d0a'; ctx.lineWidth = 1.2; ctx.stroke();
+  ctx.fillStyle = '#c9772a';                                   // dome lid + vent pipe
+  ctx.beginPath(); ctx.ellipse(cx, by + 2, 11, 3.5, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#8a4a1a'; ctx.fillRect(cx - 1.5, by - 5, 3, 7);
+  const st = (time * 0.8) % 1;                                 // steam puff
+  ctx.fillStyle = 'rgba(255,255,255,' + (0.35 * (1 - st)).toFixed(3) + ')';
+  ctx.beginPath(); ctx.arc(cx + Math.sin(time * 2) * 2, by - 7 - st * 7, 2 + st * 2.5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#10141a';                                   // EQ screen
+  ctx.fillRect(bx + 8, by + 8, 16, 9);
+  for (let i = 0; i < 5; i++) {
+    const h = 1.5 + (Math.sin(time * 5 + i * 1.7) * 0.5 + 0.5) * 6;
+    ctx.fillStyle = i % 2 ? '#ffd447' : '#ff9a3c';
+    ctx.fillRect(bx + 9.5 + i * 2.9, by + 16.5 - h, 2, h);
+  }
+  ctx.fillStyle = '#f4ecd8';                                   // plate + gauge
+  ctx.fillRect(bx + 9, by + 18.5, 14, 3.5);
+  ctx.fillStyle = '#3a1d0a'; ctx.font = 'bold 3px monospace'; ctx.textAlign = 'center';
+  ctx.fillText('BEAT BREW', cx, by + 21.3);
+  ctx.fillStyle = '#e8e2d0';
+  ctx.beginPath(); ctx.arc(bx + 6.5, by + 14, 2.2, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#a02020'; ctx.lineWidth = 0.8;
+  const ga = -2.2 + Math.sin(time * 3) * 0.6;
+  ctx.beginPath(); ctx.moveTo(bx + 6.5, by + 14); ctx.lineTo(bx + 6.5 + Math.cos(ga) * 1.8, by + 14 + Math.sin(ga) * 1.8); ctx.stroke();
+  const gl = getGlowSprite(44, 'rgba(255,170,60,ALPHA)');      // warm glow on the floor
+  ctx.save(); ctx.globalAlpha = 0.2 + 0.06 * Math.sin(time * 2.4);
+  ctx.drawImage(gl, cx - 34, by + 6, 68, 56); ctx.restore();
+}
+
+// A stainless-steel fermentation tank: domed top, banded barrel, conical
+// bottom on little legs, and a glowing amber sight glass whose level
+// slowly rises and falls. Used by drawFoamBrewersInterior().
+function drawFoamTank(x, top, w, h, time, seed) {
+  const cx = x + w / 2;
+  const bodyTop = top + 9, bodyBot = top + h - 14;
+  const path = (inset) => {
+    ctx.beginPath();
+    ctx.ellipse(cx, bodyTop, w / 2 - inset, 8 - inset, 0, Math.PI, 0);
+    ctx.lineTo(x + w - inset, bodyBot);
+    ctx.lineTo(cx + 3, top + h - inset);
+    ctx.lineTo(cx - 3, top + h - inset);
+    ctx.lineTo(x + inset, bodyBot);
+    ctx.closePath();
+  };
+  ctx.fillStyle = '#4a525a';
+  ctx.fillRect(x + 3, top + h - 6, 3, 8);
+  ctx.fillRect(x + w - 6, top + h - 6, 3, 8);
+  ctx.fillStyle = '#1c140f';
+  path(-1); ctx.fill();
+  const gr = ctx.createLinearGradient(x, 0, x + w, 0);
+  gr.addColorStop(0, '#7f8c98'); gr.addColorStop(0.35, '#e6edf2');
+  gr.addColorStop(0.7, '#b3bec8'); gr.addColorStop(1, '#66727e');
+  ctx.fillStyle = gr;
+  path(0); ctx.fill();
+  ctx.fillStyle = 'rgba(0,0,0,0.18)';
+  ctx.fillRect(x, bodyTop + 10, w, 2);
+  ctx.fillRect(x, bodyBot - 6, w, 2);
+  // top valve
+  ctx.fillStyle = '#4a525a';
+  ctx.fillRect(cx - 2, top - 1, 4, 4);
+  // sight glass with a slowly moving amber level
+  const gh = bodyBot - bodyTop - 14, gy = bodyTop + 6;
+  ctx.fillStyle = '#2a1a0c';
+  ctx.fillRect(cx - 3, gy, 6, gh);
+  const level = 0.55 + 0.12 * Math.sin(time * 0.7 + seed);
+  ctx.fillStyle = '#e8a317';
+  ctx.fillRect(cx - 2, gy + gh * (1 - level), 4, gh * level);
+  ctx.fillStyle = '#fff2c8';
+  ctx.fillRect(cx - 2, gy + gh * (1 - level), 4, 2);
+}
+
+// The chalkboard tap list hung on the back wall.
+function drawFoamChalkboard(x, y) {
+  ctx.fillStyle = '#1c140f';
+  ctx.fillRect(x - 1, y - 1, 34, 42);
+  ctx.fillStyle = '#5a3d20';
+  ctx.fillRect(x, y, 32, 40);
+  ctx.fillStyle = '#1e2a24';
+  ctx.fillRect(x + 2, y + 2, 28, 36);
+  ctx.textAlign = 'left';
+  ctx.font = 'bold 7px monospace';
+  ctx.fillStyle = '#f4efe0';
+  ctx.fillText('TAPS', x + 6, y + 10);
+  ctx.font = 'bold 6px monospace';
+  const rows = [['IPA', '#e8a317'], ['STOUT', '#5a3418'], ['SOUR', '#d94f6a'], ['PILS', '#e8d66a']];
+  rows.forEach(([name, col], i) => {
+    ctx.fillStyle = col;
+    ctx.fillRect(x + 5, y + 14 + i * 6, 3, 3);
+    ctx.fillStyle = '#f4efe0';
+    ctx.fillText(name, x + 11, y + 17 + i * 6);
+  });
+}
+
+// A big PA speaker stack (two tiles tall) with a tweeter and a woofer
+// that thumps on the beat.
+function drawFoamSpeaker(x, y, beat) {
+  const w = 30, h = 2 * TILE - 4;
+  ctx.fillStyle = '#0e0c10';
+  ctx.fillRect(x - 1, y - 1, w + 2, h + 2);
+  ctx.fillStyle = '#25202a';
+  ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = 'rgba(255,255,255,0.06)';
+  ctx.fillRect(x, y, w, 2);
+  const cx = x + w / 2;
+  ctx.fillStyle = '#0e0c10';
+  ctx.beginPath(); ctx.arc(cx, y + 12, 5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#4a4452';
+  ctx.beginPath(); ctx.arc(cx, y + 12, 2.5, 0, Math.PI * 2); ctx.fill();
+  const pulse = Math.max(0, Math.sin(beat)) * 1.6;
+  ctx.fillStyle = '#0e0c10';
+  ctx.beginPath(); ctx.arc(cx, y + 38, 11 + pulse, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#3a3440';
+  ctx.beginPath(); ctx.arc(cx, y + 38, 7 + pulse * 0.6, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#6b6472';
+  ctx.beginPath(); ctx.arc(cx, y + 38, 2.5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#e8a317';
+  ctx.fillRect(x + w - 6, y + h - 6, 3, 3);
+}
+
+// Neon mug + FOAM lettering, flickering softly on the back wall.
+function drawFoamNeon(x, y, time) {
+  const flick = 0.88 + 0.12 * Math.sin(time * 9) * Math.sin(time * 2.3);
+  ctx.fillStyle = '#120b08';
+  ctx.fillRect(x, y, 46, 40);
+  ctx.strokeStyle = '#3a2a1c';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x + 0.5, y + 0.5, 45, 39);
+  const glow = getGlowSprite(30, 'rgba(255,170,40,ALPHA)');
+  ctx.save();
+  ctx.globalAlpha = 0.5 * flick;
+  ctx.drawImage(glow, x + 23 - 30, y + 20 - 30, 60, 60);
+  ctx.restore();
+  // mug: foam cap, glass body, handle
+  ctx.fillStyle = '#ffe9b0';
+  ctx.fillRect(x + 14, y + 5, 16, 5);
+  ctx.fillRect(x + 12, y + 7, 4, 4);
+  ctx.fillRect(x + 28, y + 7, 4, 4);
+  ctx.fillStyle = `rgba(255,170,40,${(0.85 * flick).toFixed(2)})`;
+  ctx.fillRect(x + 14, y + 10, 16, 13);
+  ctx.strokeStyle = `rgba(255,190,80,${(0.9 * flick).toFixed(2)})`;
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x + 31, y + 12, 5, 8);
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 12px monospace';
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = 'rgba(255,140,30,0.35)';
+  ctx.strokeText('FOAM', x + 23, y + 35);
+  ctx.fillStyle = `rgba(255,224,160,${flick.toFixed(2)})`;
+  ctx.fillText('FOAM', x + 23, y + 35);
+}
+
+// A full pint with a foamy head, sitting with its base at (cx, baseY).
+function drawFoamPint(cx, baseY) {
+  ctx.fillStyle = '#e8a317';
+  ctx.fillRect(cx - 3, baseY - 9, 7, 9);
+  ctx.fillStyle = 'rgba(255,255,255,0.35)';
+  ctx.fillRect(cx - 3, baseY - 9, 2, 9);
+  ctx.fillStyle = '#fff6e0';
+  ctx.fillRect(cx - 4, baseY - 12, 9, 4);
+}
+
+// A wooden beer-flight paddle with four little tasters.
+function drawFoamFlight(cx, baseY) {
+  ctx.fillStyle = '#3a2410';
+  ctx.fillRect(cx - 14, baseY - 2, 28, 5);
+  const cols = ['#e8a317', '#5a3418', '#d94f6a', '#e8d66a'];
+  cols.forEach((c, i) => {
+    const gx = cx - 12 + i * 7;
+    ctx.fillStyle = c;
+    ctx.fillRect(gx, baseY - 8, 5, 6);
+    ctx.fillStyle = '#fff6e0';
+    ctx.fillRect(gx, baseY - 10, 5, 2);
+  });
+}
+
+// A chrome tap tower with three colored handles.
+function drawFoamTapTower(x, y) {
+  ctx.fillStyle = '#1c140f';
+  ctx.fillRect(x - 1, y - 12, 26, 8);
+  ctx.fillStyle = '#c8ccd4';
+  ctx.fillRect(x, y - 11, 24, 6);
+  ctx.fillStyle = '#8a929c';
+  ctx.fillRect(x, y - 7, 24, 2);
+  const handles = ['#d94f2b', '#e8a317', '#3a7ab0'];
+  handles.forEach((c, i) => {
+    const hx = x + 3 + i * 8;
+    ctx.fillStyle = '#1c140f';
+    ctx.fillRect(hx - 1, y - 26, 6, 16);
+    ctx.fillStyle = c;
+    ctx.fillRect(hx, y - 25, 4, 14);
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.fillRect(hx, y - 25, 1, 14);
+  });
+}
+
+// FOAM BREWERS' front: string lights swagged under the roofline, a warm
+// amber glow pooling at the door (pulsing with the party inside), a couple
+// of notes drifting out, and an A-frame chalkboard sign out front. Called
+// from drawSkateparkDecorations() whenever the map has `foamBrewers`.
+function drawFoamBrewersExterior(time, map) {
+  const f = map.foamBrewers;
+  const px = f.x * TILE, py = f.y * TILE;
+  const ly = py + TILE + 14;
+  ctx.strokeStyle = '#1a120c';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let i = 0; i < f.w; i++) {
+    const x0 = px + i * TILE;
+    ctx.moveTo(x0, ly);
+    ctx.quadraticCurveTo(x0 + TILE / 2, ly + 9, x0 + TILE, ly);
+  }
+  ctx.stroke();
+  const cols = ['255,210,120', '255,140,180', '140,225,255', '190,255,140'];
+  for (let i = 0; i < f.w; i++) {
+    for (let j = 1; j <= 2; j++) {
+      const u = j / 3;
+      const bx = px + i * TILE + u * TILE;
+      const by = ly + 18 * u * (1 - u);
+      const tw = 0.65 + 0.35 * Math.sin(time * 3 + i * 2 + j * 1.7);
+      const rgb = cols[(i * 2 + j) % cols.length];
+      ctx.fillStyle = `rgba(${rgb},${(0.18 * tw).toFixed(3)})`;
+      ctx.beginPath(); ctx.arc(bx, by + 1, 5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = `rgba(${rgb},${(0.65 + 0.35 * tw).toFixed(3)})`;
+      ctx.beginPath(); ctx.arc(bx, by + 1, 1.8, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  // door glow
+  const dx = f.doorX * TILE + TILE / 2, dy = (f.doorY + 1) * TILE;
+  const glow = getGlowSprite(46, 'rgba(255,170,40,ALPHA)');
+  ctx.save();
+  ctx.globalAlpha = 0.35 + 0.12 * Math.sin(time * 7.5);
+  ctx.drawImage(glow, dx - 46, dy - 60, 92, 92);
+  ctx.restore();
+  // notes drifting out the door
+  ctx.fillStyle = 'rgba(255, 210, 60, 0.85)';
+  ctx.font = 'bold 11px monospace';
+  ctx.textAlign = 'center';
+  for (let i = 0; i < 2; i++) {
+    const ph = (time * 0.45 + i * 0.5) % 1;
+    ctx.globalAlpha = Math.max(0, 1 - ph);
+    ctx.fillText(i === 0 ? '\u266A' : '\u266B', dx + (i === 0 ? -8 : 8) + Math.sin(ph * 6 + i) * 4, dy - 6 - ph * 26);
+  }
+  ctx.globalAlpha = 1;
+  // A-frame chalkboard out front, on the grass beside the door
+  const sx = (f.doorX + 1) * TILE + 5, sy = (f.doorY + 1) * TILE + 4;
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.fillRect(sx - 1, sy + 24, 24, 3);
+  ctx.fillStyle = '#3a2410';
+  ctx.fillRect(sx, sy + 20, 3, 6);
+  ctx.fillRect(sx + 17, sy + 20, 3, 6);
+  ctx.fillStyle = '#5a3d20';
+  ctx.fillRect(sx - 1, sy - 1, 22, 24);
+  ctx.fillStyle = '#1e2a24';
+  ctx.fillRect(sx + 1, sy + 1, 18, 20);
+  ctx.font = 'bold 6px monospace';
+  ctx.fillStyle = '#f4efe0';
+  ctx.fillText('LIVE', sx + 10, sy + 9);
+  ctx.fillText('MUSIC', sx + 10, sy + 16);
+}
+
+// SPEAKING VOLUMES' interior: an independent record store with a punk
+// streak. Back wall reads "SPEAKING [Julian] VOLUMES" (two plaques flanking
+// the keeper), a corkboard of gig flyers (one for Rough Francis) and a
+// cassette wall, a neon OPEN sign, genre-tabbed vinyl shelves, a
+// new-arrivals bin, a turntable + register + tip jar on the counter, and
+// loose stacks on the floor. Called from render() whenever
+// map.speakingVolumes is set (shop map only -- the outdoor skatepark map
+// uses `svExterior` instead so it never trips this).
+function drawSpeakingVolumesInterior(time) {
+  ctx.save();
+  ctx.textBaseline = 'alphabetic';
+  ctx.textAlign = 'center';
+
+  // two-piece sign either side of the keeper's head (keeper is tile 6,2)
+  const plaque = (cx, label) => {
+    const w = 84, h = 22, x = cx - w / 2, y = 6;
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillRect(x + 2, y + 3, w, h);
+    ctx.fillStyle = '#140f12';
+    ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = '#c23a3a';
+    ctx.fillRect(x, y + h - 3, w, 3);
+    ctx.fillStyle = '#f4ecd8';
+    ctx.font = 'bold 14px monospace';
+    ctx.fillText(label, cx, y + 15);
+  };
+  plaque(4 * TILE + 2, 'SPEAKING');
+  plaque(9 * TILE, 'VOLUMES');
+
+  // neon OPEN sign, with an occasional flicker
+  const flick = Math.sin(time * 23) > 0.96 ? 0.35 : 1;
+  ctx.globalAlpha = 0.85 * flick;
+  ctx.strokeStyle = '#ff4a5a';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(352, 8, 44, 18);
+  ctx.fillStyle = '#ff7a86';
+  ctx.font = 'bold 11px monospace';
+  ctx.fillText('OPEN', 374, 21);
+  ctx.globalAlpha = 1;
+
+  // corkboard of gig flyers, upper-left
+  ctx.fillStyle = '#3a2410';
+  ctx.fillRect(38, 36, 64, 46);
+  ctx.fillStyle = '#b07a48';
+  ctx.fillRect(40, 38, 60, 42);
+  const flyers = [['#e8e4dc', 44, 42, 14, 16], ['#e0b83a', 60, 44, 12, 14], ['#3a7ab0', 44, 60, 14, 14], ['#d94f9a', 86, 42, 11, 16]];
+  flyers.forEach(([c, fx, fy, fw, fh]) => {
+    ctx.fillStyle = c; ctx.fillRect(fx, fy, fw, fh);
+    ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(fx + 2, fy + 3, fw - 4, 2);
+    ctx.fillRect(fx + 2, fy + 7, fw - 6, 2);
+  });
+  // the Rough Francis show flyer, front and center
+  ctx.fillStyle = '#0e0c10';
+  ctx.fillRect(66, 56, 26, 22);
+  ctx.fillStyle = '#c23a3a';
+  ctx.fillRect(66, 56, 26, 3);
+  ctx.fillStyle = '#f4ecd8';
+  ctx.font = 'bold 5px monospace';
+  ctx.fillText('ROUGH', 79, 67);
+  ctx.fillText('FRANCIS', 79, 74);
+  // pushpins
+  ctx.fillStyle = '#e04a4a';
+  [[50, 42], [66, 44], [79, 57], [91, 43]].forEach(([px, py]) => {
+    ctx.beginPath(); ctx.arc(px, py, 1.3, 0, Math.PI * 2); ctx.fill();
+  });
+  // headphones hanging on a hook under the board (the listening station)
+  ctx.strokeStyle = '#1c1c20';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(70, 100, 8, Math.PI, 0); ctx.stroke();
+  ctx.fillStyle = '#c23a3a';
+  ctx.fillRect(60, 99, 5, 8);
+  ctx.fillRect(75, 99, 5, 8);
+
+  // cassette wall, upper-right
+  ctx.fillStyle = '#2a1c14';
+  ctx.fillRect(338, 36, 66, 48);
+  const tapeCols = ['#c0392b', '#2980b9', '#27ae60', '#e0a030', '#8e44ad', '#e8e4dc'];
+  for (let r = 0; r < 3; r++) {
+    ctx.fillStyle = '#4a3018';
+    ctx.fillRect(340, 36 + r * 16 + 14, 62, 2);
+    for (let i = 0; i < 7; i++) {
+      ctx.fillStyle = tapeCols[(r * 3 + i) % tapeCols.length];
+      ctx.fillRect(342 + i * 9, 39 + r * 16, 8, 11);
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.fillRect(344 + i * 9, 41 + r * 16, 4, 3);
+    }
+  }
+
+  // genre-tabbed browsing shelves flanking the counter, clear of the crates
+  // at columns 1 and 12
+  drawRecordShelfUnit(2 * TILE, 4 * TILE + 22, 3 * TILE + 8, 2 * TILE - 16, 3);
+  drawRecordShelfUnit(9 * TILE - 8, 4 * TILE + 22, 3 * TILE + 8, 2 * TILE - 16, 11);
+  const tab = (x, label, color) => {
+    ctx.fillStyle = color;
+    ctx.fillRect(x, 4 * TILE + 12, 34, 10);
+    ctx.fillStyle = '#140f12';
+    ctx.font = 'bold 6px monospace';
+    ctx.fillText(label, x + 17, 4 * TILE + 20);
+  };
+  tab(2 * TILE + 8, 'PUNK', '#e0b83a');
+  tab(2 * TILE + 52, 'SOUL', '#d94f9a');
+  tab(9 * TILE + 0, 'FUNK', '#3aa0a0');
+  tab(9 * TILE + 44, 'HIP HOP', '#e07a3a');
+
+  // turntable, register and tip jar on the counter (table is row 3)
+  drawTurntableDeck(4 * TILE + 12, 2 * TILE + 18, 0.85, time, 0.7);
+  ctx.fillStyle = '#2c2a30';
+  ctx.fillRect(7 * TILE + 10, 2 * TILE + 26, 28, 16);
+  ctx.fillStyle = '#7ad07a';
+  ctx.fillRect(7 * TILE + 13, 2 * TILE + 22, 14, 6);
+  ctx.fillStyle = '#c8c8cc';
+  ctx.fillRect(7 * TILE + 10, 2 * TILE + 38, 28, 4);
+  ctx.fillStyle = 'rgba(200,220,240,0.35)';
+  ctx.fillRect(8 * TILE + 14, 2 * TILE + 24, 12, 18);
+  ctx.strokeStyle = '#9a9aa0';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(8 * TILE + 14, 2 * TILE + 24, 12, 18);
+  ctx.fillStyle = '#e0b040';
+  ctx.fillRect(8 * TILE + 16, 2 * TILE + 36, 8, 4);
+
+  // new-arrivals bin in the open floor corner (the sixth default crate
+  // spot at 11,8 is unused, so this sits clear of all five real crates)
+  drawRecordBin(10 * TILE + 10, 8 * TILE - 4, 4);
+  ctx.fillStyle = '#c23a3a';
+  ctx.fillRect(10 * TILE + 8, 8 * TILE - 24, 50, 10);
+  ctx.fillStyle = '#f4ecd8';
+  ctx.font = 'bold 6px monospace';
+  ctx.fillText('NEW ARRIVALS', 10 * TILE + 33, 8 * TILE - 16);
+
+  // loose stacks of vinyl scattered across the floor
+  drawLeaningVinylStack(5 * TILE + 30, 5 * TILE + 10, 5, 0);
+  drawLeaningVinylStack(7 * TILE + 6, 5 * TILE + 18, 4, 2);
+  drawLeaningVinylStack(6 * TILE + 16, 7 * TILE + 26, 3, 1);
+
+  // --- Spot the Difference arcade cabinet on tile (8,8): a plum-and-gold
+  // upright (solid blockTile dressed up here) whose screen shows two
+  // side-by-side mini scenes, one of them with a blinking "difference", plus a
+  // magnifying glass sweeping the panel and a flashing "SPOT IT" marquee.
+  {
+    const bx = 8 * TILE, by = 8 * TILE, cx = bx + 16;
+    ctx.fillStyle = '#4a3a3c';                                 // cover the wall-tile texture
+    ctx.fillRect(bx, by, 32, 32);
+    ctx.fillStyle = 'rgba(0,0,0,0.28)';                        // floor shadow
+    ctx.beginPath(); ctx.ellipse(cx, by + 29, 17, 4.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#2a1a30';                                 // cabinet body
+    ctx.fillRect(bx + 4, by - 16, 24, 44);
+    ctx.fillStyle = '#6a3d78';                                 // lit side panel
+    ctx.fillRect(bx + 4, by - 16, 3, 44);
+    ctx.strokeStyle = '#ffd15c'; ctx.lineWidth = 1.5;
+    ctx.strokeRect(bx + 4.75, by - 15.25, 22.5, 42.5);
+    const blinkS = Math.floor(time * 2.4) % 2 === 0;
+    ctx.fillStyle = blinkS ? '#ffd15c' : '#d9a93e';            // marquee
+    ctx.fillRect(bx + 7, by - 13, 18, 7);
+    ctx.fillStyle = '#2a1a30';
+    ctx.font = 'bold 5px monospace';
+    ctx.fillText('SPOT IT', cx, by - 8.5);
+    ctx.fillStyle = '#17131c';                                 // screen bezel
+    ctx.fillRect(bx + 8, by - 3, 16, 16);
+    // screen: two mini scenes (original left, remix right)
+    const sceneCols = ['#f2a45b', '#e84d7b'];
+    [bx + 9, bx + 16.5].forEach((sx, si) => {
+      ctx.fillStyle = '#d36750';
+      ctx.fillRect(sx, by - 1.5, 6.5, 13);
+      ctx.fillStyle = '#483d4b';                               // skyline
+      ctx.fillRect(sx + 0.5, by + 4, 1.6, 7);
+      ctx.fillRect(sx + 2.6, by + 2.5, 1.6, 8.5);
+      ctx.fillRect(sx + 4.6, by + 5, 1.4, 6);
+      ctx.fillStyle = '#ffe6a0';                               // sun
+      ctx.beginPath(); ctx.arc(sx + 3.2, by + 1.5, 1.3, 0, Math.PI * 2); ctx.fill();
+      if (si === 1) {                                          // the blinking difference
+        ctx.fillStyle = blinkS ? sceneCols[1] : '#ffe6a0';
+        ctx.beginPath(); ctx.arc(sx + 3.2, by + 1.5, 1.3, 0, Math.PI * 2); ctx.fill();
+      }
+    });
+    ctx.fillStyle = 'rgba(255,255,255,0.18)';                  // screen glare
+    ctx.fillRect(bx + 9, by - 2, 2, 5);
+    // magnifying glass sweeping across the screen
+    const mx = cx + Math.sin(time * 1.4) * 4.5, my = by + 5 + Math.cos(time * 1.1) * 2.5;
+    ctx.strokeStyle = '#55e0d0'; ctx.lineWidth = 1.1;
+    ctx.beginPath(); ctx.arc(mx, my, 2.6, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(mx + 1.9, my + 1.9); ctx.lineTo(mx + 4, my + 4); ctx.stroke();
+    ctx.fillStyle = '#1a2a38';                                 // control panel
+    ctx.fillRect(bx + 6, by + 13, 20, 6);
+    [['#ffd447', 0], ['#55e0d0', 1], ['#ff6f9c', 2]].forEach(([kc, ki]) => {
+      const kx = bx + 10.5 + ki * 5.5;
+      ctx.fillStyle = kc;
+      ctx.beginPath(); ctx.arc(kx, by + 16, 1.7, 0, Math.PI * 2); ctx.fill();
+    });
+    ctx.fillStyle = '#150d1a';                                 // coin slot kick plate
+    ctx.fillRect(bx + 8, by + 21, 16, 5);
+    ctx.fillStyle = '#ffd15c';
+    ctx.fillRect(bx + 14, by + 22.5, 4, 1.5);
+    const glowS = getGlowSprite(44, 'rgba(255,209,92,ALPHA)');  // soft screen glow on the floor
+    ctx.save();
+    ctx.globalAlpha = 0.2 + 0.06 * Math.sin(time * 2.1);
+    ctx.drawImage(glowS, cx - 34, by + 4, 68, 56);
+    ctx.restore();
+  }
+
+  // --- Guitar corner on tile (12,8): an acoustic guitar leaning on a small
+  // tube amp (solid blockTile dressed up here). The amp's pilot light blinks,
+  // the strings shimmer, and a music note drifts up off the guitar.
+  {
+    const bx = 12 * TILE, by = 8 * TILE, cx = bx + 16;
+    ctx.fillStyle = '#4a3a3c';                                 // cover the wall-tile texture
+    ctx.fillRect(bx, by, 32, 32);
+    ctx.fillStyle = 'rgba(0,0,0,0.28)';                        // floor shadow
+    ctx.beginPath(); ctx.ellipse(cx, by + 29, 16, 4.5, 0, 0, Math.PI * 2); ctx.fill();
+    // amp: dark cab, tan grille, gold trim, knobs and a blinking pilot light
+    ctx.fillStyle = '#17120f'; ctx.fillRect(bx + 3, by + 10, 19, 18);
+    ctx.fillStyle = '#d9a93e'; ctx.fillRect(bx + 3, by + 10, 19, 2);
+    ctx.fillStyle = '#7a5f2c'; ctx.fillRect(bx + 5, by + 15, 15, 11);
+    ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 0.6;
+    for (let gy = 17; gy < 26; gy += 2.5) { ctx.beginPath(); ctx.moveTo(bx + 5, by + gy); ctx.lineTo(bx + 20, by + gy); ctx.stroke(); }
+    ctx.fillStyle = '#e8e4dc';
+    [7.5, 11.5, 15.5].forEach(kx => { ctx.beginPath(); ctx.arc(bx + kx, by + 13.2, 0.9, 0, Math.PI * 2); ctx.fill(); });
+    ctx.fillStyle = Math.floor(time * 1.6) % 2 === 0 ? '#ff4a3a' : '#7a2218';
+    ctx.beginPath(); ctx.arc(bx + 19, by + 13.2, 1, 0, Math.PI * 2); ctx.fill();
+    // acoustic guitar leaning against the amp, neck up and to the right
+    ctx.save();
+    ctx.translate(bx + 22, by + 27);
+    ctx.rotate(-0.2);
+    ctx.fillStyle = '#3b2412'; ctx.fillRect(-1.4, -35, 2.8, 24);        // neck
+    ctx.fillStyle = '#2a1a0c'; ctx.fillRect(-2.2, -40, 4.4, 6.5);       // headstock
+    ctx.fillStyle = '#e8e4dc';
+    [-37.5, -34.8].forEach(py => { ctx.fillRect(-3.4, py, 1.2, 1.2); ctx.fillRect(2.2, py, 1.2, 1.2); });
+    ctx.fillStyle = '#b5651d'; ctx.strokeStyle = '#5a3010'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.ellipse(0, -5.5, 7.2, 6.2, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); // lower bout
+    ctx.beginPath(); ctx.ellipse(0, -13.5, 5.2, 4.6, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); // upper bout
+    ctx.fillStyle = '#d98a3a'; ctx.fillRect(-4.6, -12, 9.2, 5);          // blend the waist
+    ctx.fillStyle = '#1a0d05';
+    ctx.beginPath(); ctx.arc(0, -9.5, 2.3, 0, Math.PI * 2); ctx.fill(); // sound hole
+    ctx.fillStyle = '#2a1a0c'; ctx.fillRect(-3, -3.5, 6, 1.6);          // bridge
+    ctx.strokeStyle = 'rgba(255,245,215,' + (0.55 + 0.25 * Math.sin(time * 9)) + ')'; ctx.lineWidth = 0.5;
+    ctx.beginPath(); ctx.moveTo(-0.5, -33.5); ctx.lineTo(-0.5, -3); ctx.moveTo(0.5, -33.5); ctx.lineTo(0.5, -3); ctx.stroke(); // strings
+    ctx.restore();
+    // drifting music note
+    const noteT = (time * 0.7) % 1;
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, 1 - noteT);
+    ctx.fillStyle = '#f0b64a';
+    ctx.font = 'bold 10px monospace';
+    ctx.fillText('\u266a', cx + 8 + Math.sin(time * 3) * 3, by - 12 - noteT * 12);
+    ctx.restore();
+    const glowG = getGlowSprite(44, 'rgba(240,182,74,ALPHA)');   // warm amp glow on the floor
+    ctx.save();
+    ctx.globalAlpha = 0.18 + 0.05 * Math.sin(time * 1.7);
+    ctx.drawImage(glowG, cx - 34, by + 4, 68, 56);
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
+// SPEAKING VOLUMES' front: a vinyl-record emblem over the door, a neon OPEN
+// in the glass, warm light spilling out, a few notes drifting from the
+// speakers, and a sandwich board out front. Called from
+// drawSkateparkDecorations() whenever the map has `svExterior`.
+function drawSpeakingVolumesExterior(time, map) {
+  const f = map.svExterior;
+  const px = f.x * TILE, py = f.y * TILE;
+  // record emblem over the doorway (sits just under the big badge sign,
+  // right above the door)
+  const cx = f.doorX * TILE + TILE / 2, cy = py + 112;
+  ctx.fillStyle = '#0c0c0e';
+  ctx.beginPath(); ctx.arc(cx, cy, 15, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.14)';
+  ctx.lineWidth = 1;
+  for (let i = 1; i <= 3; i++) { ctx.beginPath(); ctx.arc(cx, cy, 4 + i * 3, 0, Math.PI * 2); ctx.stroke(); }
+  ctx.fillStyle = '#c23a3a';
+  ctx.beginPath(); ctx.arc(cx, cy, 5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#0c0c0e';
+  ctx.beginPath(); ctx.arc(cx, cy, 1.4, 0, Math.PI * 2); ctx.fill();
+  // door glow
+  const dx = f.doorX * TILE + TILE / 2, dy = (f.doorY + 1) * TILE;
+  const glow = getGlowSprite(46, 'rgba(255,90,90,ALPHA)');
+  ctx.save();
+  ctx.globalAlpha = 0.3 + 0.1 * Math.sin(time * 4);
+  ctx.drawImage(glow, dx - 46, dy - 60, 92, 92);
+  ctx.restore();
+  // notes drifting out
+  ctx.fillStyle = 'rgba(255, 210, 60, 0.85)';
+  ctx.font = 'bold 11px monospace';
+  ctx.textAlign = 'center';
+  for (let i = 0; i < 2; i++) {
+    const ph = (time * 0.45 + i * 0.5) % 1;
+    ctx.globalAlpha = Math.max(0, 1 - ph);
+    ctx.fillText(i === 0 ? '\u266A' : '\u266B', dx + (i === 0 ? -8 : 8) + Math.sin(ph * 6 + i) * 4, dy - 6 - ph * 26);
+  }
+  ctx.globalAlpha = 1;
+  // sandwich board on the grass left of the door
+  const sx = (f.doorX - 1) * TILE + 3, sy = (f.doorY + 1) * TILE + 4;
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.fillRect(sx - 1, sy + 24, 24, 3);
+  ctx.fillStyle = '#3a2410';
+  ctx.fillRect(sx, sy + 20, 3, 6);
+  ctx.fillRect(sx + 17, sy + 20, 3, 6);
+  ctx.fillStyle = '#5a3d20';
+  ctx.fillRect(sx - 1, sy - 1, 22, 24);
+  ctx.fillStyle = '#1e1a22';
+  ctx.fillRect(sx + 1, sy + 1, 18, 20);
+  ctx.font = 'bold 6px monospace';
+  ctx.fillStyle = '#f4efe0';
+  ctx.fillText('VINYL', sx + 10, sy + 9);
+  ctx.fillText('& TAPES', sx + 10, sy + 16);
+}
+
+// TALENT's storefront logo: the real TALENT SKATEPARK logo (sky-blue block
+// letters with a yellow outline, SKATEPARK spelled out underneath). Loaded
+// from assets/talent_sign.png (background already transparent). Pre-scaled
+// ONCE into an offscreen canvas (same trick as the SPEAKING VOLUMES badge
+// above) so drawBuildings / drawTalentInterior only do cheap drawImage calls
+// per frame. Until the PNG loads (or if it's missing) both callers fall back
+// to plain lettering, so nothing ever renders blank.
+const talentSignImg = new Image();
+talentSignImg.src = 'assets/talent_sign.png';
+const talentSignCache = {};
+function getTalentSign(dw, dh) {
+  if (!talentSignImg.complete || !talentSignImg.naturalWidth) return null;
+  const k = dw + 'x' + dh;
+  if (talentSignCache[k]) return talentSignCache[k];
+  const img = document.createElement('canvas');
+  img.width = dw * 2; img.height = dh * 2;
+  const ic = img.getContext('2d');
+  ic.imageSmoothingEnabled = true;
+  ic.imageSmoothingQuality = 'high';
+  // step down in halves so the fine SKATEPARK lettering stays crisp
+  let cur = talentSignImg, cw = talentSignImg.naturalWidth, ch = talentSignImg.naturalHeight;
+  while (cw / 2 > img.width) {
+    const t = document.createElement('canvas');
+    t.width = Math.round(cw / 2); t.height = Math.round(ch / 2);
+    const tc = t.getContext('2d');
+    tc.imageSmoothingEnabled = true; tc.imageSmoothingQuality = 'high';
+    tc.drawImage(cur, 0, 0, t.width, t.height);
+    cur = t; cw = t.width; ch = t.height;
+  }
+  ic.drawImage(cur, 0, 0, img.width, img.height);
+  talentSignCache[k] = { dw, dh, img };
+  return talentSignCache[k];
+}
+
+// TALENT's interior: a cool little skate shop that's also a (tiny) indoor
+// park. Along the back wall: the TALENT logo, a wall of hung decks, framed
+// black-and-white skate photos (Liggy shot them), a collage of punk gig
+// flyers, a tee rail and a shoe/wheel shelf, a neon OPEN sign and three
+// colored stage-light par cans (Liggy Lights) sweeping soft beams across
+// the floor. On the counter: grip tape rolls, a hardware jar, a stack of
+// tees, a camcorder and a pile of zines. On the floor: a funbox (solid
+// blockTiles (3,6)/(4,6)), a bank ramp (solid (1,8)/(2,8)), a quarter pipe
+// (solid (11,8)/(12,8)) and a walkable kicker at (8,7)/(9,7), plus scuff
+// marks and a board lying on the floor. A plaque over each of the four
+// crates -- THRASH / HARDCORE (left) and SKATE PUNK / CROSSOVER (right).
+// Called from render() whenever map.talent is set (shop map only -- the
+// outdoor skatepark map uses `tlExterior` instead so it never trips this).
+function drawTalentInterior(time) {
+  ctx.save();
+  ctx.textBaseline = 'alphabetic';
+  ctx.textAlign = 'center';
+  const BL = '#55bbee', YL = '#fbe600', DK = '#12151c', PAPER = '#f2ead6';
+  const FLOOR = '#3d4350';
+
+  // --- skate scuffs and wheel marks across the floor
+  ctx.lineCap = 'round';
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+  [[70, 250, 150, 280, 214, 252], [250, 262, 330, 226, 396, 244], [100, 168, 190, 140, 276, 176], [236, 190, 300, 214, 340, 196]]
+    .forEach(([x0, y0, cx, cy, x1, y1]) => { ctx.beginPath(); ctx.moveTo(x0, y0); ctx.quadraticCurveTo(cx, cy, x1, y1); ctx.stroke(); });
+  ctx.strokeStyle = 'rgba(0,0,0,0.22)';
+  ctx.lineWidth = 1.5;
+  [[80, 240, 140, 268, 200, 244], [286, 256, 340, 232, 380, 252]]
+    .forEach(([x0, y0, cx, cy, x1, y1]) => { ctx.beginPath(); ctx.moveTo(x0, y0); ctx.quadraticCurveTo(cx, cy, x1, y1); ctx.stroke(); });
+  ctx.lineCap = 'butt';
+
+  // --- stage-light beams (Liggy Lights): three par cans on the back wall
+  // throw soft colored cones that sweep slowly across the floor
+  const cans = [[168, 10, 'rgba(85,187,238,', 0], [226, 10, 'rgba(251,230,0,', 2.1], [284, 10, 'rgba(236,0,140,', 4.2]];
+  cans.forEach(([cx, cy, col, ph]) => {
+    const sweep = Math.sin(time * 0.7 + ph) * 46;
+    ctx.fillStyle = col + '0.06)';
+    ctx.beginPath();
+    ctx.moveTo(cx - 4, cy + 6); ctx.lineTo(cx + 4, cy + 6);
+    ctx.lineTo(cx + sweep + 46, 232); ctx.lineTo(cx + sweep - 46, 232);
+    ctx.closePath(); ctx.fill();
+    const glow = getGlowSprite(34, col + 'ALPHA)');
+    ctx.save();
+    ctx.globalAlpha = 0.5;
+    ctx.drawImage(glow, cx + sweep - 34, 232 - 20, 68, 68);
+    ctx.restore();
+    // the can itself + a little clamp
+    ctx.fillStyle = '#23252c'; ctx.fillRect(cx - 6, cy - 4, 12, 11);
+    ctx.fillStyle = '#3b3e48'; ctx.fillRect(cx - 6, cy - 4, 12, 3);
+    ctx.fillStyle = col + '1)'; ctx.fillRect(cx - 4, cy + 5, 8, 2);
+    ctx.fillStyle = '#9a9aa2'; ctx.fillRect(cx - 1, cy - 8, 2, 5);
+  });
+
+  // --- TALENT logo, upper left of the back wall
+  const lw = 116, lh = Math.round(lw * 525 / 1828);
+  const spr = getTalentSign(lw, lh);
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.fillRect(36, 6, lw + 8, lh + 8);
+  ctx.fillStyle = DK;
+  ctx.fillRect(34, 4, lw + 8, lh + 8);
+  if (spr) {
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(spr.img, 38, 8, lw, lh);
+  } else {
+    ctx.font = 'bold 20px monospace';
+    ctx.fillStyle = YL; ctx.fillText('TALENT', 96, 30);
+    ctx.fillStyle = BL; ctx.fillText('TALENT', 95, 29);
+  }
+
+  // --- neon OPEN sign, with an occasional flicker
+  const flick = Math.sin(time * 19) > 0.95 ? 0.35 : 1;
+  ctx.globalAlpha = 0.95 * flick;
+  ctx.strokeStyle = '#ffe600';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(352, 8, 44, 18);
+  ctx.fillStyle = '#fff48a';
+  ctx.font = 'bold 11px monospace';
+  ctx.fillText('OPEN', 374, 21);
+  ctx.globalAlpha = 1;
+
+  // --- wall of hung decks, under the logo (x 40..128)
+  ctx.fillStyle = '#6a6a72';
+  ctx.fillRect(38, 46, 92, 3);
+  const deckCols = [['#d63a3a', YL], ['#2e6fbd', PAPER], ['#1d1d22', BL], ['#f2ead6', '#d63a3a'], ['#2f9e5a', YL], ['#ec008c', '#1d1d22'], ['#fbe600', '#2e6fbd'], ['#1d1d22', '#ec008c'], ['#55bbee', '#1d1d22']];
+  deckCols.forEach(([c1, c2], i) => {
+    const x = 40 + i * 10, y = 49;
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillRect(x + 2, y + 2, 8, 44);
+    ctx.fillStyle = c1;
+    ctx.fillRect(x, y + 2, 8, 40);
+    ctx.fillRect(x + 1, y, 6, 44);
+    ctx.fillStyle = c2;
+    if (i % 3 === 0) { ctx.beginPath(); ctx.arc(x + 4, y + 17, 2.6, 0, Math.PI * 2); ctx.fill(); ctx.fillRect(x + 1, y + 26, 6, 2); }
+    else if (i % 3 === 1) { ctx.fillRect(x + 1, y + 8, 6, 3); ctx.fillRect(x + 1, y + 15, 6, 3); ctx.fillRect(x + 1, y + 22, 6, 3); }
+    else { ctx.beginPath(); ctx.moveTo(x + 4, y + 8); ctx.lineTo(x + 7, y + 20); ctx.lineTo(x + 1, y + 20); ctx.closePath(); ctx.fill(); ctx.fillRect(x + 1, y + 30, 6, 2); }
+    ctx.fillStyle = 'rgba(255,255,255,0.18)';
+    ctx.fillRect(x + 1, y + 1, 2, 42);
+  });
+
+  // --- framed black-and-white skate photos (Liggy's own), left of the keeper
+  const photo = (x, y, w, h, variant) => {
+    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(x + 2, y + 2, w, h);
+    ctx.fillStyle = '#16141a'; ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = '#d9d6cf'; ctx.fillRect(x + 2, y + 2, w - 4, h - 4);
+    ctx.fillStyle = '#8a8883'; ctx.fillRect(x + 2, y + 2, w - 4, (h - 4) * 0.55);
+    ctx.fillStyle = '#4a4946';
+    if (variant === 0) {            // brick bank with a skater mid-air
+      ctx.beginPath(); ctx.moveTo(x + 2, y + h - 2); ctx.lineTo(x + w - 2, y + h * 0.5); ctx.lineTo(x + w - 2, y + h - 2); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#111'; ctx.fillRect(x + w * 0.45, y + h * 0.28, 3, 6); ctx.fillRect(x + w * 0.38, y + h * 0.4, 8, 1.5);
+    } else {                        // stairs + a rail
+      for (let s = 0; s < 4; s++) ctx.fillRect(x + 3 + s * 4, y + h - 4 - s * 3, w - 6 - s * 4, 3);
+      ctx.fillStyle = '#111'; ctx.fillRect(x + 4, y + h * 0.3, 10, 1.5);
+    }
+  };
+  photo(132, 44, 24, 30, 0);
+  photo(160, 52, 20, 22, 1);
+
+  // --- punk gig-flyer collage, right of the keeper (x 238..318)
+  const flyer = (x, y, w, h, bg, ink, v) => {
+    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(x + 1, y + 2, w, h);
+    ctx.fillStyle = bg; ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = ink;
+    if (v === 0) { ctx.fillRect(x + 3, y + 3, w - 6, 5); ctx.fillRect(x + 3, y + 11, w - 10, 2); ctx.beginPath(); ctx.arc(x + w / 2, y + h - 9, 5, 0, Math.PI * 2); ctx.fill(); }
+    else if (v === 1) { ctx.beginPath(); ctx.moveTo(x + w / 2, y + 4); ctx.lineTo(x + w - 4, y + h * 0.65); ctx.lineTo(x + 4, y + h * 0.65); ctx.closePath(); ctx.fill(); ctx.fillRect(x + 3, y + h - 6, w - 6, 3); }
+    else { for (let r = 0; r < 3; r++) ctx.fillRect(x + 3, y + 4 + r * 7, w - 6 - (r % 2) * 5, 4); ctx.fillRect(x + 3, y + h - 7, w - 6, 3); }
+    ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillRect(x + w / 2 - 3, y - 2, 6, 4);
+  };
+  flyer(240, 40, 20, 28, PAPER, '#16141a', 0);
+  flyer(264, 38, 22, 26, YL, '#16141a', 1);
+  flyer(290, 42, 20, 28, '#ec008c', PAPER, 2);
+  flyer(250, 72, 20, 20, BL, '#16141a', 2);
+  flyer(276, 70, 22, 22, '#16141a', YL, 0);
+
+  // --- tee rail + shoe and wheel shelves, upper right (x 330..412)
+  ctx.fillStyle = '#9a9aa2'; ctx.fillRect(330, 40, 82, 3);
+  ctx.fillStyle = '#6a6a72'; ctx.fillRect(330, 40, 3, 6); ctx.fillRect(409, 40, 3, 6);
+  const tee = (x, y, col, ink, shape) => {
+    ctx.fillStyle = '#9a9aa2'; ctx.fillRect(x + 8, y - 3, 2, 4);
+    ctx.fillStyle = col;
+    ctx.fillRect(x, y + 4, 18, 16); ctx.fillRect(x - 5, y + 2, 7, 8); ctx.fillRect(x + 16, y + 2, 7, 8);
+    ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.fillRect(x + 6, y + 2, 6, 3);
+    ctx.fillStyle = ink;
+    if (shape === 0) { ctx.beginPath(); ctx.arc(x + 9, y + 12, 4, 0, Math.PI * 2); ctx.fill(); }
+    else if (shape === 1) { ctx.fillRect(x + 4, y + 8, 10, 3); ctx.fillRect(x + 4, y + 13, 10, 3); }
+    else { ctx.beginPath(); ctx.moveTo(x + 9, y + 7); ctx.lineTo(x + 14, y + 15); ctx.lineTo(x + 4, y + 15); ctx.closePath(); ctx.fill(); }
+  };
+  tee(338, 46, '#1e1e24', BL, 0);
+  tee(362, 46, '#f2ead6', '#16141a', 1);
+  tee(386, 46, '#2e6fbd', YL, 2);
+  // wheel shelf
+  ctx.fillStyle = '#5a3d22'; ctx.fillRect(330, 76, 82, 3);
+  [['#fbe600', 0], ['#55bbee', 1], ['#ec008c', 2], ['#f2ead6', 3], ['#d63a3a', 4], ['#2f9e5a', 5]].forEach(([c, i]) => {
+    const wx = 338 + i * 13;
+    ctx.fillStyle = c; ctx.beginPath(); ctx.arc(wx, 71, 5.5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.beginPath(); ctx.arc(wx, 71, 1.8, 0, Math.PI * 2); ctx.fill();
+  });
+  // shoe shelf
+  ctx.fillStyle = '#5a3d22'; ctx.fillRect(330, 94, 82, 3);
+  [['#f2ead6', '#d63a3a'], ['#1d1d22', '#fbe600'], ['#2e6fbd', '#f2ead6'], ['#d63a3a', '#1d1d22']].forEach(([c1, c2], i) => {
+    const sx = 334 + i * 20, sy = 84;
+    ctx.fillStyle = c1; ctx.fillRect(sx, sy + 2, 16, 7); ctx.fillRect(sx + 9, sy, 7, 5);
+    ctx.fillStyle = c2; ctx.fillRect(sx, sy + 8, 17, 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(sx + 2, sy + 3, 5, 1);
+  });
+
+  // --- counter (table is row 3): grip tape + a hardware jar left of Liggy,
+  // a tee stack, a camcorder and zines to his right
+  [[134, '#1c1c20'], [150, '#1c1c20'], [166, '#2a2a30']].forEach(([x, c]) => {
+    ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(x + 1, 3 * TILE + 3, 12, 4);
+    ctx.fillStyle = c; ctx.fillRect(x, 3 * TILE - 12, 12, 16);
+    ctx.fillStyle = '#44444c'; ctx.fillRect(x, 3 * TILE - 12, 12, 3);
+    ctx.fillStyle = YL; ctx.fillRect(x + 2, 3 * TILE - 6, 8, 3);
+  });
+  // hardware jar (bolts, bearings)
+  ctx.fillStyle = 'rgba(190,225,240,0.5)'; ctx.fillRect(180, 3 * TILE - 10, 10, 14);
+  ctx.fillStyle = '#9a9aa2'; ctx.fillRect(179, 3 * TILE - 12, 12, 3);
+  ctx.fillStyle = '#c8c8d0'; ctx.fillRect(182, 3 * TILE - 2, 3, 3); ctx.fillRect(186, 3 * TILE - 5, 3, 3);
+  // tee stack
+  [['#1e1e24', BL], ['#f2ead6', '#16141a'], ['#2e6fbd', YL], ['#fbe600', '#16141a']].forEach(([col, ink], i) => {
+    const y = 3 * TILE - 2 - i * 5;
+    ctx.fillStyle = col; ctx.fillRect(238, y, 28, 5);
+    ctx.fillStyle = ink; ctx.fillRect(244, y + 1, 8, 2);
+  });
+  // camcorder (Liggy's VX-style cam)
+  ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(274, 3 * TILE + 3, 26, 4);
+  ctx.fillStyle = '#1c1c22'; ctx.fillRect(274, 3 * TILE - 14, 24, 16);
+  ctx.fillStyle = '#2e2e38'; ctx.fillRect(276, 3 * TILE - 12, 14, 12);
+  ctx.fillStyle = '#0a0a0e'; ctx.beginPath(); ctx.arc(291, 3 * TILE - 6, 6, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#3a4a6a'; ctx.beginPath(); ctx.arc(291, 3 * TILE - 6, 3, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#d63a3a'; ctx.fillRect(278, 3 * TILE - 16, 3, 3);
+  // zine pile
+  [['#f2ead6', 0], ['#ec008c', 2], ['#fbe600', 1]].forEach(([c, o], i) => {
+    ctx.fillStyle = c; ctx.fillRect(304 + o, 3 * TILE - 2 - i * 4, 14, 5);
+    ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(306 + o, 3 * TILE - 1 - i * 4, 6, 1);
+  });
+
+  // --- plaques over the four crates: (1,4) (1,6) on the left, (12,4) (12,6) right
+  const cratePlaque = (cx, y, label, c1, c2) => {
+    const w = 46, h = 12, x = cx - w / 2;
+    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(x + 1, y + 2, w, h);
+    ctx.fillStyle = DK; ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = c1; ctx.fillRect(x, y + h - 3, w / 2, 3);
+    ctx.fillStyle = c2; ctx.fillRect(x + w / 2, y + h - 3, w / 2, 3);
+    ctx.fillStyle = PAPER;
+    ctx.font = 'bold 7px monospace';
+    ctx.fillText(label, cx, y + 7);
+  };
+  cratePlaque(1 * TILE + 16, 4 * TILE - 16, 'THRASH', BL, YL);
+  cratePlaque(1 * TILE + 16, 6 * TILE - 16, 'HARDCORE', YL, BL);
+  cratePlaque(12 * TILE + 16, 4 * TILE - 16, 'SKATE PUNK', BL, YL);
+  cratePlaque(12 * TILE + 16, 6 * TILE - 16, 'CROSSOVER', YL, BL);
+
+  // ------------------------------------------------------------------ ramps
+  const shadowE = (cx, cy, rx) => {
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.beginPath(); ctx.ellipse(cx, cy, rx, 6, 0, 0, Math.PI * 2); ctx.fill();
+  };
+  const PLY = '#c79a5e', PLY_D = '#8d6a3a', PLY_L = '#e0b87a';
+
+  // FUNBOX on tiles (3,6)+(4,6): a flat-topped box with banked sides, a metal
+  // ledge along the top and TALENT blue panels
+  {
+    const x0 = 3 * TILE, y0 = 6 * TILE, w = 2 * TILE, b = y0 + TILE;   // bottom edge y=224
+    ctx.fillStyle = FLOOR; ctx.fillRect(x0, y0, w, TILE);
+    shadowE(x0 + w / 2, b - 1, 36);
+    const topY = b - 28;
+    // banked left and right sides
+    ctx.fillStyle = PLY_D;
+    ctx.beginPath(); ctx.moveTo(x0 + 1, b - 2); ctx.lineTo(x0 + 14, topY); ctx.lineTo(x0 + 14, b - 2); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(x0 + w - 1, b - 2); ctx.lineTo(x0 + w - 14, topY); ctx.lineTo(x0 + w - 14, b - 2); ctx.closePath(); ctx.fill();
+    // box body
+    ctx.fillStyle = '#2e6fbd';
+    ctx.fillRect(x0 + 14, topY, w - 28, 28 - 2);
+    ctx.fillStyle = '#245a9a';
+    ctx.fillRect(x0 + 14, topY + 14, w - 28, 12);
+    ctx.fillStyle = YL;
+    ctx.fillRect(x0 + 14, b - 6, w - 28, 3);                      // yellow kick stripe
+    // top deck + metal ledge
+    ctx.fillStyle = PLY_L; ctx.fillRect(x0 + 12, topY - 3, w - 24, 4);
+    ctx.fillStyle = '#c8c8d0'; ctx.fillRect(x0 + 12, topY - 4, w - 24, 2);
+    ctx.fillStyle = '#6a6a72'; ctx.fillRect(x0 + 12, topY - 2, w - 24, 1);
+    // stenciled TALENT
+    ctx.font = 'bold 8px monospace';
+    ctx.fillStyle = YL; ctx.fillText('TALENT', x0 + w / 2, topY + 12);
+  }
+
+  // BANK RAMP on tiles (1,8)+(2,8): a plywood wedge rising to the left wall
+  {
+    const x0 = 1 * TILE, y0 = 8 * TILE, w = 2 * TILE, b = y0 + TILE;   // bottom y=288
+    ctx.fillStyle = FLOOR; ctx.fillRect(x0, y0, w, TILE);
+    shadowE(x0 + w / 2, b - 1, 36);
+    ctx.fillStyle = PLY_D;
+    ctx.beginPath(); ctx.moveTo(x0 + w, b - 2); ctx.lineTo(x0, b - 2); ctx.lineTo(x0, b - 30); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = PLY;
+    ctx.beginPath(); ctx.moveTo(x0 + w, b - 4); ctx.lineTo(x0 + 2, b - 4); ctx.lineTo(x0 + 2, b - 28); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = PLY_L;
+    ctx.beginPath(); ctx.moveTo(x0 + 2, b - 28); ctx.lineTo(x0 + 6, b - 28); ctx.lineTo(x0 + w, b - 4); ctx.lineTo(x0 + w - 5, b - 4); ctx.closePath(); ctx.fill();
+    // grip-tape strip + stickers
+    ctx.fillStyle = '#1c1c20';
+    ctx.beginPath(); ctx.moveTo(x0 + 12, b - 8); ctx.lineTo(x0 + 12, b - 20); ctx.lineTo(x0 + 40, b - 8); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#ec008c'; ctx.fillRect(x0 + 6, b - 14, 6, 4);
+    ctx.fillStyle = BL; ctx.fillRect(x0 + 16, b - 9, 5, 3);
+  }
+
+  // QUARTER PIPE on tiles (11,8)+(12,8): a curved transition up the right
+  // wall with a metal coping edge
+  {
+    const x0 = 11 * TILE, y0 = 8 * TILE, w = 2 * TILE, b = y0 + TILE, H = 48;
+    ctx.fillStyle = FLOOR; ctx.fillRect(x0, y0, w, TILE);
+    shadowE(x0 + w / 2, b - 1, 36);
+    const prof = (t) => b - 3 - H * (1 - Math.sqrt(Math.max(0, 1 - t * t)));
+    ctx.fillStyle = PLY_D;
+    ctx.beginPath(); ctx.moveTo(x0, b - 3);
+    for (let i = 0; i <= 16; i++) ctx.lineTo(x0 + (w * i) / 16, prof(i / 16));
+    ctx.lineTo(x0 + w, b - 3); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = PLY; ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let i = 0; i <= 16; i++) { const px2 = x0 + (w * i) / 16, py2 = prof(i / 16); if (i) ctx.lineTo(px2, py2 + 3); else ctx.moveTo(px2, py2 + 3); }
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(0,0,0,0.22)'; ctx.lineWidth = 1;
+    for (let i = 2; i < 16; i += 3) { const t = i / 16; ctx.beginPath(); ctx.moveTo(x0 + w * t, prof(t) + 4); ctx.lineTo(x0 + w * t, b - 4); ctx.stroke(); }
+    // coping + a spray-painted blue stripe
+    ctx.fillStyle = '#c8c8d0'; ctx.fillRect(x0 + w - 4, b - 3 - H - 1, 4, 4);
+    ctx.fillStyle = '#9a9aa2'; ctx.fillRect(x0 + w - 4, b - 3 - H + 3, 4, 2);
+    ctx.fillStyle = BL; ctx.fillRect(x0 + 4, b - 9, 38, 3);
+    ctx.fillStyle = YL; ctx.fillRect(x0 + 8, b - 14, 6, 4);
+  }
+
+  // KICKER on tiles (8,7)+(9,7): a low walkable launch ramp
+  {
+    const x0 = 8 * TILE, y0 = 7 * TILE, w = 2 * TILE;
+    shadowE(x0 + w / 2, y0 + 28, 34);
+    ctx.fillStyle = PLY_D;
+    ctx.beginPath(); ctx.moveTo(x0 + 2, y0 + 26); ctx.lineTo(x0 + w - 2, y0 + 26); ctx.lineTo(x0 + w - 2, y0 + 10); ctx.quadraticCurveTo(x0 + w * 0.5, y0 + 22, x0 + 2, y0 + 25); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = PLY_L; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(x0 + 2, y0 + 24); ctx.quadraticCurveTo(x0 + w * 0.5, y0 + 21, x0 + w - 2, y0 + 8); ctx.stroke();
+    ctx.fillStyle = '#16141a';
+    ctx.beginPath(); ctx.moveTo(x0 + 14, y0 + 22); ctx.quadraticCurveTo(x0 + w * 0.55, y0 + 20, x0 + w - 6, y0 + 11); ctx.lineTo(x0 + w - 6, y0 + 15); ctx.quadraticCurveTo(x0 + w * 0.55, y0 + 24, x0 + 14, y0 + 25); ctx.closePath(); ctx.fill();
+  }
+
+  // a skateboard lying on the floor near the door, and a stray sticker
+  {
+    const bx = 216, by = 268;
+    ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(bx + 1, by + 6, 30, 4);
+    ctx.fillStyle = '#d63a3a'; ctx.fillRect(bx + 4, by, 24, 7);
+    ctx.beginPath(); ctx.arc(bx + 4, by + 3.5, 3.5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(bx + 28, by + 3.5, 3.5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#16141a'; ctx.fillRect(bx + 6, by + 1, 20, 2);
+    ctx.fillStyle = '#f2ead6';
+    [[bx + 8, by + 7], [bx + 22, by + 7]].forEach(([wx, wy]) => { ctx.beginPath(); ctx.arc(wx, wy, 2.2, 0, Math.PI * 2); ctx.fill(); });
+  }
+  ctx.restore();
+}
+
+// TALENT's front: the logo sits up in the roof band (see drawBuildings), and
+// below it a pennant string of blue-and-yellow flags, a few decks hung either
+// side of the door, a neon OPEN in the window, a pair of stage-light par cans
+// on the roofline (Liggy Lights) pulsing in blue/yellow/magenta, a door glow
+// with music notes, and a sandwich board out front. Called from
+// drawSkateparkDecorations() whenever the map has `tlExterior`.
+function drawTalentExterior(time, map) {
+  const f = map.tlExterior;
+  const px = f.x * TILE, py = f.y * TILE, w = f.w * TILE;
+  const BL = '#55bbee', YL = '#fbe600', DK = '#12151c', PAPER = '#f2ead6';
+  // blue/yellow test stripe under the logo
+  for (let i = 0; i < 10; i++) {
+    ctx.fillStyle = i % 2 ? YL : BL;
+    ctx.fillRect(px + i * (w / 10), py + 42, w / 10, 4);
+  }
+  // pennant string across the wall
+  ctx.strokeStyle = '#1c140f'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(px + 2, py + 50); ctx.quadraticCurveTo(px + w / 2, py + 60, px + w - 2, py + 50); ctx.stroke();
+  for (let i = 0; i < 9; i++) {
+    const t = (i + 0.5) / 9;
+    const fx = px + 2 + (w - 4) * t, fy = py + 50 + 10 * 4 * t * (1 - t) * 0.5 * 1.0;
+    ctx.fillStyle = i % 3 === 0 ? BL : (i % 3 === 1 ? YL : '#ec008c');
+    ctx.beginPath(); ctx.moveTo(fx - 4, fy); ctx.lineTo(fx + 4, fy); ctx.lineTo(fx, fy + 8); ctx.closePath(); ctx.fill();
+  }
+  // decks hung on the wall between the windows and the door
+  const hang = (x, y, c1, c2) => {
+    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(x + 1, y + 2, 6, 24);
+    ctx.fillStyle = c1; ctx.fillRect(x, y + 1, 6, 24); ctx.fillRect(x + 1, y, 4, 26);
+    ctx.fillStyle = c2; ctx.fillRect(x + 1, y + 8, 4, 3); ctx.fillRect(x + 1, y + 15, 4, 2);
+  };
+  hang(px + 8, py + 62, '#d63a3a', YL);
+  hang(px + 18, py + 62, '#1d1d22', BL);
+  hang(px + 28, py + 62, '#f2ead6', '#ec008c');
+  hang(px + 124, py + 62, '#2e6fbd', YL);
+  hang(px + 134, py + 62, '#fbe600', '#16141a');
+  hang(px + 144, py + 62, '#2f9e5a', PAPER);
+  // neon OPEN in the right window
+  const flick = Math.sin(time * 17) > 0.96 ? 0.3 : 1;
+  ctx.save();
+  ctx.globalAlpha = 0.95 * flick;
+  ctx.fillStyle = '#0e1a26'; ctx.fillRect(px + 105, py + 86, 14, 6);
+  ctx.strokeStyle = '#ffe600'; ctx.lineWidth = 1;
+  ctx.strokeRect(px + 104.5, py + 85.5, 15, 7);
+  ctx.fillStyle = '#fff48a'; ctx.font = 'bold 5px monospace'; ctx.textAlign = 'center';
+  ctx.fillText('OPEN', px + 112, py + 91);
+  ctx.restore();
+  // stage-light par cans on the roofline
+  const can = (cx, col, ph) => {
+    const pulse = 0.5 + 0.5 * Math.sin(time * 2.4 + ph);
+    ctx.fillStyle = '#23252c'; ctx.fillRect(cx - 6, py - 7, 12, 10);
+    ctx.fillStyle = '#3b3e48'; ctx.fillRect(cx - 6, py - 7, 12, 3);
+    ctx.fillStyle = col.replace('ALPHA', '1'); ctx.fillRect(cx - 4, py + 2, 8, 2);
+    const g = getGlowSprite(26, col);
+    ctx.save(); ctx.globalAlpha = 0.35 + 0.35 * pulse;
+    ctx.drawImage(g, cx - 26, py - 20, 52, 52);
+    ctx.restore();
+  };
+  can(px + 16, 'rgba(85,187,238,ALPHA)', 0);
+  can(px + w - 16, 'rgba(236,0,140,ALPHA)', 2.4);
+  // door glow
+  const dx = f.doorX * TILE + TILE / 2, dy = (f.doorY + 1) * TILE;
+  const glow = getGlowSprite(46, 'rgba(85,187,238,ALPHA)');
+  ctx.save();
+  ctx.globalAlpha = 0.3 + 0.1 * Math.sin(time * 4);
+  ctx.drawImage(glow, dx - 46, dy - 60, 92, 92);
+  ctx.restore();
+  // music notes (there's always a record on in here)
+  ctx.fillStyle = 'rgba(251, 230, 0, 0.9)';
+  ctx.font = 'bold 11px monospace';
+  ctx.textAlign = 'center';
+  for (let i = 0; i < 2; i++) {
+    const ph = (time * 0.45 + i * 0.5) % 1;
+    ctx.globalAlpha = Math.max(0, 1 - ph);
+    ctx.fillText(i === 0 ? '\u266A' : '\u266B', dx + (i === 0 ? -8 : 8) + Math.sin(ph * 6 + i) * 4, dy - 6 - ph * 26);
+  }
+  ctx.globalAlpha = 1;
+  // sandwich board on the grass left of the door
+  const sx = (f.doorX - 1) * TILE + 3, sy = (f.doorY + 1) * TILE + 4;
+  ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.fillRect(sx - 1, sy + 24, 24, 3);
+  ctx.fillStyle = '#3a2410'; ctx.fillRect(sx, sy + 20, 3, 6); ctx.fillRect(sx + 17, sy + 20, 3, 6);
+  ctx.fillStyle = '#5a3d20'; ctx.fillRect(sx - 1, sy - 1, 22, 24);
+  ctx.fillStyle = '#1e1a22'; ctx.fillRect(sx + 1, sy + 1, 18, 20);
+  ctx.font = 'bold 6px monospace';
+  ctx.fillStyle = YL; ctx.fillText('DECKS', sx + 10, sy + 8);
+  ctx.fillStyle = BL; ctx.fillText('WAX', sx + 10, sy + 14);
+  ctx.fillStyle = PAPER; ctx.fillText('FILM', sx + 10, sy + 20);
+}
+
+// CB PRINTS' interior: a small, artsy independent screen printing shop.
+// Misregistered CMYK "CB" / "PRINTS" plaques flank the keeper, a wall of
+// hand-pulled gig posters up on the left, a rail of printed tees on the
+// right, a neon OPEN sign, and on the counter a stack of folded tees, ink
+// tins with a squeegee, and a boombox (Bonta always has hip hop running).
+// On the floor: a four-color carousel press and a print drying rack (the
+// solid blockTiles at (3,6)/(4,6) and (9,6)/(10,6)), stacked silkscreen
+// frames and ink buckets against the side walls, and plaques over the two
+// crates -- HIP HOP (left) and REGGAE (right). Called from render()
+// whenever map.cbPrints is set (shop map only -- the outdoor skatepark map
+// uses `cbExterior` instead so it never trips this).
+function drawCBPrintsInterior(time) {
+  ctx.save();
+  ctx.textBaseline = 'alphabetic';
+  ctx.textAlign = 'center';
+  const C = '#00aeef', M = '#ec008c', Y = '#ffd400', K = '#16141a', PAPER = '#f2ead6';
+
+  // misregistered CMYK lettering on a cream paper plaque
+  const plaque = (cx, label) => {
+    const w = 84, h = 22, x = cx - w / 2, y = 6;
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillRect(x + 2, y + 3, w, h);
+    ctx.fillStyle = PAPER;
+    ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = C; ctx.fillRect(x, y + h - 3, w / 3, 3);
+    ctx.fillStyle = M; ctx.fillRect(x + w / 3, y + h - 3, w / 3, 3);
+    ctx.fillStyle = Y; ctx.fillRect(x + 2 * w / 3, y + h - 3, w / 3, 3);
+    ctx.font = 'bold 14px monospace';
+    ctx.fillStyle = Y; ctx.fillText(label, cx, y + 16);
+    ctx.fillStyle = C; ctx.fillText(label, cx - 1.5, y + 15);
+    ctx.fillStyle = M; ctx.fillText(label, cx + 1.5, y + 14);
+    ctx.fillStyle = K; ctx.fillText(label, cx, y + 15);
+  };
+  plaque(4 * TILE + 2, 'CB');
+  plaque(9 * TILE, 'PRINTS');
+
+  // neon OPEN sign, with an occasional flicker
+  const flick = Math.sin(time * 23) > 0.96 ? 0.35 : 1;
+  ctx.globalAlpha = 0.9 * flick;
+  ctx.strokeStyle = '#ff2aa8';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(358, 8, 44, 18);
+  ctx.fillStyle = '#ff6ac8';
+  ctx.font = 'bold 11px monospace';
+  ctx.fillText('OPEN', 380, 21);
+  ctx.globalAlpha = 1;
+
+  // wall of hand-pulled gig posters, upper-left
+  const poster = (x, y, w, h, bg, c1, c2, variant) => {
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillRect(x + 2, y + 2, w, h);
+    ctx.fillStyle = bg;
+    ctx.fillRect(x, y, w, h);
+    if (variant === 0) {            // big sun over bars
+      ctx.fillStyle = c1;
+      ctx.beginPath(); ctx.arc(x + w / 2, y + h * 0.4, w * 0.3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = c2;
+      for (let i = 0; i < 3; i++) ctx.fillRect(x + 3, y + h * 0.72 + i * 3, w - 6, 2);
+    } else if (variant === 1) {     // bold triangle
+      ctx.fillStyle = c1;
+      ctx.beginPath(); ctx.moveTo(x + w / 2, y + 4); ctx.lineTo(x + w - 3, y + h * 0.7); ctx.lineTo(x + 3, y + h * 0.7); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = c2;
+      ctx.fillRect(x + 3, y + h - 6, w - 6, 3);
+    } else {                        // halftone dots
+      ctx.fillStyle = c1;
+      for (let r = 0; r < 4; r++) for (let c = 0; c < 3; c++) {
+        ctx.beginPath(); ctx.arc(x + 5 + c * 5, y + 5 + r * 5, 1.2 + r * 0.45, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.fillStyle = c2;
+      ctx.fillRect(x + 3, y + h - 6, w - 6, 3);
+    }
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';        // tape
+    ctx.fillRect(x + w / 2 - 3, y - 2, 6, 4);
+  };
+  poster(40, 40, 22, 30, PAPER, M, K, 0);
+  poster(66, 38, 20, 28, Y, K, C, 1);
+  poster(90, 42, 22, 30, '#1f3a5a', Y, M, 2);
+  poster(54, 74, 20, 22, C, PAPER, K, 0);
+  poster(80, 76, 20, 20, M, Y, K, 1);
+
+  // tee rail, upper-right: a steel bar with four printed tees on hangers
+  ctx.fillStyle = '#9a9aa2';
+  ctx.fillRect(330, 38, 82, 3);
+  ctx.fillStyle = '#6a6a72';
+  ctx.fillRect(330, 38, 3, 6); ctx.fillRect(409, 38, 3, 6);
+  const tee = (x, y, col, ink, shape) => {
+    ctx.fillStyle = '#9a9aa2';
+    ctx.fillRect(x + 8, y - 3, 2, 4);
+    ctx.fillStyle = col;
+    ctx.fillRect(x, y + 4, 18, 18);                    // body
+    ctx.fillRect(x - 5, y + 2, 7, 9);                  // sleeves
+    ctx.fillRect(x + 16, y + 2, 7, 9);
+    ctx.fillStyle = 'rgba(0,0,0,0.22)';
+    ctx.fillRect(x + 6, y + 2, 6, 3);                  // neck
+    ctx.fillStyle = 'rgba(0,0,0,0.15)';
+    ctx.fillRect(x, y + 19, 18, 3);
+    ctx.fillStyle = ink;
+    if (shape === 0) { ctx.beginPath(); ctx.arc(x + 9, y + 12, 4, 0, Math.PI * 2); ctx.fill(); }
+    else if (shape === 1) { ctx.fillRect(x + 4, y + 8, 10, 3); ctx.fillRect(x + 4, y + 13, 10, 3); }
+    else { ctx.beginPath(); ctx.moveTo(x + 9, y + 7); ctx.lineTo(x + 14, y + 16); ctx.lineTo(x + 4, y + 16); ctx.closePath(); ctx.fill(); }
+  };
+  tee(338, 44, '#1e1e24', M, 0);
+  tee(362, 44, '#f2ead6', C, 1);
+  tee(386, 44, '#2a2c32', Y, 2);
+
+  // counter (table is row 3): folded tees left of Bonta, ink tins + squeegee
+  // right of him, and a boombox at the far end
+  const tees = [['#1e1e24', M], ['#f2ead6', C], ['#2a4a7a', Y], ['#c22c6c', PAPER]];
+  tees.forEach(([col, ink], i) => {
+    const ty = 2 * TILE + 38 - i * 5;
+    ctx.fillStyle = col;
+    ctx.fillRect(4 * TILE + 8, ty, 28, 5);
+    ctx.fillStyle = ink;
+    ctx.fillRect(4 * TILE + 14, ty + 1, 8, 2);
+  });
+  [[C, 0], [M, 1], [Y, 2]].forEach(([col, i]) => {
+    const tx = 7 * TILE + 12 + i * 12, ty = 2 * TILE + 28;
+    ctx.fillStyle = '#b8b8c0';
+    ctx.fillRect(tx, ty, 10, 11);
+    ctx.fillStyle = col;
+    ctx.fillRect(tx - 1, ty - 2, 12, 4);
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.fillRect(tx + 7, ty + 2, 3, 9);
+  });
+  // squeegee propped against the tins
+  ctx.fillStyle = '#7a5a34';
+  ctx.fillRect(7 * TILE + 46, 2 * TILE + 12, 4, 26);
+  ctx.fillStyle = '#c8c8d0';
+  ctx.fillRect(7 * TILE + 41, 2 * TILE + 34, 14, 3);
+  // boombox
+  ctx.fillStyle = '#1c1c22';
+  ctx.fillRect(9 * TILE + 2, 2 * TILE + 24, 40, 20);
+  ctx.fillStyle = '#2e2e38';
+  ctx.fillRect(9 * TILE + 4, 2 * TILE + 26, 36, 16);
+  const pulse = 0.5 + 0.5 * Math.sin(time * 7.5);
+  [[9 * TILE + 13, 2 * TILE + 34], [9 * TILE + 31, 2 * TILE + 34]].forEach(([cx, cy], i) => {
+    ctx.fillStyle = '#0a0a0e';
+    ctx.beginPath(); ctx.arc(cx, cy, 6.5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#3a3a46';
+    ctx.beginPath(); ctx.arc(cx, cy, 2.6 + pulse * (i ? 0.6 : 1), 0, Math.PI * 2); ctx.fill();
+  });
+  ctx.fillStyle = Y;
+  ctx.fillRect(9 * TILE + 19, 2 * TILE + 28, 6, 3);
+  ctx.strokeStyle = '#9a9aa2';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(9 * TILE + 38, 2 * TILE + 24); ctx.lineTo(9 * TILE + 46, 2 * TILE + 10); ctx.stroke();
+
+  // plaques over the two crates: HIP HOP (left), REGGAE (right)
+  const cratePlaque = (cx, label, bars) => {
+    const w = 46, h = 12, x = cx - w / 2, y = 4 * TILE + 14;
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillRect(x + 1, y + 2, w, h);
+    ctx.fillStyle = PAPER;
+    ctx.fillRect(x, y, w, h);
+    const bw = w / bars.length;
+    bars.forEach((c, i) => { ctx.fillStyle = c; ctx.fillRect(x + i * bw, y + h - 3, bw, 3); });
+    ctx.fillStyle = K;
+    ctx.font = 'bold 7px monospace';
+    ctx.fillText(label, cx, y + 7);
+  };
+  cratePlaque(1 * TILE + 16, 'HIP HOP', [M, Y, C]);
+  cratePlaque(12 * TILE + 16, 'REGGAE', ['#d22a2a', '#f2c200', '#1f9a3a']);
+
+  // --- the carousel press on tiles (3,6)+(4,6): four screens on a rotating arm
+  ctx.fillStyle = '#46434d';
+  ctx.fillRect(3 * TILE, 6 * TILE, 2 * TILE, TILE);        // cover the wall-tile texture
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.beginPath(); ctx.ellipse(4 * TILE, 7 * TILE - 2, 34, 6, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#23242a';
+  ctx.fillRect(3 * TILE + 2, 6 * TILE + 14, 2 * TILE - 4, 14);   // base platform
+  ctx.fillStyle = '#3a3d48';
+  ctx.fillRect(3 * TILE + 2, 6 * TILE + 14, 2 * TILE - 4, 3);
+  // printed shirts on the platens (little colored rectangles)
+  [[3 * TILE + 8, C], [3 * TILE + 26, M], [3 * TILE + 44, Y]].forEach(([x, col]) => {
+    ctx.fillStyle = col; ctx.fillRect(x, 6 * TILE + 19, 12, 6);
+  });
+  // center post and the rotating arms (they drift a little, like mid-print)
+  const sw2 = Math.sin(time * 0.9) * 2;
+  ctx.fillStyle = '#9a9aa2';
+  ctx.fillRect(4 * TILE - 3, 6 * TILE - 26, 6, 44);
+  ctx.fillStyle = '#6a6a72';
+  ctx.fillRect(4 * TILE - 3, 6 * TILE - 26, 2, 44);
+  ctx.fillStyle = '#b8b8c0';
+  ctx.fillRect(3 * TILE + 4, 6 * TILE - 14 + sw2, 2 * TILE - 8, 3);
+  const screenFrame = (x, y, w, h, col) => {
+    ctx.fillStyle = col;
+    ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = 'rgba(235,240,245,0.75)';              // mesh
+    ctx.fillRect(x + 2, y + 2, w - 4, h - 4);
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.fillRect(x + 3, y + 4, w - 6, 2);
+  };
+  screenFrame(3 * TILE - 2, 6 * TILE - 22 + sw2, 22, 16, C);
+  screenFrame(5 * TILE - 20, 6 * TILE - 22 + sw2, 22, 16, M);
+  screenFrame(4 * TILE - 10, 6 * TILE - 38, 20, 13, Y);
+  // squeegee handle on the front screen
+  ctx.fillStyle = '#7a5a34';
+  ctx.fillRect(4 * TILE + 12, 6 * TILE - 44, 3, 16);
+
+  // --- the print drying rack on tiles (9,6)+(10,6)
+  ctx.fillStyle = '#46434d';
+  ctx.fillRect(9 * TILE, 6 * TILE, 2 * TILE, TILE);
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.beginPath(); ctx.ellipse(10 * TILE, 7 * TILE - 2, 34, 6, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#7a5535';
+  ctx.fillRect(9 * TILE + 1, 6 * TILE - 34, 4, 62);          // posts
+  ctx.fillRect(11 * TILE - 5, 6 * TILE - 34, 4, 62);
+  const sheets = [[C, M, Y], [M, Y, PAPER], [Y, C, M]];
+  for (let r = 0; r < 3; r++) {
+    const sy = 6 * TILE - 26 + r * 20;
+    ctx.fillStyle = '#5a3d22';
+    ctx.fillRect(9 * TILE + 1, sy + 14, 2 * TILE - 2, 3);   // shelf board
+    for (let i = 0; i < 3; i++) {
+      const sx = 9 * TILE + 7 + i * 17;
+      ctx.fillStyle = sheets[r][i];
+      ctx.fillRect(sx, sy, 14, 14);
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.fillRect(sx + 3, sy + 4, 8, 2);
+      ctx.fillRect(sx + 3, sy + 8, 6, 2);
+    }
+  }
+  // clothespins along the top
+  ctx.fillStyle = '#d8c090';
+  for (let i = 0; i < 4; i++) ctx.fillRect(9 * TILE + 8 + i * 15, 6 * TILE - 35, 3, 5);
+
+  // --- stacked silkscreen frames leaning on the left wall (clear of the
+  // crate at (1,5) and the press)
+  for (let i = 0; i < 4; i++) {
+    const x = 1 * TILE + 4 + i * 3, y = 7 * TILE + 2 - i * 2;
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.fillRect(x + 2, y + 3, 22, 40);
+    ctx.fillStyle = ['#8a6a44', '#9a9aa2', '#7a5535', '#b8b8c0'][i];
+    ctx.fillRect(x, y, 22, 40);
+    ctx.fillStyle = 'rgba(235,240,245,0.7)';
+    ctx.fillRect(x + 2, y + 2, 18, 36);
+  }
+  ctx.fillStyle = M;
+  ctx.fillRect(1 * TILE + 13, 7 * TILE + 8, 9, 9);          // a ghost of a print on the front screen
+  ctx.fillStyle = C;
+  ctx.fillRect(1 * TILE + 16, 7 * TILE + 13, 7, 7);
+
+  // --- ink buckets against the right wall (clear of the crate at (12,5))
+  [[C, 0], [M, 1], [Y, 2]].forEach(([col, i]) => {
+    const bx = 12 * TILE + 2 + i * 9 - (i === 2 ? 0 : 0), by = 7 * TILE + 14 + (i % 2) * 10;
+    ctx.fillStyle = 'rgba(0,0,0,0.22)';
+    ctx.beginPath(); ctx.ellipse(bx + 7, by + 18, 9, 3, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#b8b8c0';
+    ctx.fillRect(bx, by, 14, 17);
+    ctx.fillStyle = col;
+    ctx.fillRect(bx - 1, by - 2, 16, 5);
+    ctx.fillRect(bx + 3, by + 3, 3, 6);                      // drip
+    ctx.fillStyle = 'rgba(0,0,0,0.22)';
+    ctx.fillRect(bx + 10, by + 3, 4, 14);
+  });
+  ctx.restore();
+}
+
+// CB PRINTS' front: a registration-target emblem over the door (the
+// crosshair-in-a-circle printers line up four colors with), a CMYK test
+// strip across the wall, a couple of pasted-up gig posters and a hanging
+// printed tee, a magenta glow and notes drifting out of the door, and a
+// sandwich board out front. Called from drawSkateparkDecorations()
+// whenever the map has `cbExterior`.
+function drawCBPrintsExterior(time, map) {
+  const f = map.cbExterior;
+  const px = f.x * TILE, py = f.y * TILE;
+  const C = '#00aeef', M = '#ec008c', Y = '#ffd400', K = '#16141a', PAPER = '#f2ead6';
+  // CMYK test strip under the sign
+  ['#00aeef', '#ec008c', '#ffd400', '#16141a', '#f2ead6'].forEach((c, i) => {
+    ctx.fillStyle = c;
+    ctx.fillRect(px + 12 + i * 34, py + 38, 32, 6);
+  });
+  // registration target over the doorway
+  const cx = f.doorX * TILE + TILE / 2, cy = py + 70;
+  ctx.fillStyle = PAPER;
+  ctx.beginPath(); ctx.arc(cx, cy, 13, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = K;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(cx, cy, 9, 0, Math.PI * 2); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(cx - 14, cy); ctx.lineTo(cx + 14, cy);
+  ctx.moveTo(cx, cy - 14); ctx.lineTo(cx, cy + 14);
+  ctx.stroke();
+  ctx.fillStyle = M;
+  ctx.beginPath(); ctx.arc(cx, cy, 3.5, 0, Math.PI * 2); ctx.fill();
+  // pasted-up posters on the wall left of the door
+  const paste = (x, y, w, h, bg, ink) => {
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillRect(x + 1, y + 2, w, h);
+    ctx.fillStyle = bg; ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = ink;
+    ctx.beginPath(); ctx.arc(x + w / 2, y + h * 0.4, w * 0.28, 0, Math.PI * 2); ctx.fill();
+    ctx.fillRect(x + 3, y + h - 6, w - 6, 2);
+  };
+  paste(px + 12, py + 52, 20, 26, PAPER, M);
+  paste(px + 38, py + 58, 20, 26, Y, K);
+  // a printed tee hanging on the right of the door
+  const tx = px + 140, ty = py + 52;
+  ctx.fillStyle = '#9a9aa2';
+  ctx.fillRect(tx + 8, ty - 3, 2, 4);
+  ctx.fillStyle = '#1e1e24';
+  ctx.fillRect(tx, ty + 4, 18, 18);
+  ctx.fillRect(tx - 5, ty + 2, 7, 9);
+  ctx.fillRect(tx + 16, ty + 2, 7, 9);
+  ctx.fillStyle = C;
+  ctx.beginPath(); ctx.arc(tx + 9, ty + 13, 4.5, 0, Math.PI * 2); ctx.fill();
+  // door glow
+  const dx = f.doorX * TILE + TILE / 2, dy = (f.doorY + 1) * TILE;
+  const glow = getGlowSprite(46, 'rgba(255,60,170,ALPHA)');
+  ctx.save();
+  ctx.globalAlpha = 0.3 + 0.1 * Math.sin(time * 4);
+  ctx.drawImage(glow, dx - 46, dy - 60, 92, 92);
+  ctx.restore();
+  // notes drifting out (there's always a beat on in here)
+  ctx.fillStyle = 'rgba(255, 210, 60, 0.85)';
+  ctx.font = 'bold 11px monospace';
+  ctx.textAlign = 'center';
+  for (let i = 0; i < 2; i++) {
+    const ph = (time * 0.45 + i * 0.5) % 1;
+    ctx.globalAlpha = Math.max(0, 1 - ph);
+    ctx.fillText(i === 0 ? '\u266A' : '\u266B', dx + (i === 0 ? -8 : 8) + Math.sin(ph * 6 + i) * 4, dy - 6 - ph * 26);
+  }
+  ctx.globalAlpha = 1;
+  // sandwich board on the grass left of the door
+  const sx = (f.doorX - 1) * TILE + 3, sy = (f.doorY + 1) * TILE + 4;
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.fillRect(sx - 1, sy + 24, 24, 3);
+  ctx.fillStyle = '#3a2410';
+  ctx.fillRect(sx, sy + 20, 3, 6);
+  ctx.fillRect(sx + 17, sy + 20, 3, 6);
+  ctx.fillStyle = '#5a3d20';
+  ctx.fillRect(sx - 1, sy - 1, 22, 24);
+  ctx.fillStyle = '#1e1a22';
+  ctx.fillRect(sx + 1, sy + 1, 18, 20);
+  ctx.font = 'bold 6px monospace';
+  ctx.fillStyle = '#f4efe0';
+  ctx.fillText('TEES &', sx + 10, sy + 9);
+  ctx.fillText('POSTERS', sx + 10, sy + 16);
+}
+
+// ---------------------------------------------------------------- ECHO CENTER
+// Shared aquarium bits used by both ECHO CENTER painters below (interior
+// tanks + exterior windows): banded water with swaying light rays and a
+// sand floor, swaying kelp, a friendly fish, a pulsing jellyfish, a shark,
+// and rising bubbles. All chunky flat fills (no per-frame gradients), same
+// look as the rest of the file.
+const ECHO_WATER_BANDS = ['#2db1d6', '#2299c6', '#1a7db0', '#13608f', '#0b4271', '#072c52'];
+
+function drawEchoWater(x, y, w, h, time, seed) {
+  const bh = h / ECHO_WATER_BANDS.length;
+  for (let i = 0; i < ECHO_WATER_BANDS.length; i++) {
+    ctx.fillStyle = ECHO_WATER_BANDS[i];
+    ctx.fillRect(x, y + i * bh, w, bh + 1);
+  }
+  // sunbeams drifting down through the water
+  ctx.fillStyle = 'rgba(255,255,255,0.08)';
+  for (let i = 0; i < 4; i++) {
+    const rx = x + (i * 0.27 + 0.08) * w + Math.sin(time * 0.5 + i + seed) * 5;
+    ctx.beginPath();
+    ctx.moveTo(rx, y); ctx.lineTo(rx + 9, y);
+    ctx.lineTo(rx + 24, y + h); ctx.lineTo(rx + 4, y + h);
+    ctx.closePath(); ctx.fill();
+  }
+  // sandy bottom with a few pebbles
+  ctx.fillStyle = '#cdb77a';
+  ctx.fillRect(x, y + h - 5, w, 5);
+  ctx.fillStyle = '#a99157';
+  ctx.fillRect(x, y + h - 5, w, 1);
+  for (let px2 = 6; px2 < w - 3; px2 += 17) {
+    ctx.fillStyle = (px2 % 2) ? '#8d7a4a' : '#e6d6a0';
+    ctx.fillRect(x + px2 + (seed % 5), y + h - 3, 3, 2);
+  }
+}
+
+function drawEchoKelp(bx, by, hgt, time, seed) {
+  ctx.save();
+  ctx.lineCap = 'round';
+  for (let pass = 0; pass < 2; pass++) {
+    ctx.strokeStyle = pass === 0 ? '#1f7a45' : '#47b86a';
+    ctx.lineWidth = pass === 0 ? 3.5 : 1.6;
+    ctx.beginPath();
+    ctx.moveTo(bx, by);
+    for (let j = 1; j <= 5; j++) {
+      ctx.lineTo(bx + Math.sin(time * 1.6 + seed + j * 0.8) * 3.2 * (j / 5), by - j * hgt / 5);
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawEchoFish(x, y, len, dir, body, belly, time, seed) {
+  const h = len * 0.46;
+  const wag = Math.sin(time * 9 + seed) * len * 0.12;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(dir, 1);
+  ctx.fillStyle = body;
+  ctx.beginPath();                                   // tail
+  ctx.moveTo(-len * 0.38, 0);
+  ctx.lineTo(-len * 0.64, -h * 0.75 + wag);
+  ctx.lineTo(-len * 0.64, h * 0.75 + wag);
+  ctx.closePath(); ctx.fill();
+  ctx.beginPath();                                   // dorsal fin
+  ctx.moveTo(-len * 0.1, -h * 0.4); ctx.lineTo(len * 0.05, -h * 0.85); ctx.lineTo(len * 0.18, -h * 0.4);
+  ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(0, 0, len * 0.45, h * 0.5, 0, 0, Math.PI * 2); ctx.fill();   // body
+  ctx.fillStyle = belly;
+  ctx.beginPath(); ctx.ellipse(len * 0.02, h * 0.17, len * 0.36, h * 0.2, 0, 0, Math.PI * 2); ctx.fill();
+  const ex = len * 0.22;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(ex - 1.5, -h * 0.2 - 1.5, 3, 3);
+  ctx.fillStyle = '#0b1630';
+  ctx.fillRect(ex - 0.5, -h * 0.2 - 0.5, 1.8, 1.8);
+  ctx.restore();
+}
+
+function drawEchoJelly(cx, cy, r, time, seed, bell, trail) {
+  const pulse = 1 + Math.sin(time * 2.2 + seed) * 0.13;
+  const rw = r / pulse, rh = r * 0.8 * pulse;
+  ctx.save();
+  ctx.strokeStyle = trail;
+  ctx.lineWidth = 1.3;
+  for (let i = 0; i < 5; i++) {
+    const tx = cx + (i - 2) * rw * 0.42;
+    ctx.beginPath();
+    ctx.moveTo(tx, cy);
+    for (let j = 1; j <= 4; j++) ctx.lineTo(tx + Math.sin(time * 2 + seed + i + j * 0.9) * 2, cy + j * r * 0.42);
+    ctx.stroke();
+  }
+  ctx.fillStyle = bell;
+  ctx.beginPath(); ctx.ellipse(cx, cy, rw, rh, 0, Math.PI, 0); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.55)';
+  ctx.fillRect(cx - rw * 0.45, cy - rh * 0.6, 2, 2);
+  ctx.restore();
+}
+
+function drawEchoShark(x, y, len, dir, time) {
+  const wag = Math.sin(time * 2.6) * len * 0.05;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(dir, 1);
+  ctx.fillStyle = '#6f8797';
+  ctx.beginPath();
+  ctx.moveTo(len * 0.5, 0);
+  ctx.quadraticCurveTo(len * 0.15, -len * 0.17, -len * 0.3, -len * 0.04);
+  ctx.lineTo(-len * 0.52, -len * 0.19 + wag);
+  ctx.lineTo(-len * 0.45, wag * 0.5);
+  ctx.lineTo(-len * 0.52, len * 0.14 + wag);
+  ctx.lineTo(-len * 0.3, len * 0.04);
+  ctx.quadraticCurveTo(len * 0.15, len * 0.13, len * 0.5, 0);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#d3dde4';                          // pale belly
+  ctx.beginPath();
+  ctx.moveTo(len * 0.45, len * 0.01);
+  ctx.quadraticCurveTo(len * 0.15, len * 0.12, -len * 0.28, len * 0.04);
+  ctx.quadraticCurveTo(len * 0.1, len * 0.06, len * 0.45, len * 0.01);
+  ctx.fill();
+  ctx.fillStyle = '#566c7b';                          // dorsal fin
+  ctx.beginPath();
+  ctx.moveTo(len * 0.06, -len * 0.1); ctx.lineTo(-len * 0.08, -len * 0.28); ctx.lineTo(-len * 0.16, -len * 0.07);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#0b1630';                          // eye
+  ctx.fillRect(len * 0.3, -len * 0.05, 2, 2);
+  ctx.restore();
+}
+
+function drawEchoBubbles(x, y, w, h, time, n, seed) {
+  ctx.save();
+  ctx.strokeStyle = 'rgba(225,252,255,0.75)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < n; i++) {
+    const ph = (time * 0.2 + i / n + seed * 0.37) % 1;
+    const bx = x + (((i * 53 + seed * 17) % 100) / 100) * w + Math.sin(time * 2 + i) * 1.8;
+    const by = y + h - ph * h;
+    ctx.beginPath(); ctx.arc(bx, by, 1 + ((i * 7) % 3) * 0.7, 0, Math.PI * 2); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// ECHO CENTER's interior: an aquarium. A panoramic tank runs along the whole
+// back wall behind CHAMP (kelp, a school of fish, a sturgeon, two jellyfish,
+// bubbles) under a glowing name plate; round porthole tanks line both side
+// walls; two glass jellyfish columns stand on the floor (the solid blockTiles
+// at (4,6) and (9,6)); soft light ripples across the floor and sonar rings
+// ping out from Champ's counter. On the counter: a stack of brochures, a
+// Champ plushie and a goldfish bowl; plaques over the three crates --
+// SHALLOWS (1,5), DEEP SEA (12,5) and REEF (2,8). Called from render()
+// whenever map.echoCenter is set (shop map only -- the outdoor skatepark map
+// uses `echoExterior` instead so it never trips this).
+function drawEchoCenterInterior(time) {
+  ctx.save();
+  ctx.textBaseline = 'alphabetic';
+  ctx.textAlign = 'center';
+  const STEEL = '#8aa0ae', DARK = '#06141e', FLOOR = '#2b4a63';
+
+  // --- light ripples drifting across the floor, like sun through water
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = 'rgba(160,240,255,0.11)';
+  for (let i = 0; i < 16; i++) {
+    const cx = 20 + ((i * 97) % 410) + Math.sin(time * 0.6 + i) * 9;
+    const cy = 112 + ((i * 53) % 160);
+    ctx.beginPath(); ctx.ellipse(cx, cy, 13 + (i % 3) * 3, 3.2, 0, 0.1, Math.PI - 0.1); ctx.stroke();
+  }
+  // --- sonar rings pinging out from Champ's counter (the "echo")
+  for (let k = 0; k < 3; k++) {
+    const ph = (time * 0.28 + k / 3) % 1;
+    ctx.strokeStyle = 'rgba(110,240,255,' + (0.2 * (1 - ph)).toFixed(3) + ')';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.ellipse(208, 104, 16 + ph * 190, 5 + ph * 46, 0, 0, Math.PI * 2); ctx.stroke();
+  }
+
+  // --- glowing name plate, top center
+  ctx.fillStyle = DARK;
+  ctx.fillRect(150, 1, 148, 15);
+  ctx.fillStyle = '#1fd0e0';
+  ctx.fillRect(150, 14, 148, 2);
+  ctx.font = 'bold 11px monospace';
+  ctx.fillStyle = 'rgba(60,230,255,0.28)';
+  for (const [ox, oy] of NEON_GLOW_OFFSETS) ctx.fillText('ECHO CENTER', 224 + ox, 12 + oy);
+  ctx.fillStyle = '#e4fdff';
+  ctx.fillText('ECHO CENTER', 224, 12);
+  drawEchoFish(138, 8, 11, 1, '#ffb347', '#ffe2b0', time, 5);
+  drawEchoFish(310, 8, 11, -1, '#7fd0ff', '#e0f6ff', time, 6);
+
+  // --- panoramic back-wall tank
+  const TX = 22, TY = 20, TW = 404, TH = 42;
+  ctx.fillStyle = DARK;
+  ctx.fillRect(TX - 4, TY - 4, TW + 8, TH + 8);
+  ctx.fillStyle = STEEL;
+  ctx.fillRect(TX - 2, TY - 2, TW + 4, TH + 4);
+  ctx.save();
+  ctx.beginPath(); ctx.rect(TX, TY, TW, TH); ctx.clip();
+  drawEchoWater(TX, TY, TW, TH, time, 1);
+  [[48, 1], [112, 2], [176, 5], [300, 3], [364, 4], [410, 6]].forEach(([kx, s]) => drawEchoKelp(kx, TY + TH - 3, 24 + (s % 3) * 4, time, s));
+  ctx.fillStyle = '#5b6a76';                                   // a couple of rocks
+  ctx.beginPath(); ctx.ellipse(236, TY + TH - 4, 14, 6, 0, Math.PI, 0); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(86, TY + TH - 4, 10, 5, 0, Math.PI, 0); ctx.fill();
+  for (let i = 0; i < 6; i++) {                                // orange school, heading right
+    const fx = TX + ((time * (20 + i * 2) + i * 71) % (TW + 40)) - 20;
+    const fy = TY + 9 + ((i * 13) % 22) + Math.sin(time * 2 + i) * 2;
+    drawEchoFish(fx, fy, 11, 1, i % 2 ? '#ffb347' : '#ff7a59', '#ffe2b0', time, i);
+  }
+  for (let i = 0; i < 5; i++) {                                // blue school, heading left
+    const fx = TX + TW + 20 - ((time * (16 + i) + i * 83) % (TW + 40));
+    const fy = TY + 12 + ((i * 17) % 20) + Math.sin(time * 2.3 + i) * 2;
+    drawEchoFish(fx, fy, 9, -1, '#7fd0ff', '#e0f6ff', time, i + 10);
+  }
+  const stx = TX + ((time * 9 + 120) % (TW + 120)) - 60;      // a big lake sturgeon
+  drawEchoFish(stx, TY + 30, 40, 1, '#7b8d9b', '#c8d3da', time, 9);
+  drawEchoJelly(TX + 160, TY + 13 + Math.sin(time * 0.9) * 5, 8, time, 1, 'rgba(255,170,220,0.85)', 'rgba(255,200,235,0.6)');
+  drawEchoJelly(TX + 262, TY + 15 + Math.sin(time * 0.8 + 2) * 5, 7, time, 2, 'rgba(170,200,255,0.85)', 'rgba(200,220,255,0.6)');
+  drawEchoBubbles(TX, TY, TW, TH, time, 16, 3);
+  ctx.restore();
+  ctx.fillStyle = 'rgba(255,255,255,0.10)';                    // glass glints
+  [[60, 18], [250, 12], [380, 18]].forEach(([gx, gw]) => {
+    ctx.beginPath();
+    ctx.moveTo(TX + gx, TY); ctx.lineTo(TX + gx + gw, TY);
+    ctx.lineTo(TX + gx + gw - 14, TY + TH); ctx.lineTo(TX + gx - 14, TY + TH);
+    ctx.closePath(); ctx.fill();
+  });
+  ctx.fillStyle = '#c4d2da';                                   // frame rivets
+  for (let rx = TX + 6; rx < TX + TW; rx += 40) {
+    ctx.fillRect(rx, TY - 3, 2, 2);
+    ctx.fillRect(rx, TY + TH + 1, 2, 2);
+  }
+
+  // --- porthole tanks in both side walls
+  const porthole = (cx, cy, kind, seed) => {
+    ctx.fillStyle = DARK;
+    ctx.beginPath(); ctx.arc(cx, cy, 14, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = STEEL;
+    ctx.beginPath(); ctx.arc(cx, cy, 12.5, 0, Math.PI * 2); ctx.fill();
+    ctx.save();
+    ctx.beginPath(); ctx.arc(cx, cy, 10, 0, Math.PI * 2); ctx.clip();
+    drawEchoWater(cx - 10, cy - 10, 20, 20, time, seed);
+    if (kind === 0) {
+      drawEchoFish(cx - 12 + ((time * 9 + seed * 7) % 34), cy - 1 + Math.sin(time * 2 + seed) * 2, 9, 1, '#ffb347', '#ffe2b0', time, seed);
+    } else if (kind === 1) {
+      drawEchoJelly(cx, cy - 2 + Math.sin(time * 0.9 + seed) * 2.5, 5, time, seed, 'rgba(255,170,220,0.9)', 'rgba(255,200,235,0.6)');
+    } else if (kind === 2) {
+      drawEchoFish(cx + 12 - ((time * 7 + seed * 5) % 34), cy + Math.sin(time * 2.4 + seed) * 2, 9, -1, '#7fd0ff', '#e0f6ff', time, seed);
+    } else {
+      ctx.fillStyle = '#ff7a59';                               // starfish on the sand
+      const sx = cx + 1, sy = cy + 6;
+      ctx.beginPath();
+      for (let p = 0; p < 10; p++) {
+        const a = -Math.PI / 2 + p * Math.PI / 5, rr = p % 2 === 0 ? 4 : 1.7;
+        ctx.lineTo(sx + Math.cos(a) * rr, sy + Math.sin(a) * rr);
+      }
+      ctx.closePath(); ctx.fill();
+      drawEchoFish(cx - 12 + ((time * 6 + seed * 3) % 34), cy - 3, 6, 1, '#ffd447', '#fff0b0', time, seed);
+    }
+    drawEchoBubbles(cx - 10, cy - 10, 20, 20, time, 3, seed);
+    ctx.restore();
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.fillRect(cx - 7, cy - 7, 3, 3);
+    ctx.fillStyle = '#c4d2da';                                 // bolts at the compass points
+    ctx.fillRect(cx - 1, cy - 13, 2, 2); ctx.fillRect(cx - 1, cy + 11, 2, 2);
+    ctx.fillRect(cx - 13, cy - 1, 2, 2); ctx.fillRect(cx + 11, cy - 1, 2, 2);
+  };
+  porthole(16, 84, 0, 1);   porthole(16, 116, 1, 2);
+  porthole(16, 208, 3, 3);  porthole(16, 240, 2, 4);
+  porthole(432, 84, 2, 5);  porthole(432, 116, 0, 6);
+  porthole(432, 208, 1, 7); porthole(432, 240, 3, 8);
+
+  // --- the two glass jellyfish columns on tiles (4,6) and (9,6)
+  const column = (cx, baseY, seed, jellyColors) => {
+    ctx.fillStyle = FLOOR;                                     // cover the wall-tile texture
+    ctx.fillRect(cx - 16, baseY - 32, 32, 32);
+    const glow = getGlowSprite(44, 'rgba(70,220,255,ALPHA)');
+    ctx.save();
+    ctx.globalAlpha = 0.34 + 0.1 * Math.sin(time * 2 + seed);
+    ctx.drawImage(glow, cx - 44, baseY - 100, 88, 88);
+    ctx.restore();
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.beginPath(); ctx.ellipse(cx, baseY - 3, 20, 5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#1a2a38';                                 // base
+    ctx.fillRect(cx - 17, baseY - 12, 34, 10);
+    ctx.fillStyle = '#3a5468';
+    ctx.fillRect(cx - 17, baseY - 12, 34, 3);
+    const top = baseY - 82, gh = baseY - 12 - top;
+    ctx.fillStyle = DARK;                                      // glass tube
+    ctx.fillRect(cx - 14, top - 2, 28, gh + 2);
+    ctx.save();
+    ctx.beginPath(); ctx.rect(cx - 12, top, 24, gh); ctx.clip();
+    drawEchoWater(cx - 12, top, 24, gh, time, seed);
+    for (let i = 0; i < 3; i++) {
+      const jy = top + 12 + (gh - 34) * (0.5 + 0.5 * Math.sin(time * 0.5 + i * 2.1 + seed));
+      const jx = cx + (i - 1) * 6;
+      drawEchoJelly(jx, jy, 5 + (i % 2), time, seed + i, jellyColors[i % jellyColors.length][0], jellyColors[i % jellyColors.length][1]);
+    }
+    drawEchoBubbles(cx - 12, top, 24, gh, time, 6, seed);
+    ctx.restore();
+    ctx.fillStyle = '#3a5468';                                 // top cap
+    ctx.fillRect(cx - 16, top - 6, 32, 5);
+    ctx.fillStyle = '#1a2a38';
+    ctx.fillRect(cx - 16, top - 3, 32, 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';                  // glass glint
+    ctx.fillRect(cx - 9, top + 4, 3, gh - 10);
+  };
+  column(4 * TILE + 16, 7 * TILE, 11, [['rgba(255,235,245,0.9)', 'rgba(255,240,250,0.6)'], ['rgba(255,170,220,0.9)', 'rgba(255,200,235,0.6)']]);
+  column(9 * TILE + 16, 7 * TILE, 21, [['rgba(150,200,255,0.9)', 'rgba(190,220,255,0.6)'], ['rgba(120,255,220,0.85)', 'rgba(170,255,235,0.6)']]);
+
+  // --- Humble Treasures arcade cabinet on tile (12,8): a navy-and-gold
+  // upright with a bobbing gold coin on its screen (the splash art's coin),
+  // a little grass strip, and a flashing "HUMBLE TREASURES" marquee.
+  {
+    const bx = 12 * TILE, by = 8 * TILE, cx = bx + 16;
+    ctx.fillStyle = FLOOR;                                     // cover the wall-tile texture
+    ctx.fillRect(bx, by, 32, 32);
+    ctx.fillStyle = 'rgba(0,0,0,0.28)';                        // floor shadow
+    ctx.beginPath(); ctx.ellipse(cx, by + 29, 17, 4.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#0f2347';                                 // cabinet body
+    ctx.fillRect(bx + 4, by - 16, 24, 44);
+    ctx.fillStyle = '#1d3f7a';                                 // lit side panel
+    ctx.fillRect(bx + 4, by - 16, 3, 44);
+    ctx.strokeStyle = '#ffd447'; ctx.lineWidth = 1.5;
+    ctx.strokeRect(bx + 4.75, by - 15.25, 22.5, 42.5);
+    const blink = Math.floor(time * 2) % 2 === 0;
+    ctx.fillStyle = blink ? '#ffd447' : '#e0a82c';             // marquee
+    ctx.fillRect(bx + 7, by - 13, 18, 7);
+    ctx.fillStyle = '#0f2347';
+    ctx.font = 'bold 5px monospace';
+    ctx.fillText('HUMBLE', cx, by - 8.5);
+    ctx.fillStyle = '#7ee3ff';                                 // screen: sky
+    ctx.fillRect(bx + 8, by - 3, 16, 14);
+    ctx.fillStyle = '#59d47a';                                 // screen: grass
+    ctx.fillRect(bx + 8, by + 8, 16, 3);
+    ctx.fillStyle = '#9a6a3a';
+    ctx.fillRect(bx + 8, by + 10.5, 16, 0.5);
+    const coinY = by + 2 + Math.sin(time * 3) * 2;             // screen: bobbing coin
+    const coinW = Math.max(1.2, Math.abs(Math.cos(time * 2.2)) * 3.2);
+    ctx.fillStyle = '#ffd447';
+    ctx.beginPath(); ctx.ellipse(cx + 3, coinY, coinW, 3.4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#fff6b0';
+    ctx.fillRect(cx + 3 - 0.5, coinY - 2, 1, 4);
+    ctx.fillStyle = '#ff6f9c';                                 // screen: tiny hero
+    ctx.fillRect(bx + 11, by + 4, 3, 4);
+    ctx.fillStyle = '#fff6e0';
+    ctx.fillRect(bx + 11, by + 3, 3, 1.5);
+    ctx.fillStyle = 'rgba(255,255,255,0.18)';                  // screen glare
+    ctx.fillRect(bx + 9, by - 2, 2, 7);
+    ctx.fillStyle = '#1a2a38';                                 // control panel
+    ctx.fillRect(bx + 6, by + 13, 20, 6);
+    ctx.fillStyle = '#f4ecd8';
+    ctx.fillRect(bx + 10, by + 14, 1.5, 3.5);
+    ctx.beginPath(); ctx.arc(bx + 10.75, by + 14, 1.6, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ff6f9c';
+    ctx.beginPath(); ctx.arc(bx + 18, by + 16, 1.4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ffd447';
+    ctx.beginPath(); ctx.arc(bx + 22, by + 16, 1.4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#0a1830';                                 // coin slot kick plate
+    ctx.fillRect(bx + 8, by + 21, 16, 5);
+    ctx.fillStyle = '#ffd447';
+    ctx.fillRect(bx + 14, by + 22.5, 4, 1.5);
+    const glow = getGlowSprite(44, 'rgba(126,227,255,ALPHA)');   // soft screen glow on the floor
+    ctx.save();
+    ctx.globalAlpha = 0.22 + 0.06 * Math.sin(time * 2.4);
+    ctx.drawImage(glow, cx - 34, by + 4, 68, 56);
+    ctx.restore();
+  }
+
+  // --- Reverb Reef arcade cabinet on tile (2,3): a deep-teal upright whose
+  // screen shows sonar rings rippling out from a little fish, three EQ-style
+  // knobs on the panel, and a flashing "REVERB" marquee.
+  {
+    const bx = 2 * TILE, by = 3 * TILE, cx = bx + 16;
+    ctx.fillStyle = FLOOR;                                     // cover the wall-tile texture
+    ctx.fillRect(bx, by, 32, 32);
+    ctx.fillStyle = 'rgba(0,0,0,0.28)';                        // floor shadow
+    ctx.beginPath(); ctx.ellipse(cx, by + 29, 17, 4.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#052a3a';                                 // cabinet body
+    ctx.fillRect(bx + 4, by - 16, 24, 44);
+    ctx.fillStyle = '#0f6a86';                                 // lit side panel
+    ctx.fillRect(bx + 4, by - 16, 3, 44);
+    ctx.strokeStyle = '#1fd0e0'; ctx.lineWidth = 1.5;
+    ctx.strokeRect(bx + 4.75, by - 15.25, 22.5, 42.5);
+    const blinkR = Math.floor(time * 2.4) % 2 === 0;
+    ctx.fillStyle = blinkR ? '#1fd0e0' : '#139fb0';            // marquee
+    ctx.fillRect(bx + 7, by - 13, 18, 7);
+    ctx.fillStyle = '#052a3a';
+    ctx.font = 'bold 5px monospace';
+    ctx.fillText('REVERB', cx, by - 8.5);
+    ctx.fillStyle = '#0b4d72';                                 // screen: deep water
+    ctx.fillRect(bx + 8, by - 3, 16, 16);
+    ctx.save();
+    ctx.beginPath(); ctx.rect(bx + 8, by - 3, 16, 16); ctx.clip();
+    for (let k = 0; k < 3; k++) {                              // screen: sonar rings
+      const ph = (time * 0.9 + k / 3) % 1;
+      ctx.strokeStyle = 'rgba(126,240,255,' + (0.85 * (1 - ph)).toFixed(3) + ')';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(cx - 3, by + 5, 1.5 + ph * 15, 0, Math.PI * 2); ctx.stroke();
+    }
+    ctx.restore();
+    ctx.fillStyle = '#ffb347';                                 // screen: little fish
+    ctx.beginPath(); ctx.ellipse(cx - 3, by + 5, 2.6, 1.6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(cx - 5.4, by + 5); ctx.lineTo(cx - 7.4, by + 3.4); ctx.lineTo(cx - 7.4, by + 6.6); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.18)';                  // screen glare
+    ctx.fillRect(bx + 9, by - 2, 2, 7);
+    ctx.fillStyle = '#1a2a38';                                 // control panel
+    ctx.fillRect(bx + 6, by + 13, 20, 6);
+    [['#ffd447', 0], ['#1fd0e0', 1], ['#ff6f9c', 2]].forEach(([kc, ki]) => {
+      const kx = bx + 10.5 + ki * 5.5;
+      ctx.fillStyle = kc;
+      ctx.beginPath(); ctx.arc(kx, by + 16, 1.7, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#06141e'; ctx.lineWidth = 0.7;
+      const ka = -Math.PI / 2 + Math.sin(time * 1.3 + ki * 2) * 0.9;
+      ctx.beginPath(); ctx.moveTo(kx, by + 16); ctx.lineTo(kx + Math.cos(ka) * 1.6, by + 16 + Math.sin(ka) * 1.6); ctx.stroke();
+    });
+    ctx.fillStyle = '#031a26';                                 // coin slot kick plate
+    ctx.fillRect(bx + 8, by + 21, 16, 5);
+    ctx.fillStyle = '#1fd0e0';
+    ctx.fillRect(bx + 14, by + 22.5, 4, 1.5);
+    const glowR = getGlowSprite(44, 'rgba(60,230,255,ALPHA)');   // soft screen glow on the floor
+    ctx.save();
+    ctx.globalAlpha = 0.22 + 0.06 * Math.sin(time * 2.1);
+    ctx.drawImage(glowR, cx - 34, by + 4, 68, 56);
+    ctx.restore();
+  }
+
+  // --- counter (table is row 3): brochures left of Champ; a Champ plushie
+  // and a goldfish bowl to the right
+  const BROCH = ['#e4fdff', '#7fe0ee', '#e4fdff', '#ffd447'];
+  BROCH.forEach((c, i) => {
+    ctx.fillStyle = c;
+    ctx.fillRect(4 * TILE + 10 + (i % 2), 3 * TILE + 8 - i * 3, 22, 3);
+  });
+  ctx.fillStyle = '#0a3a52';
+  ctx.fillRect(4 * TILE + 16, 3 * TILE - 5, 8, 2);
+  ctx.fillStyle = '#7fe0ee';
+  ctx.fillRect(4 * TILE + 24, 3 * TILE - 8, 2, 2);
+  // plushie (neck + head, belly, tiny eyes)
+  const plx = 8 * TILE + 2, ply = 3 * TILE + 9;
+  ctx.fillStyle = '#0b1630';
+  ctx.beginPath(); ctx.ellipse(plx, ply - 5, 9, 8, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillRect(plx - 1, ply - 22, 8, 16);
+  ctx.beginPath(); ctx.arc(plx + 4, ply - 22, 6, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#46b08a';
+  ctx.beginPath(); ctx.ellipse(plx, ply - 5, 8, 7, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillRect(plx, ply - 21, 6, 14);
+  ctx.beginPath(); ctx.arc(plx + 4, ply - 22, 5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#f0d878';
+  ctx.beginPath(); ctx.ellipse(plx, ply - 2, 5, 3.5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillRect(plx + 3, ply - 18, 3, 9);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(plx + 4, ply - 24, 3, 3);
+  ctx.fillStyle = '#0b1630';
+  ctx.fillRect(plx + 5, ply - 23, 2, 2);
+  // goldfish bowl
+  const bwx = 9 * TILE + 4, bwy = 3 * TILE - 1;
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.fillRect(bwx - 11, bwy + 10, 22, 3);
+  ctx.fillStyle = '#9fd9ec';
+  ctx.beginPath(); ctx.arc(bwx, bwy, 11, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#4fb4d8';
+  ctx.beginPath(); ctx.arc(bwx, bwy + 2, 9.5, 0, Math.PI); ctx.closePath(); ctx.fill();
+  drawEchoFish(bwx + Math.sin(time * 1.4) * 4, bwy + 3, 7, Math.cos(time * 1.4) > 0 ? 1 : -1, '#ff9a30', '#ffd9a0', time, 3);
+  ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(bwx, bwy, 8, Math.PI * 1.1, Math.PI * 1.45); ctx.stroke();
+
+  // --- plaques over the three crates
+  const cratePlaque = (cx, y, label) => {
+    const w = 50, h = 12, x = cx - w / 2;
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillRect(x + 1, y + 2, w, h);
+    ctx.fillStyle = '#0a3a52';
+    ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = '#1fd0e0';
+    ctx.fillRect(x, y + h - 2, w, 2);
+    ctx.fillStyle = '#e4fdff';
+    ctx.font = 'bold 7px monospace';
+    ctx.fillText(label, cx, y + 7);
+  };
+  cratePlaque(1 * TILE + 16, 4 * TILE + 14, 'SHALLOWS');
+  cratePlaque(12 * TILE + 16, 4 * TILE + 14, 'DEEP SEA');
+  cratePlaque(2 * TILE + 16, 7 * TILE + 14, 'REEF');
+
+  // --- a wavy tide-line along the bottom wall, either side of the door
+  ctx.fillStyle = 'rgba(31,208,224,0.55)';
+  for (let wx = 0; wx < 448; wx += 8) {
+    if (wx >= 192 && wx < 224) continue;
+    ctx.fillRect(wx, 9 * TILE + 3 + ((wx / 8) % 2) * 2, 8, 2);
+  }
+  ctx.restore();
+}
+
+// ECHO CENTER's front: a lake-monster-sized stunt on the roof -- CHAMP's
+// humps and neck arching out of the roofline (she's the Lake Champlain
+// monster, after all), two big lit aquarium windows (a shark cruising past
+// one, a school of fish and jellies in the other), a teal porthole door
+// with a cyan glow and bubbles drifting out, water-light pooling on the
+// ground in front, and a sandwich board by the door. The name sign itself is
+// drawn in drawBuildings(). Called from drawSkateparkDecorations() whenever
+// the map has `echoExterior`.
+function drawEchoCenterExterior(time, map) {
+  const f = map.echoExterior;
+  const px = f.x * TILE, py = f.y * TILE, w = f.w * TILE, h = f.h * TILE;
+  const OUT = '#0b1630', GREEN = '#46b08a', GREEN_HI = '#8fe0b0', GREEN_DK = '#2f8f6d', YELLOW = '#f0d878';
+  ctx.save();
+  ctx.textBaseline = 'alphabetic';
+  ctx.textAlign = 'center';
+
+  // --- water-light pooling on the ground in front of the windows
+  const pool = getGlowSprite(60, 'rgba(60,200,255,ALPHA)');
+  ctx.save();
+  ctx.globalAlpha = 0.16 + 0.05 * Math.sin(time * 1.5);
+  ctx.drawImage(pool, px + 50 - 60, py + h - 18, 120, 120);
+  ctx.drawImage(pool, px + 174 - 60, py + h - 18, 120, 120);
+  ctx.restore();
+
+  // --- CHAMP rising out of the roof: three humps, then a neck and head
+  const ripple = (cx, r) => {
+    ctx.strokeStyle = 'rgba(190,245,255,0.7)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.ellipse(cx, py + 1, r + 6 + Math.sin(time * 2 + cx) * 1.2, 3, 0, 0, Math.PI * 2); ctx.stroke();
+  };
+  const hump = (cx, r) => {
+    ctx.fillStyle = OUT;
+    ctx.beginPath(); ctx.arc(cx, py + 1, r + 2, Math.PI, 0); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = GREEN;
+    ctx.beginPath(); ctx.arc(cx, py + 1, r, Math.PI, 0); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = GREEN_DK;
+    ctx.fillRect(Math.round(cx - r * 0.55), Math.round(py - r * 0.5), 3, 3);
+    ctx.fillRect(Math.round(cx + r * 0.25), Math.round(py - r * 0.7), 3, 3);
+    ctx.fillRect(Math.round(cx + r * 0.1), Math.round(py - r * 0.25), 3, 3);
+    ctx.fillStyle = GREEN_HI;
+    ctx.fillRect(Math.round(cx - r * 0.4), Math.round(py - r * 0.92), Math.round(r * 0.55), 2);
+  };
+  ripple(px + 30, 11); ripple(px + 64, 15); ripple(px + 100, 12);
+  hump(px + 30, 11); hump(px + 64, 15); hump(px + 100, 12);
+
+  const bob = Math.sin(time * 1.4) * 1.6;
+  const nx0 = px + 142, ny0 = py + 1, nx1 = px + 168, ny1 = py - 33 + bob;
+  const neck = (lw, col, dx, dy) => {
+    ctx.strokeStyle = col;
+    ctx.lineWidth = lw;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(nx0 + dx, ny0 + dy);
+    ctx.quadraticCurveTo(nx0 + 3 + dx, ny0 - 30, nx1 + dx, ny1 + dy);
+    ctx.stroke();
+  };
+  ripple(px + 142, 8);
+  neck(15, OUT, 0, 0);
+  neck(11, GREEN, 0, 0);
+  neck(3, YELLOW, 4, 1);                                       // yellow belly stripe down the front
+  const hx = nx1 + 7, hy = ny1 - 3;
+  ctx.fillStyle = OUT;                                         // head
+  ctx.beginPath(); ctx.ellipse(hx, hy, 15, 10, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = GREEN;
+  ctx.beginPath(); ctx.ellipse(hx, hy, 13, 8, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = GREEN_HI;
+  ctx.beginPath(); ctx.ellipse(hx + 1, hy - 3, 8, 2.5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = YELLOW;                                      // yellow jaw
+  ctx.beginPath(); ctx.ellipse(hx + 3, hy + 4, 9, 3, 0, 0, Math.PI); ctx.fill();
+  ctx.fillStyle = '#ffffff';                                   // big friendly eye
+  ctx.beginPath(); ctx.arc(hx + 3, hy - 2, 3.6, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = OUT;
+  ctx.beginPath(); ctx.arc(hx + 4, hy - 2, 2, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(hx + 4, hy - 3, 1, 1);
+  ctx.strokeStyle = OUT;                                       // smile
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(hx + 6, hy + 1, 5, 0.25, Math.PI * 0.7); ctx.stroke();
+  ctx.fillStyle = OUT;                                         // nostril
+  ctx.fillRect(hx + 11, hy - 1, 1.5, 1.5);
+  ctx.fillStyle = '#1b5f93';                                   // crest spikes
+  for (let i = 0; i < 3; i++) {
+    ctx.beginPath();
+    ctx.moveTo(hx - 9 + i * 5, hy - 8);
+    ctx.lineTo(hx - 7 + i * 5, hy - 15 - (i === 1 ? 2 : 0));
+    ctx.lineTo(hx - 4 + i * 5, hy - 8);
+    ctx.closePath(); ctx.fill();
+  }
+
+  // --- the two big aquarium windows, either side of the door
+  const win = (wx, wy, ww, wh, variant) => {
+    ctx.fillStyle = '#06141e';
+    ctx.fillRect(wx - 4, wy - 4, ww + 8, wh + 8);
+    ctx.fillStyle = '#8aa0ae';
+    ctx.fillRect(wx - 2, wy - 2, ww + 4, wh + 4);
+    ctx.save();
+    ctx.beginPath(); ctx.rect(wx, wy, ww, wh); ctx.clip();
+    drawEchoWater(wx, wy, ww, wh, time, variant * 3 + 1);
+    if (variant === 0) {
+      drawEchoKelp(wx + 10, wy + wh - 3, 24, time, 1);
+      drawEchoKelp(wx + 20, wy + wh - 3, 18, time, 2);
+      drawEchoKelp(wx + ww - 12, wy + wh - 3, 26, time, 3);
+      ctx.fillStyle = '#5b6a76';
+      ctx.beginPath(); ctx.ellipse(wx + ww * 0.55, wy + wh - 4, 11, 5, 0, Math.PI, 0); ctx.fill();
+      const shx = wx - 30 + ((time * 9) % (ww + 70));           // a friendly shark cruising by
+      drawEchoShark(shx, wy + 18 + Math.sin(time * 0.8) * 3, 34, 1, time);
+      for (let i = 0; i < 3; i++) {
+        const fx = wx + ww + 8 - ((time * (12 + i * 2) + i * 31) % (ww + 20));
+        drawEchoFish(fx, wy + 8 + i * 9, 8, -1, '#ffb347', '#ffe2b0', time, i);
+      }
+    } else {
+      drawEchoKelp(wx + 12, wy + wh - 3, 22, time, 4);
+      drawEchoKelp(wx + ww - 10, wy + wh - 3, 26, time, 5);
+      const gx = wx + ww + 24 - ((time * 14) % (ww + 70));      // a school heading left
+      [[0, 0], [10, -6], [10, 6], [20, -10], [20, 0], [20, 10], [30, 0]].forEach(([ox, oy], i) => {
+        drawEchoFish(gx + ox, wy + 22 + oy + Math.sin(time * 2 + i) * 1.5, 8, -1, '#7fd0ff', '#e0f6ff', time, i + 4);
+      });
+      drawEchoJelly(wx + 18, wy + 12 + Math.sin(time * 0.9) * 4, 7, time, 3, 'rgba(255,170,220,0.88)', 'rgba(255,200,235,0.6)');
+      drawEchoJelly(wx + 48, wy + 10 + Math.sin(time * 0.8 + 2) * 4, 6, time, 4, 'rgba(170,200,255,0.88)', 'rgba(200,220,255,0.6)');
+    }
+    drawEchoBubbles(wx, wy, ww, wh, time, 8, variant + 1);
+    ctx.restore();
+    ctx.fillStyle = 'rgba(255,255,255,0.13)';                  // glass glints
+    [[10, 14], [44, 9]].forEach(([gx2, gw]) => {
+      ctx.beginPath();
+      ctx.moveTo(wx + gx2, wy); ctx.lineTo(wx + gx2 + gw, wy);
+      ctx.lineTo(wx + gx2 + gw - 12, wy + wh); ctx.lineTo(wx + gx2 - 12, wy + wh);
+      ctx.closePath(); ctx.fill();
+    });
+    ctx.fillStyle = '#c4d2da';                                 // frame rivets
+    ctx.fillRect(wx - 3, wy - 3, 2, 2); ctx.fillRect(wx + ww + 1, wy - 3, 2, 2);
+    ctx.fillRect(wx - 3, wy + wh + 1, 2, 2); ctx.fillRect(wx + ww + 1, wy + wh + 1, 2, 2);
+  };
+  win(px + 12, py + 50, 76, 44, 0);
+  win(px + 136, py + 50, 76, 44, 1);
+
+  // --- teal porthole door (painted over the standard door drawBuildings() lays down)
+  const dx = f.doorX * TILE;
+  const dTop = py + h - TILE - 2;
+  ctx.fillStyle = '#06141e';
+  ctx.fillRect(dx + 1, dTop - 1, TILE - 2, TILE + 3);
+  ctx.fillStyle = '#12879a';
+  ctx.fillRect(dx + 3, dTop + 2, TILE - 6, TILE - 1);
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.fillRect(dx + 3, dTop + 2, (TILE - 6) / 2, TILE - 1);
+  ctx.fillStyle = 'rgba(255,255,255,0.12)';
+  ctx.fillRect(dx + 3 + (TILE - 6) / 2, dTop + 2, (TILE - 6) / 2, TILE - 1);
+  const pcx = dx + TILE / 2, pcy = dTop + 14;
+  ctx.fillStyle = '#c4d2da';                                   // porthole ring
+  ctx.beginPath(); ctx.arc(pcx, pcy, 8, 0, Math.PI * 2); ctx.fill();
+  ctx.save();
+  ctx.beginPath(); ctx.arc(pcx, pcy, 6, 0, Math.PI * 2); ctx.clip();
+  drawEchoWater(pcx - 6, pcy - 6, 12, 12, time, 9);
+  drawEchoFish(pcx - 8 + ((time * 6) % 20), pcy, 5, 1, '#ffb347', '#ffe2b0', time, 2);
+  ctx.restore();
+  ctx.fillStyle = '#e8c860';                                   // handle
+  ctx.fillRect(dx + TILE - 9, dTop + 22, 3, 3);
+  ctx.fillStyle = 'rgba(31,208,224,0.7)';                      // wavy stripe near the bottom
+  for (let sx = dx + 4; sx < dx + TILE - 4; sx += 4) ctx.fillRect(sx, dTop + 26 + ((sx - dx) / 4 % 2) * 1.5, 4, 2);
+
+  // --- door glow + bubbles drifting out
+  const gdx = dx + TILE / 2, gdy = (f.doorY + 1) * TILE;
+  const glow = getGlowSprite(46, 'rgba(80,220,255,ALPHA)');
+  ctx.save();
+  ctx.globalAlpha = 0.3 + 0.1 * Math.sin(time * 4);
+  ctx.drawImage(glow, gdx - 46, gdy - 60, 92, 92);
+  ctx.restore();
+  ctx.strokeStyle = 'rgba(225,252,255,0.8)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 3; i++) {
+    const ph = (time * 0.4 + i * 0.33) % 1;
+    ctx.globalAlpha = Math.max(0, 1 - ph);
+    ctx.beginPath();
+    ctx.arc(gdx + (i - 1) * 7 + Math.sin(ph * 6 + i) * 3, gdy - 4 - ph * 28, 1.6 + i * 0.5, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+
+  // --- sandwich board on the grass right of the door
+  const sbx = (f.doorX + 1) * TILE + 4, sby = (f.doorY + 1) * TILE + 4;
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.fillRect(sbx - 1, sby + 24, 24, 3);
+  ctx.fillStyle = '#3a2410';
+  ctx.fillRect(sbx, sby + 20, 3, 6);
+  ctx.fillRect(sbx + 17, sby + 20, 3, 6);
+  ctx.fillStyle = '#5a3d20';
+  ctx.fillRect(sbx - 1, sby - 1, 22, 24);
+  ctx.fillStyle = '#0a2a3c';
+  ctx.fillRect(sbx + 1, sby + 1, 18, 20);
+  ctx.font = 'bold 6px monospace';
+  ctx.fillStyle = '#e4fdff';
+  ctx.fillText('MEET', sbx + 10, sby + 9);
+  ctx.fillStyle = '#7fe8a8';
+  ctx.fillText('CHAMP!', sbx + 10, sby + 17);
+  ctx.restore();
+}
+
+// A small cluster of jagged crystal shards on a dark wooden base, with a
+// soft pulsing halo behind it (via the shared getGlowSprite() cache --
+// glowColor must contain the literal 'ALPHA' placeholder, same contract as
+// every other glow in the file). shardColors is [glow-tint, light-facet,
+// dark-facet]. Used by drawSoulShackInterior() above to flank the doorway.
+function drawCrystalCluster(bx, by, glowColor, shardColors, time, seed) {
+  const glow = getGlowSprite(26, glowColor);
+  ctx.save();
+  ctx.globalAlpha = 0.7 + 0.2 * Math.sin(time * 1.3 + seed);
+  ctx.drawImage(glow, bx - 26, by - 46, 52, 52);
+  ctx.restore();
+
+  ctx.fillStyle = '#3a2a20';
+  ctx.beginPath(); ctx.ellipse(bx, by, 14, 5, 0, 0, Math.PI * 2); ctx.fill();
+
+  const shards = [{ dx: -6, h: 26, w: 6 }, { dx: 2, h: 34, w: 7 }, { dx: 9, h: 20, w: 5 }];
+  shards.forEach((s) => {
+    const topX = bx + s.dx, topY = by - s.h;
+    ctx.fillStyle = shardColors[2];
+    ctx.beginPath();
+    ctx.moveTo(topX, topY);
+    ctx.lineTo(bx + s.dx - s.w / 2, by - 4);
+    ctx.lineTo(bx + s.dx + s.w / 2, by - 4);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = shardColors[1];
+    ctx.beginPath();
+    ctx.moveTo(topX, topY);
+    ctx.lineTo(bx + s.dx - s.w / 4, by - 4);
+    ctx.lineTo(bx + s.dx, by - 4);
+    ctx.closePath(); ctx.fill();
+  });
+}
+
+// A tiny clay dish with a lit incense stick, trailing a wavy curl of smoke
+// that drifts upward and fades out over its length. Used by
+// drawSoulShackInterior() above.
+function drawIncenseBurner(x, y, time) {
+  ctx.fillStyle = '#5a3d2a';
+  ctx.beginPath(); ctx.ellipse(x, y, 8, 3, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#c9a876';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(x, y - 1); ctx.lineTo(x + 3, y - 22); ctx.stroke();
+  ctx.fillStyle = '#ff6a3a';
+  ctx.beginPath(); ctx.arc(x + 3, y - 22, 1.5, 0, Math.PI * 2); ctx.fill();
+  let sx = x + 3, sy = y - 22;
+  for (let i = 0; i < 16; i++) {
+    const nsy = sy - 2.4;
+    const nsx = sx + Math.sin(time * 1.5 + i * 0.6) * 2.4;
+    ctx.strokeStyle = `rgba(220,210,230,${(0.32 * (1 - i / 16)).toFixed(2)})`;
+    ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(nsx, nsy); ctx.stroke();
+    sx = nsx; sy = nsy;
+  }
+}
+
+// Three small tarot cards fanned out face-up, each with a simple gold
+// glyph (moon/star/sun) on a dark card face. Used by
+// drawSoulShackInterior() above.
+function drawTarotSpread(x, y) {
+  const cardW = 12, cardH = 18;
+  const symbols = ['moon', 'star', 'sun'];
+  symbols.forEach((sym, i) => {
+    const cx = x + i * (cardW + 3);
+    ctx.save();
+    ctx.translate(cx, y);
+    ctx.rotate((i - 1) * 0.08);
+    ctx.fillStyle = '#241830';
+    ctx.fillRect(-cardW / 2, -cardH / 2, cardW, cardH);
+    ctx.strokeStyle = '#f0c33e';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(-cardW / 2 + 1, -cardH / 2 + 1, cardW - 2, cardH - 2);
+    ctx.fillStyle = '#f0c33e';
+    if (sym === 'star') {
+      ctx.beginPath();
+      for (let k = 0; k < 5; k++) {
+        const a = -Math.PI / 2 + (k * 2 * Math.PI) / 5;
+        const px = Math.cos(a) * 3, py = -1 + Math.sin(a) * 3;
+        k === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+      }
+      ctx.closePath(); ctx.fill();
+    } else {
+      ctx.beginPath(); ctx.arc(0, -1, 3, 0, Math.PI * 2); ctx.fill();
+      if (sym === 'moon') {
+        ctx.fillStyle = '#241830';
+        ctx.beginPath(); ctx.arc(1.5, -2, 2.6, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    ctx.restore();
+  });
+}
+
+// ------------------------------------------------------------------
+// JOHNNY'S POOL interior: a handful of partiers floating out on the water
+// on inner tubes, plus a portable stereo stack parked on the deck pumping
+// out an animated equalizer -- turns LINUS' otherwise-empty pool into a
+// full-on pool party. Called from render() whenever map.poolParty is set
+// (see makeJohnnysPool() above), same one-function-per-shop pattern as
+// drawHeyBudInterior()/drawPurePopInterior().
+// ------------------------------------------------------------------
+function drawJohnnysPoolInterior(time) {
+  // --- floating partiers, bobbing gently on inner tubes out in the water
+  // (rows 1-6 are all pool -- see makeJohnnysPool()'s carve-out) ---
+  const floaters = [
+    { x: 3.4, y: 2.3, tube: '#e0562e', skin: '#8a6a48', suit: '#2255c0', seed: 0.2 },
+    { x: 7.6, y: 1.8, tube: '#3aa0c8', skin: '#c89a72', suit: '#e0a030', seed: 1.6 },
+    { x: 10.2, y: 3.6, tube: '#e0b030', skin: '#7a5030', suit: '#4a8a4a', seed: 2.8 },
+    { x: 5.0, y: 4.8, tube: '#c04070', skin: '#e0a878', suit: '#153038', seed: 3.9 },
+    { x: 9.0, y: 5.4, tube: '#4a8a4a', skin: '#8a5a34', suit: '#c0403a', seed: 0.9 },
+  ];
+  floaters.forEach((f) => {
+    const bob = Math.sin(time * 1.6 + f.seed) * 2;
+    const px = f.x * TILE, py = f.y * TILE + bob;
+    // ripple shadow under the tube
+    ctx.fillStyle = 'rgba(0,0,0,0.15)';
+    ctx.beginPath(); ctx.ellipse(px, py + 10, 15, 5, 0, 0, Math.PI * 2); ctx.fill();
+    // inner tube (donut), drawn as a ring by layering a hollow center on top
+    ctx.fillStyle = f.tube;
+    ctx.beginPath(); ctx.ellipse(px, py, 15, 10, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.beginPath(); ctx.ellipse(px, py, 9, 5.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = f.tube;
+    ctx.globalAlpha = 0.85;
+    ctx.beginPath(); ctx.ellipse(px, py, 7, 4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1;
+    // torso/swimsuit peeking up out of the tube's center
+    ctx.fillStyle = f.suit;
+    ctx.fillRect(px - 4, py - 2, 8, 5);
+    // arms draped out over the tube's rim on either side
+    ctx.fillStyle = f.skin;
+    ctx.beginPath(); ctx.ellipse(px - 12, py - 1, 3, 2, 0.3, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(px + 12, py - 1, 3, 2, -0.3, 0, Math.PI * 2); ctx.fill();
+    // head tipped back, soaking up the sun, plus a little pair of shades
+    ctx.fillStyle = f.skin;
+    ctx.beginPath(); ctx.arc(px, py - 8, 5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(px - 4, py - 9, 8, 2);
+  });
+
+  // --- portable stereo system parked on the deck, cranking the party --
+  // deck tile ~(2,7), clear of LINUS (9,8), the HYPER SWIM cabinet
+  // (10,7), and the door/exit tile (6,9).
+  const sx = 2 * TILE + 16, sy = 7 * TILE + 28;
+  drawPoolStereo(sx, sy, time);
+
+  // --- a few musical notes drifting up off the stereo, tying the deck and
+  // the pool together as one big party ---
+  ctx.fillStyle = '#fff2b8';
+  ctx.font = '10px sans-serif';
+  [[sx - 4, 0.3], [sx + 10, 1.7], [sx + 2, 3.1]].forEach(([nx, seed]) => {
+    const t = (time * 0.6 + seed) % 3;
+    ctx.globalAlpha = Math.max(0, 1 - t / 3);
+    ctx.fillText('\u266A', nx, sy - 30 - t * 14);
+  });
+  ctx.globalAlpha = 1;
+}
+
+// Squat two-speaker stereo stack with a glowing center receiver and an
+// animated equalizer display between the speakers -- reads as a boombox/PA
+// rig blasting a pool party. Non-shop-specific drawing helper, only called
+// from drawJohnnysPoolInterior() above.
+function drawPoolStereo(px, py, time) {
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx.beginPath(); ctx.ellipse(px, py + 14, 22, 6, 0, 0, Math.PI * 2); ctx.fill();
+  // left speaker cabinet
+  ctx.fillStyle = '#2a2a2e';
+  ctx.fillRect(px - 22, py - 20, 16, 34);
+  ctx.fillStyle = '#141416';
+  ctx.beginPath(); ctx.arc(px - 14, py - 10, 6, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(px - 14, py + 4, 4, 0, Math.PI * 2); ctx.fill();
+  // right speaker cabinet
+  ctx.fillStyle = '#2a2a2e';
+  ctx.fillRect(px + 6, py - 20, 16, 34);
+  ctx.fillStyle = '#141416';
+  ctx.beginPath(); ctx.arc(px + 14, py - 10, 6, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(px + 14, py + 4, 4, 0, Math.PI * 2); ctx.fill();
+  // center receiver unit with animated equalizer bars
+  ctx.fillStyle = '#1c1c20';
+  ctx.fillRect(px - 6, py - 12, 12, 20);
+  ctx.fillStyle = '#3aa0c8';
+  for (let i = 0; i < 4; i++) {
+    const h = 3 + Math.abs(Math.sin(time * 6 + i * 1.3)) * 7;
+    ctx.fillRect(px - 5 + i * 3, py + 6 - h, 2, h);
+  }
+  // stubby antenna
+  ctx.strokeStyle = '#8a8a90';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(px, py - 12); ctx.lineTo(px + 4, py - 22); ctx.stroke();
+}
+
+// ------------------------------------------------------------------
+// Pure Pop Records interior: a proper crate-digger's dream -- wall-mounted
+// browsing shelves stuffed with colorful vinyl spines, open bins with
+// sleeves fanned out for flipping through, a twin-turntable-and-mixer DJ
+// booth built right into the counter (so Zeke reads as always mid-set),
+// loose leaning stacks of records scattered on the floor, a wall-mounted
+// vinyl medallion behind the counter, and a disco ball turning lazily up in
+// the rafters. Every helper below is Pure-Pop-specific and only called from
+// drawPurePopInterior() -- same one-function-per-shop pattern as
+// drawHeyBudInterior() above.
+// ------------------------------------------------------------------
+
+// A short run of vertical vinyl-sleeve "spines" side by side, like books on
+// a shelf -- each a flat color block with a thin pale line near the top to
+// read as a sleeve edge, and a tiny notch of the black disc peeking out.
+function drawVinylSpineRow(x, y, count, spineW, h, seedBase) {
+  const colors = ['#c0392b', '#2980b9', '#27ae60', '#e0a030', '#8e44ad', '#d94f9a', '#16a085', '#e74c3c'];
+  for (let i = 0; i < count; i++) {
+    const sx = x + i * spineW;
+    ctx.fillStyle = colors[(seedBase + i) % colors.length];
+    ctx.fillRect(sx, y, spineW - 1, h);
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.fillRect(sx, y, spineW - 1, 1);
+    ctx.fillStyle = 'rgba(255,255,255,0.22)';
+    ctx.fillRect(sx, y + 3, spineW - 1, 1);
+    // a sliver of black vinyl peeking past the sleeve edge
+    ctx.fillStyle = '#181418';
+    ctx.fillRect(sx + spineW - 2, y + 1, 1, h - 2);
+  }
+}
+
+// Wall/floor browsing shelf: a wooden frame divided into a few rows, each
+// packed edge-to-edge with vinyl spines -- the classic record-store wall of
+// crates look.
+function drawRecordShelfUnit(x, y, w, h, seed) {
+  ctx.fillStyle = '#5a3d22';
+  ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = '#7a5535';
+  ctx.fillRect(x + 2, y + 2, w - 4, h - 4);
+  const rows = 3;
+  const rowH = (h - 6) / rows;
+  for (let r = 0; r < rows; r++) {
+    const ry = y + 3 + r * rowH;
+    ctx.fillStyle = '#4a3018';
+    ctx.fillRect(x + 2, ry + rowH - 2, w - 4, 2);
+    const spineW = 6;
+    const count = Math.max(1, Math.floor((w - 8) / spineW));
+    drawVinylSpineRow(x + 4, ry + 2, count, spineW, rowH - 6, seed + r * 7);
+  }
+}
+
+// An open wooden crate/bin with a fan of record sleeves sticking up out of
+// it at angles, like someone left mid-flip through the stack -- the
+// literal "crate digging" look.
+function drawRecordBin(x, y, seed) {
+  const w = 46, h = 28;
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx.beginPath();
+  ctx.ellipse(x + w / 2, y + h + 4, w / 2, 5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  const colors = ['#c0392b', '#2980b9', '#27ae60', '#e0a030', '#8e44ad', '#d94f9a'];
+  const sCount = 6;
+  for (let i = 0; i < sCount; i++) {
+    const t = i / (sCount - 1);
+    const angle = (t - 0.5) * 0.7;
+    const sx = x + 8 + t * (w - 16);
+    ctx.save();
+    ctx.translate(sx, y + 6);
+    ctx.rotate(angle);
+    ctx.fillStyle = colors[(seed + i) % colors.length];
+    ctx.fillRect(-9, -28, 18, 28);
+    ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(-9, -28, 18, 28);
+    ctx.restore();
+  }
+
+  // crate body drawn on top, so the sleeves read as sticking up out of it
+  ctx.fillStyle = '#8a5a30';
+  ctx.fillRect(x, y + 2, w, h - 2);
+  ctx.fillStyle = '#6a4020';
+  ctx.fillRect(x, y + 2, w, 4);
+  ctx.fillRect(x, y + h - 4, w, 4);
+  ctx.fillStyle = 'rgba(0,0,0,0.15)';
+  for (let i = 8; i < w; i += 10) ctx.fillRect(x + i, y + 6, 2, h - 10);
+}
+
+// A single turntable: body, spinning platter with a highlight groove that
+// rotates over time, a gold center label, and a tonearm that drifts gently
+// as if it's mid-play.
+function drawTurntableDeck(x, y, scale, time, seed) {
+  const w = 44 * scale, h = 34 * scale;
+  ctx.fillStyle = '#1c1c20';
+  ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = '#2c2a30';
+  ctx.fillRect(x + 2, y + 2, w - 4, h - 4);
+
+  const cx = x + w * 0.38, cy = y + h * 0.55, r = h * 0.38;
+  ctx.fillStyle = '#111014';
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#3a3a40';
+  ctx.lineWidth = 1;
+  for (let i = 1; i <= 3; i++) {
+    ctx.beginPath(); ctx.arc(cx, cy, r * (0.35 + i * 0.2), 0, Math.PI * 2); ctx.stroke();
+  }
+  ctx.fillStyle = '#e0b040';
+  ctx.beginPath(); ctx.arc(cx, cy, r * 0.28, 0, Math.PI * 2); ctx.fill();
+
+  const spin = time * 3 + seed;
+  ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(cx + Math.cos(spin) * r, cy + Math.sin(spin) * r);
+  ctx.stroke();
+
+  const armBaseX = x + w * 0.86, armBaseY = y + h * 0.22;
+  const armAngle = -0.45 + Math.sin(time * 0.5 + seed) * 0.05;
+  ctx.strokeStyle = '#c8c8cc';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(armBaseX, armBaseY);
+  ctx.lineTo(armBaseX - Math.cos(armAngle) * w * 0.5, armBaseY + Math.sin(armAngle) * w * 0.5);
+  ctx.stroke();
+  ctx.fillStyle = '#c8c8cc';
+  ctx.beginPath(); ctx.arc(armBaseX, armBaseY, 3, 0, Math.PI * 2); ctx.fill();
+}
+
+// A small DJ mixer -- three faders with gold caps sitting between the two
+// turntables in the counter's built-in booth.
+function drawMixerProp(x, y) {
+  ctx.fillStyle = '#242226';
+  ctx.fillRect(x, y, 26, 30);
+  ctx.fillStyle = '#3a373e';
+  ctx.fillRect(x + 2, y + 2, 22, 10);
+  for (let i = 0; i < 3; i++) {
+    ctx.strokeStyle = '#555a60';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x + 5 + i * 7, y + 14); ctx.lineTo(x + 5 + i * 7, y + 27); ctx.stroke();
+    ctx.fillStyle = '#e0b040';
+    ctx.fillRect(x + 3 + i * 7, y + 14 + ((i * 5) % 10), 4, 3);
+  }
+}
+
+// A hanging disco ball, swaying slightly, faceted with a fine mirror grid
+// and a couple of blinking sparkle glints -- the funk factor.
+function drawDiscoBallHang(x, ropeLen, time) {
+  const sway = Math.sin(time * 0.8) * 3;
+  ctx.strokeStyle = '#8a8a8a';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x + sway, ropeLen); ctx.stroke();
+
+  const bx = x + sway, by = ropeLen + 10, r = 9;
+  ctx.fillStyle = '#c8ccd4';
+  ctx.beginPath(); ctx.arc(bx, by, r, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = 'rgba(60,60,70,0.5)';
+  ctx.lineWidth = 0.6;
+  for (let i = -r; i <= r; i += 3) {
+    ctx.beginPath(); ctx.moveTo(bx - r, by + i); ctx.lineTo(bx + r, by + i); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(bx + i, by - r); ctx.lineTo(bx + i, by + r); ctx.stroke();
+  }
+  const glints = [[-4, -3], [3, -5], [5, 2], [-3, 4]];
+  const glintPhase = Math.floor(time * 3) % glints.length;
+  const [gx, gy] = glints[glintPhase];
+  ctx.fillStyle = 'rgba(255,255,255,0.9)';
+  ctx.beginPath(); ctx.arc(bx + gx, by + gy, 1.4, 0, Math.PI * 2); ctx.fill();
+}
+
+// The big vinyl-record medallion mounted on the wall behind the counter,
+// standing in for a store logo/sign -- concentric grooves, a gold center
+// label reading "PURE POP RECORDS", and a punched spindle hole.
+function drawVinylWallArt(cx, cy, r) {
+  const grad = ctx.createRadialGradient(cx, cy, 2, cx, cy, r);
+  grad.addColorStop(0, '#2a2a2e');
+  grad.addColorStop(1, '#0c0c0e');
+  ctx.fillStyle = grad;
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.lineWidth = 1;
+  for (let i = 1; i <= 4; i++) {
+    ctx.beginPath(); ctx.arc(cx, cy, r * (i / 5), 0, Math.PI * 2); ctx.stroke();
+  }
+  ctx.fillStyle = '#e0b040';
+  ctx.beginPath(); ctx.arc(cx, cy, r * 0.32, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#181418';
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 7px monospace';
+  ctx.fillText('PURE POP', cx, cy - 1);
+  ctx.font = '6px monospace';
+  ctx.fillText('RECORDS', cx, cy + 7);
+  ctx.fillStyle = '#0c0c0e';
+  ctx.beginPath(); ctx.arc(cx, cy, 2, 0, Math.PI * 2); ctx.fill();
+}
+
+// A loose leaning stack of records on the floor -- flat sleeves piled up
+// with a slight alternating lean, like a stack someone's still sorting.
+function drawLeaningVinylStack(x, y, count, seed) {
+  const colors = ['#c0392b', '#2980b9', '#27ae60', '#e0a030', '#8e44ad'];
+  ctx.fillStyle = 'rgba(0,0,0,0.18)';
+  ctx.beginPath(); ctx.ellipse(x + 10, y + 4, 12, 3, 0, 0, Math.PI * 2); ctx.fill();
+  for (let i = 0; i < count; i++) {
+    const lean = (i % 2 === 0 ? 1 : -1) * i;
+    ctx.save();
+    ctx.translate(x + 10, y - i * 4);
+    ctx.rotate(lean * 0.02);
+    ctx.fillStyle = colors[(seed + i) % colors.length];
+    ctx.fillRect(-11, -3, 22, 6);
+    ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(-11, -3, 22, 6);
+    ctx.restore();
+  }
+}
+
+function drawPurePopInterior(time) {
+  // vinyl medallion on the back wall, centered behind the counter (keeper
+  // stands at tile 6,2) -- drawn first so the keeper sprite layers on top
+  drawVinylWallArt(6 * TILE + 16, 46, 38);
+
+  // wall-to-wall browsing shelves packed with vinyl spines, flanking the
+  // counter on both sides -- clear of the interactive dig crates at
+  // tile-columns 1 and 12
+  drawRecordShelfUnit(2 * TILE, 4 * TILE + 22, 3 * TILE + 8, 2 * TILE - 16, 2);
+  drawRecordShelfUnit(9 * TILE - 8, 4 * TILE + 22, 3 * TILE + 8, 2 * TILE - 16, 9);
+
+  // twin-turntable-and-mixer DJ booth built right into the counter, so
+  // Zeke reads as always mid-set behind the register
+  drawTurntableDeck(4 * TILE + 12, 2 * TILE + 18, 0.85, time, 0.4);
+  drawMixerProp(6 * TILE + 2, 2 * TILE + 22);
+  drawTurntableDeck(7 * TILE + 2, 2 * TILE + 18, 0.85, time, 2.1);
+
+  // open bins of fanned-out sleeves, down in the open floor corners --
+  // clear of the mini-game sign at tile 9,7
+  drawRecordBin(2 * TILE + 6, 8 * TILE - 4, 1);
+  drawRecordBin(10 * TILE + 10, 8 * TILE - 4, 4);
+
+  // loose stacks of vinyl scattered across the open floor between the
+  // shelves -- the "stacks and stacks" of the request
+  drawLeaningVinylStack(5 * TILE + 30, 5 * TILE + 10, 5, 0);
+  drawLeaningVinylStack(7 * TILE + 6, 5 * TILE + 18, 4, 2);
+  drawLeaningVinylStack(6 * TILE + 16, 7 * TILE + 26, 3, 1);
+
+  // disco ball turning slowly up in the rafters for the funk factor
+  drawDiscoBallHang(11 * TILE + 8, 22, time);
+}
+
+// A wire newsstand rack, angled shelves stacked with colorful magazine
+// covers — the top shelf's front copy is the local alt-weekly, "SEVEN
+// DAYS", with a bold readable masthead. Purely original pixel art, not a
+// real logo/brand.
+function drawMagazineRack(x, y) {
+  const w = 42, h = 74;
+
+  // wire frame stand — a simple A-frame of angled metal rods
+  ctx.strokeStyle = '#8a8e92';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x, y + h);
+  ctx.lineTo(x + 4, y);
+  ctx.lineTo(x + w - 4, y);
+  ctx.lineTo(x + w, y + h);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x - 3, y + h + 4);
+  ctx.lineTo(x + w + 3, y + h + 4);
+  ctx.stroke();
+
+  // three angled wire shelves, each cradling a little fan of magazines
+  const shelves = [
+    { sy: y + 6,  sw: w - 10, mh: 22 },
+    { sy: y + 30, sw: w - 4,  mh: 24 },
+    { sy: y + 54, sw: w,      mh: 26 },
+  ];
+  const deckColors = ['#c0392b', '#2980b9', '#27ae60', '#8e44ad', '#e0a030', '#d94f9a'];
+  let colorIdx = 0;
+
+  shelves.forEach((shelf, si) => {
+    // wire ledge
+    ctx.strokeStyle = '#9a9ea2';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(x + (w - shelf.sw) / 2, shelf.sy + shelf.mh + 2);
+    ctx.lineTo(x + (w - shelf.sw) / 2 + shelf.sw, shelf.sy + shelf.mh + 2);
+    ctx.stroke();
+
+    const magCount = si === 0 ? 2 : 3;
+    const magW = shelf.sw / magCount;
+    for (let j = 0; j < magCount; j++) {
+      const mx = x + (w - shelf.sw) / 2 + j * magW;
+      const lean = (j - (magCount - 1) / 2) * 2;
+      ctx.save();
+      ctx.translate(mx + magW / 2, shelf.sy + shelf.mh);
+      ctx.rotate(lean * 0.03);
+
+      // the top shelf's front-most copy is always the "SEVEN DAYS" issue
+      if (si === 0 && j === magCount - 1) {
+        drawSevenDaysCover(-magW * 0.42, -shelf.mh, magW * 0.84, shelf.mh);
+      } else {
+        const c = deckColors[colorIdx % deckColors.length];
+        colorIdx++;
+        ctx.fillStyle = c;
+        ctx.fillRect(-magW * 0.42, -shelf.mh, magW * 0.84, shelf.mh);
+        ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(-magW * 0.42, -shelf.mh, magW * 0.84, shelf.mh);
+        // a couple of faint horizontal "text" bars so it reads as a cover
+        ctx.fillStyle = 'rgba(255,255,255,0.35)';
+        ctx.fillRect(-magW * 0.3, -shelf.mh + 4, magW * 0.6, 2);
+        ctx.fillRect(-magW * 0.3, -shelf.mh + 8, magW * 0.4, 2);
+      }
+      ctx.restore();
+    }
+  });
+}
+
+// A single "SEVEN DAYS" magazine cover — cream stock, a bold red masthead
+// banner across the top, and a couple of thin "headline" bars below it.
+function drawSevenDaysCover(x, y, w, h) {
+  ctx.fillStyle = '#f4ecd8';
+  ctx.fillRect(x, y, w, h);
+  ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x, y, w, h);
+
+  // masthead banner
+  const bannerH = h * 0.34;
+  ctx.fillStyle = '#c0392b';
+  ctx.fillRect(x, y, w, bannerH);
+  ctx.fillStyle = '#f4ecd8';
+  ctx.font = `900 ${Math.max(3, Math.floor(w * 0.19))}px Impact, "Arial Black", sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('SEVEN', x + w / 2, y + bannerH * 0.32);
+  ctx.fillText('DAYS', x + w / 2, y + bannerH * 0.75);
+
+  // a small photo block and a couple of headline bars filling the rest
+  ctx.fillStyle = '#8fa8b8';
+  ctx.fillRect(x + w * 0.12, y + bannerH + 2, w * 0.76, h * 0.36);
+  ctx.fillStyle = 'rgba(30,30,30,0.55)';
+  ctx.fillRect(x + w * 0.14, y + h * 0.82, w * 0.72, h * 0.06);
+  ctx.fillRect(x + w * 0.14, y + h * 0.90, w * 0.5, h * 0.06);
+}
+
+function drawHenrysInterior(time) {
+  // Classic old-school diner: black & white checker floor, long red-topped
+  // counter with chrome stools, a soda fountain, and a corner jukebox.
+
+  // checkerboard floor across the middle of the room
+  for (let fy = 3; fy <= 7; fy++) {
+    for (let fx = 1; fx <= 12; fx++) {
+      if ((fx + fy) % 2 === 0) {
+        ctx.fillStyle = 'rgba(0,0,0,0.12)';
+        ctx.fillRect(fx * TILE, fy * TILE, TILE, TILE);
+      }
+    }
+  }
+
+  // long counter along the back wall
+  const counterX = 2 * TILE, counterY = 2 * TILE;
+  const counterW = 9 * TILE, counterH = TILE + 6;
+  ctx.fillStyle = '#8a2820';
+  ctx.fillRect(counterX, counterY, counterW, counterH);
+  ctx.fillStyle = '#c8ccd0';
+  ctx.fillRect(counterX, counterY, counterW, 6);
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx.fillRect(counterX, counterY + counterH - 6, counterW, 6);
+
+  // chrome stools along the front of the counter
+  for (let i = 0; i < 6; i++) {
+    const sx = counterX + 14 + i * 26, sy = counterY + counterH + 12;
+    ctx.fillStyle = '#9a9ea2';
+    ctx.fillRect(sx - 2, sy - 10, 4, 10);
+    ctx.fillStyle = '#c23b30';
+    ctx.beginPath(); ctx.ellipse(sx, sy - 12, 9, 5, 0, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // soda fountain / milkshake mixer on the counter
+  const fountX = counterX + counterW - 40, fountY = counterY - 22;
+  ctx.fillStyle = '#c8ccd0';
+  ctx.fillRect(fountX, fountY, 30, 24);
+  ctx.fillStyle = '#7a2018';
+  ctx.fillRect(fountX + 4, fountY + 4, 22, 8);
+  ctx.fillStyle = '#e8e8ec';
+  ctx.fillRect(fountX + 10, fountY - 6, 3, 8);
+  ctx.fillRect(fountX + 17, fountY - 6, 3, 8);
+
+  // pie case on the other end of the counter
+  const pieX = counterX + 6, pieY = counterY - 20;
+  ctx.fillStyle = 'rgba(200,220,240,0.3)';
+  ctx.fillRect(pieX, pieY, 26, 20);
+  ctx.strokeStyle = '#9a9a9e';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(pieX, pieY, 26, 20);
+  ctx.fillStyle = '#e8c060';
+  ctx.beginPath();
+  ctx.moveTo(pieX + 13, pieY + 8);
+  ctx.lineTo(pieX + 21, pieY + 16);
+  ctx.lineTo(pieX + 5, pieY + 16);
+  ctx.closePath();
+  ctx.fill();
+
+  // "HENRY'S" sign on the back wall
+  ctx.fillStyle = '#e0483c';
+  ctx.font = 'bold 15px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText("HENRY'S", 6.5 * TILE, 1 * TILE + 4);
+
+  // magazine rack, tucked along the open wall between the counter and
+  // the coffee-klatch table, stocked with covers — the local weekly,
+  // "SEVEN DAYS", is the front-facing copy up top
+  drawMagazineRack(1 * TILE + 6, 4 * TILE + 2);
+
+  // jukebox in the corner, red & chrome
+  const jbX = 11.3 * TILE, jbY = 6 * TILE;
+  ctx.fillStyle = '#7a2018';
+  ctx.fillRect(jbX, jbY, 22, 34);
+  ctx.fillStyle = '#c8ccd0';
+  ctx.fillRect(jbX + 2, jbY + 2, 18, 6);
+  ctx.fillStyle = 'rgba(120,200,220,0.55)';
+  ctx.fillRect(jbX + 4, jbY + 10, 14, 14);
+  ctx.fillStyle = '#e8c060';
+  ctx.fillRect(jbX + 6, jbY + 26, 10, 4);
+}
+
+function drawYardSign(x, y) {
+  ctx.strokeStyle = '#9a9a9a';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x + 9, y + 27);
+  ctx.lineTo(x + 9, y + 44);
+  ctx.moveTo(x + 33, y + 27);
+  ctx.lineTo(x + 33, y + 44);
+  ctx.stroke();
+
+  ctx.fillStyle = '#f4ecd8';
+  ctx.fillRect(x, y, 44, 29);
+  ctx.strokeStyle = '#c0392b';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x + 1, y + 1, 42, 27);
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#1c3f7a';
+  ctx.font = 'bold 10px monospace';
+  ctx.fillText('KANGA', x + 22, y + 14);
+  ctx.fillStyle = '#c0392b';
+  ctx.font = 'bold 9px monospace';
+  ctx.fillText('FOR MAYOR', x + 22, y + 25);
+
+  ctx.fillStyle = '#c0392b';
+  ctx.fillRect(x + 3, y + 3, 3, 3);
+  ctx.fillRect(x + 38, y + 3, 3, 3);
+}
+
+function drawBench(x, y, w) {
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx.fillRect(x, y + 25, w, 3);
+
+  ctx.fillStyle = '#4a3018';
+  ctx.fillRect(x + 3, y + 16, 4, 10);
+  ctx.fillRect(x + w - 7, y + 16, 4, 10);
+
+  ctx.fillStyle = '#8a5a30';
+  ctx.fillRect(x, y + 10, w, 6);
+  ctx.fillStyle = '#6a4020';
+  ctx.fillRect(x, y + 15, w, 2);
+
+  ctx.fillStyle = '#8a5a30';
+  ctx.fillRect(x + 2, y, 4, 12);
+  ctx.fillRect(x + w / 2 - 2, y, 4, 12);
+  ctx.fillRect(x + w - 6, y, 4, 12);
+}
+
+// Small wall-mounted dartboard, drawn with the same ring colors as
+// createDartsGame() so the mini-game feels like the same object.
+function drawDartboardDecoration(x, y) {
+  const r = 13;
+  const rings = [
+    { f: 1.0,  color: '#241a2a' },
+    { f: 0.78, color: '#3a2840' },
+    { f: 0.55, color: '#c04070' },
+    { f: 0.32, color: '#e0a030' },
+    { f: 0.12, color: '#f4ecd8' },
+  ];
+  ctx.fillStyle = '#4a3018';
+  ctx.beginPath();
+  ctx.arc(x, y, r + 3, 0, Math.PI * 2);
+  ctx.fill();
+  for (const ring of rings) {
+    ctx.beginPath();
+    ctx.arc(x, y, r * ring.f, 0, Math.PI * 2);
+    ctx.fillStyle = ring.color;
+    ctx.fill();
+  }
+}
+
+// A compact pair of DJ turntables -- two small vinyl platters with
+// tonearms, sat side by side on a little booth ledge -- marking the
+// 'scratchdj' mini-game's tile the same way drawDartboardDecoration()
+// marks 'darts'. Purely original pixel art, canvas primitives only.
+function drawTurntablesDecoration(x, y) {
+  const boothW = 40, boothH = 26;
+  ctx.fillStyle = '#2a1a30';
+  ctx.fillRect(x - boothW / 2, y - boothH / 2, boothW, boothH);
+  ctx.strokeStyle = '#4a3060';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x - boothW / 2, y - boothH / 2, boothW, boothH);
+
+  [-1, 1].forEach((side) => {
+    const px = x + side * 10, py = y;
+    // platter
+    ctx.beginPath();
+    ctx.arc(px, py, 9, 0, Math.PI * 2);
+    ctx.fillStyle = '#0f0a15';
+    ctx.fill();
+    ctx.strokeStyle = side < 0 ? '#5fd0ff' : '#ff5fb0';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    // record label
+    ctx.beginPath();
+    ctx.arc(px, py, 3, 0, Math.PI * 2);
+    ctx.fillStyle = '#e0b040';
+    ctx.fill();
+    // tonearm, angled in toward the label from the outer corner
+    ctx.strokeStyle = '#c8ccd0';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(px + side * 8, py - 8);
+    ctx.lineTo(px + side * 2, py - 2);
+    ctx.stroke();
+  });
+}
+
+function drawNectarsInterior(time) {
+  // Dark rock club atmosphere with stage, bar, and gravy fries station
+
+  // "MI YARD" banner, up on the open wall to the right, above the
+  // Gravy Fries station and clear of the stage below it
+  drawMiYardBanner(9 * TILE + 6, 1 * TILE + 2, 66, 56);
+  
+  // Stage area (top center with small platform)
+  const stageX = 5 * TILE;
+  const stageY = 2 * TILE + TILE;
+  const stageW = 4 * TILE;
+  const stageH = 12;
+  
+  // Stage platform
+  ctx.fillStyle = '#3a2a40';
+  ctx.fillRect(stageX, stageY, stageW, stageH);
+  ctx.fillStyle = '#2a1a30';
+  ctx.fillRect(stageX + 2, stageY + 2, stageW - 4, 2);
+  
+  // Microphone stand on stage
+  ctx.fillStyle = '#8a8a8e';
+  ctx.fillRect(stageX + stageW/2 - 1, stageY - 20, 2, 20);
+  ctx.fillStyle = '#5a5a5e';
+  ctx.fillRect(stageX + stageW/2 - 3, stageY - 24, 6, 6);
+  
+  // Amp on stage
+  ctx.fillStyle = '#1a1a1e';
+  ctx.fillRect(stageX + 8, stageY - 14, 16, 14);
+  ctx.fillStyle = '#4a3a2a';
+  ctx.fillRect(stageX + 10, stageY - 12, 12, 10);
+  ctx.fillStyle = '#2a2a2e';
+  for (let i = 0; i < 3; i++) {
+    ctx.fillRect(stageX + 11, stageY - 11 + i * 3, 3, 2);
+    ctx.fillRect(stageX + 16, stageY - 11 + i * 3, 3, 2);
+  }
+  
+  // Bar area (left side)
+  const barX = TILE;
+  const barY = 4 * TILE;
+  const barW = 2 * TILE;
+  const barH = 3 * TILE;
+  
+  // Bar counter
+  ctx.fillStyle = '#4a3a2a';
+  ctx.fillRect(barX, barY, barW, barH);
+  ctx.fillStyle = '#6a5a3a';
+  ctx.fillRect(barX, barY, barW, 6);
+  
+  // Glasses on bar
+  ctx.fillStyle = 'rgba(200,220,240,0.4)';
+  ctx.fillRect(barX + 8, barY + 10, 6, 8);
+  ctx.fillRect(barX + 18, barY + 10, 6, 8);
+
+  // Dartboard on the back wall -- lines up with the 'darts' entry in
+  // this map's `minigames` list (tx:11, ty:4)
+  drawDartboardDecoration(11 * TILE + TILE / 2, 4 * TILE + TILE / 2);
+
+  // Twin turntables, right next to Big Dog's spot behind the counter --
+  // lines up with the 'scratchdj' entry (tx:3, ty:2)
+  drawTurntablesDecoration(3 * TILE + TILE / 2, 2 * TILE + TILE / 2);
+  
+  // Gravy Fries station sign (right side)
+  const signX = 10 * TILE;
+  const signY = 4 * TILE;
+  
+  ctx.fillStyle = '#5a3a2a';
+  ctx.fillRect(signX, signY, 3 * TILE, 18);
+  
+  // "GRAVY FRIES" text
+  ctx.save();
+  ctx.fillStyle = '#f0d060';
+  ctx.shadowColor = '#f0d060';
+  ctx.shadowBlur = 6;
+  ctx.font = 'bold 10px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('GRAVY', signX + 1.5 * TILE, signY + 8);
+  ctx.fillText('FRIES', signX + 1.5 * TILE, signY + 16);
+  ctx.shadowBlur = 0;
+  ctx.restore();
+  
+  // Neon "OPEN" sign (flickering)
+  const openX = 11 * TILE;
+  const openY = 6 * TILE;
+  const flicker = Math.floor(time * 3) % 7 !== 0;
+  
+  if (flicker) {
+    ctx.save();
+    ctx.fillStyle = '#ff2060';
+    ctx.shadowColor = '#ff2060';
+    ctx.shadowBlur = 10;
+    ctx.font = 'bold 12px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('OPEN', openX, openY);
+    ctx.shadowBlur = 0;
+    ctx.restore();
+  }
+  
+  // Hanging lights (dim red/purple glow)
+  const lights = [[3, 5], [7, 5], [11, 5]];
+  for (const [lx, ly] of lights) {
+    const lightX = lx * TILE + TILE/2;
+    const lightY = ly * TILE;
+    
+    ctx.save();
+    ctx.fillStyle = '#8a2040';
+    ctx.shadowColor = '#8a2040';
+    ctx.shadowBlur = 15;
+    ctx.beginPath();
+    ctx.arc(lightX, lightY, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.restore();
+    
+    // Light cord
+    ctx.strokeStyle = '#3a3a3e';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(lightX, lightY - 4);
+    ctx.lineTo(lightX, lightY - 20);
+    ctx.stroke();
+  }
+  
+  // Bar stools (simple rectangles)
+  const stools = [[barX + barW + 4, barY + 8], [barX + barW + 4, barY + 24]];
+  for (const [sx, sy] of stools) {
+    ctx.fillStyle = '#5a3a2a';
+    ctx.fillRect(sx, sy, 8, 4);
+    ctx.fillStyle = '#4a2a1a';
+    ctx.fillRect(sx + 2, sy - 8, 4, 8);
+  }
+}
+
+// A "MI YARD" reggae banner hung on Nectar's club wall — red/gold/green
+// backing, a simple pixel-art lion face up top, bold text underneath.
+// Purely original pixel art, not a real logo/brand.
+function drawMiYardBanner(x, y, w, h) {
+  ctx.save();
+
+  // dark backing with a gold border
+  ctx.fillStyle = '#0e1c0e';
+  ctx.fillRect(x, y, w, h);
+  ctx.strokeStyle = '#e0b040';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+
+  // red / gold / green stripe across the top edge, reggae flag colors
+  const stripeH = Math.max(2, h * 0.06);
+  ctx.fillStyle = '#c02a2a';
+  ctx.fillRect(x, y, w / 3, stripeH);
+  ctx.fillStyle = '#e0b040';
+  ctx.fillRect(x + w / 3, y, w / 3, stripeH);
+  ctx.fillStyle = '#2a7a3a';
+  ctx.fillRect(x + (2 * w) / 3, y, w - (2 * w) / 3, stripeH);
+
+  // lion face, centered in the upper portion of the banner
+  const cx = x + w / 2, cy = y + h * 0.4, faceR = h * 0.2;
+
+  // mane: a ring of jagged triangular tufts alternating gold/rust
+  const tufts = 14;
+  for (let i = 0; i < tufts; i++) {
+    const a = (i / tufts) * Math.PI * 2;
+    const inner = faceR * 0.85;
+    const outer = faceR * (i % 2 === 0 ? 1.55 : 1.35);
+    const a0 = a - Math.PI / tufts * 0.5;
+    const a1 = a + Math.PI / tufts * 0.5;
+    ctx.fillStyle = i % 2 === 0 ? '#c07a20' : '#8a4a18';
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(a0) * inner, cy + Math.sin(a0) * inner);
+    ctx.lineTo(cx + Math.cos(a) * outer, cy + Math.sin(a) * outer);
+    ctx.lineTo(cx + Math.cos(a1) * inner, cy + Math.sin(a1) * inner);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // face
+  ctx.fillStyle = '#e8b878';
+  ctx.beginPath();
+  ctx.arc(cx, cy, faceR, 0, Math.PI * 2);
+  ctx.fill();
+
+  // eyes
+  ctx.fillStyle = '#1a140c';
+  ctx.beginPath();
+  ctx.ellipse(cx - faceR * 0.35, cy - faceR * 0.1, faceR * 0.14, faceR * 0.1, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(cx + faceR * 0.35, cy - faceR * 0.1, faceR * 0.14, faceR * 0.1, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // muzzle
+  ctx.fillStyle = '#f4dcae';
+  ctx.beginPath();
+  ctx.ellipse(cx, cy + faceR * 0.35, faceR * 0.45, faceR * 0.3, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // nose
+  ctx.fillStyle = '#1a140c';
+  ctx.beginPath();
+  ctx.moveTo(cx - faceR * 0.14, cy + faceR * 0.2);
+  ctx.lineTo(cx + faceR * 0.14, cy + faceR * 0.2);
+  ctx.lineTo(cx, cy + faceR * 0.34);
+  ctx.closePath();
+  ctx.fill();
+
+  // mouth
+  ctx.strokeStyle = '#1a140c';
+  ctx.lineWidth = Math.max(1, faceR * 0.06);
+  ctx.beginPath();
+  ctx.moveTo(cx, cy + faceR * 0.34);
+  ctx.lineTo(cx, cy + faceR * 0.48);
+  ctx.moveTo(cx, cy + faceR * 0.48);
+  ctx.quadraticCurveTo(cx - faceR * 0.22, cy + faceR * 0.6, cx - faceR * 0.4, cy + faceR * 0.5);
+  ctx.moveTo(cx, cy + faceR * 0.48);
+  ctx.quadraticCurveTo(cx + faceR * 0.22, cy + faceR * 0.6, cx + faceR * 0.4, cy + faceR * 0.5);
+  ctx.stroke();
+
+  // "MI YARD" underneath, bold with a dark outline
+  ctx.textAlign = 'center';
+  ctx.font = `900 ${Math.floor(w * 0.19)}px Impact, "Arial Black", sans-serif`;
+  ctx.strokeStyle = '#1a140c';
+  ctx.lineWidth = 2;
+  ctx.strokeText('MI YARD', x + w / 2, y + h * 0.93);
+  ctx.fillStyle = '#e0b040';
+  ctx.fillText('MI YARD', x + w / 2, y + h * 0.93);
+
+  ctx.restore();
+}
+
+function drawDeliSeatingArea() {
+  // a small seating nook down by the riverbank, a bit removed from the
+  // deli's front door so it reads as its own little spot
+  const x = 9 * TILE, y = 19 * TILE + 10;
+
+  ctx.fillStyle = 'rgba(110,98,76,0.5)';
+  ctx.beginPath();
+  ctx.ellipse(x + 46, y + 20, 60, 32, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  drawBench(x, y, 34);
+  drawBench(x + 58, y, 34);
+
+  ctx.fillStyle = '#6a4a2a';
+  ctx.fillRect(x + 42, y + 14, 4, 12);
+  ctx.fillStyle = '#9a7a50';
+  ctx.beginPath();
+  ctx.ellipse(x + 44, y + 10, 16, 9, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#5a3e22';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  ctx.fillStyle = '#5a4028';
+  ctx.fillRect(x + 90, y - 4, 14, 10);
+  ctx.fillStyle = '#4d8c3d';
+  ctx.fillRect(x + 92, y - 12, 4, 10);
+  ctx.fillRect(x + 98, y - 15, 4, 13);
+  ctx.fillRect(x + 102, y - 10, 4, 8);
+
+  ctx.fillStyle = '#454a4d';
+  ctx.fillRect(x - 14, y + 4, 12, 16);
+  ctx.fillStyle = '#5c6265';
+  ctx.fillRect(x - 15, y + 2, 14, 4);
+}
+
+// ---------------------------------------------------------------- keeper
+const KEEPER_HAIR = { DEE: '#5a2e1c', ROSIE: '#c8c0b0', ZEKE: '#241a12', JADE: '#141014', TONY: '#2a2018', LANNY: '#3a1a5c', MITCH: '#5a3a1c', BIGDOG: '#3a2a1c', EDNA: '#a8a8a8', OPHELIA: '#8a5a2e', GOLDIE: '#8a4a26' };
+
+// Optional per-keeper artwork. Drop a PNG at assets/keepers/<name>.png (any
+// size — it's scaled to KEEPER_SPR_H, feet anchored at the same floor line
+// the procedural sprite uses) and it's picked up automatically. Until a file
+// exists (or while it's still loading), drawKeeper falls back to the shaded
+// procedural sprite below, so nothing ever renders blank.
+const KEEPER_NAMES = ['SK1', 'DEE', 'ROSIE', 'ZEKE', 'JADE', 'TONY', 'LANNY', 'MITCH', 'BIGDOG', 'EDNA', 'OPHELIA', 'LINUS'];
+// Matches the 80px height used for Green Door Studio's image-based npcs
+// (truth.png, zach.png, kanga.png — see SHOP_NPC_IMAGES/drawShopImageNpcs'
+// `n.spriteH || 80` default), so every keeper — current and future — reads
+// at the same scale as those three.
+const KEEPER_SPR_H = 80;
+const keeperImgs = {};
+KEEPER_NAMES.forEach((name) => {
+  const img = new Image();
+  img.src = `assets/keepers/${name.toLowerCase()}.png`;
+  keeperImgs[name] = img;
+});
+// THE SWAMP's GUT HUT and TRUTH LAB keepers reuse the same art already
+// loaded for BURLINGTON's BOXGUTS/THA TRUTH npcs (truthImg/boxgutsImg,
+// declared earlier as assets/truth.png and assets/boxguts.png) rather than
+// loading separate assets/keepers/ files -- these two characters just show
+// up in a second spot (the swamp buildings named after them), no new art
+// needed, and BURLINGTON's own placement of them is untouched.
+keeperImgs.TRUTH = truthImg;
+keeperImgs.BOXGUTS = boxgutsImg;
+// THE SOUL SHACK's keeper, MRKBH -- same idea as TRUTH/BOXGUTS above: the
+// art is declared up with the other pre-drawn characters and just registered
+// here so drawKeeper() picks it up by name.
+keeperImgs.MRKBH = mrkbhImg;
+// JOHNNY'S FUN PARK's keeper, JOHNNY -- same idea as MRKBH above: the art
+// is declared up with the other pre-drawn characters and just registered
+// here so drawKeeper() picks it up by name.
+keeperImgs.JOHNNY = johnnyImg;
+// BURLINGTON RECORDS' keeper, IAN -- same idea as MRKBH/JOHNNY above: the
+// art is declared up with the other pre-drawn characters and just
+// registered here so drawKeeper() picks it up by name.
+keeperImgs.IAN = ianImg;
+// A_DOG SKATE SHOP's keeper, A-DOG -- same idea as MRKBH/JOHNNY/IAN above:
+// the art is declared up with the other pre-drawn characters and just
+// registered here so drawKeeper() picks it up by name.
+keeperImgs['A-DOG'] = adogImg;
+// FOAM BREWERS' keeper, FATTIE B -- same idea as A-DOG above.
+keeperImgs['FATTIE B'] = fattiebImg;
+// SPEAKING VOLUMES' keeper, JULIAN -- same idea as A-DOG/FATTIE B above.
+keeperImgs.JULIAN = julianImg;
+// CB PRINTS' keeper, BONTA -- same idea as JULIAN above.
+keeperImgs.BONTA = bontaImg;
+// VILLAGE SCOOP's keeper, QUEEN B -- same idea as BONTA above.
+keeperImgs['QUEEN B'] = queenbImg;
+// ECHO CENTER's keeper, CHAMP -- same idea as BONTA/QUEEN B above.
+keeperImgs.CHAMP = champImg;
+// TALENT's keeper, LIGGY -- same idea as CHAMP above.
+keeperImgs.LIGGY = liggyImg;
+// MISERY LOVES CO.'s keeper, CHRISTIE -- same idea as LIGGY above.
+keeperImgs.CHRISTIE = christieImg;
+// AUTUMN RECORDS' keeper, GREG -- same idea as CHRISTIE above.
+keeperImgs.GREG = gregImg;
+// THE MONKEY HOUSE's keeper, JAKE -- same idea as GREG above.
+keeperImgs.JAKE = jakeImg;
+// TINY THAI's keeper, KEV -- same idea as JAKE above.
+keeperImgs.KEV = kevImg;
+
+function drawAnt(cx, cy, s) {
+  // A white ant silhouette (the Anthill Collective mark), drawn on SK1's hat.
+  // Side profile: head + antennae at the front-right, thorax, big abdomen at the rear.
+  ctx.fillStyle = '#f4f0e2';
+  // abdomen (rear, left)
+  ctx.beginPath(); ctx.arc(cx - 3.0 * s, cy + 0.4 * s, 1.9 * s, 0, Math.PI * 2); ctx.fill();
+  // thorax (middle)
+  ctx.beginPath(); ctx.arc(cx - 0.4 * s, cy - 0.1 * s, 1.2 * s, 0, Math.PI * 2); ctx.fill();
+  // head (front, right)
+  ctx.beginPath(); ctx.arc(cx + 2.1 * s, cy - 0.4 * s, 1.2 * s, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#f2efe3';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(cx - 1.8 * s, cy); ctx.lineTo(cx - 0.8 * s, cy);           // waist
+  // antennae (up off the head)
+  ctx.moveTo(cx + 1.7 * s, cy - 1.0 * s); ctx.lineTo(cx + 2.4 * s, cy - 2.2 * s);
+  ctx.moveTo(cx + 2.5 * s, cy - 0.9 * s); ctx.lineTo(cx + 3.3 * s, cy - 2.0 * s);
+  // legs (down off the body)
+  ctx.moveTo(cx - 0.9 * s, cy + 0.5 * s); ctx.lineTo(cx - 1.5 * s, cy + 2.3 * s);
+  ctx.moveTo(cx - 0.1 * s, cy + 0.6 * s); ctx.lineTo(cx - 0.2 * s, cy + 2.4 * s);
+  ctx.moveTo(cx + 1.0 * s, cy + 0.3 * s); ctx.lineTo(cx + 1.6 * s, cy + 2.0 * s);
+  ctx.moveTo(cx - 2.3 * s, cy + 1.0 * s); ctx.lineTo(cx - 3.0 * s, cy + 2.3 * s);
+  ctx.moveTo(cx - 3.6 * s, cy + 0.9 * s); ctx.lineTo(cx - 4.2 * s, cy + 2.1 * s);
+  ctx.stroke();
+}
+
+// Little hearts that float up over a keeper's head after the player pets
+// them (currently just LINUS). msLeft counts down from 3000.
+function drawPetHearts(cx, topY, msLeft) {
+  const t = 3000 - msLeft;
+  ctx.save();
+  ctx.fillStyle = '#ff5a7a';
+  for (let i = 0; i < 3; i++) {
+    const tt = t - i * 250;
+    if (tt < 0 || tt > 1800) continue;
+    const hx = cx + (i - 1) * 9 + Math.sin(tt / 220 + i) * 2;
+    const hy = topY + 6 - tt * 0.02;
+    ctx.globalAlpha = 1 - tt / 1800;
+    const H = ['.X.X.', 'XXXXX', 'XXXXX', '.XXX.', '..X..'];
+    for (let r = 0; r < H.length; r++)
+      for (let c = 0; c < H[r].length; c++)
+        if (H[r][c] === 'X') ctx.fillRect(Math.round(hx - 6 + c * 2.4), Math.round(hy + r * 2.4), 3, 3);
+  }
+  ctx.restore();
+}
+
+function drawKeeper(k) {
+  const px = k.x * TILE, py = k.y * TILE;
+
+  // ground shadow (shared by both the image and procedural paths)
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.fillRect(px + 8, py + 26, 16, 4);
+
+  const img = keeperImgs[k.name];
+  if (img && img.complete && img.naturalWidth) {
+    const kh = KEEPER_SPR_H;
+    const kw = Math.round(kh * img.naturalWidth / img.naturalHeight);
+    if (k.dance) {
+      // DJs who are rockin out (FATTIE B): head-bob bounce + gentle sway on
+      // the beat, pivoting about the feet so he stays planted behind the
+      // decks -- same motion as `dance: true` shop npcs in
+      // drawShopImageNpcs(). Purely visual.
+      const t = performance.now() / 1000;
+      const beat = t * 7.5 + k.x;
+      const bounce = Math.abs(Math.sin(beat)) * 3;
+      const sway = Math.sin(beat * 0.5) * 0.05;
+      ctx.save();
+      ctx.translate(px + 16, py + 30 - bounce);
+      ctx.rotate(sway);
+      ctx.drawImage(img, Math.round(-kw / 2), -kh, kw, kh);
+      ctx.restore();
+      ctx.fillStyle = 'rgba(255, 210, 60, 0.85)';
+      ctx.font = 'bold 12px monospace';
+      ctx.textAlign = 'center';
+      for (let i = 0; i < 2; i++) {
+        const ph = (t * 0.6 + i * 0.5) % 1;
+        const nx = px + 16 + (i === 0 ? -kw * 0.7 : kw * 0.7) + Math.sin(ph * 6 + i) * 4;
+        const ny = py + 30 - kh * 0.6 - ph * 22;
+        ctx.globalAlpha = 1 - ph;
+        ctx.fillText(i === 0 ? '\u266A' : '\u266B', nx, ny);
+      }
+      ctx.globalAlpha = 1;
+      return;
+    }
+    if (k.cook) {
+      // Cooks who are busy in the kitchen (CHRISTIE): a gentle, slow bob
+      // pivoting about the feet, plus little steam wisps rising off the
+      // fresh bakes. Purely visual.
+      const t = performance.now() / 1000;
+      const bob = Math.abs(Math.sin(t * 2.2 + k.x)) * 1.5;
+      ctx.drawImage(img, Math.round(px + 16 - kw / 2), Math.round(py + 30 - kh - bob), kw, kh);
+      ctx.save();
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+      for (let i = 0; i < 3; i++) {
+        const ph = (t * 0.5 + i / 3) % 1;
+        const sx = px + 16 + (i - 1) * kw * 0.28 + Math.sin(ph * 7 + i * 2) * 2;
+        const sy = py + 30 - kh * 0.55 - ph * 20;
+        ctx.globalAlpha = 0.7 * (1 - ph);
+        ctx.fillRect(Math.round(sx), Math.round(sy), 2, 2);
+      }
+      ctx.restore();
+      return;
+    }
+    ctx.drawImage(img, Math.round(px + 16 - kw / 2), Math.round(py + 30 - kh), kw, kh);
+    if (k.petUntil && performance.now() < k.petUntil) drawPetHearts(px + 16, py + 30 - kh, k.petUntil - performance.now());
+    return;
+  }
+
+  const outline = '#1c140f';
+  const shirtDark = shadeColor(k.shirt, -45);
+  const shirtLight = shadeColor(k.shirt, 35);
+  const skinDark = shadeColor(k.skin, -30);
+  const skinLight = shadeColor(k.skin, 22);
+  const hair = KEEPER_HAIR[k.name] || '#241a14';
+  const hairDark = shadeColor(hair, -35);
+
+  // torso: outline, base shirt, shadowed side, highlighted side
+  ctx.fillStyle = outline;
+  ctx.fillRect(px + 7, py + 11, 18, 16);
+  ctx.fillStyle = k.shirt;
+  ctx.fillRect(px + 8, py + 12, 16, 14);
+  ctx.fillStyle = shirtDark;
+  ctx.fillRect(px + 8, py + 12, 5, 14);
+  ctx.fillStyle = shirtLight;
+  ctx.fillRect(px + 19, py + 12, 4, 5);
+
+  // arms at the sides, with hands
+  ctx.fillStyle = outline;
+  ctx.fillRect(px + 4, py + 13, 6, 11);
+  ctx.fillRect(px + 22, py + 13, 6, 11);
+  ctx.fillStyle = k.shirt;
+  ctx.fillRect(px + 5, py + 14, 4, 7);
+  ctx.fillRect(px + 23, py + 14, 4, 7);
+  ctx.fillStyle = k.skin;
+  ctx.fillRect(px + 5, py + 20, 4, 4);
+  ctx.fillRect(px + 23, py + 20, 4, 4);
+
+  // head: outline, base skin, shadowed/highlighted sides
+  ctx.fillStyle = outline;
+  ctx.fillRect(px + 9, py + 1, 14, 13);
+  ctx.fillStyle = k.skin;
+  ctx.fillRect(px + 10, py + 2, 12, 11);
+  ctx.fillStyle = skinDark;
+  ctx.fillRect(px + 10, py + 2, 3, 11);
+  ctx.fillStyle = skinLight;
+  ctx.fillRect(px + 18, py + 2, 3, 5);
+
+  // face: brows, eyes, nose, mouth
+  ctx.fillStyle = hairDark;
+  ctx.fillRect(px + 12, py + 5, 2, 1);
+  ctx.fillRect(px + 18, py + 5, 2, 1);
+  ctx.fillStyle = '#201818';
+  ctx.fillRect(px + 12, py + 6, 2, 2);
+  ctx.fillRect(px + 18, py + 6, 2, 2);
+  ctx.fillStyle = skinDark;
+  ctx.fillRect(px + 15, py + 8, 2, 2);
+  ctx.fillStyle = '#5a3428';
+  ctx.fillRect(px + 13, py + 11, 6, 1);
+
+  if (k.name === 'SK1') {
+    // black hat with a white Anthill ant on the front
+    ctx.fillStyle = '#15131a';                     // hat crown
+    ctx.fillRect(px + 6, py - 4, 20, 7);
+    ctx.fillStyle = '#0d0b12';                     // hat brim
+    ctx.fillRect(px + 7, py + 3, 22, 3);
+    drawAnt(px + 15, py + 1, 1.4);
+  } else {
+    // outlined, shaded hair
+    ctx.fillStyle = outline;
+    ctx.fillRect(px + 8, py - 2, 16, 6);
+    ctx.fillStyle = hair;
+    ctx.fillRect(px + 9, py - 1, 14, 5);
+    ctx.fillStyle = hairDark;
+    ctx.fillRect(px + 9, py - 1, 14, 2);
+  }
+}
+
+// Registry of full pre-drawn character images usable as shop npcs (see
+// map.npcs[i].sprite). Each is drawn as-is, scaled to spriteH with feet
+// anchored to the tile's floor line — no procedural fallback, since there's
+// no simple shape that stands in for this art; it just waits for the image
+// to finish loading.
+const SHOP_NPC_IMAGES = { kanga: kangaImg, truth: truthImg, bill: billImg, rza: rzaImg, gza: gzaImg, zach: zachImg, humble: humbleImg, hicks: hicksImg, mavstar: mavstarImg, boxguts: boxgutsImg, trav: travImg, sinnn: sinnnImg, bigrye: bigRyeImg, emma: emmaImg, esk: esKImg, krishna: krishnaImg, arkaiik: arkaiikImg, ghost: ghostImg, hagen: hagenImg, precisemc: preciseMcImg, wish: wishImg };
+
+function drawShopImageNpcs(map) {
+  if (!map.npcs) return;
+  for (const n of map.npcs) {
+    if (!n.sprite) continue;
+    const img = SHOP_NPC_IMAGES[n.sprite];
+    if (!img || !img.complete || !img.naturalWidth) continue;
+    const px = n.tx * TILE, py = n.ty * TILE;
+    const kh = n.spriteH || 80;
+    const kw = Math.round(kh * img.naturalWidth / img.naturalHeight);
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.fillRect(px + 16 - kw * 0.3, py + 27, kw * 0.6, 4);
+    if (n.dance) {
+      // Rockin out on the decks: a quick head-bob bounce on the beat plus a
+      // gentle sway, pivoting about the feet so he stays planted. Purely
+      // visual -- only npcs flagged `dance: true` do this.
+      const t = performance.now() / 1000;
+      const beat = t * 7.5 + n.tx;
+      const bounce = Math.abs(Math.sin(beat)) * 3;
+      const sway = Math.sin(beat * 0.5) * 0.05;
+      const footX = px + 16, footY = py + 30;
+      ctx.save();
+      ctx.translate(footX, footY - bounce);
+      ctx.rotate(sway);
+      ctx.drawImage(img, Math.round(-kw / 2), -kh, kw, kh);
+      ctx.restore();
+      // little floating music notes drifting up off the booth
+      ctx.fillStyle = 'rgba(255, 210, 60, 0.85)';
+      ctx.font = 'bold 12px monospace';
+      ctx.textAlign = 'center';
+      for (let i = 0; i < 2; i++) {
+        const ph = (t * 0.6 + i * 0.5) % 1;
+        const nx = footX + (i === 0 ? -kw * 0.45 : kw * 0.45) + Math.sin(ph * 6 + i) * 4;
+        const ny = footY - kh * 0.6 - ph * 22;
+        ctx.globalAlpha = 1 - ph;
+        ctx.fillText(i === 0 ? '\u266A' : '\u266B', nx, ny);
+      }
+      ctx.globalAlpha = 1;
+    } else {
+      ctx.drawImage(img, Math.round(px + 16 - kw / 2), Math.round(py + 30 - kh), kw, kh);
+    }
+  }
+}
+
+// ---------------------------------------------------------------- player
+function drawPlayer(time) {
+  const row = DIR_ROW[player.dir];
+  let col = 0;
+  if (player.moving) col = [0, 1, 0, 2][Math.floor(player.animT * 7) % 4];
+  if (player.skating) col = player.moving ? 2 : 0;
+
+  const bob = player.skating && player.moving ? Math.sin(time * 14) * 1.5 : 0;
+  const footY = player.y + 6;
+
+  updateSkateTrail(time);
+  drawSkateTrail(time);
+
+  // soft blurred contact shadow (cached ellipse glow) instead of a
+  // hard-edged rectangle
+  drawGlowEllipse(player.x, footY - 0.5, 13, 5, 'rgba(0,0,0,ALPHA)');
+
+  if (player.skating) {
+    ctx.fillStyle = '#8a4a20';
+    ctx.fillRect(player.x - 14, footY - 3 + bob, 28, 4);
+    ctx.fillStyle = '#e8d8b0';
+    ctx.fillRect(player.x - 10, footY + 1 + bob, 5, 4);
+    ctx.fillRect(player.x + 5, footY + 1 + bob, 5, 4);
+  }
+  const charImg = CHARACTERS[selectedCharacter].img;
+  // [T] Turbo Taunt: while `trick` is active, spin the whole sprite about
+  // its own center for the duration of the animation -- purely visual,
+  // doesn't touch player.x/y/dir or any collision/movement code at all.
+  const trickSpin = trick ? (trick.t / trick.dur) * Math.PI * 2 * (player.dir === 'left' ? -1 : 1) : 0;
+  if (trickSpin) {
+    ctx.save();
+    const pivotX = player.x, pivotY = footY - SPR_H / 2 - (player.skating ? 4 : 0) + bob;
+    ctx.translate(pivotX, pivotY);
+    ctx.rotate(trickSpin);
+    ctx.translate(-pivotX, -pivotY);
+  }
+  if (charImg.complete && charImg.naturalWidth) {
+    ctx.drawImage(charImg, col * SHEET_CW, row * SHEET_CH, SHEET_CW, SHEET_CH,
+      Math.round(player.x - SPR_W / 2), Math.round(footY - SPR_H - (player.skating ? 4 : 0) + bob),
+      SPR_W, SPR_H);
+  } else {
+    ctx.fillStyle = '#d0a060';
+    ctx.fillRect(player.x - 8, footY - 40, 16, 40);
+  }
+  if (trickSpin) ctx.restore();
+
+  const spriteTopY = footY - SPR_H - (player.skating ? 4 : 0) + bob;
+  if (player.tempItem === 'coldBrew') {
+    drawPlayerColdBrew(spriteTopY);
+  } else if (player.tempItem === 'iceCream') {
+    drawPlayerIceCream(spriteTopY);
+  } else if (player.tempItem === 'swampJuice') {
+    drawPlayerSwampJuice(spriteTopY);
+  } else if (player.tempItem === 'taco') {
+    drawPlayerTaco(spriteTopY);
+  } else if (player.tempItem === 'fries') {
+    drawPlayerFries(spriteTopY);
+  } else if (player.tempItem === 'scoutCoffee') {
+    drawPlayerScoutCoffee(spriteTopY);
+  } else {
+    if (player.holdingCoffee) drawPlayerColdBrew(spriteTopY);
+    if (player.holdingTea) drawPlayerIcedTea(spriteTopY);
+  }
+}
+
+// A hot SCOUT coffee in a dark green to-go cup with a pink sleeve and a
+// little steam, held at Rico's side -- bought from the SCOUT cart in Winooski
+// (see VENDOR_CARTS/doBuy()). Same hand position as the other held items.
+function drawPlayerScoutCoffee(spriteTopY) {
+  const hx = player.x + (player.dir === 'left' ? -13 : 13), hy = spriteTopY + SPR_H * 0.5;
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx.fillRect(hx - 5, hy + 13, 10, 2);
+  // tapered cup
+  ctx.fillStyle = '#2d4140';
+  ctx.beginPath();
+  ctx.moveTo(hx - 5, hy);
+  ctx.lineTo(hx + 5, hy);
+  ctx.lineTo(hx + 4, hy + 13);
+  ctx.lineTo(hx - 4, hy + 13);
+  ctx.closePath();
+  ctx.fill();
+  // pink sleeve
+  ctx.fillStyle = '#f2bfbc';
+  ctx.fillRect(hx - 4, hy + 4, 8, 5);
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  ctx.fillRect(hx - 3, hy + 5, 1, 3);
+  // lid
+  ctx.fillStyle = '#efe9dc';
+  ctx.fillRect(hx - 6, hy - 2, 12, 3);
+  ctx.fillStyle = '#cfcac0';
+  ctx.fillRect(hx - 4, hy - 4, 8, 2);
+  // two wisps of steam
+  const st = performance.now() / 260;
+  ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(hx - 2, hy - 5);
+  ctx.bezierCurveTo(hx - 2 + Math.sin(st) * 2, hy - 8, hx - 2 - Math.sin(st) * 2, hy - 10, hx - 2 + Math.sin(st + 1) * 2, hy - 13);
+  ctx.moveTo(hx + 2, hy - 5);
+  ctx.bezierCurveTo(hx + 2 - Math.sin(st + 2) * 2, hy - 8, hx + 2 + Math.sin(st + 2) * 2, hy - 10, hx + 2 - Math.sin(st + 3) * 2, hy - 12);
+  ctx.stroke();
+}
+
+// A cold brew coffee, iced and dark, in a to-go cup with a straw — held at
+// Rico's side.
+function drawPlayerColdBrew(spriteTopY) {
+  const hx = player.x + (player.dir === 'left' ? -13 : 13), hy = spriteTopY + SPR_H * 0.5;
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx.fillRect(hx - 5, hy + 13, 10, 2);
+  ctx.fillStyle = '#efe9dc';
+  ctx.fillRect(hx - 4, hy, 8, 13);
+  ctx.fillStyle = '#3a2617';
+  ctx.fillRect(hx - 3, hy + 3, 6, 9);
+  ctx.fillStyle = 'rgba(255,255,255,0.35)';
+  ctx.fillRect(hx - 3, hy + 4, 1, 6);
+  ctx.fillStyle = '#cfcac0';
+  ctx.fillRect(hx - 5, hy - 2, 10, 3);
+  ctx.strokeStyle = '#f4ecd8';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(hx + 1, hy - 2);
+  ctx.lineTo(hx + 3, hy - 9);
+  ctx.stroke();
+}
+
+// A bright green cup of Swamp Juice, held at Rico's side -- bought from the
+// swamp's juice cart. Same to-go-cup silhouette as drawPlayerColdBrew above
+// (cup, lid, straw), just re-themed: a clear plastic cup instead of a paper
+// one so the glowing green drink actually reads as the star of the prop.
+function drawPlayerSwampJuice(spriteTopY) {
+  const hx = player.x + (player.dir === 'left' ? -13 : 13), hy = spriteTopY + SPR_H * 0.5;
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx.fillRect(hx - 5, hy + 13, 10, 2);
+  // clear cup wall
+  ctx.fillStyle = 'rgba(224,236,216,0.5)';
+  ctx.fillRect(hx - 4, hy, 8, 13);
+  // bright green juice filling most of the cup
+  ctx.fillStyle = '#39ff6a';
+  ctx.fillRect(hx - 3, hy + 3, 6, 9);
+  ctx.fillStyle = '#1fd94f';
+  ctx.fillRect(hx - 3, hy + 3, 6, 2);
+  ctx.fillStyle = 'rgba(255,255,255,0.45)';
+  ctx.fillRect(hx - 3, hy + 4, 1, 6);
+  // lid
+  ctx.fillStyle = '#cfcac0';
+  ctx.fillRect(hx - 5, hy - 2, 10, 3);
+  ctx.strokeStyle = '#f4ecd8';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(hx + 1, hy - 2);
+  ctx.lineTo(hx + 3, hy - 9);
+  ctx.stroke();
+}
+
+// A yellow can of iced yerba mate tea, held at Rico's side.
+function drawPlayerIcedTea(spriteTopY) {
+  const hx = player.x + (player.dir === 'left' ? -13 : 13), hy = spriteTopY + SPR_H * 0.5;
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx.fillRect(hx - 5, hy + 14, 10, 2);
+  ctx.fillStyle = '#e8c020';
+  ctx.fillRect(hx - 4, hy, 8, 14);
+  ctx.fillStyle = '#c8a010';
+  ctx.fillRect(hx - 4, hy, 8, 2);
+  ctx.fillRect(hx - 4, hy + 12, 8, 2);
+  ctx.fillStyle = '#3a6a2a';
+  ctx.fillRect(hx - 3, hy + 5, 6, 5);
+  ctx.fillStyle = 'rgba(255,255,255,0.4)';
+  ctx.fillRect(hx - 3, hy + 2, 1, 8);
+}
+
+// A scoop of ice cream in a waffle cone, held at Rico's side — bought from
+// the ice cream van.
+function drawPlayerIceCream(spriteTopY) {
+  const hx = player.x + (player.dir === 'left' ? -13 : 13), hy = spriteTopY + SPR_H * 0.5;
+  ctx.fillStyle = '#d8a24a';
+  ctx.beginPath();
+  ctx.moveTo(hx - 4, hy + 2);
+  ctx.lineTo(hx + 4, hy + 2);
+  ctx.lineTo(hx, hy + 14);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#a87830';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(hx - 4, hy + 5); ctx.lineTo(hx + 4, hy + 5);
+  ctx.moveTo(hx - 3, hy + 8); ctx.lineTo(hx + 3, hy + 8);
+  ctx.moveTo(hx - 2, hy + 11); ctx.lineTo(hx + 2, hy + 11);
+  ctx.stroke();
+  ctx.fillStyle = '#f7c9d8';
+  ctx.beginPath();
+  ctx.arc(hx, hy - 2, 6, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.4)';
+  ctx.beginPath();
+  ctx.arc(hx - 2, hy - 4, 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#c02840';
+  ctx.beginPath();
+  ctx.arc(hx, hy - 8, 2, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+// A crunchy taco held at Rico's side -- bought from TACO TRUCK ALL STARS
+// (see VENDOR_CARTS/doBuy()). Same hand position as the other held items.
+function drawPlayerTaco(spriteTopY) {
+  const hx = player.x + (player.dir === 'left' ? -13 : 13), hy = spriteTopY + SPR_H * 0.5;
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx.fillRect(hx - 7, hy + 12, 14, 2);
+  // back half of the shell
+  ctx.fillStyle = '#d99a3a';
+  ctx.beginPath();
+  ctx.arc(hx, hy + 2, 8, Math.PI, 0, false);
+  ctx.closePath();
+  ctx.fill();
+  // filling spilling out of the top: lettuce, tomato, cheese
+  ctx.fillStyle = '#4aa038';
+  for (let i = 0; i < 4; i++) {
+    ctx.beginPath();
+    ctx.arc(hx - 5 + i * 3.4, hy + 1, 2.6, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.fillStyle = '#c0382c';
+  ctx.beginPath(); ctx.arc(hx - 2, hy, 1.8, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(hx + 3, hy + 1, 1.6, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#f2c63c';
+  ctx.beginPath(); ctx.arc(hx + 0.5, hy - 1.5, 1.4, 0, Math.PI * 2); ctx.fill();
+  // front half of the shell (covers the bottom of the filling)
+  ctx.fillStyle = '#f0b848';
+  ctx.beginPath();
+  ctx.arc(hx, hy + 3, 7.5, 0, Math.PI, false);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#b87a20';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(hx, hy + 3, 7.5, 0, Math.PI, false);
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.35)';
+  ctx.fillRect(hx - 5, hy + 5, 1, 3);
+}
+
+// A red-and-white paper bucket piled high with golden french fries, held at
+// Rico's side -- bought from AL'S FRENCH FRYS (see VENDOR_CARTS/doBuy()).
+// Same hand position as the other held items.
+function drawPlayerFries(spriteTopY) {
+  const hx = player.x + (player.dir === 'left' ? -13 : 13), hy = spriteTopY + SPR_H * 0.5;
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx.fillRect(hx - 6, hy + 13, 12, 2);
+  // fries poking out of the top (drawn first so the bucket covers their ends)
+  const fryCols = ['#f2c63c', '#e8b030', '#f7d658'];
+  for (let i = 0; i < 7; i++) {
+    ctx.fillStyle = fryCols[i % 3];
+    ctx.fillRect(Math.round(hx - 5 + i * 1.7), hy - 8 + (i % 3) * 2 - (i === 3 ? 2 : 0), 2, 10);
+  }
+  // bucket
+  ctx.fillStyle = '#d42a2a';
+  ctx.beginPath();
+  ctx.moveTo(hx - 6, hy);
+  ctx.lineTo(hx + 6, hy);
+  ctx.lineTo(hx + 4.5, hy + 13);
+  ctx.lineTo(hx - 4.5, hy + 13);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#f4f2ec';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(hx - 2.5, hy + 1); ctx.lineTo(hx - 2, hy + 12);
+  ctx.moveTo(hx + 2.5, hy + 1); ctx.lineTo(hx + 2, hy + 12);
+  ctx.stroke();
+  // yellow label + rim
+  ctx.fillStyle = '#f2c63c';
+  ctx.fillRect(hx - 3, hy + 4, 6, 4);
+  ctx.fillStyle = '#d42a2a';
+  ctx.fillRect(hx - 1, hy + 5, 2, 2);
+  ctx.fillStyle = '#f4f2ec';
+  ctx.fillRect(hx - 6.5, hy - 1, 13, 2);
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  ctx.fillRect(hx - 5, hy + 8, 1, 3);
+}
+
+// ---------------------------------------------------------------- UI
+function drawHUD() {
+  ctx.fillStyle = HUD_PANEL_GRADIENT;
+  ctx.fillRect(8, 8, 320, 44);
+  ctx.font = 'bold 14px monospace';
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#c8c0d8';
+  ctx.fillText('SAMPLES', 18, 26);
+  worldPadOrder().forEach((id, i) => {
+    const r = worldRecords()[id];
+    const x = 88 + i * 46, y = 14;
+    const isCollected = collected.has(recKey(currentWorldId(), id));
+    if (isCollected) {
+      // small satisfying halo behind pads the player has already found
+      drawGlowEllipse(x + 19, y + 15, 21, 17, hexToRgbaTemplate(r.color));
+    }
+    ctx.fillStyle = isCollected ? r.color : '#262030';
+    ctx.fillRect(x, y, 38, 30);
+    ctx.strokeStyle = '#0a080e';
+    ctx.strokeRect(x + 0.5, y + 0.5, 37, 29);
+    ctx.fillStyle = isCollected ? '#181418' : '#4a4258';
+    ctx.textAlign = 'center';
+    ctx.fillText(r.pad, x + 19, y + 20);
+  });
+
+  if (state === 'play') {
+    const target = facingTarget();
+    if (target) {
+      const label = target.type === 'crate' ? '[E] DIG CRATE'
+                  : (target.type === 'keeper' && target.data && target.data.name === 'LINUS') ? '[E] PET LINUS'
+                  : (target.type === 'keeper' || target.type === 'npc' || target.type === 'filingCabinets') ? '[E] TALK'
+                  : target.type === 'newspaper' ? '[E] READ'
+                  : target.type === 'cart' ? `[X] ${target.data.label}`
+                  : target.type === 'minigame' ? `[E] ${target.data.label || 'PLAY'}`
+                  : '[E] LOOK';
+      pill(label, VIEW_W / 2, VIEW_H - 34);
+    }
+  }
+}
+
+function pill(text, cx, cy) {
+  // Bumped from 16px for mobile readability. Box width/height are derived
+  // from measureText/font size, so they grow with the text automatically --
+  // no fixed dimensions to fall out of sync with the larger font.
+  ctx.font = 'bold 18px monospace';
+  const w = ctx.measureText(text).width + 28;
+  const h = 30;
+  ctx.fillStyle = 'rgba(10,8,14,0.8)';
+  ctx.fillRect(cx - w / 2, cy - h / 2, w, h);
+  ctx.fillStyle = '#f4ecd8';
+  ctx.textAlign = 'center';
+  ctx.fillText(text, cx, cy + 6);
+}
+
+function drawToast() {
+  ctx.globalAlpha = Math.min(1, toast.t * 3);
+  pill(toast.text, VIEW_W / 2, 80);
+  ctx.globalAlpha = 1;
+}
+
+// [G] Photo Mode's one on-screen element: a small, low-opacity corner
+// label so the player still knows how to get back out, without it reading
+// as a "prompt" competing with the clean shot they opened this mode for.
+function drawPhotoModeHint() {
+  ctx.textAlign = 'right';
+  ctx.fillStyle = 'rgba(244,236,216,0.45)';
+  ctx.font = 'bold 12px monospace';
+  ctx.fillText('PHOTO MODE \u2014 [\u2190\u2191\u2192\u2193] NUDGE \u00b7 [G] EXIT', VIEW_W - 10, VIEW_H - 10);
+  ctx.textAlign = 'left';
+}
+
+function drawDialog() {
+  // Body text sized up from 21px for mobile readability. Box height is
+  // computed from the actual wrapped line count (rather than a fixed 150px)
+  // so longer lines at this bigger font never overflow or collide with the
+  // "[E]" hint -- it just grows upward a bit instead.
+  const bodyFont = '24px monospace';
+  const lineH = 30;
+  const textMaxW = VIEW_W - 96;
+
+  ctx.font = bodyFont; // set before measuring so wrap width is accurate
+  const lines = wrapLinesCentered(dialog.lines[dialog.i], textMaxW);
+
+  const topPad = 68, bottomPad = 46;
+  const minH = 150;
+  const h = Math.max(minH, topPad + lines.length * lineH + bottomPad);
+  const y = VIEW_H - h - 16;
+
+  ctx.fillStyle = 'rgba(10,8,14,0.92)';
+  ctx.fillRect(24, y, VIEW_W - 48, h);
+  ctx.strokeStyle = '#f4ecd8';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(26, y + 2, VIEW_W - 52, h - 4);
+
+  ctx.textAlign = 'left';
+  ctx.font = 'bold 22px monospace';
+  ctx.fillStyle = '#e0b040';
+  ctx.fillText(dialog.name, 44, y + 34);
+
+  ctx.fillStyle = '#f4ecd8';
+  ctx.font = bodyFont;
+  lines.forEach((l, i) => ctx.fillText(l, 44, y + 62 + i * lineH));
+
+  ctx.font = 'bold 18px monospace';
+  ctx.fillStyle = '#9a90a8';
+  ctx.textAlign = 'right';
+  ctx.fillText('[E] ▶', VIEW_W - 44, y + h - 16);
+}
+
+// Splash popup shown when the player walks into one of the placeholder
+// portal doors. Mirrors the look of drawDialog()/drawSplash() so it feels
+// native to the game rather than a bolted-on alert box.
+function drawPortalPopup() {
+  ctx.fillStyle = 'rgba(8,6,12,0.6)';
+  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
+  if (portalClosedImg.complete && portalClosedImg.naturalWidth) {
+    const iw = portalClosedImg.naturalWidth, ih = portalClosedImg.naturalHeight;
+    const scale = Math.min((VIEW_W * 0.62) / iw, (VIEW_H * 0.58) / ih);
+    const dw = iw * scale, dh = ih * scale;
+    const dx = (VIEW_W - dw) / 2, dy = 38;
+    ctx.drawImage(portalClosedImg, dx, dy, dw, dh);
+  }
+
+  // Text bumped up from 18px/17px for mobile readability. Box height is
+  // derived from the wrapped line count (min 128px) so it can't overflow.
+  const boxW = VIEW_W - 120, boxX = 60;
+  const bodyFont = '20px monospace', lineH = 25;
+  ctx.font = bodyFont;
+  const lines = wrapLinesCentered(
+    'More lands are being created. More vinyl awaits. Check back later homie!',
+    boxW - 48
+  );
+  const boxH = Math.max(128, 30 + lines.length * lineH + 34);
+  const boxY = VIEW_H - boxH - 28;
+
+  ctx.fillStyle = 'rgba(10,8,14,0.94)';
+  ctx.fillRect(boxX, boxY, boxW, boxH);
+  ctx.strokeStyle = '#f4ecd8';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(boxX + 2, boxY + 2, boxW - 4, boxH - 4);
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#f4ecd8';
+  ctx.font = bodyFont;
+  const startY = boxY + 30;
+  lines.forEach((l, i) => ctx.fillText(l, VIEW_W / 2, startY + i * lineH));
+
+  ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#e0b040' : '#f4ecd8';
+  ctx.font = 'bold 18px monospace';
+  ctx.fillText('Press [E] or tap screen to return', VIEW_W / 2, boxY + boxH - 16);
+}
+
+// Shown when the player walks into Rico's Lab door before every record in
+// town has been found. Same look as drawPortalPopup(), just its own text
+// and no splash art -- the point is "not yet", not "check out this cool
+// thing", so it stays visually calm.
+function drawLabLockedPopup() {
+  ctx.fillStyle = 'rgba(8,6,12,0.6)';
+  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
+  // Text bumped up from 17px/16px for mobile readability. Box height is
+  // derived from the wrapped line count (min 160px) so it can't overflow.
+  const boxW = VIEW_W - 160, boxX = 80;
+  const bodyFont = '19px monospace', lineH = 24;
+  ctx.font = bodyFont;
+  const lines = wrapLinesCentered(
+    "Door's locked tight. Dig up every last record hiding around town first.",
+    boxW - 48
+  );
+  const boxH = Math.max(160, 66 + lines.length * lineH + 40);
+  const boxY = (VIEW_H - boxH) / 2;
+
+  ctx.fillStyle = 'rgba(10,8,14,0.94)';
+  ctx.fillRect(boxX, boxY, boxW, boxH);
+  ctx.strokeStyle = '#8a7a50';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(boxX + 2, boxY + 2, boxW - 4, boxH - 4);
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#e0b040';
+  ctx.font = 'bold 22px monospace';
+  ctx.fillText("RICO'S LAB", VIEW_W / 2, boxY + 36);
+
+  ctx.fillStyle = '#f4ecd8';
+  ctx.font = bodyFont;
+  const startY = boxY + 66;
+  lines.forEach((l, i) => ctx.fillText(l, VIEW_W / 2, startY + i * lineH));
+
+  ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#e0b040' : '#f4ecd8';
+  ctx.font = 'bold 18px monospace';
+  ctx.fillText('Press [E] or tap screen to return', VIEW_W / 2, boxY + boxH - 16);
+}
+
+// Shown when the player walks into a shop's own "back room" door (see
+// makeShop()'s backDoorTile opt / SHOP_BACK_ROOMS / checkShopBackDoor())
+// before that shop's world has been fully swept. Same look/shape as
+// drawLabLockedPopup() just above, with title/body text pulled from
+// SHOP_BACK_ROOMS so any future shop's back door reads correctly here too.
+function drawShopBackLockedPopup() {
+  const cfg = SHOP_BACK_ROOMS[player.map] || { title: 'LOCKED', locked: "This door's not opening yet." };
+
+  ctx.fillStyle = 'rgba(8,6,12,0.6)';
+  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
+  const boxW = VIEW_W - 160, boxX = 80;
+  const bodyFont = '19px monospace', lineH = 24;
+  ctx.font = bodyFont;
+  const lines = wrapLinesCentered(cfg.locked, boxW - 48);
+  const boxH = Math.max(160, 66 + lines.length * lineH + 40);
+  const boxY = (VIEW_H - boxH) / 2;
+
+  ctx.fillStyle = 'rgba(10,8,14,0.94)';
+  ctx.fillRect(boxX, boxY, boxW, boxH);
+  ctx.strokeStyle = '#8a7a50';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(boxX + 2, boxY + 2, boxW - 4, boxH - 4);
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#e0b040';
+  ctx.font = 'bold 22px monospace';
+  ctx.fillText(cfg.title, VIEW_W / 2, boxY + 36);
+
+  ctx.fillStyle = '#f4ecd8';
+  ctx.font = bodyFont;
+  const startY = boxY + 66;
+  lines.forEach((l, i) => ctx.fillText(l, VIEW_W / 2, startY + i * lineH));
+
+  ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#e0b040' : '#f4ecd8';
+  ctx.font = 'bold 18px monospace';
+  ctx.fillText('Press [E] or tap screen to return', VIEW_W / 2, boxY + boxH - 16);
+}
+
+// Drawn the instant that pickup completes the town set and unlocks Rico's Beat Lab
+// (see the 'record'/'labUnlock' state handling in the input loop). Just a
+// scale-to-fit splash plus a blinking continue prompt -- the art itself
+// already carries the "you now have access" message and the "head to the
+// portal by Green Door Studio" pointer, so there's no live layout to track
+// here the way drawLabPopup() has to for its selectable instrument boxes.
+function drawLabUnlock() {
+  ctx.fillStyle = 'rgba(8,6,12,0.6)';
+  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
+  if (ricoBeatLabWelcomeImg.complete && ricoBeatLabWelcomeImg.naturalWidth) {
+    const iw = ricoBeatLabWelcomeImg.naturalWidth, ih = ricoBeatLabWelcomeImg.naturalHeight;
+    const scale = Math.min(VIEW_W / iw, VIEW_H / ih);
+    const dw = iw * scale, dh = ih * scale;
+    const dx = (VIEW_W - dw) / 2, dy = (VIEW_H - dh) / 2;
+    ctx.drawImage(ricoBeatLabWelcomeImg, dx, dy, dw, dh);
+  } else {
+    // fallback text-only version, in case the art hasn't loaded in yet
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#e0b040';
+    ctx.font = 'bold 22px monospace';
+    ctx.fillText("YOU NOW HAVE ACCESS TO RICO'S BEAT LAB!", VIEW_W / 2, VIEW_H / 2 - 24);
+    ctx.fillStyle = '#f4ecd8';
+    ctx.font = '16px monospace';
+    const lines = wrapLinesCentered(
+      'Head over to the portal by Green Door Studio to go cook up in the lab!',
+      VIEW_W - 160
+    );
+    lines.forEach((l, i) => ctx.fillText(l, VIEW_W / 2, VIEW_H / 2 + 12 + i * 22));
+  }
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#e0b040' : '#f4ecd8';
+  ctx.font = 'bold 16px monospace';
+  ctx.fillText('- PRESS E TO CONTINUE -', VIEW_W / 2, VIEW_H - 18);
+}
+
+// Drawn the instant the pickup of LEVEL 3's last record unlocks SANTOS' STU
+// (see the 'record'/'santosStuUnlock' state handling in the input loop).
+// Same scale-to-fit splash + blinking continue prompt as drawLabUnlock() --
+// the art carries the message and the "portal behind FOAM" pointer.
+function drawSantosStuUnlock() {
+  ctx.fillStyle = 'rgba(8,6,12,0.6)';
+  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
+  if (santosStuSplashImg.complete && santosStuSplashImg.naturalWidth) {
+    const iw = santosStuSplashImg.naturalWidth, ih = santosStuSplashImg.naturalHeight;
+    const scale = Math.min(VIEW_W / iw, VIEW_H / ih);
+    const dw = iw * scale, dh = ih * scale;
+    const dx = (VIEW_W - dw) / 2, dy = (VIEW_H - dh) / 2;
+    ctx.drawImage(santosStuSplashImg, dx, dy, dw, dh);
+  } else {
+    // fallback text-only version, in case the art hasn't loaded in yet
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#7be046';
+    ctx.font = 'bold 22px monospace';
+    ctx.fillText("YOU NOW HAVE ACCESS TO SANTOS' STU!", VIEW_W / 2, VIEW_H / 2 - 24);
+    ctx.fillStyle = '#f4ecd8';
+    ctx.font = '16px monospace';
+    const lines = wrapLinesCentered(
+      "Head over to the portal behind 'FOAM' to step into Santos' Stu!",
+      VIEW_W - 160
+    );
+    lines.forEach((l, i) => ctx.fillText(l, VIEW_W / 2, VIEW_H / 2 + 12 + i * 22));
+  }
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#e0b040' : '#f4ecd8';
+  ctx.font = 'bold 16px monospace';
+  ctx.fillText('- PRESS E TO CONTINUE -', VIEW_W / 2, VIEW_H - 18);
+}
+
+// Shown when the player walks into the SANTOS' STU door before the
+// skatepark's records have all been found. Same look as
+// drawLabLockedPopup(), in SANTOS' STU's lime/brass palette.
+function drawSantosStuLockedPopup() {
+  ctx.fillStyle = 'rgba(8,6,12,0.6)';
+  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
+  const boxW = VIEW_W - 160, boxX = 80;
+  const bodyFont = '19px monospace', lineH = 24;
+  ctx.font = bodyFont;
+  const lines = wrapLinesCentered(
+    "Door's locked tight, but you can hear something cooking behind it. Dig up every last record hiding around the skatepark to get in.",
+    boxW - 48
+  );
+  const boxH = Math.max(160, 66 + lines.length * lineH + 40);
+  const boxY = (VIEW_H - boxH) / 2;
+
+  ctx.fillStyle = 'rgba(10,8,14,0.94)';
+  ctx.fillRect(boxX, boxY, boxW, boxH);
+  ctx.strokeStyle = '#7be046';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(boxX + 2, boxY + 2, boxW - 4, boxH - 4);
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#7be046';
+  ctx.font = 'bold 22px monospace';
+  ctx.fillText("SANTOS' STU", VIEW_W / 2, boxY + 36);
+
+  ctx.fillStyle = '#f4ecd8';
+  ctx.font = bodyFont;
+  const startY = boxY + 66;
+  lines.forEach((l, i) => ctx.fillText(l, VIEW_W / 2, startY + i * lineH));
+
+  ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#e0b040' : '#f4ecd8';
+  ctx.font = 'bold 18px monospace';
+  ctx.fillText('Press [E] or tap screen to return', VIEW_W / 2, boxY + boxH - 16);
+}
+
+// Placeholder popup for the SANTOS' STU portal (see enterSantosStu()) --
+// same box look as drawPortalPopup(), minus the art.
+function drawSantosStuPortalPopup() {
+  ctx.fillStyle = 'rgba(8,6,12,0.6)';
+  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
+  const boxW = VIEW_W - 120, boxX = 60;
+  const bodyFont = '20px monospace', lineH = 25;
+  ctx.font = bodyFont;
+  const lines = wrapLinesCentered("SANTOS' STU is being wired up. The tape's rolling soon - check back later homie!", boxW - 48);
+  const boxH = Math.max(128, 30 + lines.length * lineH + 34);
+  const boxY = (VIEW_H - boxH) / 2;
+
+  ctx.fillStyle = 'rgba(10,8,14,0.94)';
+  ctx.fillRect(boxX, boxY, boxW, boxH);
+  ctx.strokeStyle = '#7be046';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(boxX + 2, boxY + 2, boxW - 4, boxH - 4);
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#f4ecd8';
+  ctx.font = bodyFont;
+  lines.forEach((l, i) => ctx.fillText(l, VIEW_W / 2, boxY + 30 + i * lineH));
+
+  ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#e0b040' : '#f4ecd8';
+  ctx.font = 'bold 18px monospace';
+  ctx.fillText('Press [E] or tap screen to return', VIEW_W / 2, boxY + boxH - 16);
+}
+
+// The instrument picker shown once Rico's Lab is unlocked. Mirrors
+// drawCharacterSelect()'s approach: draw the full splash art scaled to
+// fit, record where it landed as labLayout so taps can be mapped back onto
+// it, then paint a highlight over the LAB_OPTIONS box that matches whatever
+// the player last selected (arrow keys, or a previous tap). All 4 boxes get
+// a soft ambient shimmer so they read as "live"/selectable at a glance, the
+// same way the 4 boxes on the source art already look inviting -- the
+// selected one on top of that gets the brighter, faster character-select-
+// style pulsing border.
+function drawLabPopup(time) {
+  ctx.fillStyle = 'rgba(8,6,12,0.6)';
+  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
+  if (ricoLabSplashImg.complete && ricoLabSplashImg.naturalWidth) {
+    const iw = ricoLabSplashImg.naturalWidth, ih = ricoLabSplashImg.naturalHeight;
+    const scale = Math.min(VIEW_W / iw, VIEW_H / ih);
+    const dw = iw * scale, dh = ih * scale;
+    const originX = (VIEW_W - dw) / 2, originY = (VIEW_H - dh) / 2;
+    labLayout = { originX, originY, scale, imgW: iw, imgH: ih, fallback: false };
+    ctx.drawImage(ricoLabSplashImg, originX, originY, dw, dh);
+
+    LAB_OPTIONS.forEach((opt, i) => {
+      const bx = originX + opt.bx0 * dw, by = originY + opt.by0 * dh;
+      const bw = (opt.bx1 - opt.bx0) * dw, bh = (opt.by1 - opt.by0) * dh;
+      if (i === labIndex) {
+        // selected: bright flickering border, same cadence as
+        // drawCharacterSelect()'s portrait highlight
+        ctx.strokeStyle = Math.floor(time * 2.4) % 2 ? '#e0b040' : '#f4ecd8';
+        ctx.lineWidth = 4;
+        ctx.strokeRect(bx + 2, by + 2, bw - 4, bh - 4);
+        ctx.save();
+        ctx.shadowColor = '#e0b040';
+        ctx.shadowBlur = 16;
+        ctx.strokeRect(bx + 2, by + 2, bw - 4, bh - 4);
+        ctx.restore();
+      } else {
+        // ambient: soft, slow, out-of-phase-per-box shimmer so all 4 read
+        // as selectable without fighting the highlighted one for attention
+        const p = 0.35 + 0.35 * Math.sin(time * 1.6 + i * 1.9);
+        ctx.strokeStyle = `rgba(160,200,90,${p.toFixed(2)})`;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(bx + 2, by + 2, bw - 4, bh - 4);
+      }
+    });
+  } else {
+    // fallback: simple stacked panels until the art loads. Uses the same
+    // by0/by1 fractions as the real art (mapped onto the full view height)
+    // so it lines up close enough once the image does load in.
+    labLayout = { originX: 0, originY: 0, scale: 1, imgW: VIEW_W, imgH: VIEW_H, fallback: true };
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#e0b040';
+    ctx.font = 'bold 26px monospace';
+    ctx.fillText("RICO'S LAB", VIEW_W / 2, 50);
+    LAB_OPTIONS.forEach((opt, i) => {
+      const y = opt.by0 * VIEW_H, h = (opt.by1 - opt.by0) * VIEW_H;
+      const x = VIEW_W * 0.12, w = VIEW_W * 0.76;
+      ctx.fillStyle = i === labIndex ? 'rgba(224,176,64,0.35)' : 'rgba(90,120,60,0.22)';
+      ctx.fillRect(x, y, w, h);
+      ctx.strokeStyle = i === labIndex
+        ? (Math.floor(time * 2.4) % 2 ? '#e0b040' : '#f4ecd8')
+        : `rgba(160,200,90,${(0.35 + 0.35 * Math.sin(time * 1.6 + i * 1.9)).toFixed(2)})`;
+      ctx.lineWidth = i === labIndex ? 4 : 2;
+      ctx.strokeRect(x + 2, y + 2, w - 4, h - 4);
+      ctx.fillStyle = '#f4ecd8';
+      ctx.font = 'bold 18px monospace';
+      ctx.fillText(`${i + 1}.) ${opt.name}`, VIEW_W / 2, y + h / 2 + 6);
+    });
+  }
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#e0b040' : '#f4ecd8';
+  ctx.font = 'bold 16px monospace';
+  ctx.fillText('- TAP AN INSTRUMENT, OR USE \u25b2 \u25bc AND E -  [X] LEAVE', VIEW_W / 2, VIEW_H - 20);
+}
+
+// The SANTOS' STU studio splash. Same approach as drawLabPopup(): draw the
+// art scaled to fit, record where it landed as stuLayout so taps map back
+// onto the 6 buttons, then paint light-up effects over them -- a soft
+// ambient glow on every button, a brighter pulsing frame on the selected
+// one, and a quick white-hot flash on whichever was just triggered. Also
+// draws an on-screen EXIT button (top-left) that returns to the SKATEPARK.
+function drawSantosStuPopup(time) {
+  ctx.fillStyle = 'rgb(8,6,12)';
+  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+  const now = performance.now();
+
+  if (santosStuStudioImg.complete && santosStuStudioImg.naturalWidth) {
+    const iw = santosStuStudioImg.naturalWidth, ih = santosStuStudioImg.naturalHeight;
+    const scale = Math.min(VIEW_W / iw, VIEW_H / ih);
+    const dw = iw * scale, dh = ih * scale;
+    const originX = (VIEW_W - dw) / 2, originY = (VIEW_H - dh) / 2;
+    stuLayout = { originX, originY, scale, imgW: iw, imgH: ih, fallback: false };
+    ctx.drawImage(santosStuStudioImg, originX, originY, dw, dh);
+
+    STU_OPTIONS.forEach((opt, i) => {
+      const bx = originX + opt.bx0 * dw, by = originY + opt.by0 * dh;
+      const bw = (opt.bx1 - opt.bx0) * dw, bh = (opt.by1 - opt.by0) * dh;
+      const flash = Math.max(0, (stuLitUntil[i] - now) / 450);
+      if (flash > 0) {
+        // just triggered: bright warm flood over the whole button
+        ctx.fillStyle = `rgba(255,214,120,${(0.55 * flash).toFixed(2)})`;
+        ctx.fillRect(bx, by, bw, bh);
+      }
+      if (i === stuIndex) {
+        ctx.strokeStyle = Math.floor(time * 2.4) % 2 ? '#e0b040' : '#f4ecd8';
+        ctx.lineWidth = 4;
+        ctx.strokeRect(bx + 2, by + 2, bw - 4, bh - 4);
+        ctx.save();
+        ctx.shadowColor = '#e0b040';
+        ctx.shadowBlur = 18;
+        ctx.strokeRect(bx + 2, by + 2, bw - 4, bh - 4);
+        ctx.restore();
+        ctx.fillStyle = `rgba(255,200,90,${(0.10 + 0.08 * Math.sin(time * 5)).toFixed(2)})`;
+        ctx.fillRect(bx, by, bw, bh);
+      } else {
+        const p = 0.30 + 0.30 * Math.sin(time * 1.6 + i * 1.1);
+        ctx.strokeStyle = `rgba(160,200,90,${p.toFixed(2)})`;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(bx + 2, by + 2, bw - 4, bh - 4);
+      }
+    });
+  } else {
+    // fallback until the art loads (or if it's missing): 6 plain buttons
+    stuLayout = { originX: 0, originY: 0, scale: 1, imgW: VIEW_W, imgH: VIEW_H, fallback: true };
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#7be046';
+    ctx.font = 'bold 28px monospace';
+    ctx.fillText("SANTOS' STU", VIEW_W / 2, 60);
+    STU_OPTIONS.forEach((opt, i) => {
+      const x = VIEW_W * (opt.bx0), w = VIEW_W * (opt.bx1 - opt.bx0);
+      const y = VIEW_H * opt.by0, h = VIEW_H * (opt.by1 - opt.by0);
+      const flash = Math.max(0, (stuLitUntil[i] - now) / 450);
+      ctx.fillStyle = flash > 0 ? `rgba(255,214,120,${(0.4 + 0.5 * flash).toFixed(2)})`
+        : (i === stuIndex ? 'rgba(224,176,64,0.35)' : 'rgba(90,120,60,0.22)');
+      ctx.fillRect(x, y, w, h);
+      ctx.strokeStyle = i === stuIndex ? '#e0b040' : 'rgba(160,200,90,0.5)';
+      ctx.lineWidth = i === stuIndex ? 4 : 2;
+      ctx.strokeRect(x + 2, y + 2, w - 4, h - 4);
+      ctx.fillStyle = '#f4ecd8';
+      ctx.font = 'bold 12px monospace';
+      ctx.fillText(opt.name, x + w / 2, y + h / 2 + 4);
+    });
+  }
+
+  // on-screen EXIT button (top-left corner of the view)
+  const ex = 12, ey = 12, ew = 150, eh = 36;
+  stuExitRect = { x: ex, y: ey, w: ew, h: eh };
+  ctx.fillStyle = 'rgba(10,8,14,0.82)';
+  ctx.fillRect(ex, ey, ew, eh);
+  ctx.strokeStyle = '#e0b040';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(ex + 1, ey + 1, ew - 2, eh - 2);
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#f4ecd8';
+  ctx.font = 'bold 15px monospace';
+  ctx.fillText('\u2190 EXIT [X]', ex + ew / 2, ey + 24);
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = Math.floor(now / 400) % 2 ? '#e0b040' : '#f4ecd8';
+  ctx.font = 'bold 14px monospace';
+  ctx.fillText('- TAP AN INSTRUMENT, OR USE \u25c0 \u25b6 AND E -  [X] EXIT TO SKATEPARK', VIEW_W / 2, VIEW_H - 8);
+}
+
+// [H] hot-keys popup -- reachable any time during gameplay (see the
+// keydown handler and the 'hotkeys' state in update()). Pauses the action
+// behind a dark overlay the same way drawPortalPopup() does, then lists
+// every key the player has available. Keep this list in sync with the
+// keydown handler above and the fallback controls list in drawTitle().
+function drawHotkeysPopup() {
+  ctx.fillStyle = 'rgba(8,6,12,0.72)';
+  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
+  const boxW = 460, boxH = 436, boxX = (VIEW_W - boxW) / 2, boxY = (VIEW_H - boxH) / 2;
+  ctx.fillStyle = 'rgba(10,8,14,0.95)';
+  ctx.fillRect(boxX, boxY, boxW, boxH);
+  ctx.strokeStyle = '#f4ecd8';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(boxX + 2, boxY + 2, boxW - 4, boxH - 4);
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#e0b040';
+  ctx.font = 'bold 22px monospace';
+  ctx.fillText('HOT KEYS', VIEW_W / 2, boxY + 34);
+
+  const rows = [
+    ['ARROWS / WASD', 'move'],
+    ['E', 'talk / dig crates / read'],
+    ['B', 'skateboard on & off'],
+    ['T', 'trick (while skating, just for fun)'],
+    ['C', 'cold brew coffee on & off'],
+    ['Y', 'iced yerba mate on & off'],
+    ['M', 'mute music'],
+    ['X', 'buy from carts'],
+    ['K', 'quicksave'],
+    ['N', 'back to start / new game'],
+    ['V', 'open The Crate (record collection)'],
+    ['G', 'photo mode'],
+    ['R', 'spray your graffiti tag'],
+    ['H', 'toggle this hot-keys popup'],
+  ];
+  const listX = boxX + 30, keyColW = 150, startY = boxY + 66, lh = 24;
+  ctx.textAlign = 'left';
+  rows.forEach(([keyLabel, desc], i) => {
+    const y = startY + i * lh;
+    ctx.fillStyle = '#e0b040';
+    ctx.font = 'bold 16px monospace';
+    ctx.fillText(`[${keyLabel}]`, listX, y);
+    ctx.fillStyle = '#f4ecd8';
+    ctx.font = '16px monospace';
+    ctx.fillText(desc, listX + keyColW, y);
+  });
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#e0b040' : '#f4ecd8';
+  ctx.font = 'bold 17px monospace';
+  ctx.fillText('- PRESS [H] OR [E] TO CLOSE -', VIEW_W / 2, boxY + boxH - 16);
+}
+
+// "fifa" keyword easter egg: splash image + a countdown popup that reads
+// "Time for a quick friendly! Back in 5...4...3..." with a live number,
+// shown for 5 seconds (see triggerFifaEasterEgg / fifaStartTime) before
+// control hands back to whatever state the player was in.
+function drawFifaPopup() {
+  ctx.fillStyle = 'rgba(8,6,12,0.68)';
+  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
+  if (fifaImg.complete && fifaImg.naturalWidth) {
+    const iw = fifaImg.naturalWidth, ih = fifaImg.naturalHeight;
+    const scale = Math.min((VIEW_W * 0.72) / iw, (VIEW_H * 0.6) / ih);
+    const dw = iw * scale, dh = ih * scale;
+    const dx = (VIEW_W - dw) / 2, dy = 26;
+    ctx.drawImage(fifaImg, dx, dy, dw, dh);
+  }
+
+  const secondsLeft = Math.max(1, Math.ceil(5 - (performance.now() - fifaStartTime) / 1000));
+
+  const boxW = VIEW_W - 160, boxH = 100, boxX = 80, boxY = VIEW_H - boxH - 24;
+  ctx.fillStyle = 'rgba(10,8,14,0.94)';
+  ctx.fillRect(boxX, boxY, boxW, boxH);
+  ctx.strokeStyle = '#f4ecd8';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(boxX + 2, boxY + 2, boxW - 4, boxH - 4);
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#f4ecd8';
+  ctx.font = '19px monospace';
+  ctx.fillText('Time for a quick friendly!', VIEW_W / 2, boxY + 36);
+
+  ctx.fillStyle = '#e0b040';
+  ctx.font = 'bold 29px monospace';
+  ctx.fillText(`Back in ${secondsLeft}...`, VIEW_W / 2, boxY + 74);
+}
+
+// Like wrapText(), but returns the wrapped lines instead of drawing them
+// left-aligned, so a caller can center each line itself.
+function wrapLinesCentered(text, maxW) {
+  const words = text.split(' ');
+  const lines = [];
+  let line = '';
+  for (const w of words) {
+    const test = line ? line + ' ' + w : w;
+    if (ctx.measureText(test).width > maxW && line) { lines.push(line); line = w; }
+    else line = test;
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
+function wrapText(text, x, y, maxW, lh) {
+  const words = text.split(' ');
+  let line = '';
+  for (const w of words) {
+    const test = line ? line + ' ' + w : w;
+    if (ctx.measureText(test).width > maxW) {
+      ctx.fillText(line, x, y);
+      y += lh;
+      line = w;
+    } else line = test;
+  }
+  ctx.fillText(line, x, y);
+}
+
+// ---------------------------------------------------------------- album cover art
+// Small deterministic PRNG so each cover's "grain"/speckle pattern is
+// stable frame to frame instead of shimmering.
+function coverRng(seedStr) {
+  let h = 0;
+  for (let i = 0; i < seedStr.length; i++) h = (h * 31 + seedStr.charCodeAt(i)) | 0;
+  let a = (h >>> 0) || 1;
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// A hand-drawn, worn-sleeve look laid over every cover: a faint vignette,
+// a scattering of paper grain specks, and a soft ring-wear circle — the
+// little imperfections that make old vinyl jackets feel nostalgic.
+function drawCoverWear(x, y, s, rng) {
+  const grd = ctx.createRadialGradient(x + s / 2, y + s / 2, s * 0.2, x + s / 2, y + s / 2, s * 0.72);
+  grd.addColorStop(0, 'rgba(0,0,0,0)');
+  grd.addColorStop(1, 'rgba(0,0,0,0.35)');
+  ctx.fillStyle = grd;
+  ctx.fillRect(x, y, s, s);
+  ctx.fillStyle = 'rgba(20,16,10,0.5)';
+  ctx.beginPath();
+  ctx.arc(x + s * 0.66, y + s * 0.4, s * 0.24, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(244,236,216,0.5)';
+  for (let i = 0; i < 26; i++) {
+    const gx = x + rng() * s, gy = y + rng() * s;
+    ctx.fillRect(gx, gy, 1, 1);
+  }
+}
+
+function drawAlbumArt(x, y, s, r) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x, y, s, s);
+  ctx.clip();
+  const rng = coverRng(r.title);
+  const cx = x + s / 2, cy = y + s / 2;
+
+  switch (r.title) {
+    case 'Elm Street Funk': {
+      // dusty 70s sunset over a row of brick stoops, one bare elm in front
+      const g = ctx.createLinearGradient(x, y, x, y + s);
+      g.addColorStop(0, '#7a3a2a'); g.addColorStop(0.55, '#e0a030'); g.addColorStop(1, '#3a2418');
+      ctx.fillStyle = g; ctx.fillRect(x, y, s, s);
+      ctx.fillStyle = '#c4791f';
+      ctx.beginPath(); ctx.arc(cx, y + s * 0.42, s * 0.16, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#241a14';
+      ctx.fillRect(x, y + s * 0.72, s, s * 0.28);
+      for (let i = 0; i < 4; i++) ctx.fillRect(x + i * (s / 4) + 4, y + s * 0.6, s / 4 - 8, s * 0.12);
+      ctx.strokeStyle = '#1c1410'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(x + s * 0.22, y + s * 0.72); ctx.lineTo(x + s * 0.3, y + s * 0.4); ctx.stroke();
+      for (const [dx, dy] of [[-14, 10], [10, 6], [-6, -8], [12, -4]]) {
+        ctx.beginPath(); ctx.moveTo(x + s * 0.3, y + s * 0.4);
+        ctx.lineTo(x + s * 0.3 + dx, y + s * 0.4 + dy); ctx.stroke();
+      }
+      break;
+    }
+    case 'Cherry Cola Bounce': {
+      // diner checkerboard + a bouncing soda bottle, all polka-dot bubbles
+      ctx.fillStyle = '#f4ecd8'; ctx.fillRect(x, y, s, s);
+      const cell = s / 8;
+      ctx.fillStyle = '#d04830';
+      for (let ry = 0; ry < 8; ry++) for (let rx = 0; rx < 8; rx++)
+        if ((rx + ry) % 2 === 0) ctx.fillRect(x + rx * cell, y + ry * cell, cell, cell);
+      ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      for (let i = 0; i < 14; i++) {
+        const bx = x + rng() * s, by = y + rng() * s, br = 3 + rng() * 5;
+        ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.fillStyle = '#7a2018';
+      ctx.beginPath();
+      ctx.moveTo(cx - 12, cy + 34); ctx.lineTo(cx - 14, cy - 4); ctx.lineTo(cx - 7, cy - 20);
+      ctx.lineTo(cx - 7, cy - 34); ctx.lineTo(cx + 7, cy - 34); ctx.lineTo(cx + 7, cy - 20);
+      ctx.lineTo(cx + 14, cy - 4); ctx.lineTo(cx + 12, cy + 34); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#f4ecd8'; ctx.font = 'bold 9px monospace'; ctx.textAlign = 'center';
+      ctx.fillText('COLA', cx, cy + 8);
+      break;
+    }
+    case 'Midnight Stab': {
+      // smoky jazz-club spotlight with a horn silhouette
+      const g = ctx.createLinearGradient(x, y, x, y + s);
+      g.addColorStop(0, '#1a1024'); g.addColorStop(1, '#3a1830');
+      ctx.fillStyle = g; ctx.fillRect(x, y, s, s);
+      ctx.fillStyle = 'rgba(196,64,112,0.35)';
+      ctx.beginPath();
+      ctx.moveTo(cx, y - 10); ctx.lineTo(x + s * 0.16, y + s); ctx.lineTo(x + s * 0.84, y + s);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+      for (let i = 0; i < 18; i++) {
+        const sxr = x + rng() * s, syr = y + rng() * s * 0.5;
+        ctx.beginPath(); ctx.arc(sxr, syr, 0.8, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.strokeStyle = '#f4ecd8'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(cx - 22, cy + 26); ctx.quadraticCurveTo(cx - 22, cy - 10, cx + 6, cy - 14);
+      ctx.stroke();
+      ctx.beginPath(); ctx.arc(cx + 16, cy - 8, 14, 0, Math.PI * 2); ctx.stroke();
+      break;
+    }
+    case 'Galactic Hallelujah': {
+      // starfield with a radiant halo behind a robed choir silhouette
+      ctx.fillStyle = '#0c1030'; ctx.fillRect(x, y, s, s);
+      ctx.fillStyle = '#f4ecd8';
+      for (let i = 0; i < 40; i++) {
+        const sxr = x + rng() * s, syr = y + rng() * s;
+        ctx.fillRect(sxr, syr, rng() > 0.85 ? 2 : 1, rng() > 0.85 ? 2 : 1);
+      }
+      const g = ctx.createRadialGradient(cx, cy - 6, 4, cx, cy - 6, s * 0.4);
+      g.addColorStop(0, 'rgba(72,112,208,0.9)'); g.addColorStop(1, 'rgba(72,112,208,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy - 6, s * 0.4, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#1a1030';
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - 30); ctx.quadraticCurveTo(cx + 26, cy - 6, cx + 22, cy + 34);
+      ctx.lineTo(cx - 22, cy + 34); ctx.quadraticCurveTo(cx - 26, cy - 6, cx, cy - 30);
+      ctx.closePath(); ctx.fill();
+      break;
+    }
+    case 'White Label': {
+      // a plain, worn-white promo sleeve with just a hand-drawn star
+      ctx.fillStyle = '#efe9dc'; ctx.fillRect(x, y, s, s);
+      ctx.fillStyle = 'rgba(0,0,0,0.05)';
+      for (let i = 0; i < 30; i++) ctx.fillRect(x + rng() * s, y + rng() * s, 1, 1);
+      ctx.strokeStyle = '#c8a020'; ctx.lineWidth = 2; ctx.lineJoin = 'round';
+      ctx.beginPath();
+      for (let i = 0; i < 5; i++) {
+        const ang = -Math.PI / 2 + i * (Math.PI * 4 / 5);
+        const px2 = cx + Math.cos(ang) * 34, py2 = cy + Math.sin(ang) * 34;
+        i === 0 ? ctx.moveTo(px2, py2) : ctx.lineTo(px2, py2);
+      }
+      ctx.closePath(); ctx.stroke();
+      break;
+    }
+    case 'Strum Low': {
+      // moonlit bayou water with cattail silhouettes
+      const g = ctx.createLinearGradient(x, y, x, y + s);
+      g.addColorStop(0, '#0e2a24'); g.addColorStop(1, '#12463a');
+      ctx.fillStyle = g; ctx.fillRect(x, y, s, s);
+      ctx.fillStyle = '#e8dfa0';
+      ctx.beginPath(); ctx.arc(x + s * 0.72, y + s * 0.28, s * 0.11, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(232,223,160,0.4)'; ctx.lineWidth = 2;
+      for (const ry of [0.62, 0.72, 0.82]) {
+        ctx.beginPath(); ctx.moveTo(x + 6, y + s * ry); ctx.lineTo(x + s - 6, y + s * ry); ctx.stroke();
+      }
+      ctx.strokeStyle = '#0a1a16'; ctx.lineWidth = 3;
+      for (const cxo of [0.2, 0.32, 0.44]) {
+        ctx.beginPath(); ctx.moveTo(x + s * cxo, y + s * 0.9); ctx.lineTo(x + s * cxo, y + s * 0.5); ctx.stroke();
+        ctx.fillStyle = '#0a1a16';
+        ctx.fillRect(x + s * cxo - 3, y + s * 0.44, 6, 12);
+      }
+      break;
+    }
+    case 'Frog Chorus Stab': {
+      // sunburst over lily pads
+      ctx.fillStyle = '#dfe8a0'; ctx.fillRect(x, y, s, s);
+      ctx.fillStyle = 'rgba(143,154,63,0.5)';
+      for (let i = 0; i < 12; i++) {
+        const ang = (i / 12) * Math.PI * 2;
+        ctx.save(); ctx.translate(cx, cy); ctx.rotate(ang);
+        ctx.fillRect(-4, -s * 0.6, 8, s * 0.6);
+        ctx.restore();
+      }
+      ctx.fillStyle = '#4f6a2a';
+      for (const [dx, dy, r2] of [[-30, 26, 22], [26, 20, 26], [2, -26, 18]]) {
+        ctx.beginPath(); ctx.ellipse(cx + dx, cy + dy, r2, r2 * 0.6, 0, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.fillStyle = '#2e5f1f';
+      ctx.beginPath(); ctx.ellipse(cx, cy + 6, 16, 11, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#e8f0c0';
+      ctx.beginPath(); ctx.arc(cx - 6, cy - 2, 3, 0, Math.PI * 2); ctx.arc(cx + 6, cy - 2, 3, 0, Math.PI * 2); ctx.fill();
+      break;
+    }
+    case 'Moss Hallelujah': {
+      // foggy cypress silhouettes, banded like an old screen print
+      const bands = ['#204a3a', '#2a5f48', '#356f54', '#4a8a68'];
+      bands.forEach((c, i) => { ctx.fillStyle = c; ctx.fillRect(x, y + (s / 4) * i, s, s / 4 + 1); });
+      ctx.fillStyle = 'rgba(230,240,225,0.18)';
+      ctx.fillRect(x, y + s * 0.5, s, s * 0.14);
+      ctx.fillStyle = '#12261e';
+      for (const [dx, w2, h2] of [[-40, 20, 70], [-4, 26, 90], [36, 18, 60]]) {
+        ctx.beginPath();
+        ctx.moveTo(cx + dx, y + s);
+        ctx.lineTo(cx + dx - w2 / 2, y + s - h2 * 0.4);
+        ctx.lineTo(cx + dx, y + s - h2);
+        ctx.lineTo(cx + dx + w2 / 2, y + s - h2 * 0.4);
+        ctx.closePath(); ctx.fill();
+      }
+      break;
+    }
+    case 'Mud Kick': {
+      // hollow-log drum with a muddy splatter ring
+      ctx.fillStyle = '#5a4a28'; ctx.fillRect(x, y, s, s);
+      ctx.fillStyle = 'rgba(30,24,14,0.5)';
+      for (let i = 0; i < 16; i++) {
+        const ang = rng() * Math.PI * 2, dist = rng() * s * 0.5;
+        ctx.beginPath(); ctx.arc(cx + Math.cos(ang) * dist, cy + Math.sin(ang) * dist, 2 + rng() * 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.fillStyle = '#8fbf3f';
+      ctx.beginPath(); ctx.ellipse(cx, cy, 42, 42, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#5a4a28'; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.arc(cx, cy, 28, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(cx, cy, 14, 0, Math.PI * 2); ctx.stroke();
+      break;
+    }
+    case 'Honeysuckle Lead': {
+      // climbing vine-and-flower frame around a warm glow
+      ctx.fillStyle = '#3a2e14'; ctx.fillRect(x, y, s, s);
+      const g = ctx.createRadialGradient(cx, cy, 4, cx, cy, s * 0.5);
+      g.addColorStop(0, 'rgba(216,192,96,0.8)'); g.addColorStop(1, 'rgba(216,192,96,0)');
+      ctx.fillStyle = g; ctx.fillRect(x, y, s, s);
+      ctx.strokeStyle = '#6f8a3a'; ctx.lineWidth = 3; ctx.beginPath();
+      ctx.moveTo(x + 8, y + s); ctx.bezierCurveTo(x + 30, y + s * 0.6, x + 4, y + s * 0.3, x + 24, y + 8);
+      ctx.stroke();
+      ctx.fillStyle = '#e8c860';
+      for (let i = 0; i < 6; i++) {
+        const t = i / 5;
+        const px2 = x + 8 + t * 16, py2 = y + s - t * (s - 8);
+        ctx.beginPath(); ctx.arc(px2, py2, 4, 0, Math.PI * 2); ctx.fill();
+      }
+      break;
+    }
+    case 'Rotary Rumble': {
+      // top-down Winooski rotary: ring road, four spokes, grass park in the middle
+      ctx.fillStyle = '#7a3f12'; ctx.fillRect(x, y, s, s);
+      ctx.fillStyle = '#2a2420';
+      ctx.fillRect(cx - 9, y, 18, s); ctx.fillRect(x, cy - 9, s, 18);
+      ctx.beginPath(); ctx.arc(cx, cy, s * 0.34, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#4f8a3a';
+      ctx.beginPath(); ctx.arc(cx, cy, s * 0.2, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#e8c860'; ctx.lineWidth = 1.5; ctx.setLineDash([5, 5]);
+      ctx.beginPath(); ctx.arc(cx, cy, s * 0.27, 0, Math.PI * 2); ctx.stroke();
+      ctx.setLineDash([]);
+      const carCols = ['#d94f2b', '#f4ecd8', '#3f7fb0', '#e8c860', '#c23a3a'];
+      for (let i = 0; i < 5; i++) {
+        const ang = i * 1.26 + 0.4;
+        ctx.fillStyle = carCols[i];
+        ctx.fillRect(cx + Math.cos(ang) * s * 0.27 - 4, cy + Math.sin(ang) * s * 0.27 - 3, 8, 6);
+      }
+      ctx.fillStyle = '#f4ecd8'; ctx.beginPath(); ctx.arc(cx, cy, 6, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#7a3f12'; ctx.beginPath(); ctx.arc(cx, cy, 2.5, 0, Math.PI * 2); ctx.fill();
+      break;
+    }
+    case 'Falls Low': {
+      // moonlit river pouring over a dam, ripples below
+      const g = ctx.createLinearGradient(x, y, x, y + s);
+      g.addColorStop(0, '#0c1a3a'); g.addColorStop(1, '#2a6a9a');
+      ctx.fillStyle = g; ctx.fillRect(x, y, s, s);
+      ctx.fillStyle = '#f4ecd8';
+      for (let i = 0; i < 20; i++) ctx.fillRect(x + rng() * s, y + rng() * s * 0.35, 1, 1);
+      ctx.beginPath(); ctx.arc(x + s * 0.76, y + s * 0.2, s * 0.08, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#16202e'; ctx.fillRect(x, y + s * 0.42, s, s * 0.07);
+      ctx.strokeStyle = 'rgba(244,236,216,0.7)'; ctx.lineWidth = 2;
+      for (let i = 0; i < 9; i++) {
+        const fx = x + 8 + i * (s - 16) / 8;
+        ctx.beginPath(); ctx.moveTo(fx, y + s * 0.49); ctx.lineTo(fx + (rng() - 0.5) * 3, y + s * 0.66); ctx.stroke();
+      }
+      ctx.strokeStyle = 'rgba(244,236,216,0.45)'; ctx.lineWidth = 1.5;
+      for (let r2 = 0; r2 < 4; r2++) {
+        const wy = y + s * (0.7 + r2 * 0.07);
+        ctx.beginPath(); ctx.moveTo(x, wy);
+        for (let wx = 0; wx <= s; wx += 10) ctx.lineTo(x + wx, wy + ((wx / 10) % 2 ? 3 : -3));
+        ctx.stroke();
+      }
+      break;
+    }
+    case 'Brick & Brass': {
+      // old red-brick mill wall with a big brass horn bell in front
+      ctx.fillStyle = '#7a2a22'; ctx.fillRect(x, y, s, s);
+      const bh = s / 10, bw = s / 5;
+      ctx.fillStyle = '#9a3a2e';
+      for (let ry = 0; ry < 10; ry++) for (let rx = -1; rx < 5; rx++) {
+        const off = ry % 2 ? bw / 2 : 0;
+        ctx.fillRect(x + rx * bw + off + 1, y + ry * bh + 1, bw - 2, bh - 2);
+      }
+      ctx.fillStyle = '#e8c04a';
+      ctx.beginPath(); ctx.arc(cx, cy, s * 0.3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#a8761c';
+      ctx.beginPath(); ctx.arc(cx, cy, s * 0.22, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#5a3a0c';
+      ctx.beginPath(); ctx.arc(cx, cy, s * 0.11, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(255,248,210,0.7)';
+      ctx.beginPath(); ctx.ellipse(cx - s * 0.14, cy - s * 0.15, 10, 4, -0.7, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#e8c04a'; ctx.fillRect(cx - 5, cy + s * 0.3 - 2, 10, s * 0.2);
+      break;
+    }
+    case 'Underpass Cypher': {
+      // concrete underpass at night: beam, pillars, fresh tags, a mic in the middle
+      ctx.fillStyle = '#2a2830'; ctx.fillRect(x, y, s, s);
+      ctx.fillStyle = '#16141c'; ctx.fillRect(x, y, s, s * 0.14);
+      ctx.fillStyle = '#3a3742';
+      ctx.fillRect(x + s * 0.06, y + s * 0.14, s * 0.1, s * 0.86);
+      ctx.fillRect(x + s * 0.84, y + s * 0.14, s * 0.1, s * 0.86);
+      ctx.fillStyle = '#1c1a22'; ctx.fillRect(x, y + s * 0.88, s, s * 0.12);
+      const tagCols = ['#e8c04a', '#3fbf7f', '#c23a3a', '#1fa8c9'];
+      ctx.lineCap = 'round'; ctx.lineWidth = 4;
+      for (let i = 0; i < 4; i++) {
+        ctx.strokeStyle = tagCols[i];
+        const tx = x + s * (0.22 + (i % 2) * 0.32), ty = y + s * (0.26 + Math.floor(i / 2) * 0.2);
+        ctx.beginPath(); ctx.moveTo(tx, ty);
+        ctx.bezierCurveTo(tx + 8, ty - 12, tx + 16, ty + 12, tx + 26, ty - 4); ctx.stroke();
+      }
+      ctx.fillStyle = '#f4ecd8';
+      ctx.beginPath(); ctx.arc(cx, cy + s * 0.12, 9, 0, Math.PI * 2); ctx.fill();
+      ctx.fillRect(cx - 2, cy + s * 0.12 + 8, 4, s * 0.2);
+      ctx.fillStyle = 'rgba(244,236,216,0.12)';
+      ctx.beginPath(); ctx.moveTo(cx - 6, y + s * 0.14); ctx.lineTo(cx - s * 0.3, y + s * 0.88);
+      ctx.lineTo(cx + s * 0.3, y + s * 0.88); ctx.lineTo(cx + 6, y + s * 0.14); ctx.closePath(); ctx.fill();
+      break;
+    }
+    case 'Amber Hour': {
+      // dusk sky, a sagging string of warm bulbs, drifting autumn leaves
+      const g = ctx.createLinearGradient(x, y, x, y + s);
+      g.addColorStop(0, '#3a1f54'); g.addColorStop(0.6, '#c4602a'); g.addColorStop(1, '#f0b040');
+      ctx.fillStyle = g; ctx.fillRect(x, y, s, s);
+      ctx.fillStyle = '#1c1220';
+      ctx.fillRect(x, y + s * 0.86, s, s * 0.14);
+      ctx.strokeStyle = '#1c1220'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(x, y + s * 0.2); ctx.quadraticCurveTo(cx, y + s * 0.48, x + s, y + s * 0.2); ctx.stroke();
+      for (let i = 0; i <= 6; i++) {
+        const t = i / 6, bx = x + t * s;
+        const by = y + s * 0.2 * (1 - t) * (1 - t) * 1 + 2 * (1 - t) * t * (s * 0.48) * 1 + t * t * (s * 0.2);
+        const glow = ctx.createRadialGradient(bx, by + 5, 1, bx, by + 5, 14);
+        glow.addColorStop(0, 'rgba(255,230,140,0.9)'); glow.addColorStop(1, 'rgba(255,230,140,0)');
+        ctx.fillStyle = glow; ctx.fillRect(bx - 14, by - 9, 28, 28);
+        ctx.fillStyle = '#fff2b8'; ctx.beginPath(); ctx.arc(bx, by + 5, 3, 0, Math.PI * 2); ctx.fill();
+      }
+      const leafCols = ['#c23a1a', '#e8a317', '#8a3a12', '#d86a1c'];
+      for (let i = 0; i < 9; i++) {
+        ctx.fillStyle = leafCols[i % 4];
+        ctx.save(); ctx.translate(x + rng() * s, y + s * 0.5 + rng() * s * 0.34); ctx.rotate(rng() * 6);
+        ctx.beginPath(); ctx.ellipse(0, 0, 6, 3, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+      }
+      break;
+    }
+    default: {
+      ctx.fillStyle = r.color; ctx.fillRect(x, y, s, s);
+    }
+  }
+
+  // subtle shadow along the bottom edge, like light catching the inside
+  // lip of the sleeve — drawn before the wear pass and the frame stroke
+  // so it never breaks the border that boxes the whole cover in
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.fillRect(x, y + s - 22, s, 22);
+
+  drawCoverWear(x, y, s, rng);
+  ctx.restore();
+  ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x + 1, y + 1, s - 2, s - 2);
+}
+
+function drawRecordCard() {
+  // Prefer the full-art splash PNG for this record when we have one loaded;
+  // otherwise fall back to the original procedurally-drawn card below (this
+  // keeps other worlds like swamp -- which reuse ids like 'choir' for a
+  // different record -- working without matching art).
+  const img = RECORD_FOUND_IMGS[shownRecord];
+  if (currentWorldId() === 'town' && img && img.complete && img.naturalWidth) {
+    ctx.fillStyle = 'rgba(6,4,10,0.85)';
+    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+    const maxW = VIEW_W * 0.8, maxH = VIEW_H * 0.88;
+    const scale = Math.min(maxW / img.naturalWidth, maxH / img.naturalHeight);
+    const dw = img.naturalWidth * scale, dh = img.naturalHeight * scale;
+    const dx = (VIEW_W - dw) / 2, dy = (VIEW_H - dh) / 2;
+    ctx.drawImage(img, dx, dy, dw, dh);
+    return;
+  }
+  drawRecordCardFallback();
+}
+
+function drawRecordCardFallback() {
+  const r = worldRecords()[shownRecord];
+  ctx.fillStyle = 'rgba(6,4,10,0.85)';
+  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+  const w = 560, h = 300, x = (VIEW_W - w) / 2, y = (VIEW_H - h) / 2;
+  ctx.fillStyle = '#1c1626';
+  ctx.fillRect(x, y, w, h);
+  ctx.strokeStyle = r.color;
+  ctx.lineWidth = 3;
+  ctx.strokeRect(x + 3, y + 3, w - 6, h - 6);
+
+  const sx = x + 36, sy = y + 60, ss = 150;
+  drawAlbumArt(sx, sy, ss, r);
+  ctx.fillStyle = '#0c0a10';
+  ctx.beginPath();
+  ctx.arc(sx + ss + 40, sy + ss / 2, 70, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#2a2632';
+  ctx.lineWidth = 1;
+  for (const rr of [30, 42, 54]) {
+    ctx.beginPath();
+    ctx.arc(sx + ss + 40, sy + ss / 2, rr, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.fillStyle = r.color;
+  ctx.beginPath();
+  ctx.arc(sx + ss + 40, sy + ss / 2, 20, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 20px monospace';
+  ctx.fillStyle = '#f4ecd8';
+  ctx.fillText('★ RECORD FOUND ★', x + w / 2, y + 36);
+  ctx.textAlign = 'left';
+  const tx = sx + ss + 130;
+  ctx.font = 'bold 19px monospace';
+  ctx.fillStyle = r.color === '#e8e4dc' ? '#f4ecd8' : r.color;
+  wrapText('"' + r.title + '"', tx, sy + 14, w - (tx - x) - 24, 20);
+  ctx.font = '16px monospace';
+  ctx.fillStyle = '#c8c0d8';
+  ctx.fillText(r.artist + ' · ' + r.year, tx, sy + 58);
+  ctx.fillStyle = '#f4ecd8';
+  ctx.font = 'bold 16px monospace';
+  ctx.fillText('SAMPLE: ' + r.sample, tx, sy + 86);
+  ctx.font = '15px monospace';
+  ctx.fillStyle = '#9a90a8';
+  wrapText('New layer added to the beat. Listen!', tx, sy + 110, w - (tx - x) - 24, 16);
+
+  ctx.font = '15px monospace';
+  ctx.fillStyle = '#c8c0d8';
+  wrapText(r.flavor, x + 36, y + h - 52, w - 72, 16);
+  ctx.textAlign = 'right';
+  ctx.fillStyle = '#9a90a8';
+  ctx.font = '14px monospace';
+  ctx.fillText('[E] ▶', x + w - 20, y + h - 12);
+}
+
+// ---------------------------------------------------------------- The Crate
+// A read-only browse-and-remember screen, not a new gameplay system: it
+// just reads WORLD_DEFS + collected, the same two things worldRecords()/
+// worldComplete() already read. Adding a new world to WORLD_DEFS (or a 6th
+// record to an existing one) shows up here automatically -- nothing about
+// drawCrate() needs to change.
+//
+// Every world.record id is looked up via recKey(worldId, id) here (not the
+// bare id) so that ids reused across worlds -- e.g. 'choir' means a
+// different record in town vs. swamp -- are tracked independently. See
+// recKey()'s definition for the full rationale.
+function drawCrate() {
+  ctx.fillStyle = 'rgba(6,4,10,0.88)';
+  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
+  const boxW = 760, boxH = 470, boxX = (VIEW_W - boxW) / 2, boxY = (VIEW_H - boxH) / 2;
+  ctx.fillStyle = '#1c1626';
+  ctx.fillRect(boxX, boxY, boxW, boxH);
+  ctx.strokeStyle = '#e0b040';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(boxX + 2, boxY + 2, boxW - 4, boxH - 4);
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#e0b040';
+  ctx.font = 'bold 27px monospace';
+  ctx.fillText('THE CRATE', VIEW_W / 2, boxY + 38);
+
+  const ids = crateWorldIds();
+  const worldId = ids[crateWorldIndex];
+  const def = WORLD_DEFS[worldId];
+  const records = def.records;
+  const padOrder = def.padOrder;
+  const foundInWorld = padOrder.filter((id) => collected.has(recKey(worldId, id))).length;
+
+  // Cross-level progress strip -- one small chip per unlocked world, in
+  // WORLD_DEFS order (so it renumbers itself as more worlds get added).
+  // Filled gold once completedWorlds has that world, otherwise dim; the
+  // chip for whichever world tab is currently browsed gets a bright
+  // outline. Read-only -- browsing still happens via the world tab row
+  // below (left/right), same as before this strip was added.
+  const chipSize = 15, chipGap = 6;
+  const chipTotalW = chipSize * ids.length + chipGap * (ids.length - 1);
+  const chipX = VIEW_W / 2 - chipTotalW / 2, chipY = boxY + 50;
+  ids.forEach((wid, i) => {
+    const x = chipX + i * (chipSize + chipGap);
+    const done = completedWorlds.has(wid);
+    ctx.fillStyle = done ? '#e0b040' : '#262030';
+    ctx.fillRect(x, chipY, chipSize, chipSize);
+    if (i === crateWorldIndex) {
+      ctx.strokeStyle = '#f4ecd8';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(x - 1.5, chipY - 1.5, chipSize + 3, chipSize + 3);
+    }
+  });
+
+  // world tab row -- left/right (arrows, d-pad, or dedicated buttons in
+  // future control schemes) cycles through every world in WORLD_DEFS
+  ctx.font = 'bold 20px monospace';
+  ctx.fillStyle = '#f4ecd8';
+  const tabY = boxY + 78;
+  ctx.fillText(`\u25C0  ${def.name.toUpperCase()}  \u25B6`, VIEW_W / 2, tabY);
+  ctx.font = '15px monospace';
+  ctx.fillStyle = '#9a90a8';
+  ctx.fillText(
+    `${foundInWorld} / ${padOrder.length} found here  \u00b7  world ${crateWorldIndex + 1} of ${ids.length}`,
+    VIEW_W / 2, tabY + 20
+  );
+
+  // 5-slot grid, same visual language as the pad HUD / win-screen grid:
+  // filled + colored when found, dim with a "?" when not. The currently
+  // browsed slot (crateSlotIndex) gets a pulsing highlight border.
+  const sq = 78, gap = 18;
+  const totalW = sq * padOrder.length + gap * (padOrder.length - 1);
+  const gridX = VIEW_W / 2 - totalW / 2, gridY = tabY + 44;
+  padOrder.forEach((id, i) => {
+    const r = records[id];
+    const x = gridX + i * (sq + gap);
+    const found = collected.has(recKey(worldId, id));
+    ctx.fillStyle = found ? r.color : '#262030';
+    ctx.fillRect(x, gridY, sq, sq);
+    if (i === crateSlotIndex) {
+      ctx.strokeStyle = Math.floor(performance.now() / 300) % 2 ? '#e0b040' : '#f4ecd8';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(x - 3, gridY - 3, sq + 6, sq + 6);
+    }
+    ctx.textAlign = 'center';
+    ctx.fillStyle = found ? '#181418' : '#4a4258';
+    ctx.font = 'bold 16px monospace';
+    ctx.fillText(found ? r.pad : '?', x + sq / 2, gridY + sq / 2 + 5);
+  });
+
+  // detail panel for whichever slot is currently browsed
+  const selId = padOrder[crateSlotIndex];
+  const selRecord = records[selId];
+  const found = collected.has(recKey(worldId, selId));
+  const panelY = gridY + sq + 26;
+  const panelX = boxX + 40, panelW = boxW - 80;
+
+  if (found) {
+    const artS = 96;
+    drawAlbumArt(panelX, panelY, artS, selRecord);
+    ctx.strokeStyle = selRecord.color;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(panelX, panelY, artS, artS);
+
+    const tx = panelX + artS + 24;
+    ctx.textAlign = 'left';
+    ctx.font = 'bold 19px monospace';
+    ctx.fillStyle = selRecord.color === '#e8e4dc' ? '#f4ecd8' : selRecord.color;
+    wrapText('"' + selRecord.title + '"', tx, panelY + 16, panelW - artS - 24, 20);
+    ctx.font = '16px monospace';
+    ctx.fillStyle = '#c8c0d8';
+    ctx.fillText(selRecord.artist + ' \u00b7 ' + selRecord.year, tx, panelY + 60);
+    ctx.fillStyle = '#f4ecd8';
+    ctx.font = 'bold 15px monospace';
+    ctx.fillText('SAMPLE: ' + selRecord.sample, tx, panelY + 82);
+
+    ctx.font = '15px monospace';
+    ctx.fillStyle = '#c8c0d8';
+    wrapText(selRecord.flavor, panelX, panelY + artS + 22, panelW, 16);
+  } else {
+    ctx.textAlign = 'left';
+    ctx.font = 'bold 19px monospace';
+    ctx.fillStyle = '#6a6278';
+    ctx.fillText('??? \u2014 not yet found', panelX, panelY + 40);
+    ctx.font = '15px monospace';
+    ctx.fillStyle = '#4a4258';
+    ctx.fillText('Dig around ' + def.name + ' to turn this one up.', panelX, panelY + 62);
+  }
+
+  // running total across every world -- grows on its own as WORLD_DEFS grows
+  let totalFound = 0, totalSlots = 0;
+  ids.forEach((wid) => {
+    const p = WORLD_DEFS[wid].padOrder;
+    totalSlots += p.length;
+    totalFound += p.filter((id) => collected.has(recKey(wid, id))).length;
+  });
+  ctx.textAlign = 'center';
+  ctx.font = '15px monospace';
+  ctx.fillStyle = '#9a90a8';
+  ctx.fillText(`${totalFound} / ${totalSlots} records found across all worlds`, VIEW_W / 2, boxY + boxH - 46);
+
+  ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#e0b040' : '#f4ecd8';
+  ctx.font = 'bold 17px monospace';
+  ctx.fillText('[\u25C0\u25B6] world   [\u25B2\u25BC] browse   [E] close', VIEW_W / 2, boxY + boxH - 18);
+}
+
+function drawSplash() {
+  if (splashImg.complete && splashImg.naturalWidth) {
+    const iw = splashImg.naturalWidth, ih = splashImg.naturalHeight;
+    const scale = Math.max(VIEW_W / iw, VIEW_H / ih);
+    const dw = iw * scale, dh = ih * scale;
+    const dx = (VIEW_W - dw) / 2, dy = (VIEW_H - dh) / 2;
+    ctx.drawImage(splashImg, dx, dy, dw, dh);
+  } else {
+    ctx.fillStyle = '#120e18';
+    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+  }
+  ctx.fillStyle = 'rgba(8,6,12,0.55)';
+  ctx.fillRect(0, VIEW_H - 64, VIEW_W, 64);
+  ctx.textAlign = 'center';
+  ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#e0b040' : '#f4ecd8';
+  ctx.font = 'bold 18px monospace';
+  ctx.fillText('- PRESS E OR TAP TO BEGIN -', VIEW_W / 2, VIEW_H - 26);
+}
+
+// Offscreen canvases with the chroma-green removed, one per title-screen
+// page (index 0 = story/start, index 1 = hot keys). Built lazily below.
+const titleMenuKeyed = [null, null];
+const TITLE_MENU_IMGS = [titleMenuPg1Img, titleMenuPg2Img];
+
+// Removes the backdrop's chroma-green from `img` onto a same-size offscreen
+// canvas: any pixel that is green-dominant & strong is made transparent, so
+// the drifting sky/clouds behind it show through. Shared by the title-menu
+// pages (buildKeyedTitleMenu) and the "WHAT IS DIGGING?" history slides
+// (buildKeyedHistoryPage), since both sets of art share the same
+// chroma-green backdrop/frame style.
+function chromaKeyToCanvas(img) {
+  const w = img.naturalWidth, h = img.naturalHeight;
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const g = c.getContext('2d');
+  g.drawImage(img, 0, 0);
+  // getImageData throws a SecurityError when the canvas is "tainted" (e.g. the
+  // game is opened straight from file:// or the art is served cross-origin).
+  // This runs inside render(), which sits in the requestAnimationFrame loop
+  // with no try/catch, so an uncaught throw here permanently freezes the whole
+  // game on the title screen. Never let that happen: if the pixels can't be
+  // read, fall back to the plain (un-keyed) image so the game still loads.
+  try {
+    const id = g.getImageData(0, 0, w, h);
+    const d = id.data;
+    for (let i = 0; i < d.length; i += 4) {
+      const r = d[i], grn = d[i + 1], b = d[i + 2];
+      if (grn > 140 && (grn - b) > 90 && (grn - r) > 55) d[i + 3] = 0;
+    }
+    g.putImageData(id, 0, 0);
+  } catch (err) {
+    console.warn('chromaKeyToCanvas: could not key image, using it as-is:', err);
+  }
+  return c;
+}
+
+// Build the chroma-keyed version of the given title-menu page's art once
+// its image loads.
+function buildKeyedTitleMenu(page) {
+  if (titleMenuKeyed[page]) return;
+  const img = TITLE_MENU_IMGS[page];
+  if (!img.complete || !img.naturalWidth) return;
+  titleMenuKeyed[page] = chromaKeyToCanvas(img);
+}
+
+// Same idea as titleMenuKeyed/buildKeyedTitleMenu, but for the 4-slide
+// "WHAT IS DIGGING?" history slideshow (see openHistory(), the 'history'
+// state in update(), and drawHistory() below).
+const historyPageKeyed = [null, null, null, null];
+function buildKeyedHistoryPage(page) {
+  if (historyPageKeyed[page]) return;
+  const img = HISTORY_PAGES[page];
+  if (!img.complete || !img.naturalWidth) return;
+  historyPageKeyed[page] = chromaKeyToCanvas(img);
+}
+
+// Slowly drifting cloud background shared by the title screen and the
+// popups that follow it (dig-choice, slot-chooser), so the sky reads as
+// one continuous backdrop from the title screen up until character select
+// takes over. Falls back to a flat dark fill if the art hasn't loaded yet.
+function drawDriftingSky(time) {
+  if (titleSkyImg.complete && titleSkyImg.naturalWidth) {
+    const tw = titleSkyImg.naturalWidth * (VIEW_H / titleSkyImg.naturalHeight);
+    const off = (time * 16) % tw;   // clouds slowly float by
+    ctx.fillStyle = '#9fd0ee';
+    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+    for (let x = -off; x < VIEW_W; x += tw) {
+      ctx.drawImage(titleSkyImg, x, 0, tw, VIEW_H);
+    }
+  } else {
+    ctx.fillStyle = 'rgba(8,6,12,0.93)';
+    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+  }
+}
+
+// The title screen is two pages sharing one backdrop (the drifting-cloud
+// sky, plus each page's own framed menu art once it's loaded): page 0 is
+// the original story/start screen (menu_title_pg_1.png), page 1 is the Hot
+// Keys reference (menu_title_pg_2.png). Both are reachable any time via
+// left/right, the on-screen d-pad, or [H] -- see the 'title' block in
+// update() and the keydown handler.
+function drawTitle(time) {
+  buildKeyedTitleMenu(titlePage);
+  const keyed = titleMenuKeyed[titlePage];
+
+  // Menu ready: chroma-keyed menu centered over a slowly drifting sky.
+  if (keyed) {
+    drawDriftingSky(time);
+    const mw = keyed.width, mh = keyed.height;
+    const s = Math.min(VIEW_W / mw, VIEW_H / mh);
+    const dw = mw * s, dh = mh * s;
+    ctx.drawImage(keyed, (VIEW_W - dw) / 2, (VIEW_H - dh) / 2, dw, dh);
+    if (titlePage === 0) {
+      drawTitleSaveHint();
+    } else {
+      drawTitleBackHint((VIEW_H + dh) / 2);
+    }
+    return;
+  }
+
+  // fallback text-only title (used until the current page's art loads)
+  if (titlePage === 1) { drawTitleHotkeysFallback(time); return; }
+
+  ctx.fillStyle = 'rgba(8,6,12,0.93)';
+  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#e0b040';
+  ctx.font = 'bold 44px monospace';
+  ctx.fillText("RICO'S VINYL QUEST", VIEW_W / 2, 130);
+  ctx.fillStyle = '#8fc9bc';
+  ctx.font = 'italic 14px monospace';
+  const story = [
+    'Your sampler is empty. Your beat is due.',
+    'Five legendary records are hiding somewhere in this town \u2014',
+    'in shop crates, diner backrooms, and flea market stalls.',
+    'Dig them ALL up and the whole town hears your beat come alive.',
+  ];
+  story.forEach((l, i) => ctx.fillText(l, VIEW_W / 2, 190 + i * 26));
+  ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#e0b040' : '#f4ecd8';
+  ctx.font = 'bold 18px monospace';
+  ctx.fillText('- PRESS E TO CONTINUE -', VIEW_W / 2, 340);
+  drawTitleSaveHint();
+}
+
+// Small reminder shown on the title screen's Hot Keys page (1), pointing
+// players back to the main page. Kept unboxed to match how this line
+// looked on the old text-only Hot Keys page.
+function drawTitleBackHint(boxBottomY) {
+  ctx.textAlign = 'center';
+  const flashOn = Math.floor(performance.now() / 400) % 2;
+  ctx.fillStyle = flashOn ? '#8a6420' : '#5a5245';
+  ctx.font = 'bold 16px monospace';
+  const y = Math.min(boxBottomY + 30, VIEW_H - 18);
+  ctx.fillText('[\u25C0] OR [H] BACK TO TITLE', VIEW_W / 2, y);
+}
+
+// Text-only fallback for the Hot Keys page, used only for the brief window
+// before menu_title_pg_2.png has loaded. Shares the exact same
+// drifting-cloud backdrop as page 0 (drawDriftingSky) -- just framed by the
+// same bordered menu-box look the rest of the game's popups use
+// (drawHotkeysPopup, drawMenuBox) instead of the story art, so the full key
+// list has room to breathe. The list itself keeps its original muted color
+// from the old title screen on purpose, so it still reads as its own thing
+// and never looks like a continuation of the story/copy on page 0.
+function drawTitleHotkeysFallback(time) {
+  drawDriftingSky(time);
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
+  const boxW = 480, boxH = 330, boxX = (VIEW_W - boxW) / 2, boxY = (VIEW_H - boxH) / 2 - 6;
+  ctx.fillStyle = 'rgba(10,8,14,0.9)';
+  ctx.fillRect(boxX, boxY, boxW, boxH);
+  ctx.strokeStyle = '#f4ecd8';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(boxX + 2, boxY + 2, boxW - 4, boxH - 4);
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#e0b040';
+  ctx.font = 'bold 27px monospace';
+  ctx.fillText('HOT KEYS', VIEW_W / 2, boxY + 42);
+
+  // same muted color the old title-screen controls list used, so it never
+  // reads as a continuation of the story copy on page 0
+  ctx.fillStyle = '#9a90a8';
+  ctx.font = '16px monospace';
+  const controls = [
+    'ARROWS / WASD, OR THE ON-SCREEN D-PAD .... move',
+    'E, OR THE ON-SCREEN E BUTTON ... talk / dig crates / read',
+    'B, OR ON-SCREEN "SK8" ........ skateboard on & off',
+    'C ....................... cold brew coffee on & off',
+    'Y ......................... iced yerba mate on & off',
+    'M, OR ON-SCREEN "MUTE" ....................... mute',
+    'X, OR ON-SCREEN "X" ................... buy from carts',
+  ];
+  controls.forEach((l, i) => ctx.fillText(l, VIEW_W / 2, boxY + 80 + i * 28));
+
+  ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#e0b040' : '#f4ecd8';
+  ctx.font = 'bold 19px monospace';
+  ctx.fillText('- PRESS E TO CONTINUE -', VIEW_W / 2, boxY + boxH - 44);
+
+  ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#8a6420' : '#5a5245';
+  ctx.font = 'bold 16px monospace';
+  ctx.fillText('[\u25C0] OR [H] BACK TO TITLE', VIEW_W / 2, boxY + boxH - 18);
+}
+
+// Small persistent reminder, shown under the main prompt on the title
+// screen only, that at least one save exists.
+function drawTitleSaveHint() {
+  if (!hasAnySave() || titlePage !== 0) return;
+  ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(244,236,216,0.75)';
+  ctx.font = '12px monospace';
+  ctx.fillText('[E] to dig for gold, choose a slot', VIEW_W / 2, VIEW_H - 10);
+}
+
+// ---------------------------------------------------------------- "WHAT IS DIGGING?" history slideshow
+// Opened from the digChoice screen (see openHistory()). Four full-art
+// slides sharing the drifting-cloud sky and chroma-key treatment used by
+// the title-menu pages (drawDriftingSky/chromaKeyToCanvas), so the sky
+// reads as the same continuous backdrop as everywhere else in the title
+// flow. [\u2190]/[\u2192] (or the d-pad) page back and forth freely; [E] pages
+// forward and wraps back to digChoice from the last slide; [X] backs out
+// early -- see the 'history' block in update().
+function drawHistory(time) {
+  drawDriftingSky(time);
+  buildKeyedHistoryPage(historyPage);
+  const keyed = historyPageKeyed[historyPage];
+
+  if (keyed) {
+    const mw = keyed.width, mh = keyed.height;
+    const s = Math.min(VIEW_W / mw, VIEW_H / mh);
+    const dw = mw * s, dh = mh * s;
+    ctx.drawImage(keyed, (VIEW_W - dw) / 2, (VIEW_H - dh) / 2, dw, dh);
+  }
+
+  // Small unboxed progress/nav hint, unflashing (matches the title screen's
+  // current style now that its flashing callout is gone).
+  ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(244,236,216,0.75)';
+  ctx.font = 'bold 13px monospace';
+  const navLabel = historyPage < HISTORY_PAGES.length - 1
+    ? `${historyPage + 1} / ${HISTORY_PAGES.length}   [\u25C0\u25B6] REREAD   [E] OR [H] NEXT   [X] BACK`
+    : `${historyPage + 1} / ${HISTORY_PAGES.length}   [\u25C0\u25B6] REREAD   [E], [H], OR [X] BACK TO MENU`;
+  ctx.fillText(navLabel, VIEW_W / 2, VIEW_H - 10);
+}
+
+// ---------------------------------------------------------------- dig-choice / slot-choose popups
+// Shared "retro menu box" look for the two title-flow popups below --
+// mirrors the dark box + cream border used by drawDialog()/drawPortalPopup()
+// so these feel native rather than bolted on.
+function drawMenuBox(title, hint) {
+  ctx.fillStyle = 'rgba(8,6,12,0.72)';
+  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
+  const boxW = 420, boxH = 260, boxX = (VIEW_W - boxW) / 2, boxY = (VIEW_H - boxH) / 2;
+  ctx.fillStyle = 'rgba(10,8,14,0.95)';
+  ctx.fillRect(boxX, boxY, boxW, boxH);
+  ctx.strokeStyle = '#f4ecd8';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(boxX + 2, boxY + 2, boxW - 4, boxH - 4);
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#e0b040';
+  ctx.font = 'bold 20px monospace';
+  ctx.fillText(title, VIEW_W / 2, boxY + 34);
+
+  if (hint) {
+    ctx.fillStyle = '#9a90a8';
+    ctx.font = '15px monospace';
+    ctx.fillText(hint, VIEW_W / 2, boxY + boxH - 16);
+  }
+
+  return { boxX, boxY, boxW, boxH };
+}
+
+// Draws one selectable row inside a menu box: highlighted (gold + arrows)
+// when `active`, plain cream otherwise. `subtext`, if given, renders smaller
+// and dimmer just under the main label (used for slot summaries).
+function drawMenuRow(label, cy, active, subtext) {
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 22px monospace';
+  ctx.fillStyle = active ? '#e0b040' : '#f4ecd8';
+  ctx.fillText((active ? '\u25B8 ' : '') + label + (active ? ' \u25C2' : ''), VIEW_W / 2, cy);
+  if (subtext) {
+    ctx.font = '16px monospace';
+    ctx.fillStyle = active ? 'rgba(224,176,64,0.85)' : 'rgba(244,236,216,0.6)';
+    ctx.fillText(subtext, VIEW_W / 2, cy + 20);
+  }
+}
+
+function drawDigChoiceFallback() {
+  const { boxY } = drawMenuBox("WHAT'S THE MOVE?", '[\u2191\u2193] choose   [E] select   [X] back');
+  const rowY = [boxY + 90, boxY + 140, boxY + 190];
+  DIG_CHOICES.forEach((label, i) => drawMenuRow(label, rowY[i], i === digChoiceIndex));
+}
+
+function drawSlotChooseFallback() {
+  const title = pendingMode === 'new' ? 'START DIGGING \u2014 PICK A SLOT' : 'CONTINUE DIGGING \u2014 PICK A SLOT';
+  const { boxY } = drawMenuBox(title, '[\u2191\u2193] choose   [E] select   [X] back');
+  const rowY = [boxY + 90, boxY + 140, boxY + 190];
+  SAVE_SLOTS.forEach((slot, i) => {
+    const active = i === slotChoiceIndex;
+    const summary = slotSummary(slot);
+    let label = `SLOT ${slot}`;
+    let subtext = summary || 'EMPTY';
+    if (active && armedOverwriteSlot === slot) subtext = 'PRESS [E] AGAIN TO OVERWRITE';
+    drawMenuRow(label, rowY[i], active, subtext);
+  });
+}
+
+// Draws `img` scaled/letterboxed to fit inside the view (same "contain"
+// fit as the character-select art), and returns the placement so callers
+// can position dynamic overlay text against the art's own coordinates
+// regardless of how it ends up scaled.
+function drawSplashBackground(img, time) {
+  drawDriftingSky(time);
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+  const iw = img.naturalWidth, ih = img.naturalHeight;
+  const scale = Math.min(VIEW_W / iw, VIEW_H / ih);
+  const dw = iw * scale, dh = ih * scale;
+  const originX = (VIEW_W - dw) / 2, originY = (VIEW_H - dh) / 2;
+  ctx.drawImage(img, originX, originY, dw, dh);
+  return { originX, originY, dw, dh, scale };
+}
+
+// Layout measured directly from start_splash_1v2.png (as fractions of the
+// art's own width/height): the title line above the divider, and the
+// blank content panel below it where rows get drawn live. Both popups
+// share this same frame art -- see drawDigChoice/drawSlotChoose.
+const MENU_POPUP_LAYOUT = {
+  titleYFrac: 0.4652,       // baseline of the title line
+  titleCoverYFrac: 0.4196, titleCoverHFrac: 0.0910, // rect to blank out before redrawing title
+  boxTopFrac: 0.5278, boxBottomFrac: 0.8443,
+  boxXFrac: 0.0592, boxWFrac: 0.9408 - 0.0592,
+};
+
+function drawMenuPopupBackground(time, title) {
+  const { originX, originY, dw, dh } = drawSplashBackground(menuPopupSplashImg, time);
+
+  const boxX = originX + MENU_POPUP_LAYOUT.boxXFrac * dw;
+  const boxW = MENU_POPUP_LAYOUT.boxWFrac * dw;
+  const boxY = originY + MENU_POPUP_LAYOUT.boxTopFrac * dh;
+  const boxH = (MENU_POPUP_LAYOUT.boxBottomFrac - MENU_POPUP_LAYOUT.boxTopFrac) * dh;
+
+  // blank out the baked-in title text, then draw the one this screen needs.
+  // Inset to boxX/boxW (same as the content panel below) so this doesn't
+  // paint over the gold frame border on either side.
+  const coverY = originY + MENU_POPUP_LAYOUT.titleCoverYFrac * dh;
+  const coverH = MENU_POPUP_LAYOUT.titleCoverHFrac * dh;
+  ctx.fillStyle = '#05111a';
+  ctx.fillRect(boxX, coverY, boxW, coverH);
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 18px monospace';
+  ctx.fillStyle = '#e0b040';
+  ctx.fillText(title, boxX + boxW / 2, originY + MENU_POPUP_LAYOUT.titleYFrac * dh);
+
+  return { originX, originY, dw, dh, boxX, boxW, boxY, boxH };
+}
+
+function drawDigChoice(time) {
+  if (!menuPopupSplashImg.complete || !menuPopupSplashImg.naturalWidth) { drawDigChoiceFallback(); return; }
+  const { boxX, boxW, boxY, boxH } = drawMenuPopupBackground(time, "WHAT'S THE MOVE?");
+  const cx = boxX + boxW / 2;
+  const rowY = [boxY + boxH * 0.22, boxY + boxH * 0.5, boxY + boxH * 0.78];
+  DIG_CHOICES.forEach((label, i) => {
+    const active = i === digChoiceIndex;
+    if (active) {
+      // padded highlight box: extra breathing room above/below the text
+      // baseline, and inset a bit from the panel's own edges, so the gold
+      // border doesn't hug the letters or the frame.
+      const rh = boxH * 0.2;
+      const boxCY = rowY[i] - 4; // nudge up: fillText's y is the baseline, not the glyph's visual center
+      const inset = boxW * 0.05;
+      const hx = boxX + inset, hw = boxW - inset * 2;
+      ctx.fillStyle = 'rgba(8,14,20,0.92)';
+      ctx.fillRect(hx, boxCY - rh / 2, hw, rh);
+      ctx.strokeStyle = '#e0b040';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(hx + 2, boxCY - rh / 2 + 2, hw - 4, rh - 4);
+    }
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 20px monospace';
+    ctx.fillStyle = active ? '#e0b040' : '#f4ecd8';
+    ctx.fillText((active ? '\u25B8 ' : '') + label + (active ? ' \u25C2' : ''), cx, rowY[i]);
+  });
+}
+
+function drawSlotChoose(time) {
+  if (!menuPopupSplashImg.complete || !menuPopupSplashImg.naturalWidth) { drawSlotChooseFallback(); return; }
+  const title = pendingMode === 'new' ? 'START DIGGING \u2014 PICK A SLOT' : 'CONTINUE DIGGING \u2014 PICK A SLOT';
+  const { boxX, boxW, boxY, boxH } = drawMenuPopupBackground(time, title);
+  const textX = boxX + boxW * 0.06;
+  const mainY = [boxY + boxH * 0.22, boxY + boxH * 0.52, boxY + boxH * 0.82];
+  const subYOffset = boxH * 0.115;
+  SAVE_SLOTS.forEach((slot, i) => {
+    const active = i === slotChoiceIndex;
+    const summary = slotSummary(slot);
+    const label = `SLOT ${slot}`;
+    let subtext = summary || 'EMPTY';
+    if (active && armedOverwriteSlot === slot) subtext = 'PRESS [E] AGAIN TO OVERWRITE';
+    if (active) {
+      const rh = boxH * 0.27;
+      ctx.fillStyle = 'rgba(8,14,20,0.92)';
+      ctx.fillRect(boxX, mainY[i] - rh * 0.4, boxW, rh);
+      ctx.strokeStyle = '#e0b040';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(boxX + 2, mainY[i] - rh * 0.4 + 2, boxW - 4, rh - 4);
+    }
+    ctx.textAlign = 'left';
+    ctx.font = 'bold 20px monospace';
+    ctx.fillStyle = active ? '#e0b040' : '#f4ecd8';
+    ctx.fillText((active ? '\u25B8 ' : '') + label, textX, mainY[i]);
+    ctx.font = '13px monospace';
+    ctx.fillStyle = active ? 'rgba(224,176,64,0.85)' : 'rgba(244,236,216,0.6)';
+    ctx.fillText(subtext, textX, mainY[i] + subYOffset);
+  });
+}
+
+// Portrait centers, as fractions of the character_select art's own
+// width/height — measured against the source image so labels land inside
+// the blank boxes under each portrait regardless of how the art gets
+// scaled to fit the view.
+const SELECT_LABEL_POS = [
+  { xFrac: 0.1888, yFrac: 0.8398 }, // Santos (green, left)
+  { xFrac: 0.5013, yFrac: 0.8398 }, // Rico, hoodie/Yankees cap (blue, middle)
+  { xFrac: 0.8138, yFrac: 0.8398 }, // Rico, red hat (red, right)
+];
+// Name + smaller qualifier drawn in the title box under each portrait.
+// Order matches SELECT_ORDER (Santos, Rico-Yankees, Rico-red-hat).
+const SELECT_TITLES = [
+  { main: 'SANTOS', sub: null },
+  { main: 'RICO', sub: '(YANKS)' },
+  { main: 'RICO', sub: '(HIERO)' },
+];
+
+// Draws text with a chunky dark outline behind a gold gradient fill, the
+// same recipe classic Zelda-style logos use to get that engraved, "carved
+// from treasure" look out of an ordinary serif font.
+function drawRetroTitle(text, cx, cy, size) {
+  ctx.font = `bold ${size}px Georgia, 'Times New Roman', serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
+  ctx.lineJoin = 'round';
+  ctx.miterLimit = 2;
+
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.9)';
+  ctx.shadowBlur = 2;
+  ctx.shadowOffsetX = 2;
+  ctx.shadowOffsetY = 2;
+  ctx.lineWidth = Math.max(2, size * 0.16);
+  ctx.strokeStyle = '#241206';
+  ctx.strokeText(text, cx, cy);
+  ctx.restore();
+
+  const grad = ctx.createLinearGradient(0, cy - size * 0.8, 0, cy + size * 0.15);
+  grad.addColorStop(0, '#fff6d6');
+  grad.addColorStop(0.5, '#f0c33e');
+  grad.addColorStop(1, '#b3760f');
+  ctx.fillStyle = grad;
+  ctx.fillText(text, cx, cy);
+}
+
+// Full-screen "LEVEL N" card -- see showLevelIntro() for how/when this gets
+// triggered. Reuses drawRetroTitle() (gold-on-carved-outline text) and
+// drawStars() so it costs no new art, just two lines of text over a dark
+// backdrop that already exists elsewhere in the file.
+function drawLevelIntro(time) {
+  const num = levelNumberFor(levelIntroWorldId);
+
+  // Level 1 gets the full-art Burlington card, Level 2 gets the full-art
+  // Swamp card, Level 3 gets the full-art Skate Park card; every other world (should one ever route through
+  // showLevelIntro() without a matching image) falls back to the plain
+  // carved-text card below.
+  const fullArtImg = num === 1 ? level1IntroImg : num === 2 ? level2IntroImg : num === 3 ? level3IntroImg : null;
+  if (fullArtImg && fullArtImg.complete && fullArtImg.naturalWidth) {
+    const iw = fullArtImg.naturalWidth, ih = fullArtImg.naturalHeight;
+    const scale = Math.max(VIEW_W / iw, VIEW_H / ih);
+    const dw = iw * scale, dh = ih * scale;
+    const dx = (VIEW_W - dw) / 2, dy = (VIEW_H - dh) / 2;
+    ctx.drawImage(fullArtImg, dx, dy, dw, dh);
+
+    ctx.fillStyle = 'rgba(8,6,12,0.55)';
+    ctx.fillRect(0, VIEW_H - 40, VIEW_W, 40);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#e0b040' : '#f4ecd8';
+    ctx.font = 'bold 15px monospace';
+    ctx.fillText('- PRESS E TO DROP IN -', VIEW_W / 2, VIEW_H - 14);
+    return;
+  }
+
+  ctx.fillStyle = 'rgba(8,6,12,0.93)';
+  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+  drawStars(time);
+
+  const def = WORLD_DEFS[levelIntroWorldId] || WORLD_DEFS.town;
+
+  drawRetroTitle(`LEVEL ${num}`, VIEW_W / 2, VIEW_H / 2 - 14, 46);
+  drawRetroTitle(def.name.toUpperCase(), VIEW_W / 2, VIEW_H / 2 + 40, 24);
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#e0b040' : '#f4ecd8';
+  ctx.font = 'bold 15px monospace';
+  ctx.fillText('- PRESS E TO DROP IN -', VIEW_W / 2, VIEW_H - 40);
+}
+
+function drawCharacterSelect(time) {
+  // background: flat dark backdrop -- the drifting sky from the title
+  // screen stops here, once the player has moved on to picking a character.
+  ctx.fillStyle = 'rgba(8,6,12,0.93)';
+  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
+  if (characterSelectImg.complete && characterSelectImg.naturalWidth) {
+    const iw = characterSelectImg.naturalWidth, ih = characterSelectImg.naturalHeight;
+    const scale = Math.min(VIEW_W / iw, VIEW_H / ih);
+    const dw = iw * scale, dh = ih * scale;
+    const originX = (VIEW_W - dw) / 2, originY = (VIEW_H - dh) / 2;
+    selectLayout = { originX, originY, scale, imgW: iw, imgH: ih };
+    ctx.drawImage(characterSelectImg, originX, originY, dw, dh);
+
+    // highlight the keyboard-selected portrait with a pulsing box, so
+    // arrow-key/E users can see where they are without a mouse
+    const bounds = [[0, 0.345], [0.345, 0.658], [0.658, 1]];
+    const [x0f, x1f] = bounds[selectIndex];
+    const hx = originX + x0f * dw, hw = (x1f - x0f) * dw;
+    ctx.strokeStyle = Math.floor(time * 2.4) % 2 ? '#e0b040' : '#f4ecd8';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(hx + 3, originY + 3, hw - 6, dh - 6);
+
+    // retro Zelda-style name titles in the blank boxes under each portrait
+    SELECT_ORDER.forEach((id, i) => {
+      const pos = SELECT_LABEL_POS[i];
+      const title = SELECT_TITLES[i];
+      const lx = originX + pos.xFrac * dw, ly = originY + pos.yFrac * dh;
+      if (title.sub) {
+        drawRetroTitle(title.main, lx, ly - 8, 26);
+        drawRetroTitle(title.sub, lx, ly + 18, 16);
+      } else {
+        drawRetroTitle(title.main, lx, ly + 8, 28);
+      }
+    });
+  } else {
+    // fallback: simple colored panels until the art loads. Map taps across
+    // the full view width using the same thirds the real art uses, so
+    // tapping works even before character_select.png has loaded in.
+    selectLayout = { originX: 0, originY: 0, scale: 1, imgW: VIEW_W, imgH: VIEW_H };
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#e0b040';
+    ctx.font = 'bold 30px monospace';
+    ctx.fillText('SELECT YOUR CHARACTER', VIEW_W / 2, 90);
+    const panelW = 260, panelH = 340, gap = 30;
+    const totalW = panelW * 3 + gap * 2;
+    const startX = (VIEW_W - totalW) / 2, y = 140;
+    const colors = ['#2c5a1e', '#123a5e', '#5e1414'];
+    SELECT_ORDER.forEach((id, i) => {
+      const x = startX + i * (panelW + gap);
+      ctx.fillStyle = i === selectIndex ? '#e0b040' : colors[i];
+      ctx.fillRect(x, y, panelW, panelH);
+      const title = SELECT_TITLES[i];
+      const lx = x + panelW / 2, ly = y + panelH - 34;
+      if (title.sub) {
+        drawRetroTitle(title.main, lx, ly - 10, 32);
+        drawRetroTitle(title.sub, lx, ly + 20, 19);
+      } else {
+        drawRetroTitle(title.main, lx, ly + 10, 34);
+      }
+    });
+  }
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#e0b040' : '#f4ecd8';
+  ctx.font = 'bold 16px monospace';
+  ctx.fillText('- TAP A CHARACTER, OR USE \u25c0 \u25b6 AND E -', VIEW_W / 2, VIEW_H - 22);
+}
+
+function drawWin() {
+  ctx.fillStyle = 'rgba(8,6,12,0.88)';
+  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
+  // Character-specific cheers splash: santos -> santos_cheers, ricoAlt (Yanks
+  // outfit) -> rico_yanks_cheers, rico (classic/Hiero) -> rico_heiro_cheers.
+  const cheersImg = CHARACTER_CHEERS_IMG[selectedCharacter] || santosCheersImg;
+  let dh = 0, dy = 10;
+  if (cheersImg.complete && cheersImg.naturalWidth) {
+    const iw = cheersImg.naturalWidth, ih = cheersImg.naturalHeight;
+    const scale = Math.min(300 / iw, 380 / ih);
+    const dw = iw * scale;
+    dh = ih * scale;
+    const dx = (VIEW_W - dw) / 2;
+    ctx.drawImage(cheersImg, dx, dy, dw, dh);
+  }
+
+  // Same text/copy as the original popup, now laid out under the splash art.
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#e0b040';
+  ctx.font = 'bold 26px monospace';
+  const titleY = dy + dh + 32;
+  ctx.fillText('BEAT COMPLETE!', VIEW_W / 2, titleY);
+
+  ctx.fillStyle = '#f4ecd8';
+  ctx.font = '13px monospace';
+  ctx.fillText('All five samples on the pads. The whole town is bumping your track.', VIEW_W / 2, titleY + 22);
+
+  const gridY = titleY + 36, sq = 34, gap = 10;
+  const totalW = sq * 5 + gap * 4;
+  worldPadOrder().forEach((id, i) => {
+    const r = worldRecords()[id];
+    const x = VIEW_W / 2 - totalW / 2 + i * (sq + gap);
+    ctx.fillStyle = r.color;
+    ctx.fillRect(x, gridY, sq, sq);
+    ctx.fillStyle = '#181418';
+    ctx.font = 'bold 10px monospace';
+    ctx.fillText(r.pad, x + sq / 2, gridY + sq / 2 + 4);
+  });
+
+  ctx.fillStyle = '#9a90a8';
+  ctx.font = '12px monospace';
+  ctx.fillText('Rico’s next beat tape: certified classic.', VIEW_W / 2, gridY + sq + 24);
+
+  ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#e0b040' : '#f4ecd8';
+  ctx.font = 'bold 15px monospace';
+  ctx.fillText('- PRESS E TO KEEP CRUISING -', VIEW_W / 2, VIEW_H - 18);
+}
+
+requestAnimationFrame(frame);
+
+// debug/test handle
+window.__rico = { player, maps, collected, getState: () => state, getCharacter: () => selectedCharacter,
+  openDarts: () => enterMinigame(createDartsModeSelect()) };
+})();
