@@ -794,28 +794,34 @@ const WORLD_DEFS = {
   },
   // The Winooski -- LEVEL 4. UNDER CONSTRUCTION: `locked: true` keeps it out of the
   // Crate tabs and the level numbering, and no portal leads to it yet (see
-  // makeWinooski()). The five records below are PLACEHOLDERS so the HUD/Crate/music
-  // code has something valid to read once it's unlocked -- rename them and write the
-  // real flavor text/beat when the level's buildings go in.
+  // makeWinooski()) -- delete that one line when the level opens up. Its five records
+  // are real now, one hidden in each of five buildings (every one of them also has
+  // junk crates, see the *_JUNK tables below):
+  //   Rotary Breaks      (drums) -- AUTUMN RECORDS      (winDrums, `autumnrecords` shop)
+  //   Onion River Low    (bass)  -- MISERY LOVES CO.    (winBass,  `miseryloves` shop)
+  //   Last Call Skank    (horns) -- THE MONKEY HOUSE    (winHorns, `monkeyhouse` shop)
+  //   Needlework Hymnal  (vox)   -- BELLEVUE TATTOO     (winVox,   `bellevue` shop)
+  //   Disco Ball Daydream (lead) -- GOLDEN HOUR         (winLead,  `goldenhour` shop)
+  // Cover art for each lives in drawAlbumArt() (cases keyed by title).
   winooski: {
     name: 'Winooski',
     locked: true,
     records: {
-      winDrums: { title: 'Winooski Record 1', artist: 'TBD', year: '19??',
+      winDrums: { title: 'Rotary Breaks', artist: 'Asterisk & The Roundabouts', year: '1996',
                   sample: 'Drum Loop', layer: 'drums', color: '#c9792b', pad: 'DRM',
-                  flavor: 'Placeholder -- Winooski record 1 (drums).' },
-      winBass:  { title: 'Winooski Record 2', artist: 'TBD', year: '19??',
+                  flavor: 'Chopped from a basement session by a Winooski beatmaker. Every bar circles back around to the one, like traffic on the rotary that never quite lets you out.' },
+      winBass:  { title: 'Onion River Low', artist: 'Wanaski Sound Collective', year: '1991',
                   sample: 'Bassline', layer: 'bass', color: '#3f7fb0', pad: 'BAS',
-                  flavor: 'Placeholder -- Winooski record 2 (bass).' },
-      winHorns: { title: 'Winooski Record 3', artist: 'TBD', year: '19??',
+                  flavor: 'Named for what the Abenaki and early settlers called the Winooski River. The bassline rolls slow and wide, like spring melt pushing under the falls.' },
+      winHorns: { title: 'Last Call Skank', artist: 'The Door Monkeys', year: '1997',
                   sample: 'Horn Stab', layer: 'horns', color: '#b0453f', pad: 'HRN',
-                  flavor: 'Placeholder -- Winooski record 3 (horns).' },
-      winVox:   { title: 'Winooski Record 4', artist: 'TBD', year: '19??',
+                  flavor: 'A ska-punk 7-inch cut live the night the bar ran out of pint glasses. Four horns, one chord, and a crowd that would not stop skanking at closing time.' },
+      winVox:   { title: 'Needlework Hymnal', artist: 'The Flash Sheet Singers', year: '1993',
                   sample: 'Vocal Chop', layer: 'vox', color: '#7a5fb0', pad: 'VOX',
-                  flavor: 'Placeholder -- Winooski record 4 (vocals).' },
-      winLead:  { title: 'Winooski Record 5', artist: 'TBD', year: '19??',
+                  flavor: 'Sung in a tattoo studio between appointments by artists who could not stop harmonizing. You can hear the machine buzz under every chorus.' },
+      winLead:  { title: 'Disco Ball Daydream', artist: 'The Tissue Paper Orchestra', year: '1979',
                   sample: 'Lead Melody', layer: 'lead', color: '#d8b640', pad: 'LD',
-                  flavor: 'Placeholder -- Winooski record 5 (lead).' },
+                  flavor: 'One shimmering synth line bounced off a mirror ball in a gift-shop window. Every note lands like sunlight on a pink wall at golden hour.' },
     },
     padOrder: ['winDrums', 'winBass', 'winHorns', 'winVox', 'winLead'],
     // Placeholder beat: 96 BPM, D-minor flavored, its own kick pattern and waveforms so
@@ -1093,6 +1099,98 @@ const ECHO_CENTER_JUNK = {
       reply: "Low end for days. But not the record you're digging for." },
   ],
 };
+
+// ---- WINOOSKI (LEVEL 4) dig crates ------------------------------------------
+// Each hosting shop has its own themed junk, paired 1:1 with a crate via the
+// c.autumnSeed / c.mlSeed / c.mhSeed / c.bvSeed / c.ghSeed fields (see doInteract()).
+// AUTUMN RECORDS: Greg's "if it's odd, it's here" bins.
+const AUTUMN_RECORDS_JUNK = [
+  { line: "A crate of local demo tapes in hand-labeled cases: garage bands, basement rappers and one very earnest accordion trio. A sticker in Greg's scrawl reads 'LISTEN TWICE.'",
+    reply: "Good stuff, but not what you're hunting for. Greg says to leave your own demo if you've got one." },
+  { line: "Strange-and-wonderful 12-inches: a polka-dub album, a theremin cover of a maple syrup jingle, and a record that is only ferry horns on Lake Champlain.",
+    reply: "Odd as it gets. Still not the record you're after." },
+  { line: "Staff picks with shelf-talkers in Greg's handwriting: 'Peaks right as the leaves turn,' 'Skip track three, trust me,' 'Asterisk flipped this.'",
+    reply: "Greg's taste never misses, but none of these is the one you're digging for." },
+];
+// MISERY LOVES CO.: Christie's kitchen and bar-back records.
+const MISERY_LOVES_JUNK = [
+  { line: "Kitchen-soundtrack LPs with flour thumbprints on every sleeve: Sunday soul, old country, and a polka record somebody definitely sang along to while kneading.",
+    reply: "Warm and a little floury. Not the record you're after." },
+  { line: "Cocktail-hour jazz stamped with rings from sweating glasses -- Christie's bar-back favorites, filed by how smoky the drink is.",
+    reply: "Smooth, but not what you came to dig for." },
+  { line: "A stack of bread and cooking records, including an instructional LP called 'Knead to Know' that is shockingly good.",
+    reply: "Rise and shine, but this isn't the one you're hunting." },
+];
+// THE MONKEY HOUSE: punk, pool hall and live-room leftovers.
+const MONKEY_HOUSE_JUNK = [
+  { line: "Punk 7-inches with torn picture sleeves, every one signed in pen by a band that played the stage upstairs. The floor is sticky; the records, somehow, are not.",
+    reply: "Loud, fast and local. Not the record you're after." },
+  { line: "Pool-hall jukebox singles with corners worn round from years of quarters: outlaw country, surf guitar and one suspiciously good polka.",
+    reply: "Winner stays on. Not the record you want, though." },
+  { line: "Gig-poster stacks and demo CD-Rs from bands that opened for bands. A sticky note on top says 'ASK JAKE ABOUT THE MONKEY.'",
+    reply: "Everybody asks. Nobody gets an answer. Not the record you want." },
+];
+// BELLEVUE TATTOO & PIERCING: waiting-room records by the turntable.
+const BELLEVUE_JUNK = [
+  { line: "Waiting-room records for a long session: ambient LPs, lo-fi tapes and a hand-stamped 'songs to get tattooed to' mix.",
+    reply: "Calming, but not the record you're digging for." },
+  { line: "Flash-sheet sleeves with tattoo-art covers drawn by artists who work the chair: swallows, roses and one very detailed sacred heart.",
+    reply: "Gorgeous artwork. Wrong record." },
+  { line: "Punk and hardcore 7-inches, sticker-bombed so thickly you can't read a single label.",
+    reply: "Looks like the cabinet in the middle of the floor. Not the record you want." },
+];
+// GOLDEN HOUR: gift-shop novelty and maker records.
+const GOLDEN_HOUR_JUNK = [
+  { line: "Novelty records sold as gifts: a singing-greeting-card LP, a disco-ball-shaped picture disc and a children's album about being magic.",
+    reply: "Delightful, but not the record you're after." },
+  { line: "Independent makers' EPs with screen-printed covers, each tied up in a tissue-paper pom-pom ribbon.",
+    reply: "Cute enough to gift. Not the one you're hunting." },
+  { line: "A gift-wrapped stack of easy-listening and lounge records, ribbons still on.",
+    reply: "Unwrap at your own risk. Nothing here is what you're digging for." },
+];
+
+// TINY THAI: Kev's mixtapes and world-music finds.
+const TINY_THAI_JUNK = [
+  { line: "Thai funk and molam LPs with cardboard sleeves gone soft from steam off the wok, plus a hand-labeled mixtape marked 'KEV -- STUDY BEATS (LOUD).'",
+    reply: "Great grooves, but not the record you're hunting for. Mild, medium, or three chilies?" },
+  { line: "Lounge and exotica records from the Pacific Rim, covers faded like old menu photos. One sleeve has a pad thai stain shaped like Vermont.",
+    reply: "Tasty. Not what you're digging for, though." },
+];
+// SNEAKERS BISTRO: brunch playlists on vinyl.
+const SNEAKERS_JUNK = [
+  { line: "Jazz-brunch records, sleeves speckled with maple syrup: mellow piano trios, bossa nova and a very smooth sax album called 'Eggs Over Easy.'",
+    reply: "Smooth, but not the record you came to dig for." },
+  { line: "A box of hungover-Sunday soul 45s, each one scribbled with a brunch special in grease pencil.",
+    reply: "Sweet and a little greasy. Not what you're after." },
+];
+// BEVERAGE WAREHOUSE: bottle-shop crates, records from every beer country on the shelves.
+const BEVERAGE_WAREHOUSE_JUNK = [
+  { line: "A wooden beer crate full of German beer-hall polka records, each sleeve stamped with a foam ring from a very old stein.",
+    reply: "Prost! But not the record you're hunting for." },
+  { line: "Mariachi, ska and Belgian brass-band LPs, all filed by the country on the nearest beer label.",
+    reply: "A world tour in one crate. Not the record you want, though." },
+];
+// WINOOSKI OUTDOOR crates, paired 1:1 with the c.wooSeed values set in makeWinooski().
+// Order matches the spots there: rotary park (west, east), waterfront walkway, west lawn,
+// north-east lawn, far-east lawn, under the overpass, mill lawn.
+const WINOOSKI_OUTDOOR_JUNK = [
+  { line: "A milk crate left on the rotary lawn after the last free show: tapes and burned CDs with 'PLAY ME' scribbled in marker.",
+    reply: "Free music for the taking. Not the record you're hunting for." },
+  { line: "A crate of seat cushions and 45s that somebody used as a bench for the rotary concert. The records have the tread marks to prove it.",
+    reply: "Well-loved. Not what you're digging for, though." },
+  { line: "Records left out in the river air: the sleeves have swelled and curled like old maple leaves, and every label smells faintly of the falls.",
+    reply: "Waterlogged, but a good crate. Not the record you're after." },
+  { line: "A crate of local-radio promos from the west-side lawn: station IDs, call-in jingles and an interview with a man who really loves roundabouts.",
+    reply: "Interesting. Not what you're digging for." },
+  { line: "Garage-sale vinyl on the lawn: choir records, cooking LPs and a perfectly preserved aerobics album from 1982.",
+    reply: "Somebody's attic. Not the record you're hunting." },
+  { line: "A crate of lawn-concert bootlegs and hand-labeled tapes from local bands. Half the labels are just first names.",
+    reply: "Rough and real. Not the record you're after." },
+  { line: "Under the overpass: a plastic crate of spray-paint-splattered demo tapes and instrumentals, each one labeled with a tag.",
+    reply: "Pure street heat. Not the record you're digging for." },
+  { line: "A crate of mill-town records from the old Champlain Mill days: work songs, accordion reels and a suspiciously upbeat tune about wool.",
+    reply: "A little dusty and a lot of history. Not the record you're after." },
+];
 
 // THE SOUL SHACK's two themed dig crates -- same 1:1 pairing via
 // c.soulShackSeed as NECTARS_JUNK/HENRYS_JUNK/TRUTHLAB_JUNK/STREISAND_JUNK
@@ -13409,12 +13507,30 @@ function makeWinooski() {
   }
   const deckSamples = deckPtsA.concat(deckPtsB).map(([x, y]) => [x * PX, y * PX]);
 
+  // --- outdoor dig crates: all junk (the five records live in shops). Every spot was picked on
+  // open grass/paving/concrete with all neighbours walkable, clear of doors, benches and lamps,
+  // so none can block a path. wooSeed indexes WINOOSKI_OUTDOOR_JUNK.
+  const crates = {};
+  const outdoorCrateDefs = [
+    [11, 17],   // rotary park, west of the concert pit
+    [23, 17],   // rotary park, east of the concert pit
+    [45, 33],   // waterfront walkway, against the railing
+    [9, 31],    // west lawn, beside TINY THAI
+    [47, 5],    // north-east lawn, between BELLEVUE and MISERY LOVES CO.
+    [58, 7],    // far-east lawn
+    [61, 40],   // concrete clearing under the overpass
+    [28, 24],   // lawn above the mill
+  ];
+  outdoorCrateDefs.forEach(([cx, cy], i) => {
+    if (['.', 'p', 'k'].includes(g[cy][cx])) { g[cy][cx] = 'c'; crates[key(cx, cy)] = { wooSeed: i }; }
+  });
+
   const waterTiles = [];
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (g[y][x] === '~') waterTiles.push({ x, y });
 
   return {
     id: 'winooski', world: 'winooski', w: W, h: H, grid: g, outside: true,
-    buildings: winBuildings, doors: {}, crates: {}, npcs: [], riverTiles: waterTiles, minigames: [],
+    buildings: winBuildings, doors: {}, crates, npcs: [], riverTiles: waterTiles, minigames: [],
     autumnRecordsDoor: { x: AR_DOOR_X, y: AR_DOOR_Y },
     tinyThaiDoor: { x: TT_DOOR_X, y: TT_DOOR_Y },
     monkeyHouseDoor: { x: MH_DOOR_X, y: MH_DOOR_Y },
@@ -14736,9 +14852,7 @@ const shops = {
   // (3,7)(4,7) (8,7)(9,7), CD towers (10,3), milk crates (1,8) and the plant
   // (12,8) -- all clear of the counter, the four dig crates (col 1 / col 12),
   // the keeper (6,2), the door (6,9) and the spawn (6.5,7.5). Four junk
-  // crates for now: Winooski's five records are still placeholders (see
-  // WORLD_DEFS.winooski), so no real record is hidden in here yet -- swap one
-  // of these for { record: '<id>' } when they get real names. The keeper is
+  // crates: Rotary Breaks (winDrums) is hidden in one of them, the rest are junk. The keeper is
   // GREG, the owner (see keeperImgs.GREG).
   autumnrecords: makeShop('autumnrecords', {
     world: 'winooski',
@@ -14753,8 +14867,11 @@ const shops = {
         'Winooski\'s got a ton of talent in it, and I\'m all about the local artists and musicians. Got a demo or a tape? Leave one with me.',
         'When I\'m not behind this counter, I\'m making beats. Producer name: Asterisk. Sample the crates, flip it into something new.',
         'Best way to support the scene: buy a record, catch a show, tell a friend. Cold outside, warm in here, and something good is always on the turntable.',
-      ] },
-    crates: [ { junkSeed: 0 }, { junkSeed: 1 }, { junkSeed: 2 }, { junkSeed: 3 } ],
+      ],
+      foundLine: 'Rotary Breaks?! You dug that out of MY bins? I pressed forty copies in the nineties and swore I sold every one. Take it -- flip it into something new. That is the whole idea.' },
+    // Four crates: Winooski's first record (Rotary Breaks) plus three themed junk crates
+    // (see AUTUMN_RECORDS_JUNK) -- shuffleRecordCrates() moves the real one around each game.
+    crates: [ { record: 'winDrums' }, { autumnSeed: 0 }, { autumnSeed: 1 }, { autumnSeed: 2 } ],
   }),
   // TINY THAI -- a little Thai restaurant on the Winooski east lawn (see
   // makeWinooski()). `world: 'winooski'` ties it to that level. `tinyThai: true`
@@ -14765,7 +14882,7 @@ const shops = {
   // up: blockTiles = drinks cooler (1,2)(1,3), rice sacks (1,8), bamboo (12,8);
   // extraTables = two 2-tile dining tables at (3,6)(4,6) and (8,6)(9,6) -- all
   // clear of the counter (row 3), the cook (6,2), the door (6,9) and the spawn
-  // (6.5,7.5). No crates: it's a restaurant, nothing to dig. The keeper is KEV,
+  // (6.5,7.5). Two junk dig crates at (1,5)/(12,5) -- see TINY_THAI_JUNK. The keeper is KEV,
   // a St. Michael's College student learning the Winooski scene by painting
   // around town with his buddies (see keeperImgs.KEV).
   tinythai: makeShop('tinythai', {
@@ -14785,8 +14902,11 @@ const shops = {
         'Still rough, still practicing. Everybody starts somewhere, right? Keep your eyes open out there and you\'ll find the good spots.',
         'Thai iced tea is on the counter. Sweet, creamy, orange as a Vermont maple in October.',
         'Only a few tables, but nobody gets rushed. Eat slow. Good food needs company.',
+        'There are a couple of crates by the wall. My mixtapes, mostly, plus whatever records I\'ve found around town. Dig all you want.',
       ] },
-    crates: [],
+    // Two junk crates (left wall x1, right wall x1): no hunted record here.
+    crateSpots: [[1, 5], [12, 5]],
+    crates: [ { ttSeed: 0 }, { ttSeed: 1 } ],
   }),
   // THE MONKEY HOUSE -- bar/restaurant + live-music venue on the Winooski
   // northwest lawn (see makeWinooski()). `monkeyHouse: true` gets its own
@@ -14798,7 +14918,7 @@ const shops = {
   // [amp, guitar stand, drum kit x2, keyboard x2, amp] + pool table (2..4,6..7);
   // extraTables = gig tables (9,6)(10,6) and a small round one at (12,6) -- all
   // clear of the door (6,9) and spawn (6.5,7.5). The stage front row (y=3) is
-  // walkable, so you can hop up and stand by the mic. No crates: nothing to dig.
+  // walkable, so you can hop up and stand by the mic. Two dig crates (record + junk) at (1,5)/(12,5).
   // The bartender is JAKE, a vegan punk from Winooski (see keeperImgs.JAKE).
   monkeyhouse: makeShop('monkeyhouse', {
     world: 'winooski',
@@ -14822,8 +14942,12 @@ const shops = {
         'Cheap beer, local taps, good people. Support the scene: buy a drink, catch a set, tell a friend.',
         'The monkey over the door? Don\'t ask. Everybody asks. He was here before I was.',
         'That\'s The Aztext up on stage -- Pro Knows Music and Learic. VT hip hop legends, local royalty. Stay for the whole set.',
-      ] },
-    crates: [],
+        'There are a couple of crates by the wall if you want a record for the jukebox. Punk, pool-hall singles, whatever the bands left behind.',
+      ],
+      foundLine: 'Last Call Skank?! The Door Monkeys cut that on the night we ran out of pint glasses. Take it. Four horns, one chord, and nobody leaves till the lights come up.' },
+    // Two crates, one each side: Last Call Skank plus one junk crate (left wall x1, right wall x1).
+    crateSpots: [[1, 5], [12, 5]],
+    crates: [ { record: 'winHorns' }, { mhSeed: 0 } ],
   }),
   // BELLEVUE TATTOO & PIERCING -- the tattoo + piercing studio SK1 works at, on the
   // Winooski north-east lawn (see makeWinooski()). `bellevue: true` gets its own
@@ -14835,7 +14959,7 @@ const shops = {
   // equipment cart (12,2), couch (1,5)(1,6), record shelf (1,7)(1,8), sticker cabinet
   // (5,5)(5,6), steel trash can (12,4); the desk is the counter row y=3 over x 8..12 with
   // SK1 behind it at (10,2). All clear of the door (6,9) and spawn (6.5,7.5).
-  // No crates: Winooski's records are still placeholders.
+  // Three dig crates (record + junk) at (12,6)/(12,7)/(2,8).
   bellevue: makeShop('bellevue', {
     world: 'winooski',
     floor: '#8f9498', plank: '#80858a', wallColor: '#1f9d93',
@@ -14856,8 +14980,12 @@ const shops = {
         'First tattoo? Eat something, drink water, bring a friend. Piercing? Same rules.',
         'The Anthill Collective has roots all over this scene. Skaters, printers, emcees, now ink. It all connects.',
         'Turntable by the window is always spinning something. Dig the shelf if you want a record for the wait.',
-      ] },
-    crates: [],
+        'There are a few crates by the back wall too. Waiting-room records, flash-sheet sleeves, a whole lot of stickers.',
+      ],
+      foundLine: 'Needlework Hymnal! We sang that between appointments and somebody recorded it on a tape deck. You can hear the machine buzzing. Take it -- and drink some water.' },
+    // Three crates: Needlework Hymnal plus two junk crates (right wall x2, left-front x1).
+    crateSpots: [[12, 6], [12, 7], [2, 8]],
+    crates: [ { record: 'winVox' }, { bvSeed: 0 }, { bvSeed: 1 } ],
   }),
   // MISERY LOVES CO. -- rustic-chic comfort-food + craft-cocktail spot (Winooski Market),
   // on the Winooski north-east lawn (see makeWinooski()). `miseryLoves: true` gets its own
@@ -14867,7 +14995,7 @@ const shops = {
   // row 1 is walled off (back wall); blockTiles = pantry shelf (1,2)(1,3), back-bar cabinet
   // (8,2)(9,2), potted topiary (12,8); the bar is the counter row y=3 over x 8..12 with the
   // bartender at (10,2); extraTables = four bistro tables (3,5)(3,7)(10,6)(10,8). All clear
-  // of the door (6,9) and spawn (6.5,7.5). No crates: it's a restaurant, nothing to dig.
+  // of the door (6,9) and spawn (6.5,7.5). Three dig crates (record + junk) at (1,5)/(1,7)/(12,5).
   // CHRISTIE runs the place from behind the bar at (10,2) -- see
   // keeperImgs.CHRISTIE / drawKeeper()'s `cook` motion.
   miseryloves: makeShop('miseryloves', {
@@ -14890,8 +15018,12 @@ const shops = {
         'Craft cocktails are on the menu too. Tell me what you like and I\'ll build you something. Smoky, sour, boozy, bright.',
         'Fun fact: the market next door and this place are the same family. Good food runs in the block.',
         'That chalkboard changes more than the weather does. If a special sells out, it\'s gone. Peace, love, and fresh bread.',
-      ] },
-    crates: [],
+        'There are a few crates of records tucked along the wall. Kitchen music, mostly. Dig around if you like -- just wipe the flour off your hands first.',
+      ],
+      foundLine: 'Onion River Low! That one has been hiding behind the flour sacks for years. Take it -- it is the kind of bass that makes the whole room slow down and breathe. Peace, love, and fresh bread.' },
+    // Three crates (left wall x2, right wall x1): Onion River Low plus two junk crates.
+    crateSpots: [[1, 5], [1, 7], [12, 5]],
+    crates: [ { record: 'winBass' }, { mlSeed: 0 }, { mlSeed: 1 } ],
   }),
   // SNEAKERS BISTRO -- the famous local brunch spot, on the far left of the Winooski map
   // (see makeWinooski()). `sneakers: true` gets its own interior (drawSneakersInterior): a
@@ -14902,7 +15034,7 @@ const shops = {
   // espresso station (8,2)(9,2), booths (1,4)..(1,7), potted monstera (12,8); the counter is
   // the row y=3 over x 8..12 with the host behind it at (10,2); extraTables = four round
   // tables (2,5)(2,7)(10,6)(10,8). All clear of the door (6,9) and spawn (6.5,7.5). No
-  // crates: it's a restaurant, nothing to dig.
+  // crates: two junk dig crates at (12,5)/(12,6) -- see SNEAKERS_JUNK.
   sneakersbistro: makeShop('sneakersbistro', {
     world: 'winooski',
     floor: '#f3d9c6', plank: '#e6c8b0', wallColor: '#8fc7b0',
@@ -14923,8 +15055,11 @@ const shops = {
         'See the neon on the wall? Same one that\'s in the front window. It\'s been glowing since before I started.',
         'Doors open at 7 and we close up at 3, every single day. Come early, the line out the door is real.',
         'Patio\'s open when the weather behaves. Picnic tables, brick underfoot, an orange spritz in your hand. Hard to beat.',
+        'There are a couple of record crates over by the window. Brunch music, mostly. Dig while you wait for a table.',
       ] },
-    crates: [],
+    // Two junk crates (right wall): no hunted record here.
+    crateSpots: [[12, 5], [12, 6]],
+    crates: [ { sbSeed: 0 }, { sbSeed: 1 } ],
   }),
   // GOLDEN HOUR -- a cute independent gift co. selling art and all kinds of unique, fun gifts, on
   // the Winooski east lawn (see makeWinooski()). `goldenHour: true` gets its own interior
@@ -14936,8 +15071,8 @@ const shops = {
   // shelf (1,3)(1,4), wire card rack (1,6)(1,7), plant stand (1,8), plush shelf (12,3)(12,4),
   // art-print bins (12,6)(12,7), fiddle-leaf fig (12,8); the counter is the row y=3 over x 4..9
   // with the shopkeeper behind it at (6,2); extraTables = round glass display (6,5)(7,5) + two
-  // small gift tables (3,5)(10,5). All clear of the door (6,9) and spawn (6.5,7.5). No crates:
-  // it's a gift shop, nothing to dig.
+  // small gift tables (3,5)(10,5). All clear of the door (6,9) and spawn (6.5,7.5). Three dig
+  // crates (record + junk) at (2,7)/(11,7)/(2,8) -- see crateSpots below.
   goldenhour: makeShop('goldenhour', {
     world: 'winooski',
     floor: '#d8ac72', plank: '#b98a52', wallColor: '#f4a3c3',
@@ -14957,8 +15092,12 @@ const shops = {
         'Check the window banner on your way out. It says it all: you are magic. Don\'t forget it.',
         'Fun fact: the best time to shop here is golden hour, when the sun pours in and everything glows.',
         'I\'ll wrap it up pretty for you. Tissue paper pom-poms included.',
-      ] },
-    crates: [],
+        'There are a few crates of records over by the window for vinyl lovers -- everything from novelty gifts to maker EPs.',
+      ],
+      foundLine: 'Disco Ball Daydream! That has been sitting under the pom-poms for ages. Take it -- it is the sound of golden hour. I will wrap it up pretty for you.' },
+    // Three crates: Disco Ball Daydream plus two junk crates (near the plush shelf / art bins).
+    crateSpots: [[2, 7], [11, 7], [2, 8]],
+    crates: [ { record: 'winLead' }, { ghSeed: 0 }, { ghSeed: 1 } ],
   }),
   // BEVERAGE WAREHOUSE -- a beer lover's dream come true: a massive selection of beers from all
   // around the world, on the far right of the Winooski map (see makeWinooski()).
@@ -14971,7 +15110,7 @@ const shops = {
   // (12,5)..(12,8); the counter is the row y=3 over x 8..12 with the clerk behind it at (10,2);
   // extraTables = barrel + beer-case display (10,6)(11,6). Row 4 stays open in front of the
   // counter and every aisle connects to it; all clear of the door (6,9) and spawn (6.5,7.5).
-  // No crates: it's a bottle shop, nothing to dig.
+  // Two junk dig crates at (2,8)/(11,8) -- see BEVERAGE_WAREHOUSE_JUNK.
   beveragewarehouse: makeShop('beveragewarehouse', {
     world: 'winooski',
     floor: '#a39d94', plank: '#8f897f', wallColor: '#e6e2d8',
@@ -14995,8 +15134,11 @@ const shops = {
         'That sign over the cooler wall? People answer it before they\'ve even walked in. The answer is always yes.',
         'Can\'t decide? Tell me what you like in a beer and I\'ll point you somewhere you\'ve never been.',
         'Growlers get filled right here at the counter. Bring it back empty and we\'ll fill it again.',
+        'We stack a couple of old beer crates with records in the aisles. Beer-hall polka, mostly. Flip through them while you decide.',
       ] },
-    crates: [],
+    // Two junk crates: bottom of the left aisle and bottom of the right aisle.
+    crateSpots: [[2, 8], [11, 8]],
+    crates: [ { bwSeed: 0 }, { bwSeed: 1 } ],
   }),
   // CB PRINTS -- the skatepark's fourth building: a small, artsy independent
   // screen printing shop owned and run by BONTA, the master screen printer
@@ -16396,6 +16538,42 @@ function doInteract() {
     } else if (c.talentSeed !== undefined) {
       const tlj = TALENT_JUNK[c.talentSeed % TALENT_JUNK.length];
       dialog = { name: 'CRATE', lines: [tlj.line, tlj.reply], i: 0 };
+      state = 'dialog';
+    } else if (c.autumnSeed !== undefined) {
+      const arj = AUTUMN_RECORDS_JUNK[c.autumnSeed % AUTUMN_RECORDS_JUNK.length];
+      dialog = { name: 'CRATE', lines: [arj.line, arj.reply], i: 0 };
+      state = 'dialog';
+    } else if (c.mlSeed !== undefined) {
+      const mlj = MISERY_LOVES_JUNK[c.mlSeed % MISERY_LOVES_JUNK.length];
+      dialog = { name: 'CRATE', lines: [mlj.line, mlj.reply], i: 0 };
+      state = 'dialog';
+    } else if (c.mhSeed !== undefined) {
+      const mhj = MONKEY_HOUSE_JUNK[c.mhSeed % MONKEY_HOUSE_JUNK.length];
+      dialog = { name: 'CRATE', lines: [mhj.line, mhj.reply], i: 0 };
+      state = 'dialog';
+    } else if (c.bvSeed !== undefined) {
+      const bvj = BELLEVUE_JUNK[c.bvSeed % BELLEVUE_JUNK.length];
+      dialog = { name: 'CRATE', lines: [bvj.line, bvj.reply], i: 0 };
+      state = 'dialog';
+    } else if (c.ghSeed !== undefined) {
+      const ghj = GOLDEN_HOUR_JUNK[c.ghSeed % GOLDEN_HOUR_JUNK.length];
+      dialog = { name: 'CRATE', lines: [ghj.line, ghj.reply], i: 0 };
+      state = 'dialog';
+    } else if (c.ttSeed !== undefined) {
+      const ttj = TINY_THAI_JUNK[c.ttSeed % TINY_THAI_JUNK.length];
+      dialog = { name: 'CRATE', lines: [ttj.line, ttj.reply], i: 0 };
+      state = 'dialog';
+    } else if (c.sbSeed !== undefined) {
+      const sbj = SNEAKERS_JUNK[c.sbSeed % SNEAKERS_JUNK.length];
+      dialog = { name: 'CRATE', lines: [sbj.line, sbj.reply], i: 0 };
+      state = 'dialog';
+    } else if (c.bwSeed !== undefined) {
+      const bwj = BEVERAGE_WAREHOUSE_JUNK[c.bwSeed % BEVERAGE_WAREHOUSE_JUNK.length];
+      dialog = { name: 'CRATE', lines: [bwj.line, bwj.reply], i: 0 };
+      state = 'dialog';
+    } else if (c.wooSeed !== undefined) {
+      const wj = WINOOSKI_OUTDOOR_JUNK[c.wooSeed % WINOOSKI_OUTDOOR_JUNK.length];
+      dialog = { name: 'CRATE', lines: [wj.line, wj.reply], i: 0 };
       state = 'dialog';
     } else if (c.cbSeed !== undefined) {
       // CB PRINTS: left-hand crate (x < 7) is hip hop, right-hand is reggae
@@ -44578,6 +44756,105 @@ function drawAlbumArt(x, y, s, r) {
         const t = i / 5;
         const px2 = x + 8 + t * 16, py2 = y + s - t * (s - 8);
         ctx.beginPath(); ctx.arc(px2, py2, 4, 0, Math.PI * 2); ctx.fill();
+      }
+      break;
+    }
+    case 'Rotary Breaks': {
+      // autumn dusk over the Winooski rotary: ring road, painted lane, grass park, four roads, falling leaves
+      const g = ctx.createLinearGradient(x, y, x, y + s);
+      g.addColorStop(0, '#3a1f12'); g.addColorStop(1, '#8a4a1c');
+      ctx.fillStyle = g; ctx.fillRect(x, y, s, s);
+      ctx.fillStyle = '#2a2220';
+      ctx.fillRect(cx - s * 0.07, y, s * 0.14, s); ctx.fillRect(x, cy - s * 0.07, s, s * 0.14);
+      ctx.beginPath(); ctx.arc(cx, cy, s * 0.36, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#e8c860'; ctx.lineWidth = Math.max(1, s * 0.012); ctx.setLineDash([s * 0.04, s * 0.04]);
+      ctx.beginPath(); ctx.arc(cx, cy, s * 0.29, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = '#58741f'; ctx.beginPath(); ctx.arc(cx, cy, s * 0.2, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#c9792b'; ctx.beginPath(); ctx.arc(cx, cy, s * 0.07, 0, Math.PI * 2); ctx.fill();
+      const leafC = ['#e0a030', '#c9792b', '#b0453f', '#e8c860'];
+      for (let i = 0; i < 16; i++) {
+        ctx.fillStyle = leafC[i % 4];
+        ctx.beginPath(); ctx.ellipse(x + rng() * s, y + rng() * s, s * 0.025, s * 0.014, rng() * 3, 0, Math.PI * 2); ctx.fill();
+      }
+      break;
+    }
+    case 'Onion River Low': {
+      // deep river bands rolling under a pale onion bulb ("Onion River" / Winooski)
+      const g = ctx.createLinearGradient(x, y, x, y + s);
+      g.addColorStop(0, '#16304f'); g.addColorStop(1, '#2f7d9a');
+      ctx.fillStyle = g; ctx.fillRect(x, y, s, s);
+      ctx.fillStyle = '#e8dcc0';
+      ctx.beginPath(); ctx.ellipse(cx, y + s * 0.34, s * 0.16, s * 0.17, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(cx - s * 0.05, y + s * 0.2); ctx.quadraticCurveTo(cx, y + s * 0.06, cx + s * 0.05, y + s * 0.2); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(122,95,176,0.55)'; ctx.lineWidth = Math.max(1, s * 0.012);
+      for (const k of [-0.07, 0, 0.07]) { ctx.beginPath(); ctx.ellipse(cx + s * k, y + s * 0.34, s * 0.05, s * 0.16, 0, 0, Math.PI * 2); ctx.stroke(); }
+      for (let b = 0; b < 4; b++) {
+        ctx.fillStyle = ['rgba(104,164,194,0.55)', 'rgba(63,127,176,0.7)', 'rgba(35,90,140,0.8)', 'rgba(15,45,85,0.9)'][b];
+        ctx.beginPath(); ctx.moveTo(x, y + s);
+        for (let px = 0; px <= s; px += s / 20) ctx.lineTo(x + px, y + s * (0.55 + b * 0.1) + Math.sin(px / s * 6.28 * 2 + b) * s * 0.03);
+        ctx.lineTo(x + s, y + s); ctx.closePath(); ctx.fill();
+      }
+      break;
+    }
+    case 'Last Call Skank': {
+      // ska checkerboard stripe, a door monkey's face and a neon LAST CALL sign
+      ctx.fillStyle = '#7a1f1c'; ctx.fillRect(x, y, s, s);
+      const cell = s / 10;
+      for (let k = 0; k < 10; k++) { ctx.fillStyle = k % 2 ? '#f4ecd8' : '#1a1416'; ctx.fillRect(x + k * cell, y + s * 0.8, cell, cell); ctx.fillStyle = k % 2 ? '#1a1416' : '#f4ecd8'; ctx.fillRect(x + k * cell, y + s * 0.8 + cell, cell, cell * 0.8); }
+      ctx.fillStyle = '#3a2a22';
+      ctx.beginPath(); ctx.arc(cx - s * 0.2, cy - s * 0.05, s * 0.08, 0, Math.PI * 2); ctx.arc(cx + s * 0.2, cy - s * 0.05, s * 0.08, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx, cy, s * 0.22, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#d9a47a'; ctx.beginPath(); ctx.ellipse(cx, cy + s * 0.04, s * 0.15, s * 0.14, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#1a1416'; ctx.beginPath(); ctx.arc(cx - s * 0.06, cy - s * 0.02, s * 0.022, 0, Math.PI * 2); ctx.arc(cx + s * 0.06, cy - s * 0.02, s * 0.022, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#1a1416'; ctx.lineWidth = Math.max(1, s * 0.014);
+      ctx.beginPath(); ctx.arc(cx, cy + s * 0.07, s * 0.06, 0.2, Math.PI - 0.2); ctx.stroke();
+      ctx.fillStyle = '#ffd23f'; ctx.font = 'bold ' + Math.max(6, Math.round(s * 0.085)) + 'px monospace'; ctx.textAlign = 'center';
+      ctx.fillText('LAST CALL', cx, y + s * 0.15);
+      break;
+    }
+    case 'Needlework Hymnal': {
+      // tattoo flash sheet: a sacred heart with a banner, stars and a needle
+      const g = ctx.createLinearGradient(x, y, x, y + s);
+      g.addColorStop(0, '#2a1d44'); g.addColorStop(1, '#4a3a78');
+      ctx.fillStyle = g; ctx.fillRect(x, y, s, s);
+      ctx.fillStyle = '#f4ecd8';
+      for (let i = 0; i < 14; i++) { const sx = x + rng() * s, sy = y + rng() * s * 0.6; ctx.fillRect(sx, sy, 2, 2); }
+      ctx.fillStyle = '#c0392b'; ctx.strokeStyle = '#f4ecd8'; ctx.lineWidth = Math.max(2, s * 0.025); ctx.lineJoin = 'round';
+      ctx.beginPath(); ctx.moveTo(cx, cy + s * 0.26);
+      ctx.bezierCurveTo(cx - s * 0.34, cy - s * 0.02, cx - s * 0.2, cy - s * 0.26, cx, cy - s * 0.1);
+      ctx.bezierCurveTo(cx + s * 0.2, cy - s * 0.26, cx + s * 0.34, cy - s * 0.02, cx, cy + s * 0.26);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle = '#e8c860'; ctx.lineWidth = Math.max(1, s * 0.014);
+      ctx.beginPath(); ctx.arc(cx, cy - s * 0.02, s * 0.3, Math.PI * 1.15, Math.PI * 1.85); ctx.stroke();
+      ctx.fillStyle = '#f4ecd8'; ctx.fillRect(x + s * 0.2, cy + s * 0.2, s * 0.6, s * 0.1);
+      ctx.fillStyle = '#2a1d44'; ctx.font = 'bold ' + Math.max(6, Math.round(s * 0.07)) + 'px monospace'; ctx.textAlign = 'center';
+      ctx.fillText('HYMNAL', cx, cy + s * 0.275);
+      ctx.strokeStyle = '#f4ecd8'; ctx.lineWidth = Math.max(1, s * 0.016);
+      ctx.beginPath(); ctx.moveTo(x + s * 0.86, y + s * 0.1); ctx.lineTo(x + s * 0.7, y + s * 0.34); ctx.stroke();
+      break;
+    }
+    case 'Disco Ball Daydream': {
+      // pink-and-gold golden-hour glow around a gridded mirror ball with sparkles
+      const g = ctx.createLinearGradient(x, y, x, y + s);
+      g.addColorStop(0, '#f4a3c3'); g.addColorStop(1, '#e8b860');
+      ctx.fillStyle = g; ctx.fillRect(x, y, s, s);
+      const rg = ctx.createRadialGradient(cx, cy, 2, cx, cy, s * 0.5);
+      rg.addColorStop(0, 'rgba(255,248,214,0.9)'); rg.addColorStop(1, 'rgba(255,248,214,0)');
+      ctx.fillStyle = rg; ctx.fillRect(x, y, s, s);
+      ctx.strokeStyle = '#5a3a2a'; ctx.lineWidth = Math.max(1, s * 0.01);
+      ctx.beginPath(); ctx.moveTo(cx, y); ctx.lineTo(cx, cy - s * 0.24); ctx.stroke();
+      ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, s * 0.24, 0, Math.PI * 2); ctx.clip();
+      const bg = ctx.createRadialGradient(cx - s * 0.08, cy - s * 0.08, 2, cx, cy, s * 0.26);
+      bg.addColorStop(0, '#ffffff'); bg.addColorStop(1, '#8a7a9a');
+      ctx.fillStyle = bg; ctx.fillRect(cx - s * 0.3, cy - s * 0.3, s * 0.6, s * 0.6);
+      ctx.strokeStyle = 'rgba(60,40,70,0.55)'; ctx.lineWidth = Math.max(1, s * 0.008);
+      for (let k = -4; k <= 4; k++) { ctx.beginPath(); ctx.moveTo(cx + k * s * 0.06, cy - s * 0.26); ctx.lineTo(cx + k * s * 0.06, cy + s * 0.26); ctx.stroke(); ctx.beginPath(); ctx.moveTo(cx - s * 0.26, cy + k * s * 0.06); ctx.lineTo(cx + s * 0.26, cy + k * s * 0.06); ctx.stroke(); }
+      ctx.restore();
+      ctx.fillStyle = '#fffbe8';
+      for (const [dx, dy, r2] of [[-0.36, -0.28, 0.05], [0.34, -0.2, 0.04], [-0.3, 0.3, 0.045], [0.36, 0.3, 0.055], [0.0, 0.42, 0.035]]) {
+        const px2 = cx + dx * s, py2 = cy + dy * s, rr2 = r2 * s;
+        ctx.beginPath(); ctx.moveTo(px2, py2 - rr2); ctx.lineTo(px2 + rr2 * 0.25, py2 - rr2 * 0.25); ctx.lineTo(px2 + rr2, py2); ctx.lineTo(px2 + rr2 * 0.25, py2 + rr2 * 0.25);
+        ctx.lineTo(px2, py2 + rr2); ctx.lineTo(px2 - rr2 * 0.25, py2 + rr2 * 0.25); ctx.lineTo(px2 - rr2, py2); ctx.lineTo(px2 - rr2 * 0.25, py2 - rr2 * 0.25); ctx.closePath(); ctx.fill();
       }
       break;
     }
