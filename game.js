@@ -12388,6 +12388,8 @@ function makeShop(id, opts) {
     bellevue: opts.bellevue || false,
     miseryLoves: opts.miseryLoves || false,
     sneakers: opts.sneakers || false,
+    goldenHour: opts.goldenHour || false,
+    beverageWarehouse: opts.beverageWarehouse || false,
     plantShop: opts.plantShop || false,
     soulShack: opts.soulShack || false,
     foamBrewers: opts.foamBrewers || false,
@@ -13257,6 +13259,46 @@ function makeWinooski() {
   for (const [tx, ty] of SB_TABLES) if (g[ty][tx] === 'p') g[ty][tx] = 'x';
   const sbTableKeys = {};
   for (const [tx, ty] of SB_TABLES) sbTableKeys[tx + ',' + ty] = true;
+  // --- GOLDEN HOUR -- a cute independent gift co. (art + unique, fun gifts) on the open EAST
+  // lawn south of the east road, 6x4 tiles (x 47-52, rows 19-22). Same solid-walls-plus-one-door
+  // construction as the other Winooski buildings; the door sits right of center (bottom row,
+  // 5th tile -> x 51) like the real storefront's open door, with two big windows to its left. Out
+  // front is a red-brick SIDEWALK (x 46-54, rows 23-24) with potted-plant clusters ('x' tiles,
+  // drawn by drawGoldenHourPlanter()) under the windows -- they leave the door's column (51) and
+  // the tile beside it (52) open so the exit never boxes the player in. The lot is tree-free; the
+  // yard is cleared anyway.
+  const GH_X = 47, GH_Y = 19, GH_W = 6, GH_H = 4;
+  const GH_DOOR_X = GH_X + 4, GH_DOOR_Y = GH_Y + GH_H - 1;
+  const GH_PATIO = { x: 46, y: GH_Y + GH_H, w: 9, h: 2 };
+  for (let y = GH_Y - 1; y <= GH_PATIO.y + GH_PATIO.h; y++)
+    for (let x = GH_PATIO.x - 1; x <= GH_PATIO.x + GH_PATIO.w; x++) if (g[y][x] === '#') g[y][x] = '.';
+  for (let y = GH_Y; y < GH_Y + GH_H; y++)
+    for (let x = GH_X; x < GH_X + GH_W; x++) g[y][x] = 'w';
+  g[GH_DOOR_Y][GH_DOOR_X] = 'D';
+  fillRect(GH_PATIO.x, GH_PATIO.y, GH_PATIO.x + GH_PATIO.w - 1, GH_PATIO.y + GH_PATIO.h - 1, 'p', ['.']);
+  const GH_PLANTERS = [[47, 23], [48, 23], [50, 23], [53, 23]];
+  for (const [tx, ty] of GH_PLANTERS) if (g[ty][tx] === 'p') g[ty][tx] = 'x';
+  const ghPlanterKeys = {};
+  for (const [tx, ty] of GH_PLANTERS) ghPlanterKeys[tx + ',' + ty] = true;
+  // --- BEVERAGE WAREHOUSE -- a beer lover's dream come true: a massive warehouse bottle shop
+  // stocked with beer from all around the world, on the open EAST lawn at the far right of the
+  // map (south of the east road, east of GOLDEN HOUR), 8x5 tiles (x 55-62, rows 19-23). Same
+  // solid-walls-plus-one-door construction as the other Winooski buildings; the door is the
+  // bottom row's 3rd tile (x 57, row 23) like the real storefront's left-hand entrance. Out
+  // front: a grey paved sidewalk (row 24) and a small PARKING LOT (asphalt 'r' rows 25-27) whose
+  // painted spaces, wheel stops and reserved accessible space are drawn by
+  // drawBeverageWarehouseLot(). The footprint and lot are cleared of trees so the player never
+  // spawns boxed in when stepping back outside.
+  const BW_X = 55, BW_Y = 19, BW_W = 8, BW_H = 5;
+  const BW_DOOR_X = BW_X + 2, BW_DOOR_Y = BW_Y + BW_H - 1;
+  const BW_LOT = { x: BW_X, y: BW_Y + BW_H + 1, w: BW_W, h: 3 };
+  for (let y = BW_Y - 1; y <= BW_LOT.y + BW_LOT.h; y++)
+    for (let x = BW_X - 1; x < BW_X + BW_W; x++) if (g[y][x] === '#') g[y][x] = '.';
+  for (let y = BW_Y; y < BW_Y + BW_H; y++)
+    for (let x = BW_X; x < BW_X + BW_W; x++) g[y][x] = 'w';
+  g[BW_DOOR_Y][BW_DOOR_X] = 'D';
+  fillRect(BW_X, BW_Y + BW_H, BW_X + BW_W - 1, BW_Y + BW_H, 'p', ['.']);
+  fillRect(BW_LOT.x, BW_LOT.y, BW_LOT.x + BW_LOT.w - 1, BW_LOT.y + BW_LOT.h - 1, 'r', ['.']);
   const winBuildings = [{
     x: AR_X, y: AR_Y, w: AR_W, h: AR_H, name: 'AUTUMN RECORDS',
     wall: '#a94f2a', roof: '#241a15', doorX: AR_DOOR_X,   // red brick + dark carved-wood trim (see drawAutumnRecordsExterior)
@@ -13275,6 +13317,12 @@ function makeWinooski() {
   }, {
     x: SB_X, y: SB_Y, w: SB_W, h: SB_H, name: 'SNEAKERS BISTRO',
     wall: '#4aa8ea', roof: '#16277a', doorX: SB_DOOR_X,   // sky-blue siding + navy trim (see drawSneakersExterior)
+  }, {
+    x: GH_X, y: GH_Y, w: GH_W, h: GH_H, name: 'GOLDEN HOUR',
+    wall: '#f4a3c3', roof: '#d97aa3', doorX: GH_DOOR_X,   // bubblegum-pink front + deeper pink trim (see drawGoldenHourExterior)
+  }, {
+    x: BW_X, y: BW_Y, w: BW_W, h: BW_H, name: 'BEVERAGE WAREHOUSE',
+    wall: '#ebe8e0', roof: '#4f9680', doorX: BW_DOOR_X,   // white-painted brick + green standing-seam awning (see drawBeverageWarehouseExterior)
   }, ...millBuildings];
 
   // --- painted road details (precomputed pixel-space marks; drawn by drawWinooskiDecorations)
@@ -13324,7 +13372,9 @@ function makeWinooski() {
   }
   // lamp posts along the walkway's land side + around the park (pixel coords of the pole base)
   const lamps = [];
-  for (const x of [25, 31, 36, 42, 48, 53, 59]) { const yt = walkTop(x); if (yt > 0) lamps.push([x * PX + PX / 2, yt * PX + 4]); }
+  // (scan from row 26 down so GOLDEN HOUR's brick sidewalk, up at rows 23-24, isn't mistaken for the walkway)
+  const walkwayTop = (x) => { for (let y = 26; y < H; y++) if (g[y][x] === 'p') return y; return -1; };
+  for (const x of [25, 31, 36, 42, 48, 53, 59]) { const yt = walkwayTop(x); if (yt > 0) lamps.push([x * PX + PX / 2, yt * PX + 4]); }
   // NIGHT: Winooski is an evening level, so it gets a proper string of street lights --
   // down both bridge sidewalks, around the rim of the rotary park, and staggered along
   // the roadsides. Every one is checked against the finished grid (grass/paving only, clear
@@ -13371,6 +13421,8 @@ function makeWinooski() {
     bellevueDoor: { x: BV_DOOR_X, y: BV_DOOR_Y },
     miseryLovesDoor: { x: ML_DOOR_X, y: ML_DOOR_Y },
     sneakersDoor: { x: SB_DOOR_X, y: SB_DOOR_Y },
+    goldenHourDoor: { x: GH_DOOR_X, y: GH_DOOR_Y },
+    beverageWarehouseDoor: { x: BW_DOOR_X, y: BW_DOOR_Y },
     // Drawing data for drawWinooskiDecorations()/drawWinooskiOverhead() -- everything in world pixels.
     winooski: {
       dashes, crosswalks, lamps, deckSamples, deckWidth: DECK_W * PX,
@@ -13385,6 +13437,10 @@ function makeWinooski() {
         .concat(SB_TABLES.slice(0, 2).map(([tx, ty]) => ({ x: tx * PX + PX / 2, y: ty * PX + PX / 2, cols: ['#f0562a', '#fbf5e6'] }))),
       // SNEAKERS BISTRO's brick patio rect (tile coords) + its green picnic tables (keys 'x,y')
       sneakersPatio: SB_PATIO, sneakersTables: sbTableKeys,
+      // GOLDEN HOUR's brick sidewalk rect (tile coords) + its potted-plant clusters (keys 'x,y')
+      goldenPatio: GH_PATIO, goldenPlanters: ghPlanterKeys,
+      // BEVERAGE WAREHOUSE's parking lot rect (tile coords; painted lines/signs by drawBeverageWarehouseLot)
+      bwLot: BW_LOT,
     },
     spawn: { x: 21.5, y: 30.5 },   // tile coords: the bridge's east sidewalk, just south of the rotary
     palette: {
@@ -14870,6 +14926,78 @@ const shops = {
       ] },
     crates: [],
   }),
+  // GOLDEN HOUR -- a cute independent gift co. selling art and all kinds of unique, fun gifts, on
+  // the Winooski east lawn (see makeWinooski()). `goldenHour: true` gets its own interior
+  // (drawGoldenHourInterior): a pink-and-wood room with a pegboard + shelves of goodies, a
+  // disco ball, hanging pothos, a "golden hour" logo plaque, a pink-fronted counter with a
+  // register and tissue pom-poms, a round glass display table piled with candy boxes and a teddy
+  // bear, wire card racks, art-print bins and a peach-and-cream checkered entry. Solid props are
+  // plain tiles the painter dresses up: row 1 is walled off (back wall); blockTiles = wood gift
+  // shelf (1,3)(1,4), wire card rack (1,6)(1,7), plant stand (1,8), plush shelf (12,3)(12,4),
+  // art-print bins (12,6)(12,7), fiddle-leaf fig (12,8); the counter is the row y=3 over x 4..9
+  // with the shopkeeper behind it at (6,2); extraTables = round glass display (6,5)(7,5) + two
+  // small gift tables (3,5)(10,5). All clear of the door (6,9) and spawn (6.5,7.5). No crates:
+  // it's a gift shop, nothing to dig.
+  goldenhour: makeShop('goldenhour', {
+    world: 'winooski',
+    floor: '#d8ac72', plank: '#b98a52', wallColor: '#f4a3c3',
+    goldenHour: true,
+    blockTiles: [
+      [1, 1], [2, 1], [3, 1], [4, 1], [5, 1], [6, 1], [7, 1], [8, 1], [9, 1], [10, 1], [11, 1], [12, 1],
+      [1, 3], [1, 4], [1, 6], [1, 7], [1, 8], [12, 3], [12, 4], [12, 6], [12, 7], [12, 8],
+    ],
+    extraTables: [[6, 5], [7, 5], [3, 5], [10, 5]],
+    keeper: { name: 'GOLDIE', shirt: '#f4a3c3', skin: '#d9a47a',
+      lines: [
+        'Welcome to Golden Hour! Take your time -- every corner of this place is a little surprise.',
+        'Art, cards, candles, mugs, puzzles, plush, pins... basically anything that makes somebody say "oh, I LOVE this."',
+        'Shopping for a gift? Tell me who it\'s for and what they\'re into, and I\'ll find something they\'ll actually keep.',
+        'A lot of what you see comes from independent artists and small makers. Fun, one-of-a-kind stuff is kind of the whole point.',
+        'The disco ball? Mandatory. Gift shopping should feel like a little party.',
+        'Check the window banner on your way out. It says it all: you are magic. Don\'t forget it.',
+        'Fun fact: the best time to shop here is golden hour, when the sun pours in and everything glows.',
+        'I\'ll wrap it up pretty for you. Tissue paper pom-poms included.',
+      ] },
+    crates: [],
+  }),
+  // BEVERAGE WAREHOUSE -- a beer lover's dream come true: a massive selection of beers from all
+  // around the world, on the far right of the Winooski map (see makeWinooski()).
+  // `beverageWarehouse: true` gets its own interior (drawBeverageWarehouseInterior): a
+  // warehouse-style room with long runs of wood shelving packed with bottles, black hanging
+  // country signs, a glass-door cooler wall, a "THIRSTY?" marquee sign, a yellow safety mat by
+  // the door, a butcher-block counter and a barrel + green beer-case display. Solid props are
+  // plain tiles the painter dresses up: row 1 is walled off (back wall); blockTiles = left wall
+  // shelf (1,2)..(1,8), aisle island A (4,3)..(4,7), island B (8,5)..(8,8), right wall shelf
+  // (12,5)..(12,8); the counter is the row y=3 over x 8..12 with the clerk behind it at (10,2);
+  // extraTables = barrel + beer-case display (10,6)(11,6). Row 4 stays open in front of the
+  // counter and every aisle connects to it; all clear of the door (6,9) and spawn (6.5,7.5).
+  // No crates: it's a bottle shop, nothing to dig.
+  beveragewarehouse: makeShop('beveragewarehouse', {
+    world: 'winooski',
+    floor: '#a39d94', plank: '#8f897f', wallColor: '#e6e2d8',
+    beverageWarehouse: true,
+    tableRange: { start: 8, end: 12 },
+    blockTiles: [
+      [1, 1], [2, 1], [3, 1], [4, 1], [5, 1], [6, 1], [7, 1], [8, 1], [9, 1], [10, 1], [11, 1], [12, 1],
+      [1, 2], [1, 3], [1, 4], [1, 5], [1, 6], [1, 7], [1, 8],
+      [4, 3], [4, 4], [4, 5], [4, 6], [4, 7],
+      [8, 5], [8, 6], [8, 7], [8, 8],
+      [12, 5], [12, 6], [12, 7], [12, 8],
+    ],
+    extraTables: [[10, 6], [11, 6]],
+    keeper: { x: 10, y: 2, name: 'HOPS', shirt: '#2f6a3a', skin: '#d9a47a',
+      lines: [
+        'Welcome to Beverage Warehouse! I\'m Hops. Whatever you\'re thirsty for, it\'s on these shelves somewhere.',
+        'Every aisle is a different corner of the world. Belgium, Germany, Mexico, Japan... follow the black signs and keep walking.',
+        'New to all this? Start with something local, then work your way around the planet. Pale ale, then amber, then stout. Take notes.',
+        'Fun fact: the Czech Republic drinks more beer per person than just about anywhere on Earth. Respect.',
+        'Germany\'s old purity law, the Reinheitsgebot, goes back to 1516. Water, barley, hops. Yeast got added once folks figured out what it did.',
+        'That sign over the cooler wall? People answer it before they\'ve even walked in. The answer is always yes.',
+        'Can\'t decide? Tell me what you like in a beer and I\'ll point you somewhere you\'ve never been.',
+        'Growlers get filled right here at the counter. Bring it back empty and we\'ll fill it again.',
+      ] },
+    crates: [],
+  }),
   // CB PRINTS -- the skatepark's fourth building: a small, artsy independent
   // screen printing shop owned and run by BONTA, the master screen printer
   // in the area, who always backs the hip hop scene -- connecting artists
@@ -15166,6 +15294,12 @@ transitions['miseryloves:' + key(6, 9)] = { map: 'winooski', x: winooski.miseryL
 // SNEAKERS BISTRO door wiring (Winooski, LEVEL 4) -- same pattern as MISERY LOVES CO. above.
 transitions['winooski:' + key(winooski.sneakersDoor.x, winooski.sneakersDoor.y)] = { map: 'sneakersbistro', x: 6.5, y: 7.5 };
 transitions['sneakersbistro:' + key(6, 9)] = { map: 'winooski', x: winooski.sneakersDoor.x + 0.5, y: winooski.sneakersDoor.y + 1.6 };
+// GOLDEN HOUR door wiring (Winooski, LEVEL 4) -- same pattern as SNEAKERS BISTRO above.
+transitions['winooski:' + key(winooski.goldenHourDoor.x, winooski.goldenHourDoor.y)] = { map: 'goldenhour', x: 6.5, y: 7.5 };
+transitions['goldenhour:' + key(6, 9)] = { map: 'winooski', x: winooski.goldenHourDoor.x + 0.5, y: winooski.goldenHourDoor.y + 1.6 };
+// BEVERAGE WAREHOUSE door wiring (Winooski, LEVEL 4) -- same pattern as GOLDEN HOUR above.
+transitions['winooski:' + key(winooski.beverageWarehouseDoor.x, winooski.beverageWarehouseDoor.y)] = { map: 'beveragewarehouse', x: 6.5, y: 7.5 };
+transitions['beveragewarehouse:' + key(6, 9)] = { map: 'winooski', x: winooski.beverageWarehouseDoor.x + 0.5, y: winooski.beverageWarehouseDoor.y + 1.6 };
 const maps = { town, ...shops, swamp, skatepark, winooski };
 
 // Reshuffles, within EACH location that has one, which of that location's
@@ -27508,6 +27642,8 @@ function render(time) {
   if (map.bellevue) drawBellevueInterior(time);
   if (map.miseryLoves) drawMiseryLovesInterior(time);
   if (map.sneakers) drawSneakersInterior(time);
+  if (map.goldenHour) drawGoldenHourInterior(time);
+  if (map.beverageWarehouse) drawBeverageWarehouseInterior(time);
   if (map.poolParty) drawJohnnysPoolInterior(time);
   if (map.keeper) drawKeeper(map.keeper);
   drawShopImageNpcs(map);
@@ -27818,6 +27954,8 @@ function drawTiles(map, time, camX = 0, camY = 0) {
         }
         case 'p': {
           // SNEAKERS BISTRO's patio is red brick instead of the grey promenade pavers
+          const ghp = map.winooski && map.winooski.goldenPatio;
+          if (ghp && tx >= ghp.x && tx < ghp.x + ghp.w && ty >= ghp.y && ty < ghp.y + ghp.h) { drawGoldenHourBrick(px, py, tx, ty); break; }   // GOLDEN HOUR's sidewalk is red-brown brick
           const sbp = map.winooski && map.winooski.sneakersPatio;
           if (sbp && tx >= sbp.x && tx < sbp.x + sbp.w && ty >= sbp.y && ty < sbp.y + sbp.h) { drawSneakersBrick(px, py, tx, ty); break; }
           // promenade paving: warm pavers in a running-bond pattern
@@ -27897,6 +28035,8 @@ function drawTiles(map, time, camX = 0, camY = 0) {
         case 'x': {
           // SNEAKERS BISTRO's patio tables: dark green, on brick, with brunch drinks
           if (map.winooski && map.winooski.sneakersTables && map.winooski.sneakersTables[key(tx, ty)]) { drawSneakersPicnicTable(px, py, tx, ty); break; }
+          // GOLDEN HOUR's sidewalk planters: potted plants + flowers on brick
+          if (map.winooski && map.winooski.goldenPlanters && map.winooski.goldenPlanters[key(tx, ty)]) { drawGoldenHourPlanter(px, py, tx, ty); break; }
           // Winooski picnic table (solid): wood top with a bench along each long side
           ctx.fillStyle = 'rgba(0,0,0,0.2)';
           ctx.fillRect(px + 2, py + 25, TILE - 4, 4);
@@ -28762,6 +28902,8 @@ function drawWinooskiDecorations(time, map, camX, camY) {
   drawWinooskiConcert(time, map, camX, camY);
   // SCOUT coffee cart on the east lawn
   drawScoutCart();
+  // BEVERAGE WAREHOUSE's parking lot paint, wheel stops and accessible-space sign
+  if (wk.bwLot) drawBeverageWarehouseLot(wk.bwLot, x0, x1, y0, y1);
 }
 
 // ---------------------------------------------------------------- WINOOSKI ROTARY CONCERT
@@ -29129,6 +29271,17 @@ const WIN_NIGHT_SHOP_LIGHTS = {
   'MISERY LOVES CO.': [
     [68, 46, 86, 66, '#ffd48a', 0.6],                                           // big front window
     [34, 66, 28, 60, '#ffc070', 0.5],                                           // door
+  ],
+  'BEVERAGE WAREHOUSE': [
+    [6, 74, 52, 54, '#9fb4ff', 0.40], [100, 74, 32, 54, '#ffb878', 0.45], [136, 74, 32, 54, '#ffb878', 0.45],   // street windows
+    [66, 100, 28, 56, '#ffe2a8', 0.55],                                         // door glass
+    [182, 74, 66, 54, '#c8b4ff', 0.38],                                         // grape window
+    [6, 7, 244, 25, '#fff0d0', 0.30],                                           // name sign plate
+  ],
+  'GOLDEN HOUR': [
+    [5, 60, 56, 51, '#ffd9a8', 0.55], [62, 60, 56, 51, '#ffd9a8', 0.55],        // street windows
+    [126, 82, 36, 38, '#ffe2a8', 0.40],                                         // open door
+    [4, 13, 184, 38, '#ffb878', 0.42],                                          // orange-on-cream name band (barn lights)
   ],
   'SNEAKERS BISTRO': [
     [25, 43, 57, 63, '#ff6a4a', 0.55],                                          // neon window
@@ -33565,6 +33718,1136 @@ function drawSneakersInterior(time) {
   ctx.beginPath(); ctx.moveTo(2 * TILE, 8 * TILE + 4); ctx.lineTo(6 * TILE, 8 * TILE + 4); ctx.lineTo(7 * TILE, 5 * TILE); ctx.lineTo(3 * TILE, 5 * TILE); ctx.closePath(); ctx.fill();
 }
 
+// ---------------------------------------------------------------- GOLDEN HOUR (Winooski, LEVEL 4)
+// A cute independent gift co. that sells art and all kinds of unique, fun gifts (see
+// makeWinooski()). Outside, modeled on photos of the real shop: a bubblegum-pink storefront
+// under a cream sign band with the orange retro "golden hour" script (and the little
+// sunburst mark), three white barn lights, two big street windows (a "YOU ARE MAGIC" felt
+// banner, a carrot garland, mannequins in overalls and floral pants, orange + pink palm-leaf
+// decals on the glass), an open pink door with hanging plants and a peach-and-cream checkered
+// entry floor, the street number 87, and a red-brick sidewalk crowded with potted plants.
+// Inside: wood pegboard + shelves of goodies, a disco ball, hanging pothos, a round glass
+// display table piled with candy boxes and a teddy bear, wire card racks, art-print bins,
+// gift tables and a pink-fronted counter with a register and tissue pom-poms.
+//
+// Static art is painted once into offscreen canvases; only the lamp glow, disco ball sparkle
+// and the sign's breathing glow are drawn live.
+const GH_PINK = '#f4a3c3', GH_PINKD = '#d97aa3', GH_PINKL = '#f9c9dc';
+const GH_ORANGE = '#ee8749', GH_ORANGED = '#c9622c', GH_CREAM = '#fdf6ea';
+
+// A palm-leaf fan decal (the real shop's window art): a stem and a spray of thin rays.
+function ghPalmFan(c, x, y, len, col) {
+  c.save(); c.translate(x, y);
+  c.strokeStyle = col; c.lineCap = 'round';
+  c.lineWidth = Math.max(1, len * 0.09);
+  c.beginPath(); c.moveTo(0, len * 0.85); c.lineTo(0, 0); c.stroke();
+  c.lineWidth = Math.max(0.9, len * 0.075);
+  for (let i = -4; i <= 4; i++) {
+    const a = -Math.PI / 2 + i * 0.27, l = len * (1 - Math.abs(i) * 0.055);
+    c.beginPath(); c.moveTo(0, 0); c.lineTo(Math.cos(a) * l, Math.sin(a) * l); c.stroke();
+  }
+  c.restore();
+}
+
+// The little half-sun-with-rays brand mark.
+function ghSunburst(c, cx, cy, r, col) {
+  c.fillStyle = col; c.strokeStyle = col; c.lineCap = 'round';
+  c.lineWidth = Math.max(1, r * 0.26);
+  c.beginPath(); c.arc(cx, cy, r, Math.PI, 0); c.closePath(); c.fill();
+  for (let i = 0; i <= 8; i++) {
+    const a = Math.PI + (i * Math.PI) / 8;
+    c.beginPath();
+    c.moveTo(cx + Math.cos(a) * (r + 1.8), cy + Math.sin(a) * (r + 1.8));
+    c.lineTo(cx + Math.cos(a) * (r + 1.8 + r * 0.85), cy + Math.sin(a) * (r + 1.8 + r * 0.85));
+    c.stroke();
+  }
+}
+
+// A store mannequin, x = center, y = top of the head (about 38px tall).
+function ghMannequin(c, x, y, top, bottom, hat, dots) {
+  c.fillStyle = '#e9ddd0'; c.beginPath(); c.arc(x, y + 3, 3.2, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#cdbfae'; c.fillRect(x - 1, y + 6, 2, 3);
+  c.fillStyle = top; c.fillRect(x - 6, y + 9, 12, 13); c.fillRect(x - 8, y + 10, 3, 10); c.fillRect(x + 5, y + 10, 3, 10);
+  c.fillStyle = bottom; c.fillRect(x - 6, y + 22, 12, 15);
+  c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(x - 0.5, y + 24, 1, 13);
+  if (dots) {
+    c.fillStyle = dots;
+    for (let i = 0; i < 7; i++) c.fillRect(x - 5 + ((i * 5) % 10), y + 24 + ((i * 3) % 12), 1.6, 1.6);
+  }
+  if (hat) { c.fillStyle = hat; c.fillRect(x - 4, y - 1, 8, 3); c.fillRect(x - 6, y + 1, 12, 1.5); }
+}
+
+// One street-front window, painted in a pink frame. kind 0 = the "YOU ARE MAGIC" window,
+// 1 = the carrot-garland window, 2 = the narrow plant window beside the door.
+function ghStreetWindow(c, x0, y0, gw, gh, kind) {
+  c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(x0 - 2, y0 - 1, gw + 7, gh + 7);
+  c.fillStyle = GH_PINKD; c.fillRect(x0 - 3, y0 - 3, gw + 6, gh + 6);
+  c.fillStyle = GH_PINKL; c.fillRect(x0 - 3, y0 - 3, gw + 6, 1);
+  // glass: leafy street reflections over a warm lit shop
+  const gg = c.createLinearGradient(0, y0, 0, y0 + gh);
+  gg.addColorStop(0, '#2f4a3a'); gg.addColorStop(0.35, '#516f55'); gg.addColorStop(1, '#e8d2b4');
+  c.fillStyle = gg; c.fillRect(x0, y0, gw, gh);
+  c.save(); c.beginPath(); c.rect(x0, y0, gw, gh); c.clip();
+  for (let i = 0; i < 9; i++) {                               // tree reflections (clipped to the glass)
+    const hx = arHash(x0 + i * 7, y0 + 3) % Math.max(1, gw - 6);
+    c.fillStyle = i % 2 ? 'rgba(30,60,40,0.55)' : 'rgba(80,120,80,0.45)';
+    c.beginPath(); c.arc(x0 + 3 + hx, y0 + 4 + (i % 3) * 5, 5 + (i % 3), 0, Math.PI * 2); c.fill();
+  }
+  c.restore();
+  c.fillStyle = 'rgba(255,236,190,0.9)';                       // ceiling spots
+  for (let x = x0 + 5; x < x0 + gw - 3; x += 12) c.fillRect(x, y0 + 2, 2, 2);
+  // warm shop interior along the bottom half
+  const wg = c.createLinearGradient(0, y0 + gh * 0.4, 0, y0 + gh);
+  wg.addColorStop(0, 'rgba(255,214,150,0)'); wg.addColorStop(1, 'rgba(255,200,130,0.85)');
+  c.fillStyle = wg; c.fillRect(x0, y0 + gh * 0.4, gw, gh * 0.6);
+
+  if (kind === 0) {
+    // felt banner: YOU ARE MAGIC
+    c.strokeStyle = '#6a4a40'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(x0, y0 + 4); c.quadraticCurveTo(x0 + gw / 2, y0 + 13, x0 + gw, y0 + 4); c.stroke();
+    // crisp 3x5 pixel lettering, each letter a different felt color, sagging with the string
+    const FONT = { Y: '101101010010010', O: '010101101101010', U: '101101101101010', A: '010101111101101', R: '110101110101101',
+                   E: '111100110100111', M: '101111111101101', G: '011100101101011', I: '111010010010111', C: '011100100100011' };
+    const cols = ['#f08ab8', '#7cc4ea', '#f4d35e', '#8fd49a', '#f4a261'];
+    const words = ['YOU', 'ARE', 'MAGIC'];
+    let lx0 = x0 + Math.floor((gw - 47) / 2), n = 0;
+    for (const word of words) {
+      for (const ch of word) {
+        const t = (lx0 - x0 + 1.5) / gw, ly = y0 + 5 + Math.round(Math.sin(t * Math.PI) * 5);
+        const bits = FONT[ch];
+        for (let k = 0; k < 15; k++) if (bits[k] === '1') {
+          c.fillStyle = 'rgba(30,15,25,0.8)'; c.fillRect(lx0 + (k % 3) + 1, ly + ((k / 3) | 0) + 1, 1, 1);
+        }
+        for (let k = 0; k < 15; k++) if (bits[k] === '1') {
+          c.fillStyle = cols[n % 5]; c.fillRect(lx0 + (k % 3), ly + ((k / 3) | 0), 1, 1);
+        }
+        lx0 += 4; n++;
+      }
+      lx0 += 3;
+    }
+    ghMannequin(c, x0 + 15, y0 + 14, '#ece3cf', '#d9c392', '#2e3b4e', '#e8873a');   // overalls + cap
+    ghMannequin(c, x0 + 36, y0 + 14, '#e9b3c4', '#e9b3c4', '#f4d2a8', '#f6e3ea');     // floral dress + bucket hat
+  } else if (kind === 1) {
+    // carrot garland
+    c.strokeStyle = '#6a4a40'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(x0, y0 + 3); c.quadraticCurveTo(x0 + gw / 2, y0 + 12, x0 + gw, y0 + 3); c.stroke();
+    for (let i = 0; i < 7; i++) {
+      const t = (i + 0.5) / 7, cx = x0 + t * gw, cy = y0 + 3 + Math.sin(t * Math.PI) * 4.6;
+      c.fillStyle = '#4f9a3a'; c.fillRect(cx - 1.5, cy - 1, 3, 2);
+      c.fillStyle = i % 2 ? '#f08a2a' : '#f4a03a';
+      c.beginPath(); c.moveTo(cx - 2, cy + 1); c.lineTo(cx + 2, cy + 1); c.lineTo(cx, cy + 8); c.closePath(); c.fill();
+    }
+    ghMannequin(c, x0 + 14, y0 + 14, '#b99f93', '#f1b6c6', null, '#e8566e');          // sweatshirt + floral pants
+    // clothes rail with a hoodie + a stripey tee
+    c.strokeStyle = '#8a8a90'; c.lineWidth = 1; c.beginPath(); c.moveTo(x0 + 26, y0 + 18); c.lineTo(x0 + gw - 2, y0 + 18); c.stroke();
+    c.fillStyle = '#6f7f95'; c.fillRect(x0 + 30, y0 + 19, 9, 16); c.fillRect(x0 + 28, y0 + 21, 3, 9); c.fillRect(x0 + 38, y0 + 21, 3, 9);
+    c.fillStyle = '#e9a3a3'; c.fillRect(x0 + 41, y0 + 19, 8, 14);
+    c.fillStyle = '#f6e3d8'; for (let y = y0 + 22; y < y0 + 33; y += 4) c.fillRect(x0 + 41, y, 8, 1.5);
+  } else {
+    // narrow window beside the door: a leafy plant on a little shelf
+    c.fillStyle = '#6a4a40'; c.fillRect(x0, y0 + gh - 20, gw, 2);
+    c.fillStyle = '#3f8a3a'; c.beginPath(); c.arc(x0 + gw / 2, y0 + gh - 28, 6, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#58b248'; c.beginPath(); c.arc(x0 + gw / 2 - 2, y0 + gh - 31, 4, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#e8c9a0'; c.fillRect(x0 + gw / 2 - 4, y0 + gh - 22, 8, 6);
+  }
+  // shelf of gifts along the sill
+  const sy = y0 + gh - 9;
+  c.fillStyle = 'rgba(120,70,40,0.55)'; c.fillRect(x0, sy + 6, gw, 3);
+  const goods = ['#e8a3d0', '#8fc9ea', '#f4d35e', '#a5d6a7', '#f4a261', '#ffffff', '#c9a3e8'];
+  for (let x = x0 + 2, i = 0; x < x0 + gw - 4; x += 6, i++) {
+    const gh2 = 4 + (arHash(x, y0) % 4);
+    c.fillStyle = goods[(i + kind) % goods.length]; c.fillRect(x, sy + 6 - gh2, 5, gh2);
+    c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(x, sy + 6 - gh2, 1, gh2);
+  }
+  // mullion + highlight
+  if (gw > 20) { c.fillStyle = GH_PINKD; c.fillRect(x0 + Math.floor(gw / 2) - 1, y0, 2, gh); }
+  c.fillStyle = 'rgba(255,255,255,0.28)'; c.fillRect(x0 + 2, y0 + 2, 5, gh * 0.55);
+  // palm-leaf decal on the glass (orange on one window, pink on the other)
+  if (kind === 0) ghPalmFan(c, x0 + gw - 8, y0 + gh - 10, 12, 'rgba(238,135,73,0.92)');
+  if (kind === 1) ghPalmFan(c, x0 + 8, y0 + gh - 10, 12, 'rgba(250,170,205,0.95)');
+}
+
+function paintGoldenHourExterior(c, w, h, doorLX) {
+  // ---- painted bubblegum-pink wood front with faint board lines
+  c.fillStyle = GH_PINK; c.fillRect(0, 0, w, h);
+  for (let x = 4; x < w; x += 8) { c.fillStyle = 'rgba(255,255,255,0.07)'; c.fillRect(x, 0, 1, h); }
+  c.fillStyle = 'rgba(0,0,0,0.10)'; c.fillRect(0, 0, 3, h); c.fillRect(w - 3, 0, 3, h);
+
+  // ---- cornice
+  c.fillStyle = GH_PINKL; c.fillRect(0, 0, w, 3);
+  c.fillStyle = GH_PINKD; c.fillRect(0, 8, w, 3);
+  c.fillStyle = 'rgba(0,0,0,0.14)'; c.fillRect(0, 11, w, 2);
+
+  // ---- cream sign band with the orange retro script + sunburst
+  c.fillStyle = GH_CREAM; c.fillRect(4, 13, w - 8, 38);
+  c.strokeStyle = GH_PINKD; c.lineWidth = 1; c.strokeRect(4.5, 13.5, w - 9, 37);
+  c.fillStyle = 'rgba(160,90,60,0.07)'; c.fillRect(5, 44, w - 10, 6);
+  ghSunburst(c, w / 2, 26, 4.2, GH_ORANGE);
+  const FAM = '"Cooper Black", "Bookman Old Style", "Palatino Linotype", Georgia, serif';
+  let fs = 22;
+  c.font = 'italic 800 ' + fs + 'px ' + FAM;
+  while (fs > 10 && c.measureText('golden hour').width > w - 56) { fs--; c.font = 'italic 800 ' + fs + 'px ' + FAM; }
+  c.textAlign = 'center'; c.textBaseline = 'alphabetic'; c.lineJoin = 'round';
+  c.fillStyle = 'rgba(201,98,44,0.30)'; c.fillText('golden hour', w / 2 + 1.2, 46 + 1.2);
+  c.strokeStyle = GH_ORANGE; c.lineWidth = 1.3; c.strokeText('golden hour', w / 2, 46);
+  c.fillStyle = GH_ORANGE; c.fillText('golden hour', w / 2, 46);
+
+  // ---- three white barn lights over the sign
+  for (const lx of [30, w / 2, w - 30]) {
+    c.strokeStyle = '#f2f2ee'; c.lineWidth = 2; c.beginPath(); c.moveTo(lx, 0); c.lineTo(lx, 6); c.stroke();
+    c.fillStyle = 'rgba(0,0,0,0.20)'; c.beginPath(); c.arc(lx + 1, 14, 8, Math.PI, 0); c.fill();
+    c.fillStyle = '#f6f6f2'; c.beginPath(); c.arc(lx, 13, 8, Math.PI, 0); c.closePath(); c.fill();
+    c.fillStyle = '#d8d8d2'; c.fillRect(lx - 9, 13, 18, 2);
+    c.fillStyle = '#ffe9a8'; c.beginPath(); c.ellipse(lx, 16, 4.5, 2, 0, 0, Math.PI * 2); c.fill();
+  }
+
+  // ---- trim under the sign
+  c.fillStyle = GH_PINKD; c.fillRect(0, 51, w, 3);
+  c.fillStyle = 'rgba(0,0,0,0.16)'; c.fillRect(0, 54, w, 3);
+
+  // ---- two big windows + a narrow one by the door
+  ghStreetWindow(c, 8, 60, 50, 48, 0);
+  ghStreetWindow(c, 65, 60, 50, 48, 1);
+  ghStreetWindow(c, 176, 60, 12, 48, 2);
+  // bulkhead panels under the glass
+  for (const [x0, gw] of [[8, 50], [65, 50], [176, 12]]) {
+    c.fillStyle = GH_PINKD; c.fillRect(x0 - 3, 111, gw + 6, 14);
+    c.fillStyle = GH_PINKL; c.fillRect(x0, 114, gw, 8);
+    c.fillStyle = GH_PINK; c.fillRect(x0 + 1, 115, gw - 2, 6);
+  }
+
+  // ---- the open door bay (centered on the door tile): transom sign, pink door leaf, hanging plants,
+  // warm shop beyond and the checkered entry floor
+  const bx = doorLX - 8, bw = 48;
+  c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(bx - 1, 59, bw + 7, h - 59);
+  c.fillStyle = GH_PINKD; c.fillRect(bx - 3, 57, bw + 6, h - 57 - 3);
+  c.fillStyle = GH_PINKL; c.fillRect(bx - 3, 57, bw + 6, 1);
+  c.fillStyle = '#2a3a36'; c.fillRect(bx, 60, bw, 13);                                  // transom glass
+  c.fillStyle = 'rgba(255,255,255,0.14)'; c.fillRect(bx + 2, 61, 6, 11);
+  c.font = 'italic 800 9px ' + FAM; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillStyle = GH_ORANGE; c.fillText('golden hour', bx + bw / 2, 67);
+  c.fillStyle = GH_PINK; c.fillRect(bx, 73, bw, 3);
+  c.fillStyle = '#e6c46a'; c.fillRect(bx + bw / 2 - 6, 53, 12, 6);                      // brass street number
+  c.fillStyle = '#6a4a14'; c.font = '700 6px Georgia, serif'; c.fillText('87', bx + bw / 2, 56.3);
+  const oy = 76, oh = h - 3 - oy;
+  const og = c.createLinearGradient(0, oy, 0, oy + oh);
+  og.addColorStop(0, '#2b1c22'); og.addColorStop(0.5, '#6e4a3c'); og.addColorStop(1, '#c79a72');
+  c.fillStyle = og; c.fillRect(bx, oy, bw, oh);
+  c.fillStyle = 'rgba(255,230,170,0.95)';                                               // ceiling track lights
+  for (let x = bx + 6; x < bx + bw - 3; x += 10) { c.fillRect(x, oy + 2, 2, 2); }
+  const rack = ['#e8a3d0', '#8fc9ea', '#f4d35e', '#a5d6a7', '#f4a261', '#ffffff'];       // racks of goods deeper in
+  for (let i = 0; i < 9; i++) { c.fillStyle = rack[i % 6]; c.fillRect(bx + 10 + i * 4, oy + 18 + (i % 3) * 3, 3, 14); }
+  c.fillStyle = 'rgba(40,20,20,0.5)'; c.fillRect(bx, oy + 30, bw, 2);
+  for (let y = oy + oh - 13; y < oy + oh; y += 5)                                        // peach + cream checkerboard
+    for (let x = bx, k = 0; x < bx + bw; x += 6, k++) {
+      c.fillStyle = ((k + ((y - oy) / 5 | 0)) % 2) ? '#f6e6d0' : '#e8a98a'; c.fillRect(x, y, 6, 5);
+    }
+  for (const [px2, side] of [[bx + 10, 0], [bx + bw - 9, 1]]) {                          // hanging plants
+    c.strokeStyle = '#2a1a1a'; c.lineWidth = 1; c.beginPath(); c.moveTo(px2, oy); c.lineTo(px2, oy + 5); c.stroke();
+    c.fillStyle = '#e8e2d6'; c.fillRect(px2 - 4, oy + 5, 8, 4);
+    for (let i = 0; i < 6; i++) {
+      c.fillStyle = i % 2 ? '#3f8a3a' : '#58b248';
+      c.beginPath(); c.arc(px2 - 5 + i * 2, oy + 9 + (i % 3) * 2, 2.6, 0, Math.PI * 2); c.fill();
+    }
+    c.fillStyle = '#3f8a3a'; c.fillRect(px2 - 3 + side * 4, oy + 11, 1, 10); c.fillRect(px2 + 2 - side * 3, oy + 11, 1, 7);
+  }
+  // pink door leaf swung open on the left of the bay
+  c.fillStyle = GH_PINKD; c.fillRect(bx, oy, 9, oh);
+  c.fillStyle = GH_PINK; c.fillRect(bx + 1, oy + 1, 7, oh - 2);
+  c.fillStyle = '#f6e9d8'; c.fillRect(bx + 2, oy + 4, 5, 18);
+  c.fillStyle = 'rgba(255,255,255,0.4)'; c.fillRect(bx + 3, oy + 5, 1, 14);
+  c.fillStyle = GH_PINKD; c.fillRect(bx + 2, oy + 28, 5, 14);
+  c.fillStyle = '#e6c46a'; c.fillRect(bx + 7, oy + 24, 1, 5);
+  // a sandwich-board style "OPEN" tag hanging in the door
+  c.fillStyle = '#fdf6ea'; c.fillRect(bx + bw - 17, oy + 22, 13, 8);
+  c.strokeStyle = GH_ORANGE; c.lineWidth = 0.8; c.strokeRect(bx + bw - 16.5, oy + 22.5, 12, 7);
+  c.fillStyle = GH_ORANGED; c.font = '700 5px monospace'; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillText('OPEN', bx + bw - 10.5, oy + 26.4);
+
+  // ---- foundation + threshold
+  c.fillStyle = '#b5587f'; c.fillRect(0, h - 3, w, 3);
+  c.fillStyle = '#6a4a40'; c.fillRect(bx, h - 3, bw, 3);
+}
+
+let _ghExteriorCache = null;
+function drawGoldenHourExterior(px, py, w, h, dx) {
+  const doorLX = dx - px;
+  if (!_ghExteriorCache || _ghExteriorCache.w !== w || _ghExteriorCache.h !== h || _ghExteriorCache.d !== doorLX) {
+    const cv = document.createElement('canvas');
+    cv.width = w; cv.height = h;
+    paintGoldenHourExterior(cv.getContext('2d'), w, h, doorLX);
+    _ghExteriorCache = { cv, w, h, d: doorLX };
+  }
+  ctx.drawImage(_ghExteriorCache.cv, px, py);
+}
+
+// Live bits of the storefront: the three barn lights pour a soft warm wash onto the sign.
+function drawGoldenHourLive(px, py, w, h) {
+  const t = performance.now() / 1000;
+  for (const [i, lx] of [30, w / 2, w - 30].entries()) {
+    const f = 0.85 + 0.15 * Math.sin(t * 1.3 + i * 1.9);
+    ctx.fillStyle = 'rgba(255,226,150,' + (0.10 * f).toFixed(3) + ')';
+    ctx.beginPath(); ctx.moveTo(px + lx - 4, py + 17); ctx.lineTo(px + lx + 4, py + 17); ctx.lineTo(px + lx + 22, py + 50); ctx.lineTo(px + lx - 22, py + 50); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(255,240,190,' + (0.35 * f).toFixed(3) + ')';
+    ctx.beginPath(); ctx.ellipse(px + lx, py + 16, 5, 2.4, 0, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+// ---------------------------------------------------------------- sidewalk props (outside)
+// Red-brown brick pavers with the odd grey one, like the real shop's sidewalk (called from
+// drawTiles' 'p' / 'x' cases).
+function drawGoldenHourBrick(px, py, tx, ty) {
+  ctx.fillStyle = '#9a8f88'; ctx.fillRect(px, py, TILE, TILE);                         // mortar
+  for (let r = 0; r < 4; r++) {
+    const off = ((r + ty) % 2) ? 8 : 0;
+    for (let x = off - 16; x < TILE; x += 16) {
+      const hv = mhHash(tx * 7 + (x >> 3) + 3, ty * 5 + r);
+      ctx.fillStyle = (hv % 7 === 0) ? '#8d8a8c' : (hv % 4 === 0) ? '#a85a45' : (hv % 3 === 0) ? '#bd6a52' : '#b2604a';
+      const bx0 = Math.max(0, x + 0.5), bx1 = Math.min(TILE, x + 15.5);
+      if (bx1 > bx0) ctx.fillRect(px + bx0, py + r * 8 + 0.5, bx1 - bx0, 7);
+    }
+  }
+  ctx.fillStyle = 'rgba(255,255,255,0.06)'; ctx.fillRect(px, py, TILE, 1);
+}
+
+// A potted-plant cluster on the brick (solid 'x' tile): rubber plant, flowers, trailing ivy...
+function drawGoldenHourPlanter(px, py, tx, ty) {
+  drawGoldenHourBrick(px, py, tx, ty);
+  const v = mhHash(tx * 13 + 5, ty * 3 + 1) % 4;
+  ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(px + 4, py + 27, TILE - 8, 3);
+  const pots = ['#f1e6d2', '#d98a62', '#8fb59c', '#f4b6c8'];
+  const pc = pots[v];
+  // pot
+  ctx.fillStyle = pc; ctx.fillRect(px + 8, py + 17, 16, 11);
+  ctx.fillStyle = 'rgba(0,0,0,0.16)'; ctx.fillRect(px + 8, py + 24, 16, 4);
+  ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(px + 9, py + 18, 2, 8);
+  ctx.fillStyle = shadeColor(pc, -22); ctx.fillRect(px + 7, py + 16, 18, 3);
+  if (v === 0 || v === 2) {                                   // big-leaf plant
+    ctx.fillStyle = '#2d6a3a'; ctx.fillRect(px + 15, py + 5, 2, 12);
+    for (const [lx, ly, rx, ry, rot] of [[10, 12, 6, 3.4, -0.6], [22, 11, 6, 3.4, 0.6], [16, 4, 5, 4, 0], [11, 7, 5, 3, -0.3], [21, 6, 5, 3, 0.3]]) {
+      ctx.fillStyle = '#2f7a3a'; ctx.beginPath(); ctx.ellipse(px + lx, py + ly, rx, ry, rot, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#58a448'; ctx.beginPath(); ctx.ellipse(px + lx - 1, py + ly - 1, rx * 0.5, ry * 0.5, rot, 0, Math.PI * 2); ctx.fill();
+    }
+  } else {                                                    // flowers: yellow or pink blooms on green
+    ctx.fillStyle = '#3f8a3a';
+    for (const [lx, ly] of [[11, 14], [16, 11], [21, 14], [14, 9], [19, 9]]) { ctx.beginPath(); ctx.arc(px + lx, py + ly, 4, 0, Math.PI * 2); ctx.fill(); }
+    ctx.fillStyle = v === 1 ? '#f4d23a' : '#f08aa8';
+    for (const [lx, ly] of [[10, 11], [15, 7], [20, 10], [13, 13], [18, 6], [22, 14], [8, 14]]) { ctx.fillRect(px + lx, py + ly, 3, 3); }
+    ctx.fillStyle = v === 1 ? '#c49a10' : '#c4607e';
+    for (const [lx, ly] of [[11, 12], [16, 8], [21, 11]]) ctx.fillRect(px + lx, py + ly, 1, 1);
+    ctx.fillStyle = '#3f8a3a'; ctx.fillRect(px + 7, py + 20, 2, 7); ctx.fillRect(px + 23, py + 20, 2, 5);   // trailing ivy
+  }
+}
+
+// ---------------------------------------------------------------- interior
+// Solid props are plain 'W'/'T' tiles in the shop def (blockTiles/extraTables) that this
+// painter dresses up: back wall (row 1), wood gift shelf (1,3)(1,4), wire card rack (1,6)(1,7),
+// plant stand (1,8), pink plush shelf (12,3)(12,4), art-print bins (12,6)(12,7), fiddle-leaf
+// (12,8); the counter is the default 'T' row at y=3 (x 4..9) with the shopkeeper behind it at
+// (6,2); the round glass display table is (6,5)(7,5); small gift tables at (3,5) and (10,5).
+function ghBox(c, x, y, w, h, col) {
+  c.fillStyle = col; c.fillRect(x, y, w, h);
+  c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(x, y, w, 1);
+  c.fillStyle = 'rgba(0,0,0,0.18)'; c.fillRect(x + w - 1, y, 1, h);
+}
+function ghPlush(c, x, y, s, body, sweater) {   // teddy bear, x/y = bottom-center, s = scale
+  c.fillStyle = 'rgba(0,0,0,0.18)'; c.beginPath(); c.ellipse(x, y, 8 * s, 2.5 * s, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = body;
+  c.beginPath(); c.ellipse(x, y - 6 * s, 7 * s, 6.5 * s, 0, 0, Math.PI * 2); c.fill();                  // body
+  c.beginPath(); c.arc(x, y - 15 * s, 5.5 * s, 0, Math.PI * 2); c.fill();                                 // head
+  c.beginPath(); c.arc(x - 4.5 * s, y - 19 * s, 2.2 * s, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.arc(x + 4.5 * s, y - 19 * s, 2.2 * s, 0, Math.PI * 2); c.fill();                       // ears
+  c.beginPath(); c.arc(x - 8 * s, y - 7 * s, 2.6 * s, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.arc(x + 8 * s, y - 7 * s, 2.6 * s, 0, Math.PI * 2); c.fill();                          // arms
+  c.fillStyle = sweater; c.fillRect(x - 6 * s, y - 10 * s, 12 * s, 8 * s);
+  c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(x - 6 * s, y - 10 * s, 12 * s, 1.2 * s);
+  c.fillStyle = '#e8d2b0'; c.beginPath(); c.ellipse(x, y - 13.5 * s, 2.6 * s, 2 * s, 0, 0, Math.PI * 2); c.fill();   // muzzle
+  c.fillStyle = '#2a1a14'; c.fillRect(x - 2.4 * s, y - 16.6 * s, 1.4 * s, 1.4 * s); c.fillRect(x + 1 * s, y - 16.6 * s, 1.4 * s, 1.4 * s);
+  c.fillRect(x - 0.8 * s, y - 14.6 * s, 1.6 * s, 1.2 * s);
+}
+function ghCandyCube(c, x, y) {   // clear candy box with an orange fill and a blue-dot label
+  c.fillStyle = 'rgba(210,235,245,0.8)'; c.fillRect(x, y, 9, 9);
+  c.fillStyle = '#f0883a'; c.fillRect(x + 1, y + 1, 7, 7);
+  c.fillStyle = 'rgba(255,255,255,0.4)'; c.fillRect(x + 1, y + 1, 2, 7);
+  c.fillStyle = '#3fb0d8'; c.beginPath(); c.arc(x + 4.5, y + 4.5, 1.8, 0, Math.PI * 2); c.fill();
+}
+
+function paintGoldenHourInterior(c) {
+  const W = 14 * TILE, H = 10 * TILE;
+  const WOODL = '#d8ac72', WOODD = '#b98a52', TAN = '#d9b07a';
+
+  // ---------------------------------------------------------------- wood plank floor + checkered entry
+  for (let y = 2 * TILE; y < 9 * TILE; y += 8) {
+    const row = (y - 2 * TILE) / 8;
+    let x = TILE - ((row * 29) % 40);
+    while (x < 13 * TILE) {
+      const len = 52 + ((arHash(x >> 2, row) % 4) * 14);
+      const x0 = Math.max(TILE, x), x1 = Math.min(13 * TILE, x + len);
+      if (x1 > x0) {
+        c.fillStyle = (arHash(x >> 3, row + 9) % 3) ? WOODL : '#cf9f66';
+        c.fillRect(x0, y, x1 - x0, 8);
+        c.fillStyle = 'rgba(80,40,10,0.22)'; c.fillRect(x0, y + 7, x1 - x0, 1); c.fillRect(x0, y, 1, 8);
+        c.fillStyle = 'rgba(255,255,255,0.10)'; c.fillRect(x0, y, x1 - x0, 1);
+      }
+      x += len;
+    }
+  }
+  c.fillStyle = 'rgba(0,0,0,0.08)'; c.fillRect(TILE, 2 * TILE, 12 * TILE, 3);
+  // peach + cream checkered entry mat
+  c.fillStyle = '#c0866a'; c.fillRect(158, 222, 100, 68);
+  for (let ty = 0; ty < 4; ty++) for (let tx = 0; tx < 6; tx++) {
+    c.fillStyle = ((tx + ty) % 2) ? '#fbf0e0' : '#eeb092'; c.fillRect(160 + tx * 16, 224 + ty * 16, 16, 16);
+  }
+
+  // ---------------------------------------------------------------- back wall: blush pink + cream cornice
+  c.fillStyle = GH_PINKL; c.fillRect(0, 0, W, 60);
+  c.fillStyle = GH_CREAM; c.fillRect(0, 0, W, 7); c.fillStyle = '#ecd9c4'; c.fillRect(0, 7, W, 2);
+  c.fillStyle = 'rgba(217,122,163,0.16)'; for (let x = 8; x < W; x += 16) c.fillRect(x, 9, 1, 51);
+  c.fillStyle = '#b5587f'; c.fillRect(0, 60, W, 4);                             // baseboard
+  c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(0, 60, W, 1);
+
+  // wood pegboard with shelves of mugs, jars and boxes (left)
+  c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(34, 14, 138, 46);
+  c.fillStyle = '#8a6238'; c.fillRect(30, 10, 138, 46);
+  c.fillStyle = TAN; c.fillRect(33, 13, 132, 40);
+  c.fillStyle = 'rgba(90,55,20,0.38)';
+  for (let y = 17; y < 52; y += 6) for (let x = 36; x < 163; x += 6) c.fillRect(x, y, 1.4, 1.4);
+  for (const sy of [32, 49]) {
+    c.fillStyle = '#7a532c'; c.fillRect(33, sy, 132, 3);
+    c.fillStyle = 'rgba(0,0,0,0.2)'; c.fillRect(33, sy + 3, 132, 2);
+  }
+  const mugCols = ['#f4a3c3', '#fdf6ea', '#ee8749', '#8fc9ea', '#f4d35e', '#a5d6a7'];
+  for (let x = 70, i = 0; x < 160; x += 11, i++) {                              // top shelf: mugs + candle jars
+    const col = mugCols[(i * 2) % 6];
+    c.fillStyle = col; c.fillRect(x, 23, 8, 9);
+    c.fillStyle = 'rgba(255,255,255,0.4)'; c.fillRect(x + 1, 24, 1, 7);
+    if (i % 2) { c.fillStyle = col; c.fillRect(x + 8, 25, 2, 4); }
+  }
+  for (let x = 38, i = 0; x < 160; x += 9, i++) {                               // bottom shelf: stacked boxes + bottles
+    const hh = 7 + (i * 5) % 8;
+    ghBox(c, x, 49 - hh, 7, hh, mugCols[(i + 3) % 6]);
+  }
+  // disco ball mounted at the pegboard's top-left (sparkle is live)
+  c.fillStyle = '#4a4a50'; c.fillRect(51, 8, 2, 8);
+  c.fillStyle = '#9aa0aa'; c.beginPath(); c.arc(52, 24, 8, 0, Math.PI * 2); c.fill();
+  for (let gy = 0; gy < 8; gy++) for (let gx = 0; gx < 8; gx++) {
+    const dx = gx * 2 - 7, dy = gy * 2 - 7;
+    if (dx * dx + dy * dy > 64) continue;
+    c.fillStyle = (gx + gy) % 2 ? '#e8ecf0' : '#7b828c'; c.fillRect(52 + dx - 1, 24 + dy - 1, 2, 2);
+  }
+  c.fillStyle = 'rgba(255,255,255,0.7)'; c.fillRect(48, 19, 3, 2);
+
+  // the logo plaque behind the shopkeeper: cream sign, orange script + sunburst
+  c.fillStyle = 'rgba(0,0,0,0.2)'; c.fillRect(182, 13, 84, 40);
+  c.fillStyle = GH_PINKD; c.fillRect(178, 10, 84, 40);
+  c.fillStyle = GH_CREAM; c.fillRect(181, 13, 78, 34);
+  ghSunburst(c, 220, 24, 3.6, GH_ORANGE);
+  const FAM = '"Cooper Black", "Bookman Old Style", "Palatino Linotype", Georgia, serif';
+  let fs = 15; c.font = 'italic 800 ' + fs + 'px ' + FAM;
+  while (fs > 8 && c.measureText('golden hour').width > 68) { fs--; c.font = 'italic 800 ' + fs + 'px ' + FAM; }
+  c.textAlign = 'center'; c.textBaseline = 'alphabetic'; c.lineJoin = 'round';
+  c.strokeStyle = GH_ORANGE; c.lineWidth = 1; c.strokeText('golden hour', 220, 42);
+  c.fillStyle = GH_ORANGE; c.fillText('golden hour', 220, 42);
+
+  // wood shelving unit with gifts, framed art + a plush on top (right)
+  c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(286, 14, 138, 46);
+  c.fillStyle = '#8a6238'; c.fillRect(282, 10, 138, 46);
+  c.fillStyle = '#e8d2b0'; c.fillRect(285, 13, 132, 40);
+  for (const sy of [30, 47]) { c.fillStyle = '#7a532c'; c.fillRect(285, sy, 132, 3); c.fillStyle = 'rgba(0,0,0,0.2)'; c.fillRect(285, sy + 3, 132, 2); }
+  c.fillStyle = '#6a4a2a'; c.fillRect(350, 13, 3, 40);
+  for (let x = 290, i = 0; x < 345; x += 10, i++) {                             // framed art prints leaning on the top shelf
+    const hh = 10 + (i * 3) % 6;
+    c.fillStyle = '#5a3a20'; c.fillRect(x, 30 - hh, 8, hh);
+    c.fillStyle = mugCols[(i + 1) % 6]; c.fillRect(x + 1, 31 - hh, 6, hh - 2);
+    c.fillStyle = 'rgba(255,255,255,0.45)'; c.fillRect(x + 1, 31 - hh, 2, 3);
+  }
+  for (let x = 358, i = 0; x < 414; x += 9, i++) {                              // jars, soaps, candles
+    ghBox(c, x, 30 - 8 - (i % 3) * 2, 7, 8 + (i % 3) * 2, mugCols[(i + 2) % 6]);
+  }
+  for (let x = 290, i = 0; x < 345; x += 9, i++) ghBox(c, x, 47 - 9, 7, 9, mugCols[(i + 4) % 6]);
+  ghPlush(c, 384, 47, 0.55, '#c9a37a', '#d94a4a');
+  ghPlush(c, 402, 47, 0.5, '#f4c8d8', '#8fc9ea');
+
+  // hanging pothos trailing down the wall (two of them)
+  for (const hx of [176, 274]) {
+    c.fillStyle = '#4a3a30'; c.fillRect(hx, 8, 1, 5);
+    c.fillStyle = '#f1e6d2'; c.fillRect(hx - 5, 13, 11, 6); c.fillStyle = '#d8cbb4'; c.fillRect(hx - 5, 17, 11, 2);
+    for (let i = 0; i < 20; i++) {
+      const vx = hx - 6 + ((i * 7) % 13), vy = 19 + i * 1.9 + ((i % 3) * 2);
+      c.fillStyle = (i % 2) ? '#3f8a3a' : '#5ab24a';
+      c.beginPath(); c.ellipse(vx, vy, 2.6, 2, 0.4, 0, Math.PI * 2); c.fill();
+    }
+  }
+  // fairy lights along the cornice
+  c.strokeStyle = '#6a4a40'; c.lineWidth = 0.8; c.beginPath();
+  for (let x = 0; x <= W; x += 3) { const y = 9 + 2.4 * Math.sin((x / W) * Math.PI * 12); if (!x) c.moveTo(x, y); else c.lineTo(x, y); }
+  c.stroke();
+  for (let x = 10, i = 0; x < W; x += 14, i++) {
+    const y = 9 + 2.4 * Math.sin((x / W) * Math.PI * 12);
+    c.fillStyle = 'rgba(255,225,150,0.35)'; c.fillRect(x - 2, y, 5, 5);
+    c.fillStyle = ['#ffe6a0', '#ffc2d8', '#ffd2a0'][i % 3]; c.fillRect(x - 1, y + 1, 3, 3);
+  }
+
+  // ---------------------------------------------------------------- side walls
+  c.fillStyle = GH_PINK; c.fillRect(0, 64, TILE, H - 64);
+  c.fillStyle = 'rgba(255,255,255,0.12)'; for (let x = 4; x < TILE; x += 8) c.fillRect(x, 64, 1, H - 64);
+  c.fillStyle = GH_PINKD; c.fillRect(TILE - 3, 64, 3, H - 64);
+  c.fillStyle = GH_CREAM; c.fillRect(13 * TILE, 64, TILE, H - 64);
+  c.fillStyle = 'rgba(217,122,163,0.14)'; for (let x = 4; x < TILE; x += 8) c.fillRect(13 * TILE + x, 64, 1, H - 64);
+  c.fillStyle = GH_PINKD; c.fillRect(13 * TILE, 64, 3, H - 64);
+  // framed prints on the left wall, an orange palm-leaf decal on the right
+  c.fillStyle = '#fdf6ea'; c.fillRect(5, 163, 20, 24); c.fillStyle = '#5a3a20'; c.fillRect(7, 165, 16, 20);
+  c.fillStyle = '#8fc9ea'; c.fillRect(8, 166, 14, 18); c.fillStyle = '#f4d35e'; c.beginPath(); c.arc(15, 172, 3.5, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#ee8749'; c.fillRect(8, 178, 14, 6);
+  c.fillStyle = '#fdf6ea'; c.fillRect(5, 100, 20, 24); c.fillStyle = '#5a3a20'; c.fillRect(7, 102, 16, 20);
+  c.fillStyle = '#f9c9dc'; c.fillRect(8, 103, 14, 18); c.fillStyle = '#ee8749'; c.fillRect(11, 108, 8, 8); c.fillStyle = '#fdf6ea'; c.fillRect(13, 110, 4, 4);
+  ghPalmFan(c, 13 * TILE + 19, 140, 22, 'rgba(238,135,73,0.9)');
+  c.fillStyle = '#fdf6ea'; c.fillRect(13 * TILE + 7, 230, 20, 24); c.fillStyle = '#5a3a20'; c.fillRect(13 * TILE + 9, 232, 16, 20);
+  c.fillStyle = '#a5d6a7'; c.fillRect(13 * TILE + 10, 233, 14, 18); c.fillStyle = '#2f7a3a'; c.fillRect(13 * TILE + 16, 238, 2, 12);
+  c.fillStyle = '#58b248'; c.beginPath(); c.ellipse(13 * TILE + 13, 241, 4, 2, -0.5, 0, Math.PI * 2); c.fill(); c.beginPath(); c.ellipse(13 * TILE + 21, 243, 4, 2, 0.5, 0, Math.PI * 2); c.fill();
+
+  // ---------------------------------------------------------------- the counter (tiles (4..9,3)) + goodies on it
+  c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(4 * TILE, 4 * TILE - 2, 6 * TILE, 3);
+  c.fillStyle = GH_CREAM; c.fillRect(4 * TILE, 3 * TILE, 6 * TILE, 11);                  // cream top
+  c.fillStyle = '#e6d2b8'; c.fillRect(4 * TILE, 3 * TILE + 9, 6 * TILE, 3);
+  c.fillStyle = GH_PINK; c.fillRect(4 * TILE, 3 * TILE + 12, 6 * TILE, 16);               // pink front
+  c.fillStyle = GH_PINKD; c.fillRect(4 * TILE, 3 * TILE + 12, 6 * TILE, 1);
+  for (let x = 4 * TILE + 6; x < 10 * TILE - 8; x += 24) {                                // little recessed panels
+    c.fillStyle = GH_PINKL; c.fillRect(x, 3 * TILE + 15, 18, 10);
+    c.fillStyle = GH_PINK; c.fillRect(x + 1, 3 * TILE + 16, 16, 8);
+  }
+  c.fillStyle = '#b5587f'; c.fillRect(4 * TILE, 3 * TILE + 28, 6 * TILE, 4);
+  // cream register + receipt
+  c.fillStyle = '#e8dcc6'; c.fillRect(140, 90, 22, 8); c.fillStyle = '#cdbfa6'; c.fillRect(140, 96, 22, 2);
+  c.fillStyle = '#d8ccb4'; c.fillRect(142, 82, 18, 9); c.fillStyle = '#26332e'; c.fillRect(144, 84, 14, 5);
+  c.fillStyle = '#9ad8a4'; c.fillRect(145, 85, 8, 1);
+  c.fillStyle = '#fdf6ea'; c.fillRect(158, 88, 4, 6);
+  // service bell + a jar of enamel pins
+  c.fillStyle = '#e6c46a'; c.beginPath(); c.arc(176, 97, 5, Math.PI, 0); c.fill(); c.fillRect(171, 97, 10, 2);
+  c.fillStyle = 'rgba(215,235,245,0.8)'; c.fillRect(240, 86, 12, 12);
+  for (let i = 0; i < 6; i++) { c.fillStyle = mugCols[i]; c.fillRect(242 + (i % 3) * 3, 89 + (i % 2) * 4, 2, 2); }
+  c.fillStyle = '#4a4a50'; c.fillRect(239, 85, 14, 2);
+  // pink + orange tissue pom-poms, kraft gift bags, a stack of cards
+  for (const [px2, col] of [[262, GH_PINK], [270, GH_ORANGE], [278, '#fdf6ea']]) {
+    c.fillStyle = col; c.beginPath(); c.arc(px2, 91, 5, 0, Math.PI * 2); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.3)'; c.beginPath(); c.arc(px2 - 1.5, 89, 2, 0, Math.PI * 2); c.fill();
+    c.fillStyle = 'rgba(0,0,0,0.12)'; c.fillRect(px2 - 1, 94, 2, 4);
+  }
+  c.fillStyle = '#c9a37a'; c.fillRect(292, 80, 12, 18); c.fillStyle = '#b58a60'; c.fillRect(292, 80, 12, 3);
+  c.fillStyle = GH_PINK; c.fillRect(295, 87, 6, 5);
+  c.fillStyle = '#c9a37a'; c.fillRect(306, 84, 11, 14); c.fillStyle = '#b58a60'; c.fillRect(306, 84, 11, 3);
+  c.fillStyle = '#ee8749'; c.fillRect(309, 90, 5, 4);
+
+  // ---------------------------------------------------------------- the round glass display table (6,5)(7,5)
+  const rtx = 224, rty = 177;
+  c.fillStyle = 'rgba(0,0,0,0.24)'; c.beginPath(); c.ellipse(rtx + 1, rty + 16, 34, 9, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#8a6238'; c.fillRect(rtx - 4, rty + 4, 8, 12);                          // pedestal
+  c.fillStyle = 'rgba(205,232,242,0.75)'; c.beginPath(); c.ellipse(rtx, rty, 33, 14, 0, 0, Math.PI * 2); c.fill();
+  c.strokeStyle = 'rgba(255,255,255,0.85)'; c.lineWidth = 1; c.beginPath(); c.ellipse(rtx, rty, 33, 14, 0, 0, Math.PI * 2); c.stroke();
+  c.fillStyle = 'rgba(160,200,215,0.55)'; c.beginPath(); c.ellipse(rtx, rty + 3, 33, 12, 0, 0, Math.PI); c.fill();
+  // pink gift boxes + rose-print bottles at the back
+  ghBox(c, rtx - 26, rty - 14, 9, 11, GH_PINK); ghBox(c, rtx - 16, rty - 18, 9, 15, GH_PINKL); ghBox(c, rtx - 6, rty - 12, 9, 9, '#f9a8c0');
+  for (const bx of [rtx + 6, rtx + 14, rtx + 22]) {                                       // floral lotion bottles
+    c.fillStyle = '#f6efe2'; c.fillRect(bx, rty - 20, 6, 15); c.fillStyle = '#4a4a4a'; c.fillRect(bx + 1, rty - 23, 4, 3);
+    c.fillStyle = '#e8566e'; c.fillRect(bx + 1, rty - 15, 4, 3); c.fillStyle = '#58a448'; c.fillRect(bx + 1, rty - 12, 4, 2);
+  }
+  // candy cubes + a cactus-shaped plant in a red pot
+  let ci = 0;
+  for (let cy = 0; cy < 2; cy++) for (let cx = 0; cx < 4; cx++, ci++) ghCandyCube(c, rtx + 4 + cx * 7, rty - 4 + cy * 5 - 3 + 4);
+  c.fillStyle = '#d94a4a'; c.fillRect(rtx - 3, rty - 2, 8, 6);
+  c.fillStyle = '#58a448'; c.fillRect(rtx - 1, rty - 8, 4, 7); c.fillRect(rtx - 4, rty - 6, 3, 2); c.fillRect(rtx + 3, rty - 5, 3, 2);
+  // glass sunglasses card + a stack of sticker packs
+  ghBox(c, rtx - 30, rty + 2, 8, 10, '#fdf6ea'); c.fillStyle = '#f08aa8'; c.fillRect(rtx - 29, rty + 5, 6, 2);
+  // teddy bear in a red sweater at the front of the table, a plum-pink one beside it
+  ghPlush(c, rtx - 14, rty + 14, 0.9, '#c9a37a', '#d94a4a');
+  ghPlush(c, rtx + 18, rty + 15, 0.75, '#f4c8d8', '#fdf6ea');
+
+  // ---------------------------------------------------------------- small gift tables (3,5) and (10,5)
+  for (const [tx, kind] of [[3, 0], [10, 1]]) {
+    const cx = tx * TILE + 16, cy = 5 * TILE + 16;
+    c.fillStyle = 'rgba(0,0,0,0.22)'; c.beginPath(); c.ellipse(cx + 1, cy + 11, 13, 5, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#8a6238'; c.fillRect(cx - 2, cy + 3, 4, 8);
+    c.fillStyle = GH_CREAM; c.beginPath(); c.ellipse(cx, cy, 14, 8, 0, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = GH_PINKD; c.lineWidth = 1; c.beginPath(); c.ellipse(cx, cy, 14, 8, 0, 0, Math.PI * 2); c.stroke();
+    if (kind === 0) {                                                                     // art books + puzzle boxes
+      ghBox(c, cx - 10, cy - 8, 12, 5, '#8fc9ea'); ghBox(c, cx - 9, cy - 12, 10, 5, '#f4d35e'); ghBox(c, cx - 8, cy - 15, 8, 4, GH_PINK);
+      ghBox(c, cx + 3, cy - 7, 9, 9, '#a5d6a7'); c.fillStyle = '#ee8749'; c.fillRect(cx + 5, cy - 4, 5, 3);
+    } else {                                                                              // candle jars + soaps
+      for (const [dx, col] of [[-9, '#f4a3c3'], [-3, '#ee8749'], [3, '#a5d6a7'], [9, '#8fc9ea']]) {
+        c.fillStyle = 'rgba(215,235,245,0.8)'; c.fillRect(cx + dx - 3, cy - 10, 6, 9);
+        c.fillStyle = col; c.fillRect(cx + dx - 2, cy - 7, 4, 6);
+        c.fillStyle = '#fdf6ea'; c.fillRect(cx + dx - 3, cy - 11, 6, 2);
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------- props on blockTiles
+  // wood gift shelf (1,3)(1,4): mugs, candles, boxes on four shelves
+  c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(34, 156, 30, 4);
+  c.fillStyle = '#8a6238'; c.fillRect(33, 98, 30, 58);
+  c.fillStyle = '#e8d2b0'; c.fillRect(35, 100, 26, 54);
+  for (let r = 0; r < 4; r++) {
+    c.fillStyle = '#7a532c'; c.fillRect(35, 100 + r * 14 + 11, 26, 3);
+    for (let q = 0; q < 4; q++) ghBox(c, 37 + q * 6, 100 + r * 14 + 2 + ((q + r) % 2), 5, 8 - ((q + r) % 2), mugCols[(q + r * 2) % 6]);
+  }
+  // white wire card rack (1,6)(1,7)
+  c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(34, 252, 30, 4);
+  c.fillStyle = '#e6e6e2'; c.fillRect(33, 194, 30, 58);
+  c.fillStyle = '#c2c2bc'; c.fillRect(33, 194, 30, 2); c.fillRect(33, 250, 30, 2);
+  c.fillStyle = '#f8f8f4'; c.fillRect(35, 197, 26, 52);
+  for (let r = 0; r < 5; r++) {
+    c.fillStyle = '#b8b8b0'; c.fillRect(35, 197 + r * 10 + 8, 26, 1.5);
+    for (let q = 0; q < 5; q++) { c.fillStyle = mugCols[(q + r) % 6]; c.fillRect(36 + q * 5, 198 + r * 10, 4, 7); c.fillStyle = 'rgba(255,255,255,0.4)'; c.fillRect(36 + q * 5, 198 + r * 10, 1, 7); }
+  }
+  c.strokeStyle = '#a8a8a0'; c.lineWidth = 1; c.beginPath(); c.moveTo(35.5, 197); c.lineTo(35.5, 249); c.moveTo(60.5, 197); c.lineTo(60.5, 249); c.stroke();
+  // plant stand with a trailing pothos (1,8)
+  c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(34, 286, 28, 3);
+  c.fillStyle = '#8a6238'; c.fillRect(40, 268, 16, 18); c.fillRect(38, 266, 20, 3);
+  c.fillStyle = '#f1e6d2'; c.fillRect(37, 252, 22, 14); c.fillStyle = '#d8cbb4'; c.fillRect(37, 262, 22, 4);
+  for (let i = 0; i < 9; i++) { c.fillStyle = i % 2 ? '#3f8a3a' : '#5ab24a'; c.beginPath(); c.ellipse(38 + i * 2.5, 250 + (i % 3) * 2, 4, 3, 0.3, 0, Math.PI * 2); c.fill(); }
+  for (const [vx, ln] of [[40, 10], [49, 8], [57, 12]]) for (let i = 0; i < ln; i++) { c.fillStyle = i % 2 ? '#3f8a3a' : '#5ab24a'; c.beginPath(); c.ellipse(vx, 258 + i * 2, 2.2, 1.8, 0, 0, Math.PI * 2); c.fill(); }
+  // pink plush shelf (12,3)(12,4)
+  c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(386, 156, 30, 4);
+  c.fillStyle = '#d97aa3'; c.fillRect(385, 98, 30, 58);
+  c.fillStyle = '#f9c9dc'; c.fillRect(387, 100, 26, 54);
+  for (let r = 0; r < 3; r++) {
+    c.fillStyle = '#b5587f'; c.fillRect(387, 100 + r * 19 + 17, 26, 3);
+    ghPlush(c, 394, 100 + r * 19 + 16, 0.62, ['#c9a37a', '#fdf6ea', '#a5d6a7'][r], ['#d94a4a', '#8fc9ea', '#f4d35e'][r]);
+    ghBox(c, 402, 100 + r * 19 + 6, 8, 10, mugCols[(r * 2 + 1) % 6]);
+  }
+  // art-print bins (12,6)(12,7): wooden crates with prints standing in them
+  c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(386, 252, 30, 4);
+  for (const by of [194, 224]) {
+    c.fillStyle = '#8a6238'; c.fillRect(385, by + 12, 30, 18);
+    c.fillStyle = '#a77a48'; c.fillRect(385, by + 12, 30, 3); c.fillStyle = 'rgba(0,0,0,0.2)'; c.fillRect(385, by + 24, 30, 2);
+    for (let i = 0; i < 6; i++) {
+      c.fillStyle = '#fdf6ea'; c.fillRect(387 + i * 5, by + (i % 3), 5, 14);
+      c.fillStyle = mugCols[(i + by) % 6]; c.fillRect(388 + i * 5, by + 1 + (i % 3), 3, 11);
+    }
+    c.fillStyle = '#5a3a20'; c.fillRect(385, by + 12, 30, 1);
+  }
+  c.fillStyle = '#fdf6ea'; c.fillRect(392, 211, 16, 9); c.fillStyle = GH_ORANGED; c.font = '700 5px monospace'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('ART', 400, 215.6);
+  // fiddle-leaf fig in a sage pot (12,8)
+  c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(386, 286, 26, 3);
+  c.fillStyle = '#8fb59c'; c.fillRect(390, 268, 18, 19); c.fillStyle = '#6e9a82'; c.fillRect(388, 266, 22, 4);
+  c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(392, 272, 3, 12);
+  c.fillStyle = '#5a4a30'; c.fillRect(398, 248, 3, 19);
+  for (const [lx, ly, rx, ry, rot] of [[391, 253, 7, 4, -0.7], [409, 252, 7, 4, 0.7], [399, 243, 7, 5, 0], [392, 262, 7, 4, -0.5], [408, 262, 7, 4, 0.5]]) {
+    c.fillStyle = '#3a8a3a'; c.beginPath(); c.ellipse(lx, ly, rx, ry, rot, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#5aae4a'; c.beginPath(); c.ellipse(lx - 1.5, ly - 1, rx * 0.5, ry * 0.5, rot, 0, Math.PI * 2); c.fill();
+  }
+
+  // ---------------------------------------------------------------- front wall: pink-framed windows with palm decals
+  const fy = 9 * TILE;
+  for (const [x0, x1, pink] of [[TILE, 6 * TILE, false], [7 * TILE, 13 * TILE, true]]) {
+    c.fillStyle = GH_PINKD; c.fillRect(x0, fy, x1 - x0, TILE);
+    c.fillStyle = GH_PINK; c.fillRect(x0, fy, x1 - x0, 2);
+    const gg = c.createLinearGradient(0, fy + 4, 0, fy + 28);
+    gg.addColorStop(0, '#9fc79a'); gg.addColorStop(1, '#e8f0dc');
+    c.fillStyle = gg; c.fillRect(x0 + 3, fy + 5, x1 - x0 - 6, 22);
+    for (let x = x0 + 12; x < x1 - 8; x += 22) {                                          // greenery + street light through the glass
+      c.fillStyle = 'rgba(40,90,50,0.55)'; c.beginPath(); c.arc(x, fy + 12, 6, 0, Math.PI * 2); c.fill();
+    }
+    c.fillStyle = GH_PINKD; c.fillRect((x0 + x1) / 2 - 1, fy + 4, 3, 24);
+    // hanging plants in the window + a palm-leaf decal (orange on the left, pink on the right)
+    c.fillStyle = '#3f8a3a'; for (let x = x0 + 8; x < x1 - 8; x += 30) { c.beginPath(); c.arc(x, fy + 24, 3.5, 0, Math.PI * 2); c.fill(); c.fillStyle = '#e8d8c0'; c.fillRect(x - 3, fy + 25, 6, 3); c.fillStyle = '#3f8a3a'; }
+    ghPalmFan(c, x0 + (x1 - x0) * 0.72, fy + 26, 17, pink ? 'rgba(250,150,195,0.95)' : 'rgba(238,135,73,0.95)');
+    c.fillStyle = '#b5587f'; c.fillRect(x0, fy + 28, x1 - x0, 4);
+  }
+  c.fillStyle = GH_PINKD; c.fillRect(6 * TILE - 3, fy, 3, TILE); c.fillRect(7 * TILE, fy, 3, TILE);
+}
+
+let _ghInteriorCache = null;
+function drawGoldenHourInterior(time) {
+  if (!_ghInteriorCache) {
+    const cv = document.createElement('canvas');
+    cv.width = 14 * TILE; cv.height = 10 * TILE;
+    paintGoldenHourInterior(cv.getContext('2d'));
+    _ghInteriorCache = cv;
+  }
+  ctx.drawImage(_ghInteriorCache, 0, 0);
+  // the logo plaque glows softly, as if the afternoon sun is hitting it
+  const a = 0.5 + 0.5 * Math.sin(time * 1.2);
+  ctx.fillStyle = 'rgba(255,190,110,' + (0.07 + 0.04 * a).toFixed(3) + ')';
+  ctx.beginPath(); ctx.ellipse(220, 34, 52, 22, 0, 0, Math.PI * 2); ctx.fill();
+  // disco ball: a ring of glints on the ball + drifting light flecks across the wall and floor
+  for (let i = 0; i < 7; i++) {
+    const ph = time * 1.6 + i * 0.9, gx = 52 + Math.cos(ph) * 6.2, gy = 24 + Math.sin(ph * 1.3 + i) * 6.2;
+    ctx.globalAlpha = 0.35 + 0.6 * Math.max(0, Math.sin(ph * 2.1));
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(Math.round(gx), Math.round(gy), 2, 2);
+  }
+  for (let i = 0; i < 14; i++) {
+    const ang = (i / 14) * Math.PI * 2 + time * 0.35;
+    const rr = 40 + ((i * 37) % 90);
+    const fx = 52 + Math.cos(ang) * rr, fy2 = 40 + Math.abs(Math.sin(ang * 0.8 + i)) * 200;
+    if (fx < TILE + 4 || fx > 13 * TILE - 4 || fy2 < 66 || fy2 > 9 * TILE - 6) continue;
+    ctx.globalAlpha = 0.10 + 0.14 * (0.5 + 0.5 * Math.sin(time * 2.4 + i * 1.7));
+    ctx.fillStyle = i % 3 === 0 ? '#ffd2e6' : i % 3 === 1 ? '#fff2c4' : '#d8ecff';
+    ctx.fillRect(Math.round(fx), Math.round(fy2), 3, 3);
+  }
+  ctx.globalAlpha = 1;
+  // late-afternoon "golden hour" light spilling through the front windows onto the floor
+  ctx.fillStyle = 'rgba(255,214,140,' + (0.05 + 0.02 * a).toFixed(3) + ')';
+  ctx.beginPath(); ctx.moveTo(2 * TILE, 8 * TILE + 4); ctx.lineTo(5 * TILE, 8 * TILE + 4); ctx.lineTo(6 * TILE, 6 * TILE); ctx.lineTo(3 * TILE, 6 * TILE); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(8 * TILE, 8 * TILE + 4); ctx.lineTo(12 * TILE, 8 * TILE + 4); ctx.lineTo(11 * TILE, 6 * TILE); ctx.lineTo(8 * TILE + 8, 6 * TILE); ctx.closePath(); ctx.fill();
+}
+
+// ---------------------------------------------------------------- BEVERAGE WAREHOUSE (Winooski, LEVEL 4)
+// A beer lover's dream come true: a massive warehouse-style bottle shop with beer from all
+// around the world (see makeWinooski()). Outside, modeled on photos of the real shop: a
+// white-painted brick front under a bold black name sign with a little grape leaf, a green
+// standing-seam metal awning, dark storefront windows crowded with neon beer signs and paper
+// flyers, a stone-block planter of orange daylilies, a painted grape in the end window and a
+// parking lot out front with a reserved accessible space.
+// Inside: long runs of wood shelving packed with bottles, black hanging country signs
+// (GERMANY, BELGIUM, MEXICO, JAPAN...), exposed ceiling ducts with fluorescent tubes, a
+// glass-door cooler wall, a reclaimed-wood "THIRSTY?" sign ringed with orange marquee bulbs,
+// a yellow safety mat by the door, a butcher-block checkout counter with a barn-wood front,
+// and a display of green beer cases around a wooden barrel.
+//
+// Static art is painted once into offscreen canvases; only the neon/tube glow and the
+// marquee sparkle are drawn live.
+const BW_WOODD = '#5a3a1c', BW_WOOD = '#8a5a2b', BW_WOODL = '#b98343';
+const BW_BOTTLES = ['#2f6a3a', '#3f7f45', '#9a5a1a', '#b9731f', '#4a2c14', '#d4e4e8', '#2f5fa0', '#6a2a2a'];
+const BW_LABELS = ['#f1e7cf', '#e8c85a', '#c0392b', '#f4f4f0', '#3fb0d8'];
+const BW_DOOR_TILE = 2;                       // the door is the 3rd tile of the 8-tile-wide storefront
+const BW_FAM = '"Georgia", "Palatino Linotype", "Times New Roman", serif';
+
+// One bottle, x = left edge, by = bottom edge (about 10px tall, 4px wide).
+function bwBottle(c, x, by, seed) {
+  x = Math.round(x);
+  c.fillStyle = BW_BOTTLES[seed % BW_BOTTLES.length]; c.fillRect(x, by - 7, 4, 7);          // body
+  c.fillRect(x + 1, by - 9, 2, 2);                                                           // neck
+  c.fillStyle = (seed % 3 === 0) ? '#d8b040' : '#c8c8c0'; c.fillRect(x + 1, by - 10, 2, 1);  // cap
+  c.fillStyle = BW_LABELS[(seed >> 2) % BW_LABELS.length]; c.fillRect(x, by - 5, 4, 3);      // label
+  c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(x, by - 7, 1, 6);                       // glint
+}
+
+// A tiny country flag (10x6) used as a shelf-talker on each bay.
+function bwFlag(c, x, y, k) {
+  k = k % 8;
+  if (k === 0) { c.fillStyle = '#111'; c.fillRect(x, y, 10, 2); c.fillStyle = '#d02a2a'; c.fillRect(x, y + 2, 10, 2); c.fillStyle = '#f0c030'; c.fillRect(x, y + 4, 10, 2); }          // DE
+  else if (k === 1) { c.fillStyle = '#111'; c.fillRect(x, y, 3, 6); c.fillStyle = '#f0c030'; c.fillRect(x + 3, y, 4, 6); c.fillStyle = '#d02a2a'; c.fillRect(x + 7, y, 3, 6); }         // BE
+  else if (k === 2) { c.fillStyle = '#2a8a3a'; c.fillRect(x, y, 3, 6); c.fillStyle = '#f4f4ee'; c.fillRect(x + 3, y, 4, 6); c.fillStyle = '#d02a2a'; c.fillRect(x + 7, y, 3, 6); }     // MX
+  else if (k === 3) { c.fillStyle = '#f4f4ee'; c.fillRect(x, y, 10, 6); c.fillStyle = '#d02a2a'; c.beginPath(); c.arc(x + 5, y + 3, 1.8, 0, Math.PI * 2); c.fill(); }                  // JP
+  else if (k === 4) { c.fillStyle = '#2a8a3a'; c.fillRect(x, y, 3, 6); c.fillStyle = '#f4f4ee'; c.fillRect(x + 3, y, 4, 6); c.fillStyle = '#ee8a2a'; c.fillRect(x + 7, y, 3, 6); }     // IE
+  else if (k === 5) { c.fillStyle = '#f4f4ee'; c.fillRect(x, y, 10, 6); c.fillStyle = '#d02a2a'; c.fillRect(x, y + 1, 10, 1); c.fillRect(x, y + 4, 10, 1); c.fillStyle = '#2a4a9a'; c.fillRect(x, y, 4, 3); }  // US
+  else if (k === 6) { c.fillStyle = '#f4f4ee'; c.fillRect(x, y, 10, 3); c.fillStyle = '#d02a2a'; c.fillRect(x, y + 3, 10, 3); c.fillStyle = '#2a4a9a'; c.beginPath(); c.moveTo(x, y); c.lineTo(x + 5, y + 3); c.lineTo(x, y + 6); c.closePath(); c.fill(); } // CZ
+  else { c.fillStyle = '#f4f4ee'; c.fillRect(x, y, 10, 6); c.fillStyle = '#d02a2a'; c.fillRect(x + 4, y, 2, 6); c.fillRect(x, y + 2, 10, 2); }                                         // GB
+  c.strokeStyle = 'rgba(0,0,0,0.45)'; c.lineWidth = 1; c.strokeRect(x + 0.5, y + 0.5, 9, 5);
+}
+
+// One 32x32 bay of wood shelving: three tiers of bottles (or the odd carton), a flag on the rail.
+function bwShelfBay(c, x, y, seed) {
+  c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(x + 1, y + 30, 31, 3);
+  c.fillStyle = BW_WOODD; c.fillRect(x, y, 32, 32);
+  c.fillStyle = '#2e1d10'; c.fillRect(x + 2, y + 2, 28, 28);
+  for (let t = 0; t < 3; t++) {
+    const base = y + 10 + t * 10, hv = mhHash(seed, t + 3);
+    if (hv % 7 === 0) {                                                                   // cartons of six-packs
+      for (let k = 0; k < 3; k++) {
+        c.fillStyle = ['#c0392b', '#2f7f45', '#e0a030', '#2f5fa0'][(hv + k) % 4]; c.fillRect(x + 3 + k * 9, base - 8, 8, 8);
+        c.fillStyle = '#f4f2ea'; c.fillRect(x + 4 + k * 9, base - 6, 6, 3);
+      }
+    } else {
+      for (let k = 0; k < 6; k++) bwBottle(c, x + 3 + k * 4.6, base, hv + k * 13);
+    }
+    c.fillStyle = BW_WOODL; c.fillRect(x + 2, base, 28, 2);                               // shelf board
+    c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(x + 2, base + 2, 28, 1);
+    if (hv % 3 === 0) { c.fillStyle = '#f4e46a'; c.fillRect(x + 4 + (hv % 20), base + 1, 4, 1); }   // price tag
+  }
+  c.fillStyle = BW_WOOD; c.fillRect(x, y, 32, 2); c.fillRect(x, y, 2, 32); c.fillRect(x + 30, y, 2, 32);
+  c.fillStyle = 'rgba(255,255,255,0.18)'; c.fillRect(x, y, 32, 1);
+  bwFlag(c, x + 11, y + 23, (seed * 5 + 1) >> 1);
+}
+
+// A black hanging country sign on two little chains (cx = center, y = top of the plate).
+function bwHangSign(c, cx, y, text) {
+  c.font = '700 6px monospace'; c.textAlign = 'center'; c.textBaseline = 'middle';
+  const sw = Math.max(30, Math.ceil(c.measureText(text).width) + 8);
+  c.fillStyle = '#6a6862'; c.fillRect(cx - sw / 2 + 3, y - 6, 1, 6); c.fillRect(cx + sw / 2 - 4, y - 6, 1, 6);
+  c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(cx - sw / 2 + 1, y + 2, sw, 10);
+  c.fillStyle = '#121212'; c.fillRect(cx - sw / 2, y, sw, 10);
+  c.fillStyle = '#f4f2ea'; c.fillText(text, cx, y + 5.5);
+}
+
+// The little grape leaf from the shop's sign.
+function bwGrapeLeaf(c, x, y, s) {
+  const k = s / 10;
+  const pts = [[0, -9], [3, -6], [8, -7], [6, -2], [10, 2], [5, 3], [5, 8], [0, 5], [-5, 8], [-5, 3], [-10, 2], [-6, -2], [-8, -7], [-3, -6]];
+  c.fillStyle = '#2d8a3a'; c.strokeStyle = '#17501f'; c.lineWidth = 0.8;
+  c.beginPath();
+  pts.forEach(([px, py], i) => { if (i) c.lineTo(x + px * k, y + py * k); else c.moveTo(x + px * k, y + py * k); });
+  c.closePath(); c.fill(); c.stroke();
+  c.strokeStyle = '#17501f'; c.beginPath();
+  c.moveTo(x, y + 5 * k); c.lineTo(x, y - 6 * k); c.moveTo(x, y + 2 * k); c.lineTo(x + 6 * k, y - 1 * k); c.moveTo(x, y + 2 * k); c.lineTo(x - 6 * k, y - 1 * k);
+  c.stroke();
+}
+
+// A little neon sign: dark plate, glowing outline + text.
+function bwNeon(c, x, y, w, h, col, text, fs) {
+  c.fillStyle = '#0d1016'; c.fillRect(x, y, w, h);
+  c.save();
+  c.shadowColor = col; c.shadowBlur = 4;
+  c.strokeStyle = col; c.lineWidth = 1.2; c.strokeRect(x + 1.5, y + 1.5, w - 3, h - 3);
+  c.fillStyle = '#ffffff'; c.font = '800 ' + (fs || 8) + 'px "Arial Black", Impact, sans-serif';
+  c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(text, x + w / 2, y + h / 2 + 0.5);
+  c.restore();
+}
+
+// A round tin beer sign (orange / red).
+function bwRoundSign(c, cx, cy, r, col, text) {
+  c.fillStyle = '#1b1b1b'; c.beginPath(); c.arc(cx, cy, r + 1.5, 0, Math.PI * 2); c.fill();
+  c.fillStyle = col; c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.fill();
+  c.strokeStyle = '#f4ecd6'; c.lineWidth = 1; c.beginPath(); c.arc(cx, cy, r - 2.2, 0, Math.PI * 2); c.stroke();
+  c.fillStyle = '#f4ecd6'; c.font = '800 5px "Arial Black", Impact, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillText(text, cx, cy + 0.5);
+}
+
+function paintBeverageWarehouseExterior(c, w, h, doorLX) {
+  // ---- white-painted brick with faint mortar lines
+  c.fillStyle = '#ebe8e0'; c.fillRect(0, 0, w, h);
+  c.fillStyle = 'rgba(120,116,108,0.20)';
+  for (let row = 0, y = 2; y < h; y += 7, row++) {
+    c.fillRect(0, y + 6, w, 1);
+    const off = row % 2 ? 8 : 0;
+    for (let x = off; x < w; x += 16) c.fillRect(x, y, 1, 7);
+  }
+  c.fillStyle = 'rgba(0,0,0,0.10)'; c.fillRect(0, 0, 3, h); c.fillRect(w - 3, 0, 3, h);
+  c.fillStyle = '#cfcbc0'; c.fillRect(0, 0, w, 3); c.fillStyle = '#f6f4ee'; c.fillRect(0, 0, w, 1);
+
+  // ---- name sign: bold black serif on a pale plate, with the grape leaf
+  c.fillStyle = '#f3e8ea'; c.fillRect(6, 7, w - 12, 25);
+  c.strokeStyle = '#4a3a3e'; c.lineWidth = 1; c.strokeRect(6.5, 7.5, w - 13, 24);
+  const NAME = 'BEVERAGE WAREHOUSE';
+  let fs = 17; c.font = '800 ' + fs + 'px ' + BW_FAM;
+  while (fs > 9 && c.measureText(NAME).width > w - 64) { fs--; c.font = '800 ' + fs + 'px ' + BW_FAM; }
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillText(NAME, (w - 30) / 2 + 1, 20.5);
+  c.fillStyle = '#16130f'; c.fillText(NAME, (w - 30) / 2, 19.5);
+  bwGrapeLeaf(c, w - 24, 19.5, 15);
+
+  // ---- green standing-seam metal awning over the door + the three windows
+  const awW = doorLX + 110;
+  c.fillStyle = 'rgba(0,0,0,0.20)'; c.fillRect(0, 66, awW, 6);
+  const ag = c.createLinearGradient(0, 34, 0, 66); ag.addColorStop(0, '#6fb09a'); ag.addColorStop(1, '#3f8571');
+  c.fillStyle = ag; c.fillRect(0, 34, awW, 30);
+  for (let x = 4; x < awW; x += 9) {
+    c.fillStyle = 'rgba(255,255,255,0.18)'; c.fillRect(x, 34, 1, 30);
+    c.fillStyle = 'rgba(0,0,0,0.20)'; c.fillRect(x + 1, 34, 1, 30);
+  }
+  c.fillStyle = '#8cc7b2'; c.fillRect(0, 34, awW, 2);
+  c.fillStyle = '#2f6a5a'; c.fillRect(0, 62, awW, 4); c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(0, 62, awW, 1);
+  c.fillStyle = '#2f6a5a'; c.fillRect(awW - 3, 34, 3, 32);
+
+  // ---- storefront windows (dark tinted glass, bottles glimpsed inside)
+  const win = (x0, x1) => {
+    c.fillStyle = '#202226'; c.fillRect(x0 - 2, 72, x1 - x0 + 4, 58);
+    const g2 = c.createLinearGradient(0, 74, 0, 128);
+    g2.addColorStop(0, '#6f93a0'); g2.addColorStop(0.55, '#3c5663'); g2.addColorStop(1, '#26323a');
+    c.fillStyle = g2; c.fillRect(x0, 74, x1 - x0, 54);
+    c.globalAlpha = 0.5;
+    for (let x = x0 + 3; x < x1 - 3; x += 5) {
+      const hv = mhHash(x, x0);
+      c.fillStyle = BW_BOTTLES[hv % BW_BOTTLES.length]; c.fillRect(x, 112 + (hv % 4), 3, 16 - (hv % 4));
+    }
+    c.globalAlpha = 1;
+    c.fillStyle = 'rgba(255,255,255,0.10)';
+    c.beginPath(); c.moveTo(x0 + 8, 74); c.lineTo(x0 + 16, 74); c.lineTo(x0 + 4, 128); c.lineTo(x0, 128); c.lineTo(x0, 118); c.closePath(); c.fill();
+  };
+  const flyer = (x, y, fw, fh, col) => {
+    c.fillStyle = col; c.fillRect(x, y, fw, fh);
+    c.fillStyle = 'rgba(0,0,0,0.28)'; for (let ly = y + 2; ly < y + fh - 1; ly += 3) c.fillRect(x + 1.5, ly, fw - 3, 1);
+  };
+  // left window: blue IPA neon + a spread of paper flyers
+  win(6, doorLX - 6);
+  bwNeon(c, 12, 80, 34, 15, '#5a7bff', 'IPA', 9);
+  flyer(10, 102, 9, 12, '#f4f2ea'); flyer(21, 100, 8, 13, '#f7e8c8'); flyer(32, 103, 9, 11, '#f4f2ea'); flyer(44, 101, 8, 12, '#f3c9d4');
+  // window A: orange round tin sign + flyers
+  win(doorLX + 36, doorLX + 68);
+  bwRoundSign(c, doorLX + 52, 90, 9, '#d9692a', 'PALE ALE');
+  flyer(doorLX + 40, 106, 8, 12, '#f4f2ea'); flyer(doorLX + 56, 108, 9, 11, '#f7e8c8');
+  // window B: red round sign + a green hop badge
+  win(doorLX + 72, doorLX + 104);
+  bwRoundSign(c, doorLX + 82, 88, 7, '#b52a2a', 'LOCAL');
+  c.fillStyle = '#1b1b1b'; c.fillRect(doorLX + 91, 82, 11, 14);
+  c.fillStyle = '#3f9a4a'; for (const [hx, hy] of [[96, 86], [94, 89], [98, 89], [96, 92]]) { c.beginPath(); c.ellipse(doorLX + hx, hy, 2.2, 2.8, 0, 0, Math.PI * 2); c.fill(); }
+  flyer(doorLX + 76, 106, 9, 12, '#f4f2ea'); flyer(doorLX + 90, 104, 10, 13, '#f3c9d4');
+
+  // ---- glass door (warm light inside), "OPEN" sign, push bar
+  c.fillStyle = '#1c1d20'; c.fillRect(doorLX - 2, 98, 36, h - 98);
+  const dg = c.createLinearGradient(0, 100, 0, h); dg.addColorStop(0, '#f0d9a0'); dg.addColorStop(1, '#b08850');
+  c.fillStyle = dg; c.fillRect(doorLX + 1, 101, 30, h - 101);
+  c.fillStyle = 'rgba(255,255,255,0.22)'; c.fillRect(doorLX + 3, 103, 4, h - 108);
+  c.fillStyle = '#1c1d20'; c.fillRect(doorLX + 15, 101, 2, h - 101);                 // center mullion
+  c.fillStyle = '#9a968c'; c.fillRect(doorLX + 11, 124, 2, 14); c.fillRect(doorLX + 19, 124, 2, 14);   // push bars
+  bwNeon(c, doorLX + 6, 106, 20, 9, '#ff4a3a', 'OPEN', 6);
+  c.fillStyle = '#3a2a20'; c.fillRect(doorLX, h - 4, 32, 4);                           // mat
+
+  // ---- stone-block planter under the windows
+  const block = (x0, x1) => {
+    c.fillStyle = '#8d8a84'; c.fillRect(x0, 130, x1 - x0, 22);
+    for (let row = 0; row < 3; row++) {
+      c.fillStyle = 'rgba(0,0,0,0.20)'; c.fillRect(x0, 136 + row * 7, x1 - x0, 1);
+      const off = row % 2 ? 8 : 0;
+      for (let x = x0 + off; x < x1; x += 16) c.fillRect(x, 130 + row * 7, 1, 7);
+    }
+    c.fillStyle = '#b9b5ac'; c.fillRect(x0 - 1, 128, x1 - x0 + 2, 3);
+    c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(x0 - 1, 128, x1 - x0 + 2, 1);
+  };
+  block(0, doorLX - 2); block(doorLX + 34, awW + 4);
+  // orange daylilies: green blade clumps with blooms
+  const lilies = (cx, ly) => {
+    c.strokeStyle = '#3f8a3a'; c.lineWidth = 1.4;
+    for (let i = -5; i <= 5; i++) { c.beginPath(); c.moveTo(cx + i * 1.4, ly + 14); c.quadraticCurveTo(cx + i * 3, ly + 4, cx + i * 3.6, ly - 6 + Math.abs(i)); c.stroke(); }
+    for (const [bx, by, col] of [[-9, -4, '#ee7a2a'], [-3, -9, '#f4a23a'], [4, -6, '#ee7a2a'], [9, -2, '#f4a23a'], [0, -1, '#e8641c']]) {
+      c.fillStyle = col; c.fillRect(cx + bx - 2, ly + by - 1, 4, 3); c.fillRect(cx + bx - 1, ly + by - 2, 2, 5);
+      c.fillStyle = '#c24a0c'; c.fillRect(cx + bx, ly + by, 1, 1);
+    }
+  };
+  lilies(24, 126); lilies(doorLX + 52, 128); lilies(doorLX + 96, 126);
+
+  // ---- end window: a lavender grape painted on the glass + OPEN neon
+  win(182, w - 8);
+  const sky = c.createLinearGradient(0, 74, 0, 128); sky.addColorStop(0, '#9cc6e6'); sky.addColorStop(1, '#6c92b4');
+  c.fillStyle = sky; c.fillRect(182, 74, w - 8 - 182, 54);
+  c.globalAlpha = 0.55; c.fillStyle = '#ffffff'; c.beginPath(); c.ellipse(204, 84, 10, 4, 0, 0, Math.PI * 2); c.ellipse(232, 96, 8, 3, 0, 0, Math.PI * 2); c.fill(); c.globalAlpha = 1;
+  const gx = 216, gy = 100;                                                           // grape cluster, widest at the top
+  for (const [ox, oy] of [[-12, 0], [-4, -1], [4, -1], [12, 0], [-8, 8], [0, 7], [8, 8], [-4, 15], [4, 15], [0, 22]]) {
+    c.fillStyle = '#7c66aa'; c.beginPath(); c.arc(gx + ox, gy + oy, 6.2, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#a58fcf'; c.beginPath(); c.arc(gx + ox - 1.2, gy + oy - 1.2, 4.6, 0, Math.PI * 2); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.45)'; c.fillRect(gx + ox - 3, gy + oy - 3, 2, 2);
+  }
+  c.fillStyle = '#5a4a2a'; c.fillRect(gx - 1, gy - 12, 3, 8);
+  bwGrapeLeaf(c, gx + 11, gy - 10, 14);
+  bwNeon(c, 190, 78, 22, 9, '#ff4a3a', 'OPEN', 6);
+
+  // ---- foundation strip
+  c.fillStyle = '#6e6b66'; c.fillRect(0, h - 8, w, 8);
+  c.fillStyle = '#6a4a40'; c.fillRect(doorLX, h - 4, 32, 4);
+}
+
+let _bwExteriorCache = null;
+function drawBeverageWarehouseExterior(px, py, w, h, dx) {
+  const doorLX = dx - px;
+  if (!_bwExteriorCache || _bwExteriorCache.w !== w || _bwExteriorCache.h !== h || _bwExteriorCache.d !== doorLX) {
+    const cv = document.createElement('canvas');
+    cv.width = w; cv.height = h;
+    paintBeverageWarehouseExterior(cv.getContext('2d'), w, h, doorLX);
+    _bwExteriorCache = { cv, w, h, d: doorLX };
+  }
+  ctx.drawImage(_bwExteriorCache.cv, px, py);
+}
+
+// Live bits of the storefront: the neon signs breathe (the IPA sign flickers now and then).
+function drawBeverageWarehouseLive(px, py, w, h) {
+  const t = performance.now() / 1000, dl = BW_DOOR_TILE * TILE;
+  const flick = (Math.sin(t * 0.8) > 0.97) ? 0.45 : 1;
+  const glow = (cx, cy, rx, ry, rgb, a) => {
+    ctx.fillStyle = 'rgba(' + rgb + ',' + a.toFixed(3) + ')';
+    ctx.beginPath(); ctx.ellipse(px + cx, py + cy, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
+  };
+  glow(29, 88, 26, 12, '106,123,255', 0.26 * flick);                                  // IPA
+  glow(dl + 52, 90, 16, 14, '255,150,70', 0.18 + 0.05 * Math.sin(t * 1.7));           // orange tin sign
+  glow(dl + 82, 88, 12, 11, '255,90,70', 0.14);
+  glow(dl + 16, 110, 18, 8, '255,74,58', 0.22 + 0.06 * Math.sin(t * 2.6));            // door OPEN
+  glow(201, 82, 16, 8, '255,74,58', 0.22 + 0.06 * Math.sin(t * 2.6 + 1));             // window OPEN
+}
+
+// The front parking lot (painted lines, wheel stops, reserved accessible space + sign). Called
+// from drawWinooskiDecorations(); L = map.winooski.bwLot in tile coords.
+function drawBeverageWarehouseLot(L, x0, x1, y0, y1) {
+  const ox = L.x * TILE, oy = L.y * TILE, lw = L.w * TILE, lh = L.h * TILE;
+  if (ox > x1 || ox + lw < x0 || oy - TILE > y1 || oy + lh < y0) return;
+  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+  for (let i = 0; i <= L.w; i += 2) ctx.fillRect(ox + i * TILE - 1, oy + 2, 3, 2 * TILE - 4);       // space dividers
+  for (let b = 0; b < L.w / 2; b++) {                                                                // wheel stops
+    ctx.fillStyle = '#8f8c86'; ctx.fillRect(ox + b * 2 * TILE + 16, oy + 6, 32, 5);
+    ctx.fillStyle = '#b9b6ae'; ctx.fillRect(ox + b * 2 * TILE + 16, oy + 6, 32, 1);
+  }
+  // accessible space: blue square with the white wheelchair symbol
+  const sx = ox + TILE, sy = oy + 36;
+  ctx.fillStyle = '#2f6fcb'; ctx.fillRect(sx - 12, sy - 12, 24, 24);
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath(); ctx.arc(sx - 1, sy - 7, 2.2, 0, Math.PI * 2); ctx.fill();
+  ctx.fillRect(sx - 2, sy - 4, 2.5, 7); ctx.fillRect(sx - 2, sy + 1, 7, 2.2);
+  ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(sx - 1, sy + 3, 5.5, 0.6, Math.PI * 1.35); ctx.stroke();
+  // RESERVED PARKING sign on a pole at the corner of the sidewalk
+  const px0 = ox + 6, py0 = (L.y - 1) * TILE + 6;
+  ctx.fillStyle = '#5a5e66'; ctx.fillRect(px0 + 5, py0 + 14, 3, 18);
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(px0, py0, 14, 17);
+  ctx.strokeStyle = '#2f6fcb'; ctx.lineWidth = 1; ctx.strokeRect(px0 + 0.5, py0 + 0.5, 13, 16);
+  ctx.fillStyle = '#2f6fcb'; ctx.fillRect(px0 + 3, py0 + 3, 8, 6);
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(px0 + 6, py0 + 4, 2, 3);
+  ctx.fillStyle = '#2a2a2a'; ctx.fillRect(px0 + 2, py0 + 11, 10, 1); ctx.fillRect(px0 + 3, py0 + 13, 8, 1);
+}
+
+// ---------------------------------------------------------------- interior
+// Solid props are plain 'W'/'T' tiles in the shop def (blockTiles/extraTables) that this painter
+// dresses up: back wall (row 1: coolers + THIRSTY? sign), left wall shelf (1,2)..(1,8), aisle
+// island A (4,3)..(4,7), island B (8,5)..(8,8), right wall shelf (12,5)..(12,8); the checkout
+// counter is the default 'T' row at y=3 (x 8..12) with the clerk behind it at (10,2); the barrel
+// + beer-case display is (10,6)(11,6).
+function paintBeverageWarehouseInterior(c) {
+  const W = 14 * TILE, H = 10 * TILE;
+
+  // ---------------------------------------------------------------- polished concrete floor + safety mat
+  c.fillStyle = '#a39d94'; c.fillRect(TILE, 2 * TILE, 12 * TILE, 7 * TILE);
+  c.fillStyle = 'rgba(0,0,0,0.12)';
+  for (let y = 2 * TILE; y < 9 * TILE; y += 64) c.fillRect(TILE, y, 12 * TILE, 1);
+  for (let x = TILE; x < 13 * TILE; x += 64) c.fillRect(x, 2 * TILE, 1, 7 * TILE);
+  for (let i = 0; i < 260; i++) {
+    const hv = mhHash(i, 77), fx = TILE + (hv % (12 * TILE)), fy = 2 * TILE + ((hv >>> 8) % (7 * TILE));
+    c.fillStyle = (hv & 1) ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)'; c.fillRect(fx, fy, 2, 1);
+  }
+  for (const ax of [2 * TILE, 5 * TILE + 8, 9 * TILE]) { c.fillStyle = 'rgba(255,255,255,0.05)'; c.fillRect(ax, 2 * TILE + 8, 48, 6 * TILE); }   // worn aisle lanes
+  // yellow safety mat just inside the door
+  c.fillStyle = '#7a6410'; c.fillRect(166, 254, 84, 34);
+  c.fillStyle = '#e6c230'; c.fillRect(168, 256, 80, 30);
+  c.fillStyle = 'rgba(0,0,0,0.25)'; for (let x = 172; x < 246; x += 6) for (let y = 260; y < 284; y += 6) c.fillRect(x, y, 2, 2);
+  c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(168, 256, 80, 1);
+
+  // ---------------------------------------------------------------- back wall: ceiling ducts, white brick, baseboard
+  c.fillStyle = '#e6e2d8'; c.fillRect(0, 0, W, 64);
+  c.fillStyle = 'rgba(0,0,0,0.07)';
+  for (let y = 10; y < 60; y += 6) { c.fillRect(0, y, W, 1); const off = (((y / 6) | 0) % 2) ? 8 : 0; for (let x = off; x < W; x += 16) c.fillRect(x, y, 1, 6); }
+  c.fillStyle = '#1d1917'; c.fillRect(0, 0, W, 9);
+  c.fillStyle = '#4a4742'; c.fillRect(0, 2, W, 3); c.fillStyle = '#6a665f'; c.fillRect(0, 2, W, 1);
+  c.fillStyle = '#8b8680'; c.fillRect(0, 7, W, 1);
+  for (let x = 40; x < W; x += 96) { c.fillStyle = '#2a2724'; c.fillRect(x, 0, 3, 9); }
+  c.fillStyle = BW_WOODD; c.fillRect(0, 60, W, 4); c.fillStyle = 'rgba(255,255,255,0.2)'; c.fillRect(0, 60, W, 1);
+
+  // cooler wall: two banks of three glass doors flanking the sign
+  const cooler = (x0, seed) => {
+    c.fillStyle = '#23262b'; c.fillRect(x0 - 2, 12, 3 * 26 + 2, 48);
+    for (let i = 0; i < 3; i++) {
+      const x = x0 + i * 26;
+      c.fillStyle = '#e9f4f6'; c.fillRect(x, 14, 24, 44);
+      for (let t = 0; t < 4; t++) {
+        const by = 24 + t * 10;
+        for (let k = 0; k < 5; k++) bwBottle(c, x + 2 + k * 4.4, by, seed + i * 31 + t * 7 + k * 5);
+        c.fillStyle = '#b8c4c8'; c.fillRect(x, by, 24, 1);
+      }
+      c.fillStyle = 'rgba(255,255,255,0.22)'; c.fillRect(x + 2, 14, 3, 44);
+      c.fillStyle = '#23262b'; c.fillRect(x + 22, 30, 2, 14);
+    }
+  };
+  cooler(36, 3); cooler(336, 11);
+
+  // "THIRSTY?" -- reclaimed-wood board with orange marquee bulbs
+  c.fillStyle = '#5b4030'; c.fillRect(122, 10, 204, 32);
+  for (const gy of [17, 24, 31, 38]) { c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(122, gy, 204, 1); }
+  c.fillStyle = 'rgba(255,255,255,0.06)'; for (let gx = 130; gx < 322; gx += 23) c.fillRect(gx, 10, 1, 32);
+  c.strokeStyle = '#2c1d12'; c.lineWidth = 2; c.strokeRect(123, 11, 202, 30);
+  let tfs = 24; c.font = '800 ' + tfs + 'px "Arial Black", Impact, sans-serif';
+  while (tfs > 12 && c.measureText('THIRSTY?').width > 176) { tfs--; c.font = '800 ' + tfs + 'px "Arial Black", Impact, sans-serif'; }
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillStyle = '#7a2f0c'; c.fillText('THIRSTY?', 224, 27);
+  c.save(); c.setLineDash([1.6, 3]); c.lineWidth = 2.4; c.strokeStyle = '#ffc95a'; c.strokeText('THIRSTY?', 224, 27); c.restore();
+  // chalkboard under the sign
+  c.fillStyle = '#2a1c12'; c.fillRect(148, 44, 152, 15);
+  c.fillStyle = '#26352c'; c.fillRect(150, 46, 148, 11);
+  c.fillStyle = '#f4f2e6'; c.font = '700 6px monospace'; c.fillText('BEER FROM EVERYWHERE', 224, 51.5);
+
+  // ---------------------------------------------------------------- checkout counter (x 8..12, row 3)
+  c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(258, 127, 156, 4);
+  c.fillStyle = '#6a4a34'; c.fillRect(256, 106, 160, 22);
+  for (let x = 256; x < 416; x += 10) {
+    c.fillStyle = (mhHash(x, 3) % 2) ? '#5c3f2b' : '#745238'; c.fillRect(x, 106, 9, 22);
+    c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(x + 9, 106, 1, 22);
+  }
+  c.fillStyle = '#c98a4a'; c.fillRect(254, 96, 164, 12);                              // butcher-block top
+  for (let x = 258; x < 416; x += 14) { c.fillStyle = 'rgba(120,70,20,0.35)'; c.fillRect(x, 96, 1, 12); }
+  c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(254, 96, 164, 1);
+  c.fillStyle = '#8a5a2b'; c.fillRect(254, 108, 164, 2);
+  // cash register + card reader
+  c.fillStyle = '#2a2d33'; c.fillRect(264, 84, 18, 13); c.fillStyle = '#6fb0c0'; c.fillRect(266, 86, 14, 6);
+  c.fillStyle = '#3a3e46'; c.fillRect(262, 92, 22, 6); c.fillStyle = '#d8d4c8'; for (let k = 0; k < 4; k++) c.fillRect(265 + k * 5, 94, 3, 2);
+  // sample pints + a stack of growlers (amber jugs with handles)
+  for (const gx of [296, 304]) { c.fillStyle = 'rgba(235,245,250,0.85)'; c.fillRect(gx, 88, 6, 9); c.fillStyle = '#e8a030'; c.fillRect(gx + 1, 90, 4, 6); c.fillStyle = '#fbf6e8'; c.fillRect(gx, 88, 6, 2); }
+  for (const gx of [376, 392, 404]) {
+    c.fillStyle = '#a9651c'; c.fillRect(gx, 80, 10, 17); c.fillRect(gx + 3, 76, 4, 5);
+    c.fillStyle = '#6a3a0c'; c.fillRect(gx + 2, 75, 6, 2);
+    c.strokeStyle = '#6a3a0c'; c.lineWidth = 1.4; c.beginPath(); c.arc(gx + 11.5, 85, 3.4, -1.3, 1.3); c.stroke();
+    c.fillStyle = '#f4ecd6'; c.fillRect(gx + 1.5, 86, 7, 5);
+    c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(gx + 1, 81, 2, 14);
+  }
+
+  // ---------------------------------------------------------------- shelving: wall runs + two aisle islands
+  let sd = 1;
+  for (let ty = 2; ty <= 8; ty++) bwShelfBay(c, TILE, ty * TILE, sd++);                // left wall
+  for (let ty = 3; ty <= 7; ty++) bwShelfBay(c, 4 * TILE, ty * TILE, sd++ + 20);       // island A
+  for (let ty = 5; ty <= 8; ty++) bwShelfBay(c, 8 * TILE, ty * TILE, sd++ + 40);       // island B
+  for (let ty = 5; ty <= 8; ty++) bwShelfBay(c, 12 * TILE, ty * TILE, sd++ + 60);      // right wall
+  bwHangSign(c, 48, 52, 'BELGIUM');
+  bwHangSign(c, 144, 84, 'GERMANY');
+  bwHangSign(c, 272, 148, 'MEXICO');
+  bwHangSign(c, 400, 148, 'JAPAN');
+
+  // ---------------------------------------------------------------- barrel + green beer-case display (10,6)(11,6)
+  c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(322, 222, 62, 4);
+  c.fillStyle = '#7a4a22'; c.beginPath(); c.ellipse(337, 214, 15, 9, 0, 0, Math.PI * 2); c.fill();              // barrel body
+  c.fillRect(322, 202, 30, 12);
+  c.fillStyle = '#9a6a38'; c.beginPath(); c.ellipse(337, 202, 15, 5, 0, 0, Math.PI * 2); c.fill();              // barrel top
+  c.fillStyle = '#3a2410'; c.beginPath(); c.ellipse(337, 202, 11, 3, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#3a3a3c'; c.fillRect(322, 206, 30, 2); c.fillRect(322, 216, 30, 2);                           // iron hoops
+  for (let k = 0; k < 4; k++) bwBottle(c, 328 + k * 5.5, 201, 5 + k * 3);
+  for (let i = 0; i < 3; i++) {                                                                                 // case stack
+    const cy = 214 - i * 9, cx = 357 + (i === 1 ? 2 : 0);
+    c.fillStyle = '#25873f'; c.fillRect(cx, cy, 26, 9);
+    c.fillStyle = '#3fb05a'; c.fillRect(cx, cy, 26, 2);
+    c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(cx + 25, cy, 1, 9);
+    c.fillStyle = '#f4f2ea'; c.fillRect(cx + 7, cy + 3, 12, 4);
+    c.fillStyle = '#c0392b'; c.fillRect(cx + 9, cy + 4, 8, 2);
+  }
+  c.fillStyle = '#b52a2a'; c.fillRect(361, 187, 22, 7); c.fillStyle = '#d84a4a'; c.fillRect(361, 187, 22, 2);   // red crate on top
+
+  // ---------------------------------------------------------------- front wall: white brick with windows (door gap at tile 6)
+  const fy = 9 * TILE;
+  for (const [x0, x1] of [[TILE, 6 * TILE], [7 * TILE, 13 * TILE]]) {
+    c.fillStyle = '#e6e2d8'; c.fillRect(x0, fy, x1 - x0, TILE);
+    c.fillStyle = '#cfcbc0'; c.fillRect(x0, fy, x1 - x0, 2);
+    c.fillStyle = '#202226'; c.fillRect(x0 + 8, fy + 4, x1 - x0 - 16, 22);
+    const gg = c.createLinearGradient(0, fy + 5, 0, fy + 25); gg.addColorStop(0, '#8fb4c4'); gg.addColorStop(1, '#d6e6ea');
+    c.fillStyle = gg; c.fillRect(x0 + 10, fy + 6, x1 - x0 - 20, 18);
+    c.fillStyle = '#202226'; c.fillRect((x0 + x1) / 2 - 1, fy + 4, 3, 22);
+    c.fillStyle = '#6e6b66'; c.fillRect(x0, fy + 28, x1 - x0, 4);
+  }
+  // neon seen from the inside of the windows
+  c.fillStyle = '#5a7bff'; c.fillRect(70, fy + 11, 24, 2); c.fillRect(70, fy + 17, 24, 2);
+  c.fillStyle = '#ff6a4a'; c.beginPath(); c.arc(330, fy + 15, 5, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#6e6b66'; c.fillRect(6 * TILE - 3, fy, 3, TILE); c.fillRect(7 * TILE, fy, 3, TILE);
+}
+
+let _bwInteriorCache = null;
+function drawBeverageWarehouseInterior(time) {
+  if (!_bwInteriorCache) {
+    const cv = document.createElement('canvas');
+    cv.width = 14 * TILE; cv.height = 10 * TILE;
+    paintBeverageWarehouseInterior(cv.getContext('2d'));
+    _bwInteriorCache = cv;
+  }
+  ctx.drawImage(_bwInteriorCache, 0, 0);
+  // fluorescent tubes along the ceiling (one flickers now and then) + a soft spill of cold light
+  [48, 178, 308].forEach((x0, i) => {
+    const f = (Math.sin(time * 0.9 + i * 5.1) > 0.985) ? 0.55 : 1;
+    ctx.fillStyle = 'rgba(235,245,255,' + (0.92 * f).toFixed(3) + ')'; ctx.fillRect(x0, 3, 92, 3);
+    ctx.fillStyle = 'rgba(220,235,255,' + (0.06 * f).toFixed(3) + ')';
+    ctx.beginPath(); ctx.moveTo(x0, 6); ctx.lineTo(x0 + 92, 6); ctx.lineTo(x0 + 120, 62); ctx.lineTo(x0 - 28, 62); ctx.closePath(); ctx.fill();
+  });
+  // marquee: the bulbs glow and a chase of sparkles runs along the sign's border
+  const a = 0.5 + 0.5 * Math.sin(time * 2.2);
+  ctx.fillStyle = 'rgba(255,170,70,' + (0.10 + 0.07 * a).toFixed(3) + ')';
+  ctx.beginPath(); ctx.ellipse(224, 27, 100, 20, 0, 0, Math.PI * 2); ctx.fill();
+  for (let i = 0; i < 12; i++) {
+    const sx = 126 + (((time * 46) + i * 17) % 196), top = i % 2 === 0;
+    ctx.fillStyle = 'rgba(255,230,150,' + (0.5 + 0.5 * Math.sin(time * 6 + i)).toFixed(3) + ')';
+    ctx.fillRect(Math.round(sx), top ? 12 : 39, 2, 2);
+  }
+  // cold glow from the glass-door coolers
+  ctx.fillStyle = 'rgba(190,230,255,' + (0.05 + 0.02 * a).toFixed(3) + ')';
+  ctx.fillRect(34, 12, 80, 48); ctx.fillRect(334, 12, 80, 48);
+}
+
 // ---------------------------------------------------------------- MISERY LOVES CO. (Winooski, LEVEL 4)
 // A rustic-chic comfort-food + craft-cocktail spot (Winooski Market, est. 2012), on the
 // north-east lawn next to BELLEVUE (see makeWinooski()). Outside, modeled on photos of the
@@ -34103,6 +35386,8 @@ function drawBuildings(map) {
     const isBellevue = b.name === 'BELLEVUE';
     const isMiseryLoves = b.name === 'MISERY LOVES CO.';
     const isSneakers = b.name === 'SNEAKERS BISTRO';
+    const isGoldenHour = b.name === 'GOLDEN HOUR';
+    const isBeverageWarehouse = b.name === 'BEVERAGE WAREHOUSE';
 
     // wall/roof shade colors: each building's wall/roof color never changes,
     // so compute these once per building and cache them on the building
@@ -34172,7 +35457,7 @@ function drawBuildings(map) {
 
     // (ECHO CENTER skips these too: its two big aquarium windows are painted
     // by drawEchoCenterExterior() instead.)
-    if (!isDeli && !isBurlington && !isJohnnysPool && !isVillageScoop && !isEchoCenter && !isAutumnRecords && !isTinyThai && !isMonkeyHouse && !isBellevue && !isMiseryLoves && !isSneakers) {
+    if (!isDeli && !isBurlington && !isJohnnysPool && !isVillageScoop && !isEchoCenter && !isAutumnRecords && !isTinyThai && !isMonkeyHouse && !isBellevue && !isMiseryLoves && !isSneakers && !isGoldenHour && !isBeverageWarehouse) {
       for (let i = 0; i < b.w; i++) {
         if (b.x + i === b.doorX) continue;
         if (i === 0 || i === b.w - 1) continue;
@@ -34274,7 +35559,7 @@ function drawBuildings(map) {
       drawOpenDoorSign(dx, py + h - TILE);
       // "3rd Thursdays" hip-hop night flyer taped in a window near the entrance
       drawThursPoster(dx - TILE - 4, py + h - TILE - 18);
-    } else if (isAutumnRecords || isTinyThai || isMonkeyHouse || isBellevue || isMiseryLoves || isSneakers) {
+    } else if (isAutumnRecords || isTinyThai || isMonkeyHouse || isBellevue || isMiseryLoves || isSneakers || isGoldenHour || isBeverageWarehouse) {
       // door is part of the storefront painted by drawAutumnRecordsExterior()/drawTinyThaiExterior()
     } else if (isDeli) {
       // No separate wood door here — the deli's whole front is one glass
@@ -34365,7 +35650,15 @@ function drawBuildings(map) {
     // Draw building name sign (skip for Nectar's - uses neon sign instead).
     // High-contrast dark plate + bright bold lettering, auto-sized to the
     // name so it always fits cleanly and never overlaps or crowds.
-    if (isSneakers) {
+    if (isBeverageWarehouse) {
+      // whole white-brick storefront (name sign, green awning, neon windows, door, daylilies) in one cached blit, then the live neon glow
+      drawBeverageWarehouseExterior(px, py, w, h, dx);
+      drawBeverageWarehouseLive(px, py, w, h);
+    } else if (isGoldenHour) {
+      // whole pink storefront (barn-lit sign band, windows, open door) in one cached blit, then the live lamp glow
+      drawGoldenHourExterior(px, py, w, h, dx);
+      drawGoldenHourLive(px, py, w, h);
+    } else if (isSneakers) {
       // whole sky-blue storefront (name board, neon window, brick pillar, door) in one cached blit, then the live neon glow
       drawSneakersExterior(px, py, w, h, dx);
       drawSneakersLive(px, py, w, h);
@@ -41837,7 +43130,7 @@ function drawDeliSeatingArea() {
 }
 
 // ---------------------------------------------------------------- keeper
-const KEEPER_HAIR = { DEE: '#5a2e1c', ROSIE: '#c8c0b0', ZEKE: '#241a12', JADE: '#141014', TONY: '#2a2018', LANNY: '#3a1a5c', MITCH: '#5a3a1c', BIGDOG: '#3a2a1c', EDNA: '#a8a8a8', OPHELIA: '#8a5a2e' };
+const KEEPER_HAIR = { DEE: '#5a2e1c', ROSIE: '#c8c0b0', ZEKE: '#241a12', JADE: '#141014', TONY: '#2a2018', LANNY: '#3a1a5c', MITCH: '#5a3a1c', BIGDOG: '#3a2a1c', EDNA: '#a8a8a8', OPHELIA: '#8a5a2e', GOLDIE: '#8a4a26' };
 
 // Optional per-keeper artwork. Drop a PNG at assets/keepers/<name>.png (any
 // size — it's scaled to KEEPER_SPR_H, feet anchored at the same floor line
