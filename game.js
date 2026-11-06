@@ -794,39 +794,47 @@ const WORLD_DEFS = {
   },
   // The Winooski -- LEVEL 4. UNDER CONSTRUCTION: `locked: true` keeps it out of the
   // Crate tabs and the level numbering, and no portal leads to it yet (see
-  // makeWinooski()). The five records below are PLACEHOLDERS so the HUD/Crate/music
-  // code has something valid to read once it's unlocked -- rename them and write the
-  // real flavor text/beat when the level's buildings go in.
+  // makeWinooski()). Its five records (Rotary Rumble, Falls Low, Brick & Brass,
+  // Underpass Cypher, Amber Hour) have final info and procedural cover art
+  // (see drawAlbumArt()); where each one is hidden is wired up as the buildings go in.
   winooski: {
     name: 'Winooski',
     locked: true,
     records: {
-      winDrums: { title: 'Winooski Record 1', artist: 'TBD', year: '19??',
+      // Record 1 (drums) -- the rotary: a break that circles back on itself.
+      winDrums: { title: 'Rotary Rumble', artist: 'The Roundabout Rhythm Section', year: '1991',
                   sample: 'Drum Loop', layer: 'drums', color: '#c9792b', pad: 'DRM',
-                  flavor: 'Placeholder -- Winooski record 1 (drums).' },
-      winBass:  { title: 'Winooski Record 2', artist: 'TBD', year: '19??',
+                  flavor: 'Tracked in a mill basement by guys who argued about which exit to take. The break circles back on itself like traffic in the rotary: no exit, just groove.' },
+      // Record 2 (bass) -- the river and the falls.
+      winBass:  { title: 'Falls Low', artist: 'Mill Town Sub Collective', year: '1986',
                   sample: 'Bassline', layer: 'bass', color: '#3f7fb0', pad: 'BAS',
-                  flavor: 'Placeholder -- Winooski record 2 (bass).' },
-      winHorns: { title: 'Winooski Record 3', artist: 'TBD', year: '19??',
+                  flavor: 'Mic\'d up beside the Winooski River falls at 3 a.m. The low end rolls over the dam like water, and the sleeve is still a little damp.' },
+      // Record 3 (horns) -- the old brick mills.
+      winHorns: { title: 'Brick & Brass', artist: 'The Woolen Mill Horns', year: '1976',
                   sample: 'Horn Stab', layer: 'horns', color: '#b0453f', pad: 'HRN',
-                  flavor: 'Placeholder -- Winooski record 3 (horns).' },
-      winVox:   { title: 'Winooski Record 4', artist: 'TBD', year: '19??',
+                  flavor: 'A horn section crammed into a brick stairwell for the echo. Every stab bounces off the old mill walls and comes back warm.' },
+      // Record 4 (vocals) -- the graffiti spot under the highway overpass.
+      winVox:   { title: 'Underpass Cypher', artist: 'Chalk Dust & The Overpass Choir', year: '1995',
                   sample: 'Vocal Chop', layer: 'vox', color: '#7a5fb0', pad: 'VOX',
-                  flavor: 'Placeholder -- Winooski record 4 (vocals).' },
-      winLead:  { title: 'Winooski Record 5', artist: 'TBD', year: '19??',
+                  flavor: 'Cut live under the highway overpass, with spray-can rattle for hi-hats and trucks overhead for thunder. Every voice bounces off concrete twice.' },
+      // Record 5 (lead) -- golden hour over the rotary park stage.
+      winLead:  { title: 'Amber Hour', artist: 'Maple & The Lamplighters', year: '1983',
                   sample: 'Lead Melody', layer: 'lead', color: '#d8b640', pad: 'LD',
-                  flavor: 'Placeholder -- Winooski record 5 (lead).' },
+                  flavor: 'A single glowing synth line, pressed for one autumn night of string lights and a park stage. It climbs like the last warm light, then settles back down.' },
     },
     padOrder: ['winDrums', 'winBass', 'winHorns', 'winVox', 'winLead'],
-    // Placeholder beat: 96 BPM, D-minor flavored, its own kick pattern and waveforms so
-    // it doesn't just sound like another world's. Tune freely.
+    // Winooski's beat: 96 BPM, D-minor, tuned to sound unlike town / swamp / skatepark. Its own
+    // syncopated kick (0,5,8,13), a late snare on step 11, an open hat on step 12, a sub-heavy
+    // triangle bass with its own off-beat rhythm, mellow triangle horn stabs on a Dm chord
+    // (D-F-A), a reedy sawtooth vocal chop on F/D then G/E, and a soft sine lead that climbs
+    // up the D-minor scale and falls back (every other world's lead descends or loops differently).
     beat: {
       bpm: 96,
-      kickSteps: [0, 5, 8, 13], snareSteps: [4, 12], hatOpenStep: 10,
-      bassWave: 'triangle', bassPattern: [[0,38,2],[3,38,1],[6,41,2],[8,43,2],[11,41,1],[14,38,2]],
-      hornWave: 'sawtooth', hornSteps: [3, 7, 11], hornNotes: [62, 65, 69],
-      voxWave: 'sine',      voxSteps: [0, 8], voxNotesEven: [69, 67], voxNotesOdd: [65, 64],
-      leadWave: 'square',   leadNotes: [74, 72, 69, 65, 69, 72, 74, 77],
+      kickSteps: [0, 5, 8, 13], snareSteps: [4, 11], hatOpenStep: 12,
+      bassWave: 'triangle', bassPattern: [[0,38,2],[2,38,1],[5,41,2],[8,43,1],[10,45,2],[13,41,1],[15,38,1]],
+      hornWave: 'triangle', hornSteps: [3, 7, 11], hornNotes: [62, 65, 69],
+      voxWave: 'sawtooth',  voxSteps: [0, 8], voxNotesEven: [65, 62], voxNotesOdd: [67, 64],
+      leadWave: 'sine',     leadNotes: [69, 72, 74, 77, 74, 72, 69, 65],
     },
   },
   // ADD MORE WORLDS HERE, e.g.:
@@ -1105,6 +1113,90 @@ const SOUL_SHACK_JUNK = [
   { line: 'Loose amethyst clusters, a tangle of rose quartz pendants, and a dog-eared tarot deck missing the Tower card.',
     reply: 'Great stuff for a reading, useless for the sampler. Keep digging.' },
 ];
+
+// WINOOSKI (LEVEL 4) dig crates -- every crate on the Winooski map, inside and out, that
+// isn't hiding one of the level's 5 records is a themed dead end. Each junk crate carries
+// { winArea, winSeed }: winArea picks one of the lists below (one per building, plus
+// 'outdoor' for the street/lawn/riverside crates) and winSeed is the 1:1 pairing inside that
+// list (see the c.winArea branch in doInteract()). The seed travels WITH the crate when
+// shuffleRecordCrates() moves the real record around, so the lines are deliberately generic
+// to their building / to the outdoors -- they never name a specific spot.
+const WINOOSKI_JUNK = {
+  autumn: [
+    { line: 'A bin of "weird wall" finds: a theremin demo LP, a polka record sung entirely in whistling, and a flexi-disc that came free inside a cereal box.',
+      reply: 'Greg was right -- odd, interesting, and not what you\'re hunting. Keep digging.' },
+    { line: 'Sun-faded jazz LPs in plastic sleeves, each with a price sticker in tidy handwriting and a tiny leaf doodled in the corner.',
+      reply: 'Smooth as butter, but not one of the five.' },
+    { line: 'Local demo cassettes labeled in Sharpie: "Basement Take 3," "Don\'t Play This One," and a tape that just says "Winooski??"',
+      reply: 'Tempting, but it\'s a record you\'re after. Keep going.' },
+    { line: 'Deep soul and hard-bop 7-inches with the center holes punched slightly wrong, so they wobble on a turntable like tiny UFOs.',
+      reply: 'Wobbly and wonderful. Not your record, though.' },
+    { line: 'Bargain-bin rock reissues, a handful of Vermont folk 45s, and a Christmas record in October. The tag says "seasonal."',
+      reply: 'Fun crate. Still not the one. Keep flipping.' },
+  ],
+  bellevue: [
+    { line: 'Skate-punk 7-inches, a sticker-bombed sleeve of old hardcore, and a piece of flash art someone used as a bookmark.',
+      reply: 'Cool crate, wrong record. Keep digging.' },
+  ],
+  monkey: [
+    { line: 'Road-worn 12-inches left behind by touring bands: a hand-written set list taped inside each sleeve and a beer ring on every cover.',
+      reply: 'Smells like a great show, but it isn\'t the record you need.' },
+  ],
+  thai: [
+    { line: 'Thai luk thung and \'70s funk 45s, the labels half in Thai script, shipped over by somebody\'s cousin.',
+      reply: 'Groovy, but no sample for you in here.' },
+    { line: 'A rice-sack crate of cassette mixes labeled in three different handwritings: "study," "cooking," and "do not eat while listening."',
+      reply: 'Great vibe, wrong format. Keep digging.' },
+  ],
+  misery: [
+    { line: 'Old country 45s and a few 78s kept back for the closing-time playlist, every sleeve wearing a ring from a very good cocktail.',
+      reply: 'Nice finds, but not your record. Keep digging.' },
+    { line: 'Church-supper cookbooks wedged in with the vinyl, plus a record titled "Music To Bake By."',
+      reply: 'Now you\'re hungry. Still not the record you\'re after.' },
+  ],
+  sneakers: [
+    { line: 'Sunday-morning soul, mellow bossa nova, and a heavily scratched "Eggs & Jazz" compilation.',
+      reply: 'Perfect for a lazy brunch, but not what you came for.' },
+    { line: 'Retro girl-group 45s in a mint-green milk crate, every sleeve faintly smelling of maple syrup.',
+      reply: 'Sweet, but not the one. Keep flipping.' },
+  ],
+  golden: [
+    { line: 'Art-print bins full of record-sleeve posters, enamel pins shaped like turntables, and a plush vinyl with googly eyes.',
+      reply: 'Adorable, but not what you\'re digging for.' },
+    { line: 'Novelty records from independent makers: a kazoo symphony, an album of nothing but ocean sounds, and a mix labeled "Golden Hour."',
+      reply: 'Charming. Still not your record. Keep digging.' },
+  ],
+  warehouse: [
+    { line: 'A beer-case crate of drinking-song records: polka, sea shanties, and one that is just a bottle opening for sixty minutes.',
+      reply: 'Cheers, but no luck. Keep digging.' },
+    { line: 'Brass-band and oompah LPs shipped in with the imports: Czech, Bavarian, and one by a Belgian monastery choir.',
+      reply: 'Cheers again. Still not your record.' },
+  ],
+  outdoor: [
+    { line: 'A milk crate left out on the curb: library-sale country records, a 45 with a coffee stain, and a "FREE" sticker slapped across the top.',
+      reply: 'Free is a great price. Not what you\'re hunting, though.' },
+    { line: 'A crate of road-trip mixtapes with a half-eaten maple creemee sealed in a zip bag. You leave the creemee.',
+      reply: 'Not the record. Maybe lunch.' },
+    { line: 'Disco 12-inches in a water-warped crate, river humidity rippling every sleeve like a tiny wave.',
+      reply: 'Groovy and soggy. Not what you need.' },
+    { line: 'Beat-up funk 45s, and a sticker on the crate that reads "DIG RESPONSIBLY." You\'re trying.',
+      reply: 'Good advice. Not your record.' },
+    { line: 'Vintage kids\' records: "Songs About Trucks," "Learn Your Numbers With Polka," and one that is just a very enthusiastic duck.',
+      reply: 'Educational. Not it.' },
+    { line: 'A winter-ready stack of holiday records wrapped in grocery bags, plus one pair of mismatched mittens.',
+      reply: 'Cozy, but not what you\'re looking for.' },
+    { line: 'Demo CDs with hand-drawn covers and a flyer for a show that happened three summers ago.',
+      reply: 'Respect the grind. Not your record.' },
+    { line: 'Reggae and dub 12-inches, sleeves taped together with painter\'s tape and left by a picnic table.',
+      reply: 'Heavy bass, but not the sample you need.' },
+    { line: 'Broken-in country LPs, a cracked jazz record, and a note: "Left for whoever needs it. -A friend."',
+      reply: 'Kind of sweet. Still not your record.' },
+    { line: 'Skate-video soundtracks and punk 7-inches, boardslide scuffs all down the side of the crate.',
+      reply: 'Rad, but not the one.' },
+    { line: 'A shoebox of mix CDs labeled by neighborhood, and one lonely vinyl sleeve with nothing inside.',
+      reply: 'You hoped it was a clue. It wasn\'t. Keep digging.' },
+  ],
+};
 
 // Fake front-page stories for the town's newspaper stands. Onion/Daily Show
 // style Vermont satire — one random headline+body pops up each time a stand
@@ -13409,12 +13501,38 @@ function makeWinooski() {
   }
   const deckSamples = deckPtsA.concat(deckPtsB).map(([x, y]) => [x * PX, y * PX]);
 
+  // --- OUTDOOR DIG CRATES -- 13 crates scattered around the map (rotary park, both lawns,
+  // the roadsides, the mill and the underpass clearing). TWO of them hold Winooski records
+  // (winVox and winLead); the other 11 are themed dead ends (WINOOSKI_JUNK.outdoor, paired 1:1
+  // by winSeed). Every spot sits on open grass / concrete, clear of roads, buildings, lamps and
+  // paths (checked with a flood fill from the spawn: placing them never seals off a tile).
+  // Which two crates hold the records is reshuffled every new game by shuffleRecordCrates() via
+  // `_crateKeys`, exactly like the swamp's boardwalk crates.
+  const crates = {};
+  const winCrateDefs = [
+    [11, 12, { record: 'winVox' }],               // rotary park, west side
+    [24, 18, { winArea: 'outdoor', winSeed: 0 }],  // rotary park, east side
+    [22, 21, { winArea: 'outdoor', winSeed: 1 }],  // south of the park, by the bridge approach
+    [10, 27, { winArea: 'outdoor', winSeed: 2 }],  // west of the bridge, above the river
+    [9, 30,  { winArea: 'outdoor', winSeed: 3 }],  // beside TINY THAI
+    [10, 2,  { winArea: 'outdoor', winSeed: 4 }],  // north-west lawn, past THE MONKEY HOUSE
+    [35, 3,  { winArea: 'outdoor', winSeed: 5 }],  // north-east lawn, west of BELLEVUE
+    [47, 5,  { winArea: 'outdoor', winSeed: 6 }],  // between BELLEVUE and MISERY LOVES
+    [58, 6,  { winArea: 'outdoor', winSeed: 7 }],  // far north-east corner
+    [34, 21, { winArea: 'outdoor', winSeed: 8 }],  // east lawn, south of the east road
+    [38, 24, { winArea: 'outdoor', winSeed: 9 }],  // east lawn, above the mill
+    [45, 28, { record: 'winLead' }],               // east of the mill, by the walkway
+    [56, 37, { winArea: 'outdoor', winSeed: 10 }], // concrete clearing under the highway decks
+  ];
+  for (const [cx, cy, d] of winCrateDefs) { g[cy][cx] = 'c'; crates[key(cx, cy)] = d; }
+  const crateKeys = winCrateDefs.map(([x, y]) => key(x, y));
+
   const waterTiles = [];
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (g[y][x] === '~') waterTiles.push({ x, y });
 
   return {
     id: 'winooski', world: 'winooski', w: W, h: H, grid: g, outside: true,
-    buildings: winBuildings, doors: {}, crates: {}, npcs: [], riverTiles: waterTiles, minigames: [],
+    buildings: winBuildings, doors: {}, crates, _crateKeys: crateKeys, npcs: [], riverTiles: waterTiles, minigames: [],
     autumnRecordsDoor: { x: AR_DOOR_X, y: AR_DOOR_Y },
     tinyThaiDoor: { x: TT_DOOR_X, y: TT_DOOR_Y },
     monkeyHouseDoor: { x: MH_DOOR_X, y: MH_DOOR_Y },
@@ -14753,8 +14871,12 @@ const shops = {
         'Winooski\'s got a ton of talent in it, and I\'m all about the local artists and musicians. Got a demo or a tape? Leave one with me.',
         'When I\'m not behind this counter, I\'m making beats. Producer name: Asterisk. Sample the crates, flip it into something new.',
         'Best way to support the scene: buy a record, catch a show, tell a friend. Cold outside, warm in here, and something good is always on the turntable.',
-      ] },
-    crates: [ { junkSeed: 0 }, { junkSeed: 1 }, { junkSeed: 2 }, { junkSeed: 3 } ],
+      ],
+      foundLine: 'You dug that one out of MY bins? Told you -- if it\'s obscure, odd, or just plain weird, it\'s in here somewhere. Take it and flip it into something new.' },
+    // 6 crates (the shop's default spots); one hides a Winooski record, the other five are
+    // themed junk (WINOOSKI_JUNK.autumn). shuffleRecordCrates() moves the real one each game.
+    crates: [ { record: 'winDrums' }, { winArea: 'autumn', winSeed: 0 }, { winArea: 'autumn', winSeed: 1 },
+              { winArea: 'autumn', winSeed: 2 }, { winArea: 'autumn', winSeed: 3 }, { winArea: 'autumn', winSeed: 4 } ],
   }),
   // TINY THAI -- a little Thai restaurant on the Winooski east lawn (see
   // makeWinooski()). `world: 'winooski'` ties it to that level. `tinyThai: true`
@@ -14765,7 +14887,7 @@ const shops = {
   // up: blockTiles = drinks cooler (1,2)(1,3), rice sacks (1,8), bamboo (12,8);
   // extraTables = two 2-tile dining tables at (3,6)(4,6) and (8,6)(9,6) -- all
   // clear of the counter (row 3), the cook (6,2), the door (6,9) and the spawn
-  // (6.5,7.5). No crates: it's a restaurant, nothing to dig. The keeper is KEV,
+  // (6.5,7.5). Dig crates: see crateSpots below. The keeper is KEV,
   // a St. Michael's College student learning the Winooski scene by painting
   // around town with his buddies (see keeperImgs.KEV).
   tinythai: makeShop('tinythai', {
@@ -14786,7 +14908,8 @@ const shops = {
         'Thai iced tea is on the counter. Sweet, creamy, orange as a Vermont maple in October.',
         'Only a few tables, but nobody gets rushed. Eat slow. Good food needs company.',
       ] },
-    crates: [],
+    crateSpots: [[12, 5], [1, 6]],
+    crates: [ { winArea: 'thai', winSeed: 0 }, { winArea: 'thai', winSeed: 1 } ],
   }),
   // THE MONKEY HOUSE -- bar/restaurant + live-music venue on the Winooski
   // northwest lawn (see makeWinooski()). `monkeyHouse: true` gets its own
@@ -14798,7 +14921,7 @@ const shops = {
   // [amp, guitar stand, drum kit x2, keyboard x2, amp] + pool table (2..4,6..7);
   // extraTables = gig tables (9,6)(10,6) and a small round one at (12,6) -- all
   // clear of the door (6,9) and spawn (6.5,7.5). The stage front row (y=3) is
-  // walkable, so you can hop up and stand by the mic. No crates: nothing to dig.
+  // walkable, so you can hop up and stand by the mic. Dig crates: see crateSpots below.
   // The bartender is JAKE, a vegan punk from Winooski (see keeperImgs.JAKE).
   monkeyhouse: makeShop('monkeyhouse', {
     world: 'winooski',
@@ -14822,8 +14945,10 @@ const shops = {
         'Cheap beer, local taps, good people. Support the scene: buy a drink, catch a set, tell a friend.',
         'The monkey over the door? Don\'t ask. Everybody asks. He was here before I was.',
         'That\'s The Aztext up on stage -- Pro Knows Music and Learic. VT hip hop legends, local royalty. Stay for the whole set.',
-      ] },
-    crates: [],
+      ],
+      foundLine: 'You found one in the back crates? Touring bands leave all kinds of stuff behind. Take it -- and bring it to the stage.' },
+    crateSpots: [[1, 5], [12, 8]],
+    crates: [ { record: 'winHorns' }, { winArea: 'monkey', winSeed: 0 } ],
   }),
   // BELLEVUE TATTOO & PIERCING -- the tattoo + piercing studio SK1 works at, on the
   // Winooski north-east lawn (see makeWinooski()). `bellevue: true` gets its own
@@ -14835,7 +14960,7 @@ const shops = {
   // equipment cart (12,2), couch (1,5)(1,6), record shelf (1,7)(1,8), sticker cabinet
   // (5,5)(5,6), steel trash can (12,4); the desk is the counter row y=3 over x 8..12 with
   // SK1 behind it at (10,2). All clear of the door (6,9) and spawn (6.5,7.5).
-  // No crates: Winooski's records are still placeholders.
+  // Dig crates: see crateSpots below (one holds a Winooski record).
   bellevue: makeShop('bellevue', {
     world: 'winooski',
     floor: '#8f9498', plank: '#80858a', wallColor: '#1f9d93',
@@ -14856,8 +14981,10 @@ const shops = {
         'First tattoo? Eat something, drink water, bring a friend. Piercing? Same rules.',
         'The Anthill Collective has roots all over this scene. Skaters, printers, emcees, now ink. It all connects.',
         'Turntable by the window is always spinning something. Dig the shelf if you want a record for the wait.',
-      ] },
-    crates: [],
+      ],
+      foundLine: 'Ha, you found one by the turntable. Good ear. Keep it -- it\'s better in your crate than in my waiting room.' },
+    crateSpots: [[2, 8], [12, 6]],
+    crates: [ { record: 'winBass' }, { winArea: 'bellevue', winSeed: 0 } ],
   }),
   // MISERY LOVES CO. -- rustic-chic comfort-food + craft-cocktail spot (Winooski Market),
   // on the Winooski north-east lawn (see makeWinooski()). `miseryLoves: true` gets its own
@@ -14867,7 +14994,7 @@ const shops = {
   // row 1 is walled off (back wall); blockTiles = pantry shelf (1,2)(1,3), back-bar cabinet
   // (8,2)(9,2), potted topiary (12,8); the bar is the counter row y=3 over x 8..12 with the
   // bartender at (10,2); extraTables = four bistro tables (3,5)(3,7)(10,6)(10,8). All clear
-  // of the door (6,9) and spawn (6.5,7.5). No crates: it's a restaurant, nothing to dig.
+  // of the door (6,9) and spawn (6.5,7.5). Dig crates: see crateSpots below.
   // CHRISTIE runs the place from behind the bar at (10,2) -- see
   // keeperImgs.CHRISTIE / drawKeeper()'s `cook` motion.
   miseryloves: makeShop('miseryloves', {
@@ -14891,7 +15018,8 @@ const shops = {
         'Fun fact: the market next door and this place are the same family. Good food runs in the block.',
         'That chalkboard changes more than the weather does. If a special sells out, it\'s gone. Peace, love, and fresh bread.',
       ] },
-    crates: [],
+    crateSpots: [[12, 5], [1, 6]],
+    crates: [ { winArea: 'misery', winSeed: 0 }, { winArea: 'misery', winSeed: 1 } ],
   }),
   // SNEAKERS BISTRO -- the famous local brunch spot, on the far left of the Winooski map
   // (see makeWinooski()). `sneakers: true` gets its own interior (drawSneakersInterior): a
@@ -14924,7 +15052,8 @@ const shops = {
         'Doors open at 7 and we close up at 3, every single day. Come early, the line out the door is real.',
         'Patio\'s open when the weather behaves. Picnic tables, brick underfoot, an orange spritz in your hand. Hard to beat.',
       ] },
-    crates: [],
+    crateSpots: [[12, 5], [12, 7]],
+    crates: [ { winArea: 'sneakers', winSeed: 0 }, { winArea: 'sneakers', winSeed: 1 } ],
   }),
   // GOLDEN HOUR -- a cute independent gift co. selling art and all kinds of unique, fun gifts, on
   // the Winooski east lawn (see makeWinooski()). `goldenHour: true` gets its own interior
@@ -14936,8 +15065,8 @@ const shops = {
   // shelf (1,3)(1,4), wire card rack (1,6)(1,7), plant stand (1,8), plush shelf (12,3)(12,4),
   // art-print bins (12,6)(12,7), fiddle-leaf fig (12,8); the counter is the row y=3 over x 4..9
   // with the shopkeeper behind it at (6,2); extraTables = round glass display (6,5)(7,5) + two
-  // small gift tables (3,5)(10,5). All clear of the door (6,9) and spawn (6.5,7.5). No crates:
-  // it's a gift shop, nothing to dig.
+  // small gift tables (3,5)(10,5). All clear of the door (6,9) and spawn (6.5,7.5). Dig crates:
+  // see crateSpots below.
   goldenhour: makeShop('goldenhour', {
     world: 'winooski',
     floor: '#d8ac72', plank: '#b98a52', wallColor: '#f4a3c3',
@@ -14958,7 +15087,8 @@ const shops = {
         'Fun fact: the best time to shop here is golden hour, when the sun pours in and everything glows.',
         'I\'ll wrap it up pretty for you. Tissue paper pom-poms included.',
       ] },
-    crates: [],
+    crateSpots: [[2, 8], [11, 8]],
+    crates: [ { winArea: 'golden', winSeed: 0 }, { winArea: 'golden', winSeed: 1 } ],
   }),
   // BEVERAGE WAREHOUSE -- a beer lover's dream come true: a massive selection of beers from all
   // around the world, on the far right of the Winooski map (see makeWinooski()).
@@ -14971,7 +15101,7 @@ const shops = {
   // (12,5)..(12,8); the counter is the row y=3 over x 8..12 with the clerk behind it at (10,2);
   // extraTables = barrel + beer-case display (10,6)(11,6). Row 4 stays open in front of the
   // counter and every aisle connects to it; all clear of the door (6,9) and spawn (6.5,7.5).
-  // No crates: it's a bottle shop, nothing to dig.
+  // Dig crates: see crateSpots below.
   beveragewarehouse: makeShop('beveragewarehouse', {
     world: 'winooski',
     floor: '#a39d94', plank: '#8f897f', wallColor: '#e6e2d8',
@@ -14996,7 +15126,8 @@ const shops = {
         'Can\'t decide? Tell me what you like in a beer and I\'ll point you somewhere you\'ve never been.',
         'Growlers get filled right here at the counter. Bring it back empty and we\'ll fill it again.',
       ] },
-    crates: [],
+    crateSpots: [[2, 8], [11, 8]],
+    crates: [ { winArea: 'warehouse', winSeed: 0 }, { winArea: 'warehouse', winSeed: 1 } ],
   }),
   // CB PRINTS -- the skatepark's fourth building: a small, artsy independent
   // screen printing shop owned and run by BONTA, the master screen printer
@@ -16396,6 +16527,12 @@ function doInteract() {
     } else if (c.talentSeed !== undefined) {
       const tlj = TALENT_JUNK[c.talentSeed % TALENT_JUNK.length];
       dialog = { name: 'CRATE', lines: [tlj.line, tlj.reply], i: 0 };
+      state = 'dialog';
+    } else if (c.winArea !== undefined) {
+      // WINOOSKI: the crate's building (or 'outdoor') picks the list, its seed picks the line
+      const wl = WINOOSKI_JUNK[c.winArea] || WINOOSKI_JUNK.outdoor;
+      const wj = wl[c.winSeed % wl.length];
+      dialog = { name: 'CRATE', lines: [wj.line, wj.reply], i: 0 };
       state = 'dialog';
     } else if (c.cbSeed !== undefined) {
       // CB PRINTS: left-hand crate (x < 7) is hip hop, right-hand is reggae
@@ -44581,6 +44718,119 @@ function drawAlbumArt(x, y, s, r) {
       }
       break;
     }
+    case 'Rotary Rumble': {
+      // top-down Winooski rotary: ring road, four spokes, grass park in the middle
+      ctx.fillStyle = '#7a3f12'; ctx.fillRect(x, y, s, s);
+      ctx.fillStyle = '#2a2420';
+      ctx.fillRect(cx - 9, y, 18, s); ctx.fillRect(x, cy - 9, s, 18);
+      ctx.beginPath(); ctx.arc(cx, cy, s * 0.34, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#4f8a3a';
+      ctx.beginPath(); ctx.arc(cx, cy, s * 0.2, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#e8c860'; ctx.lineWidth = 1.5; ctx.setLineDash([5, 5]);
+      ctx.beginPath(); ctx.arc(cx, cy, s * 0.27, 0, Math.PI * 2); ctx.stroke();
+      ctx.setLineDash([]);
+      const carCols = ['#d94f2b', '#f4ecd8', '#3f7fb0', '#e8c860', '#c23a3a'];
+      for (let i = 0; i < 5; i++) {
+        const ang = i * 1.26 + 0.4;
+        ctx.fillStyle = carCols[i];
+        ctx.fillRect(cx + Math.cos(ang) * s * 0.27 - 4, cy + Math.sin(ang) * s * 0.27 - 3, 8, 6);
+      }
+      ctx.fillStyle = '#f4ecd8'; ctx.beginPath(); ctx.arc(cx, cy, 6, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#7a3f12'; ctx.beginPath(); ctx.arc(cx, cy, 2.5, 0, Math.PI * 2); ctx.fill();
+      break;
+    }
+    case 'Falls Low': {
+      // moonlit river pouring over a dam, ripples below
+      const g = ctx.createLinearGradient(x, y, x, y + s);
+      g.addColorStop(0, '#0c1a3a'); g.addColorStop(1, '#2a6a9a');
+      ctx.fillStyle = g; ctx.fillRect(x, y, s, s);
+      ctx.fillStyle = '#f4ecd8';
+      for (let i = 0; i < 20; i++) ctx.fillRect(x + rng() * s, y + rng() * s * 0.35, 1, 1);
+      ctx.beginPath(); ctx.arc(x + s * 0.76, y + s * 0.2, s * 0.08, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#16202e'; ctx.fillRect(x, y + s * 0.42, s, s * 0.07);
+      ctx.strokeStyle = 'rgba(244,236,216,0.7)'; ctx.lineWidth = 2;
+      for (let i = 0; i < 9; i++) {
+        const fx = x + 8 + i * (s - 16) / 8;
+        ctx.beginPath(); ctx.moveTo(fx, y + s * 0.49); ctx.lineTo(fx + (rng() - 0.5) * 3, y + s * 0.66); ctx.stroke();
+      }
+      ctx.strokeStyle = 'rgba(244,236,216,0.45)'; ctx.lineWidth = 1.5;
+      for (let r2 = 0; r2 < 4; r2++) {
+        const wy = y + s * (0.7 + r2 * 0.07);
+        ctx.beginPath(); ctx.moveTo(x, wy);
+        for (let wx = 0; wx <= s; wx += 10) ctx.lineTo(x + wx, wy + ((wx / 10) % 2 ? 3 : -3));
+        ctx.stroke();
+      }
+      break;
+    }
+    case 'Brick & Brass': {
+      // old red-brick mill wall with a big brass horn bell in front
+      ctx.fillStyle = '#7a2a22'; ctx.fillRect(x, y, s, s);
+      const bh = s / 10, bw = s / 5;
+      ctx.fillStyle = '#9a3a2e';
+      for (let ry = 0; ry < 10; ry++) for (let rx = -1; rx < 5; rx++) {
+        const off = ry % 2 ? bw / 2 : 0;
+        ctx.fillRect(x + rx * bw + off + 1, y + ry * bh + 1, bw - 2, bh - 2);
+      }
+      ctx.fillStyle = '#e8c04a';
+      ctx.beginPath(); ctx.arc(cx, cy, s * 0.3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#a8761c';
+      ctx.beginPath(); ctx.arc(cx, cy, s * 0.22, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#5a3a0c';
+      ctx.beginPath(); ctx.arc(cx, cy, s * 0.11, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(255,248,210,0.7)';
+      ctx.beginPath(); ctx.ellipse(cx - s * 0.14, cy - s * 0.15, 10, 4, -0.7, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#e8c04a'; ctx.fillRect(cx - 5, cy + s * 0.3 - 2, 10, s * 0.2);
+      break;
+    }
+    case 'Underpass Cypher': {
+      // concrete underpass at night: beam, pillars, fresh tags, a mic in the middle
+      ctx.fillStyle = '#2a2830'; ctx.fillRect(x, y, s, s);
+      ctx.fillStyle = '#16141c'; ctx.fillRect(x, y, s, s * 0.14);
+      ctx.fillStyle = '#3a3742';
+      ctx.fillRect(x + s * 0.06, y + s * 0.14, s * 0.1, s * 0.86);
+      ctx.fillRect(x + s * 0.84, y + s * 0.14, s * 0.1, s * 0.86);
+      ctx.fillStyle = '#1c1a22'; ctx.fillRect(x, y + s * 0.88, s, s * 0.12);
+      const tagCols = ['#e8c04a', '#3fbf7f', '#c23a3a', '#1fa8c9'];
+      ctx.lineCap = 'round'; ctx.lineWidth = 4;
+      for (let i = 0; i < 4; i++) {
+        ctx.strokeStyle = tagCols[i];
+        const tx = x + s * (0.22 + (i % 2) * 0.32), ty = y + s * (0.26 + Math.floor(i / 2) * 0.2);
+        ctx.beginPath(); ctx.moveTo(tx, ty);
+        ctx.bezierCurveTo(tx + 8, ty - 12, tx + 16, ty + 12, tx + 26, ty - 4); ctx.stroke();
+      }
+      ctx.fillStyle = '#f4ecd8';
+      ctx.beginPath(); ctx.arc(cx, cy + s * 0.12, 9, 0, Math.PI * 2); ctx.fill();
+      ctx.fillRect(cx - 2, cy + s * 0.12 + 8, 4, s * 0.2);
+      ctx.fillStyle = 'rgba(244,236,216,0.12)';
+      ctx.beginPath(); ctx.moveTo(cx - 6, y + s * 0.14); ctx.lineTo(cx - s * 0.3, y + s * 0.88);
+      ctx.lineTo(cx + s * 0.3, y + s * 0.88); ctx.lineTo(cx + 6, y + s * 0.14); ctx.closePath(); ctx.fill();
+      break;
+    }
+    case 'Amber Hour': {
+      // dusk sky, a sagging string of warm bulbs, drifting autumn leaves
+      const g = ctx.createLinearGradient(x, y, x, y + s);
+      g.addColorStop(0, '#3a1f54'); g.addColorStop(0.6, '#c4602a'); g.addColorStop(1, '#f0b040');
+      ctx.fillStyle = g; ctx.fillRect(x, y, s, s);
+      ctx.fillStyle = '#1c1220';
+      ctx.fillRect(x, y + s * 0.86, s, s * 0.14);
+      ctx.strokeStyle = '#1c1220'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(x, y + s * 0.2); ctx.quadraticCurveTo(cx, y + s * 0.48, x + s, y + s * 0.2); ctx.stroke();
+      for (let i = 0; i <= 6; i++) {
+        const t = i / 6, bx = x + t * s;
+        const by = y + s * 0.2 * (1 - t) * (1 - t) * 1 + 2 * (1 - t) * t * (s * 0.48) * 1 + t * t * (s * 0.2);
+        const glow = ctx.createRadialGradient(bx, by + 5, 1, bx, by + 5, 14);
+        glow.addColorStop(0, 'rgba(255,230,140,0.9)'); glow.addColorStop(1, 'rgba(255,230,140,0)');
+        ctx.fillStyle = glow; ctx.fillRect(bx - 14, by - 9, 28, 28);
+        ctx.fillStyle = '#fff2b8'; ctx.beginPath(); ctx.arc(bx, by + 5, 3, 0, Math.PI * 2); ctx.fill();
+      }
+      const leafCols = ['#c23a1a', '#e8a317', '#8a3a12', '#d86a1c'];
+      for (let i = 0; i < 9; i++) {
+        ctx.fillStyle = leafCols[i % 4];
+        ctx.save(); ctx.translate(x + rng() * s, y + s * 0.5 + rng() * s * 0.34); ctx.rotate(rng() * 6);
+        ctx.beginPath(); ctx.ellipse(0, 0, 6, 3, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+      }
+      break;
+    }
     default: {
       ctx.fillStyle = r.color; ctx.fillRect(x, y, s, s);
     }
@@ -45037,411 +45287,4 @@ function drawTitleSaveHint() {
 // early -- see the 'history' block in update().
 function drawHistory(time) {
   drawDriftingSky(time);
-  buildKeyedHistoryPage(historyPage);
-  const keyed = historyPageKeyed[historyPage];
-
-  if (keyed) {
-    const mw = keyed.width, mh = keyed.height;
-    const s = Math.min(VIEW_W / mw, VIEW_H / mh);
-    const dw = mw * s, dh = mh * s;
-    ctx.drawImage(keyed, (VIEW_W - dw) / 2, (VIEW_H - dh) / 2, dw, dh);
-  }
-
-  // Small unboxed progress/nav hint, unflashing (matches the title screen's
-  // current style now that its flashing callout is gone).
-  ctx.textAlign = 'center';
-  ctx.fillStyle = 'rgba(244,236,216,0.75)';
-  ctx.font = 'bold 13px monospace';
-  const navLabel = historyPage < HISTORY_PAGES.length - 1
-    ? `${historyPage + 1} / ${HISTORY_PAGES.length}   [\u25C0\u25B6] REREAD   [E] OR [H] NEXT   [X] BACK`
-    : `${historyPage + 1} / ${HISTORY_PAGES.length}   [\u25C0\u25B6] REREAD   [E], [H], OR [X] BACK TO MENU`;
-  ctx.fillText(navLabel, VIEW_W / 2, VIEW_H - 10);
-}
-
-// ---------------------------------------------------------------- dig-choice / slot-choose popups
-// Shared "retro menu box" look for the two title-flow popups below --
-// mirrors the dark box + cream border used by drawDialog()/drawPortalPopup()
-// so these feel native rather than bolted on.
-function drawMenuBox(title, hint) {
-  ctx.fillStyle = 'rgba(8,6,12,0.72)';
-  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
-
-  const boxW = 420, boxH = 260, boxX = (VIEW_W - boxW) / 2, boxY = (VIEW_H - boxH) / 2;
-  ctx.fillStyle = 'rgba(10,8,14,0.95)';
-  ctx.fillRect(boxX, boxY, boxW, boxH);
-  ctx.strokeStyle = '#f4ecd8';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(boxX + 2, boxY + 2, boxW - 4, boxH - 4);
-
-  ctx.textAlign = 'center';
-  ctx.fillStyle = '#e0b040';
-  ctx.font = 'bold 20px monospace';
-  ctx.fillText(title, VIEW_W / 2, boxY + 34);
-
-  if (hint) {
-    ctx.fillStyle = '#9a90a8';
-    ctx.font = '15px monospace';
-    ctx.fillText(hint, VIEW_W / 2, boxY + boxH - 16);
-  }
-
-  return { boxX, boxY, boxW, boxH };
-}
-
-// Draws one selectable row inside a menu box: highlighted (gold + arrows)
-// when `active`, plain cream otherwise. `subtext`, if given, renders smaller
-// and dimmer just under the main label (used for slot summaries).
-function drawMenuRow(label, cy, active, subtext) {
-  ctx.textAlign = 'center';
-  ctx.font = 'bold 22px monospace';
-  ctx.fillStyle = active ? '#e0b040' : '#f4ecd8';
-  ctx.fillText((active ? '\u25B8 ' : '') + label + (active ? ' \u25C2' : ''), VIEW_W / 2, cy);
-  if (subtext) {
-    ctx.font = '16px monospace';
-    ctx.fillStyle = active ? 'rgba(224,176,64,0.85)' : 'rgba(244,236,216,0.6)';
-    ctx.fillText(subtext, VIEW_W / 2, cy + 20);
-  }
-}
-
-function drawDigChoiceFallback() {
-  const { boxY } = drawMenuBox("WHAT'S THE MOVE?", '[\u2191\u2193] choose   [E] select   [X] back');
-  const rowY = [boxY + 90, boxY + 140, boxY + 190];
-  DIG_CHOICES.forEach((label, i) => drawMenuRow(label, rowY[i], i === digChoiceIndex));
-}
-
-function drawSlotChooseFallback() {
-  const title = pendingMode === 'new' ? 'START DIGGING \u2014 PICK A SLOT' : 'CONTINUE DIGGING \u2014 PICK A SLOT';
-  const { boxY } = drawMenuBox(title, '[\u2191\u2193] choose   [E] select   [X] back');
-  const rowY = [boxY + 90, boxY + 140, boxY + 190];
-  SAVE_SLOTS.forEach((slot, i) => {
-    const active = i === slotChoiceIndex;
-    const summary = slotSummary(slot);
-    let label = `SLOT ${slot}`;
-    let subtext = summary || 'EMPTY';
-    if (active && armedOverwriteSlot === slot) subtext = 'PRESS [E] AGAIN TO OVERWRITE';
-    drawMenuRow(label, rowY[i], active, subtext);
-  });
-}
-
-// Draws `img` scaled/letterboxed to fit inside the view (same "contain"
-// fit as the character-select art), and returns the placement so callers
-// can position dynamic overlay text against the art's own coordinates
-// regardless of how it ends up scaled.
-function drawSplashBackground(img, time) {
-  drawDriftingSky(time);
-  ctx.fillStyle = 'rgba(0,0,0,0.25)';
-  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
-  const iw = img.naturalWidth, ih = img.naturalHeight;
-  const scale = Math.min(VIEW_W / iw, VIEW_H / ih);
-  const dw = iw * scale, dh = ih * scale;
-  const originX = (VIEW_W - dw) / 2, originY = (VIEW_H - dh) / 2;
-  ctx.drawImage(img, originX, originY, dw, dh);
-  return { originX, originY, dw, dh, scale };
-}
-
-// Layout measured directly from start_splash_1v2.png (as fractions of the
-// art's own width/height): the title line above the divider, and the
-// blank content panel below it where rows get drawn live. Both popups
-// share this same frame art -- see drawDigChoice/drawSlotChoose.
-const MENU_POPUP_LAYOUT = {
-  titleYFrac: 0.4652,       // baseline of the title line
-  titleCoverYFrac: 0.4196, titleCoverHFrac: 0.0910, // rect to blank out before redrawing title
-  boxTopFrac: 0.5278, boxBottomFrac: 0.8443,
-  boxXFrac: 0.0592, boxWFrac: 0.9408 - 0.0592,
-};
-
-function drawMenuPopupBackground(time, title) {
-  const { originX, originY, dw, dh } = drawSplashBackground(menuPopupSplashImg, time);
-
-  const boxX = originX + MENU_POPUP_LAYOUT.boxXFrac * dw;
-  const boxW = MENU_POPUP_LAYOUT.boxWFrac * dw;
-  const boxY = originY + MENU_POPUP_LAYOUT.boxTopFrac * dh;
-  const boxH = (MENU_POPUP_LAYOUT.boxBottomFrac - MENU_POPUP_LAYOUT.boxTopFrac) * dh;
-
-  // blank out the baked-in title text, then draw the one this screen needs.
-  // Inset to boxX/boxW (same as the content panel below) so this doesn't
-  // paint over the gold frame border on either side.
-  const coverY = originY + MENU_POPUP_LAYOUT.titleCoverYFrac * dh;
-  const coverH = MENU_POPUP_LAYOUT.titleCoverHFrac * dh;
-  ctx.fillStyle = '#05111a';
-  ctx.fillRect(boxX, coverY, boxW, coverH);
-  ctx.textAlign = 'center';
-  ctx.font = 'bold 18px monospace';
-  ctx.fillStyle = '#e0b040';
-  ctx.fillText(title, boxX + boxW / 2, originY + MENU_POPUP_LAYOUT.titleYFrac * dh);
-
-  return { originX, originY, dw, dh, boxX, boxW, boxY, boxH };
-}
-
-function drawDigChoice(time) {
-  if (!menuPopupSplashImg.complete || !menuPopupSplashImg.naturalWidth) { drawDigChoiceFallback(); return; }
-  const { boxX, boxW, boxY, boxH } = drawMenuPopupBackground(time, "WHAT'S THE MOVE?");
-  const cx = boxX + boxW / 2;
-  const rowY = [boxY + boxH * 0.22, boxY + boxH * 0.5, boxY + boxH * 0.78];
-  DIG_CHOICES.forEach((label, i) => {
-    const active = i === digChoiceIndex;
-    if (active) {
-      // padded highlight box: extra breathing room above/below the text
-      // baseline, and inset a bit from the panel's own edges, so the gold
-      // border doesn't hug the letters or the frame.
-      const rh = boxH * 0.2;
-      const boxCY = rowY[i] - 4; // nudge up: fillText's y is the baseline, not the glyph's visual center
-      const inset = boxW * 0.05;
-      const hx = boxX + inset, hw = boxW - inset * 2;
-      ctx.fillStyle = 'rgba(8,14,20,0.92)';
-      ctx.fillRect(hx, boxCY - rh / 2, hw, rh);
-      ctx.strokeStyle = '#e0b040';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(hx + 2, boxCY - rh / 2 + 2, hw - 4, rh - 4);
-    }
-    ctx.textAlign = 'center';
-    ctx.font = 'bold 20px monospace';
-    ctx.fillStyle = active ? '#e0b040' : '#f4ecd8';
-    ctx.fillText((active ? '\u25B8 ' : '') + label + (active ? ' \u25C2' : ''), cx, rowY[i]);
-  });
-}
-
-function drawSlotChoose(time) {
-  if (!menuPopupSplashImg.complete || !menuPopupSplashImg.naturalWidth) { drawSlotChooseFallback(); return; }
-  const title = pendingMode === 'new' ? 'START DIGGING \u2014 PICK A SLOT' : 'CONTINUE DIGGING \u2014 PICK A SLOT';
-  const { boxX, boxW, boxY, boxH } = drawMenuPopupBackground(time, title);
-  const textX = boxX + boxW * 0.06;
-  const mainY = [boxY + boxH * 0.22, boxY + boxH * 0.52, boxY + boxH * 0.82];
-  const subYOffset = boxH * 0.115;
-  SAVE_SLOTS.forEach((slot, i) => {
-    const active = i === slotChoiceIndex;
-    const summary = slotSummary(slot);
-    const label = `SLOT ${slot}`;
-    let subtext = summary || 'EMPTY';
-    if (active && armedOverwriteSlot === slot) subtext = 'PRESS [E] AGAIN TO OVERWRITE';
-    if (active) {
-      const rh = boxH * 0.27;
-      ctx.fillStyle = 'rgba(8,14,20,0.92)';
-      ctx.fillRect(boxX, mainY[i] - rh * 0.4, boxW, rh);
-      ctx.strokeStyle = '#e0b040';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(boxX + 2, mainY[i] - rh * 0.4 + 2, boxW - 4, rh - 4);
-    }
-    ctx.textAlign = 'left';
-    ctx.font = 'bold 20px monospace';
-    ctx.fillStyle = active ? '#e0b040' : '#f4ecd8';
-    ctx.fillText((active ? '\u25B8 ' : '') + label, textX, mainY[i]);
-    ctx.font = '13px monospace';
-    ctx.fillStyle = active ? 'rgba(224,176,64,0.85)' : 'rgba(244,236,216,0.6)';
-    ctx.fillText(subtext, textX, mainY[i] + subYOffset);
-  });
-}
-
-// Portrait centers, as fractions of the character_select art's own
-// width/height — measured against the source image so labels land inside
-// the blank boxes under each portrait regardless of how the art gets
-// scaled to fit the view.
-const SELECT_LABEL_POS = [
-  { xFrac: 0.1888, yFrac: 0.8398 }, // Santos (green, left)
-  { xFrac: 0.5013, yFrac: 0.8398 }, // Rico, hoodie/Yankees cap (blue, middle)
-  { xFrac: 0.8138, yFrac: 0.8398 }, // Rico, red hat (red, right)
-];
-// Name + smaller qualifier drawn in the title box under each portrait.
-// Order matches SELECT_ORDER (Santos, Rico-Yankees, Rico-red-hat).
-const SELECT_TITLES = [
-  { main: 'SANTOS', sub: null },
-  { main: 'RICO', sub: '(YANKS)' },
-  { main: 'RICO', sub: '(HIERO)' },
-];
-
-// Draws text with a chunky dark outline behind a gold gradient fill, the
-// same recipe classic Zelda-style logos use to get that engraved, "carved
-// from treasure" look out of an ordinary serif font.
-function drawRetroTitle(text, cx, cy, size) {
-  ctx.font = `bold ${size}px Georgia, 'Times New Roman', serif`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'alphabetic';
-  ctx.lineJoin = 'round';
-  ctx.miterLimit = 2;
-
-  ctx.save();
-  ctx.shadowColor = 'rgba(0,0,0,0.9)';
-  ctx.shadowBlur = 2;
-  ctx.shadowOffsetX = 2;
-  ctx.shadowOffsetY = 2;
-  ctx.lineWidth = Math.max(2, size * 0.16);
-  ctx.strokeStyle = '#241206';
-  ctx.strokeText(text, cx, cy);
-  ctx.restore();
-
-  const grad = ctx.createLinearGradient(0, cy - size * 0.8, 0, cy + size * 0.15);
-  grad.addColorStop(0, '#fff6d6');
-  grad.addColorStop(0.5, '#f0c33e');
-  grad.addColorStop(1, '#b3760f');
-  ctx.fillStyle = grad;
-  ctx.fillText(text, cx, cy);
-}
-
-// Full-screen "LEVEL N" card -- see showLevelIntro() for how/when this gets
-// triggered. Reuses drawRetroTitle() (gold-on-carved-outline text) and
-// drawStars() so it costs no new art, just two lines of text over a dark
-// backdrop that already exists elsewhere in the file.
-function drawLevelIntro(time) {
-  const num = levelNumberFor(levelIntroWorldId);
-
-  // Level 1 gets the full-art Burlington card, Level 2 gets the full-art
-  // Swamp card, Level 3 gets the full-art Skate Park card; every other world (should one ever route through
-  // showLevelIntro() without a matching image) falls back to the plain
-  // carved-text card below.
-  const fullArtImg = num === 1 ? level1IntroImg : num === 2 ? level2IntroImg : num === 3 ? level3IntroImg : null;
-  if (fullArtImg && fullArtImg.complete && fullArtImg.naturalWidth) {
-    const iw = fullArtImg.naturalWidth, ih = fullArtImg.naturalHeight;
-    const scale = Math.max(VIEW_W / iw, VIEW_H / ih);
-    const dw = iw * scale, dh = ih * scale;
-    const dx = (VIEW_W - dw) / 2, dy = (VIEW_H - dh) / 2;
-    ctx.drawImage(fullArtImg, dx, dy, dw, dh);
-
-    ctx.fillStyle = 'rgba(8,6,12,0.55)';
-    ctx.fillRect(0, VIEW_H - 40, VIEW_W, 40);
-    ctx.textAlign = 'center';
-    ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#e0b040' : '#f4ecd8';
-    ctx.font = 'bold 15px monospace';
-    ctx.fillText('- PRESS E TO DROP IN -', VIEW_W / 2, VIEW_H - 14);
-    return;
-  }
-
-  ctx.fillStyle = 'rgba(8,6,12,0.93)';
-  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
-  drawStars(time);
-
-  const def = WORLD_DEFS[levelIntroWorldId] || WORLD_DEFS.town;
-
-  drawRetroTitle(`LEVEL ${num}`, VIEW_W / 2, VIEW_H / 2 - 14, 46);
-  drawRetroTitle(def.name.toUpperCase(), VIEW_W / 2, VIEW_H / 2 + 40, 24);
-
-  ctx.textAlign = 'center';
-  ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#e0b040' : '#f4ecd8';
-  ctx.font = 'bold 15px monospace';
-  ctx.fillText('- PRESS E TO DROP IN -', VIEW_W / 2, VIEW_H - 40);
-}
-
-function drawCharacterSelect(time) {
-  // background: flat dark backdrop -- the drifting sky from the title
-  // screen stops here, once the player has moved on to picking a character.
-  ctx.fillStyle = 'rgba(8,6,12,0.93)';
-  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
-  ctx.fillStyle = 'rgba(0,0,0,0.25)';
-  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
-
-  if (characterSelectImg.complete && characterSelectImg.naturalWidth) {
-    const iw = characterSelectImg.naturalWidth, ih = characterSelectImg.naturalHeight;
-    const scale = Math.min(VIEW_W / iw, VIEW_H / ih);
-    const dw = iw * scale, dh = ih * scale;
-    const originX = (VIEW_W - dw) / 2, originY = (VIEW_H - dh) / 2;
-    selectLayout = { originX, originY, scale, imgW: iw, imgH: ih };
-    ctx.drawImage(characterSelectImg, originX, originY, dw, dh);
-
-    // highlight the keyboard-selected portrait with a pulsing box, so
-    // arrow-key/E users can see where they are without a mouse
-    const bounds = [[0, 0.345], [0.345, 0.658], [0.658, 1]];
-    const [x0f, x1f] = bounds[selectIndex];
-    const hx = originX + x0f * dw, hw = (x1f - x0f) * dw;
-    ctx.strokeStyle = Math.floor(time * 2.4) % 2 ? '#e0b040' : '#f4ecd8';
-    ctx.lineWidth = 4;
-    ctx.strokeRect(hx + 3, originY + 3, hw - 6, dh - 6);
-
-    // retro Zelda-style name titles in the blank boxes under each portrait
-    SELECT_ORDER.forEach((id, i) => {
-      const pos = SELECT_LABEL_POS[i];
-      const title = SELECT_TITLES[i];
-      const lx = originX + pos.xFrac * dw, ly = originY + pos.yFrac * dh;
-      if (title.sub) {
-        drawRetroTitle(title.main, lx, ly - 8, 26);
-        drawRetroTitle(title.sub, lx, ly + 18, 16);
-      } else {
-        drawRetroTitle(title.main, lx, ly + 8, 28);
-      }
-    });
-  } else {
-    // fallback: simple colored panels until the art loads. Map taps across
-    // the full view width using the same thirds the real art uses, so
-    // tapping works even before character_select.png has loaded in.
-    selectLayout = { originX: 0, originY: 0, scale: 1, imgW: VIEW_W, imgH: VIEW_H };
-    ctx.textAlign = 'center';
-    ctx.fillStyle = '#e0b040';
-    ctx.font = 'bold 30px monospace';
-    ctx.fillText('SELECT YOUR CHARACTER', VIEW_W / 2, 90);
-    const panelW = 260, panelH = 340, gap = 30;
-    const totalW = panelW * 3 + gap * 2;
-    const startX = (VIEW_W - totalW) / 2, y = 140;
-    const colors = ['#2c5a1e', '#123a5e', '#5e1414'];
-    SELECT_ORDER.forEach((id, i) => {
-      const x = startX + i * (panelW + gap);
-      ctx.fillStyle = i === selectIndex ? '#e0b040' : colors[i];
-      ctx.fillRect(x, y, panelW, panelH);
-      const title = SELECT_TITLES[i];
-      const lx = x + panelW / 2, ly = y + panelH - 34;
-      if (title.sub) {
-        drawRetroTitle(title.main, lx, ly - 10, 32);
-        drawRetroTitle(title.sub, lx, ly + 20, 19);
-      } else {
-        drawRetroTitle(title.main, lx, ly + 10, 34);
-      }
-    });
-  }
-
-  ctx.textAlign = 'center';
-  ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#e0b040' : '#f4ecd8';
-  ctx.font = 'bold 16px monospace';
-  ctx.fillText('- TAP A CHARACTER, OR USE \u25c0 \u25b6 AND E -', VIEW_W / 2, VIEW_H - 22);
-}
-
-function drawWin() {
-  ctx.fillStyle = 'rgba(8,6,12,0.88)';
-  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
-
-  // Character-specific cheers splash: santos -> santos_cheers, ricoAlt (Yanks
-  // outfit) -> rico_yanks_cheers, rico (classic/Hiero) -> rico_heiro_cheers.
-  const cheersImg = CHARACTER_CHEERS_IMG[selectedCharacter] || santosCheersImg;
-  let dh = 0, dy = 10;
-  if (cheersImg.complete && cheersImg.naturalWidth) {
-    const iw = cheersImg.naturalWidth, ih = cheersImg.naturalHeight;
-    const scale = Math.min(300 / iw, 380 / ih);
-    const dw = iw * scale;
-    dh = ih * scale;
-    const dx = (VIEW_W - dw) / 2;
-    ctx.drawImage(cheersImg, dx, dy, dw, dh);
-  }
-
-  // Same text/copy as the original popup, now laid out under the splash art.
-  ctx.textAlign = 'center';
-  ctx.fillStyle = '#e0b040';
-  ctx.font = 'bold 26px monospace';
-  const titleY = dy + dh + 32;
-  ctx.fillText('BEAT COMPLETE!', VIEW_W / 2, titleY);
-
-  ctx.fillStyle = '#f4ecd8';
-  ctx.font = '13px monospace';
-  ctx.fillText('All five samples on the pads. The whole town is bumping your track.', VIEW_W / 2, titleY + 22);
-
-  const gridY = titleY + 36, sq = 34, gap = 10;
-  const totalW = sq * 5 + gap * 4;
-  worldPadOrder().forEach((id, i) => {
-    const r = worldRecords()[id];
-    const x = VIEW_W / 2 - totalW / 2 + i * (sq + gap);
-    ctx.fillStyle = r.color;
-    ctx.fillRect(x, gridY, sq, sq);
-    ctx.fillStyle = '#181418';
-    ctx.font = 'bold 10px monospace';
-    ctx.fillText(r.pad, x + sq / 2, gridY + sq / 2 + 4);
-  });
-
-  ctx.fillStyle = '#9a90a8';
-  ctx.font = '12px monospace';
-  ctx.fillText('Rico’s next beat tape: certified classic.', VIEW_W / 2, gridY + sq + 24);
-
-  ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#e0b040' : '#f4ecd8';
-  ctx.font = 'bold 15px monospace';
-  ctx.fillText('- PRESS E TO KEEP CRUISING -', VIEW_W / 2, VIEW_H - 18);
-}
-
-requestAnimationFrame(frame);
-
-// debug/test handle
-window.__rico = { player, maps, collected, getState: () => state, getCharacter: () => selectedCharacter,
-  openDarts: () => enterMinigame(createDartsModeSelect()) };
-})();
+  buildKeyedH
