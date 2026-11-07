@@ -1952,6 +1952,13 @@ const MINIGAME_ACTIONS = {
   // is inlined as ARPEGGIOS_HTML and loaded through iframe.srcdoc. See openArpeggiosApp()/
   // createArpeggiosOverlay().
   arpeggios: () => openArpeggiosApp(),
+  // OSCILLATORS -- the touch-and-slide four-wave (sine / triangle / sawtooth / square) toy, set up on
+  // a little scope stand at the back of BEVERAGE WAREHOUSE in WINOOSKI (LEVEL 4), see the
+  // `beveragewarehouse` shop's `minigames` list. `icon: 'oscillators'` -- see
+  // drawMinigameOscillators(). Fully self-contained and offline: the whole page (Web Audio
+  // oscillators + canvas, no samples, no fonts, no network) is inlined as OSCILLATORS_HTML and
+  // loaded through iframe.srcdoc. See openOscillatorsApp()/createOscillatorsOverlay().
+  oscillators: () => openOscillatorsApp(),
   // SKATEBOARDING & HIP-HOP CULTURE reader -- a zine stand inside TALENT (LEVEL 3,
   // SKATEPARK), see TALENT's `minigames` list. Opens an offline, fully inlined
   // reading page; see openSkateHipHopReaderApp()/createSkateHipHopReaderOverlay().
@@ -10785,6 +10792,7 @@ window.addEventListener('keydown', (e) => {
     if (k === 'escape' && state === 'mpumpApp') { closeMpumpApp(); }
     if (k === 'escape' && state === 'soundWavesApp') { closeSoundWavesApp(); }
     if (k === 'escape' && state === 'arpeggiosApp') { closeArpeggiosApp(); }
+    if (k === 'escape' && state === 'oscillatorsApp') { closeOscillatorsApp(); }
     if (k === 'escape' && state === 'skateHipHopReaderApp') { closeSkateHipHopReaderApp(); }
     if (k === 'escape' && state === 'travSkatesApp') { closeTravSkatesApp(); }
     if (k === 'escape' && state === 'nineBarsApp') { closeNineBarsApp(); }
@@ -15250,6 +15258,15 @@ const shops = {
       [4, 3], [4, 4], [4, 5], [4, 6], [4, 7],
       [8, 5], [8, 6], [8, 7], [8, 8],
       [12, 5], [12, 6], [12, 7], [12, 8],
+      [7, 2],
+    ],
+    // (7,2) = the OSCILLATORS scope stand at the back of the room (painted in
+    // paintBeverageWarehouseInterior() with its waves scrolling live in drawBeverageWarehouseInterior()):
+    // a solid tile on open floor just left of the checkout counter (row 3, x 8..12), clear of the left
+    // shelf, aisle island A (x 4), the door (6,9) and the spawn (6.5,7.5). Approach from (7,3) below or
+    // (6,2) left. `icon: 'oscillators'` -- see drawMinigameOscillators().
+    minigames: [
+      { id: 'oscillators', tx: 7, ty: 2, label: 'OSCILLATORS', icon: 'oscillators' },
     ],
     extraTables: [[10, 6], [11, 6]],
     keeper: { x: 10, y: 2, name: 'HOPS', shirt: '#2f6a3a', skin: '#d9a47a',
@@ -15606,7 +15623,7 @@ const player = {
   tempItem: null, tempItemTimer: 0,
 };
 const collected = new Set();
-let state = 'splash'; // arpeggiosApp (TINY THAI Arpeggios overlay) | soundWavesApp (AUTUMN RECORDS Sound Waves overlay) | mpumpApp (AUTUMN RECORDS MPUMP overlay) | ricoRotaryApp (WINOOSKI RICO ROTARY overlay) | travSkatesApp (TALENT Trav Skates overlay) | nineBarsApp (BELLEVUE Nine Bars sudoku overlay) | drumMachineApp (BELLEVUE Infinite Drum Machine overlay) | inkDeskApp (BELLEVUE InkDesk Tattoo Business Toolkit overlay) | guitarApp (SPEAKING VOLUMES guitar overlay) | skateHipHopReaderApp (TALENT reader overlay) | splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | danceParty | portal | fifa | minigame | hotkeys | crate | photo | lab | labLocked | santosStuLocked | shopBackLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | qsdBalanceApp | vinylSnakeApp | waveformApp | bayouBreakApp | freqAltarApp | reverbReefApp | beatBrewingApp | drumPatternDocApp | gatorJamSlamApp | swampCaveApp | vocalChopBoothApp | vtDirtApp | penaltyKingsApp | digDashApp | digOnApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | diggerApp | hyperSwimApp | linusTugApp | connectFourApp | syrupRoadsApp | scoopBeatsApp | clawMachineApp | kangaidenVideo | kangaidenSplash | kangaidenApp | hiphopLibraryApp | truthKnocksVideo | truthKnocksSplash | truthKnocksApp | johnnySlidesVideo | johnnySlidesSplash | johnnySlidesApp | humbleTreasuresVideo | humbleTreasuresSplash | humbleTreasuresApp | dustRacingApp | cbPressApp | spotDiffApp | arkaiikImpactApp | precisionPointsApp | wishJamApp | anthillDeluxeApp
+let state = 'splash'; // oscillatorsApp (BEVERAGE WAREHOUSE Oscillators overlay) | arpeggiosApp (TINY THAI Arpeggios overlay) | soundWavesApp (AUTUMN RECORDS Sound Waves overlay) | mpumpApp (AUTUMN RECORDS MPUMP overlay) | ricoRotaryApp (WINOOSKI RICO ROTARY overlay) | travSkatesApp (TALENT Trav Skates overlay) | nineBarsApp (BELLEVUE Nine Bars sudoku overlay) | drumMachineApp (BELLEVUE Infinite Drum Machine overlay) | inkDeskApp (BELLEVUE InkDesk Tattoo Business Toolkit overlay) | guitarApp (SPEAKING VOLUMES guitar overlay) | skateHipHopReaderApp (TALENT reader overlay) | splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | danceParty | portal | fifa | minigame | hotkeys | crate | photo | lab | labLocked | santosStuLocked | shopBackLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | qsdBalanceApp | vinylSnakeApp | waveformApp | bayouBreakApp | freqAltarApp | reverbReefApp | beatBrewingApp | drumPatternDocApp | gatorJamSlamApp | swampCaveApp | vocalChopBoothApp | vtDirtApp | penaltyKingsApp | digDashApp | digOnApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | diggerApp | hyperSwimApp | linusTugApp | connectFourApp | syrupRoadsApp | scoopBeatsApp | clawMachineApp | kangaidenVideo | kangaidenSplash | kangaidenApp | hiphopLibraryApp | truthKnocksVideo | truthKnocksSplash | truthKnocksApp | johnnySlidesVideo | johnnySlidesSplash | johnnySlidesApp | humbleTreasuresVideo | humbleTreasuresSplash | humbleTreasuresApp | dustRacingApp | cbPressApp | spotDiffApp | arkaiikImpactApp | precisionPointsApp | wishJamApp | anthillDeluxeApp
 // State to snap back to when the [H] hotkeys popup is closed -- currently
 // always 'play' since that's the only state H can be opened from, but kept
 // as its own var in case another state wants to offer the popup later.
@@ -16307,7 +16324,7 @@ const music = {
 // enter/exit call sites, so it can't drift out of sync no matter which
 // of the several ways the player backs out of the lab popup (keyboard
 // [X], on-screen [X] button, closing the instrument iframe, etc.).
-const DUCKED_STATES = new Set(['lab', 'labApp', 'santosStu', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'qsdBalanceApp', 'vinylSnakeApp', 'waveformApp', 'bayouBreakApp', 'freqAltarApp', 'reverbReefApp', 'beatBrewingApp', 'drumPatternDocApp', 'gatorJamSlamApp', 'swampCaveApp', 'vocalChopBoothApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'digOnApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'johnnySlidesApp', 'humbleTreasuresApp', 'dustRacingApp', 'cbPressApp', 'spotDiffApp', 'guitarApp', 'hyperSwimApp', 'linusTugApp', 'connectFourApp', 'syrupRoadsApp', 'scoopBeatsApp', 'clawMachineApp', 'kangaidenVideo', 'kangaidenApp', 'hiphopLibraryApp', 'arkaiikImpactApp', 'precisionPointsApp', 'wishJamApp', 'anthillDeluxeApp', 'ricoRotaryApp', 'mpumpApp', 'soundWavesApp', 'arpeggiosApp', 'skateHipHopReaderApp', 'travSkatesApp', 'nineBarsApp', 'drumMachineApp', 'inkDeskApp', 'j2sProSkaterApp', 'danceParty', 'truthKnocksVideo', 'truthKnocksApp', 'johnnySlidesVideo', 'humbleTreasuresVideo']);
+const DUCKED_STATES = new Set(['lab', 'labApp', 'santosStu', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'qsdBalanceApp', 'vinylSnakeApp', 'waveformApp', 'bayouBreakApp', 'freqAltarApp', 'reverbReefApp', 'beatBrewingApp', 'drumPatternDocApp', 'gatorJamSlamApp', 'swampCaveApp', 'vocalChopBoothApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'digOnApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'johnnySlidesApp', 'humbleTreasuresApp', 'dustRacingApp', 'cbPressApp', 'spotDiffApp', 'guitarApp', 'hyperSwimApp', 'linusTugApp', 'connectFourApp', 'syrupRoadsApp', 'scoopBeatsApp', 'clawMachineApp', 'kangaidenVideo', 'kangaidenApp', 'hiphopLibraryApp', 'arkaiikImpactApp', 'precisionPointsApp', 'wishJamApp', 'anthillDeluxeApp', 'ricoRotaryApp', 'mpumpApp', 'soundWavesApp', 'arpeggiosApp', 'oscillatorsApp', 'skateHipHopReaderApp', 'travSkatesApp', 'nineBarsApp', 'drumMachineApp', 'inkDeskApp', 'j2sProSkaterApp', 'danceParty', 'truthKnocksVideo', 'truthKnocksApp', 'johnnySlidesVideo', 'humbleTreasuresVideo']);
 function syncMusicDuck() {
   const minigameDucked = state === 'minigame' && activeMinigame && activeMinigame.musicDucked;
   music.duck(DUCKED_STATES.has(state) || !!minigameDucked);
@@ -24496,6 +24513,129 @@ function closeArpeggiosApp(fromPopState) {
   }
 }
 
+// ---------------------------------------------------------------- OSCILLATORS overlay
+// OSCILLATORS -- touch a wave (sine, triangle, sawtooth or square) and slide: left-to-right bends
+// the pitch, up-and-down sets the volume, and several fingers can play at once. It lives on a little
+// scope stand at the back of BEVERAGE WAREHOUSE in WINOOSKI (LEVEL 4), see the `beveragewarehouse`
+// shop's `minigames` list. Same "full-screen DOM overlay with an <iframe>" pattern as ARPEGGIOS above,
+// and the same INLINED-page shape: the whole page lives in OSCILLATORS_HTML below and is loaded
+// through iframe.srcdoc, so there is no file to ship, nothing to fetch and no network call anywhere --
+// sound is synthesized with Web Audio oscillators and the waves are drawn on a canvas, so it plays
+// identically online or offline, with mouse or touch, in portrait or landscape.
+// [Esc] inside the iframe posts a message back (keys typed there never reach this page).
+const OSCILLATORS_HTML = "<!doctype html>\n<html lang=\"en\" data-theme=\"dark\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1, viewport-fit=cover\"><title>Oscillators</title>\n<style>:root{--bg:#f6f4ff;--fg:#1d1b2e;--pn:#ffffff;--ac:#6c4cf5;--mu:#6b6880;--bd:#d6d1ee;color-scheme:light}\n@media (prefers-color-scheme:dark){:root:not([data-theme=\"light\"]){--bg:#14121f;--fg:#f1eeff;--pn:#211e33;--ac:#9a82ff;--mu:#a29fb8;--bd:#3a3554;color-scheme:dark}}\n:root[data-theme=\"dark\"]{--bg:#14121f;--fg:#f1eeff;--pn:#211e33;--ac:#9a82ff;--mu:#a29fb8;--bd:#3a3554;color-scheme:dark}\n:root{box-sizing:border-box;padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)}\nhtml{scroll-padding-top:env(safe-area-inset-top,0px);height:100%;background:var(--bg)}\n*,*::before,*::after{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}\nbody{margin:0;height:100%;display:flex;flex-direction:column;background:var(--bg);color:var(--fg);font:15px/1.3 system-ui,-apple-system,\"Segoe UI\",Roboto,sans-serif;overflow:hidden;overscroll-behavior:none}\n.bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;padding:8px 12px;border-bottom:1px solid var(--bd)}\nh1{font-size:17px;margin:0 auto 0 0;white-space:nowrap}\nbutton,select{font:inherit;color:var(--fg);background:var(--pn);border:1px solid var(--bd);border-radius:10px;padding:6px 12px;min-height:38px;cursor:pointer;max-width:100%}\nbutton.on{background:var(--ac);color:#fff;border-color:var(--ac)}\nlabel{display:inline-flex;align-items:center;gap:6px;color:var(--mu);font-size:13px}\ninput[type=range]{width:90px;accent-color:var(--ac)}\nmain{flex:1;min-height:0;position:relative}\ncanvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}\n.hint{position:absolute;left:8px;right:8px;bottom:6px;text-align:center;color:var(--mu);font-size:12px;pointer-events:none}\n@media (max-height:500px){.bar{padding:4px 10px;gap:4px 8px}h1{font-size:14px}button,select{min-height:32px;padding:3px 9px}.hint{display:none}}\n</style><script>addEventListener(\"keydown\",function(e){if(e.key===\"Escape\"){try{parent.postMessage({oscillators:\"close\"},\"*\")}catch(x){}}});</script></head><body>\n<header class=\"bar\"><h1>Oscillators</h1></header>\n<main><canvas id=\"cv\"></canvas><div class=\"hint\">Touch a wave and slide. Left to right changes pitch, up and down changes volume.</div></main>\n<script>const AC=new(window.AudioContext||window.webkitAudioContext)();\nconst OUT=AC.createGain();OUT.gain.value=.8;\nconst CMP=AC.createDynamicsCompressor();OUT.connect(CMP);CMP.connect(AC.destination);\nconst unlock=()=>{if(AC.state!=='running')AC.resume()};\n['pointerdown','pointerup','touchend','click','keydown'].forEach(e=>addEventListener(e,unlock,{passive:true}));\nconst $=s=>document.querySelector(s);\nconst mtof=m=>440*Math.pow(2,(m-69)/12);\nconst NN=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];\nconst NBUF=AC.createBuffer(1,AC.sampleRate,AC.sampleRate);{const d=NBUF.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1}\nfunction env(g,t,v,a,d){g.gain.cancelScheduledValues(t);g.gain.setValueAtTime(0.0001,t);g.gain.linearRampToValueAtTime(v,t+a);g.gain.exponentialRampToValueAtTime(0.0001,t+a+d)}\nfunction tone(f,t,d,o){o=o||{};t=t||AC.currentTime;const os=AC.createOscillator(),g=AC.createGain(),a=o.a||.005;os.type=o.type||'triangle';os.frequency.value=f;env(g,t,o.v||.3,a,d);os.connect(g);g.connect(o.dest||OUT);os.start(t);os.stop(t+d+a+.05);return os}\nfunction note(inst,m,t,d,v){t=t||AC.currentTime;d=d||.5;v=v||.3;const f=mtof(m);\n if(inst=='piano'){tone(f,t,d*1.6,{type:'triangle',v});tone(f*2,t,d*.6,{type:'sine',v:v*.4})}\n else if(inst=='synth'){const lp=AC.createBiquadFilter();lp.type='lowpass';lp.frequency.value=1800;lp.connect(OUT);tone(f,t,d,{type:'sawtooth',v:v*.5,dest:lp,a:.01})}\n else if(inst=='marimba'){tone(f,t,.5,{type:'sine',v});tone(f*4,t,.08,{type:'sine',v:v*.5})}\n else if(inst=='bell'){tone(f,t,1.4,{type:'sine',v:v*.8});tone(f*2.76,t,.9,{type:'sine',v:v*.3});tone(f*5.4,t,.4,{type:'sine',v:v*.15})}\n else if(inst=='organ'){[1,2,3].forEach(k=>tone(f*k,t,d,{type:'sine',v:v/(k+.5),a:.02}))}\n else tone(f,t,d*.6,{type:'square',v:v*.35})}\nfunction nz(t,d,type,fr,v,q){const s=AC.createBufferSource(),f=AC.createBiquadFilter(),g=AC.createGain();s.buffer=NBUF;f.type=type;f.frequency.value=fr;if(q)f.Q.value=q;env(g,t,v,.001,d);s.connect(f);f.connect(g);g.connect(OUT);s.start(t);s.stop(t+d+.05)}\nfunction drum(k,t,v){t=t||AC.currentTime;v=v||1;\n if(k=='kick'||k=='tom'){const o=AC.createOscillator(),g=AC.createGain(),kk=k=='kick';o.frequency.setValueAtTime(kk?150:220,t);o.frequency.exponentialRampToValueAtTime(kk?40:100,t+(kk?.12:.15));env(g,t,(kk?1:.7)*v,.002,kk?.35:.3);o.connect(g);g.connect(OUT);o.start(t);o.stop(t+.45)}\n else if(k=='snare'){nz(t,.18,'bandpass',1800,.6*v,.8);tone(190,t,.1,{type:'triangle',v:.4*v})}\n else if(k=='hat')nz(t,.05,'highpass',7000,.35*v);\n else if(k=='open')nz(t,.3,'highpass',6000,.3*v);\n else if(k=='clap'){[0,.012,.024].forEach(x=>nz(t+x,.09,'bandpass',1300,.5*v,1.2))}}\nfunction fit(cv,draw){const r=()=>{const d=Math.min(devicePixelRatio||1,2),b=cv.getBoundingClientRect();if(!b.width||!b.height)return;cv.width=Math.round(b.width*d);cv.height=Math.round(b.height*d);cv.W=b.width;cv.H=b.height;cv.getContext('2d').setTransform(d,0,0,d,0,0);if(draw)draw()};new ResizeObserver(r).observe(cv);addEventListener('orientationchange',()=>setTimeout(r,250));r()}\nconst pt=(cv,e)=>{const b=cv.getBoundingClientRect();return{x:e.clientX-b.left,y:e.clientY-b.top}};\nconst css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();\nfunction rr(c,x,y,w,h,r){c.beginPath();if(c.roundRect)c.roundRect(x,y,w,h,r);else c.rect(x,y,w,h)}\nfunction raf(fn){let l=performance.now();(function f(n){const dt=Math.min(.05,(n-l)/1000);l=n;fn(dt,n);requestAnimationFrame(f)})(l)}\n\nconst cv=$('#cv'),c=cv.getContext('2d');fit(cv);\nconst W4=[['Sine','sine','#4dabf7'],['Triangle','triangle','#69db7c'],['Sawtooth','sawtooth','#ffa94d'],['Square','square','#ff6b9a']];\nconst st=W4.map(()=>({f:220,cyc:4,a:0,ph:0})),ptr=new Map();\nconst rect=i=>{const W=cv.W,H=cv.H;if(W>H*1.1){const w=W/2,h=H/2;return{x:(i%2)*w,y:(i>>1)*h,w,h}}return{x:0,y:i*H/4,w:W,h:H/4}};\nconst which=p=>{for(let i=0;i<4;i++){const r=rect(i);if(p.x>=r.x&&p.x<r.x+r.w&&p.y>=r.y&&p.y<r.y+r.h)return i}return -1};\nconst cl=v=>Math.max(0,Math.min(1,v));\nfunction upd(o,p){const r=rect(o.i),f=110*Math.pow(16,cl((p.x-r.x)/r.w)),v=(.06+.26*(1-cl((p.y-r.y)/r.h)))*(o.i<2?1:.55),t=AC.currentTime;o.os.frequency.setTargetAtTime(f,t,.015);o.g.gain.setTargetAtTime(v,t,.02);st[o.i].f=f;st[o.i].a=1}\ncv.addEventListener('pointerdown',e=>{const p=pt(cv,e),i=which(p);if(i<0)return;cv.setPointerCapture(e.pointerId);const os=AC.createOscillator(),g=AC.createGain();os.type=W4[i][1];g.gain.value=0;os.connect(g);g.connect(OUT);os.start();const o={i,os,g};ptr.set(e.pointerId,o);upd(o,p)});\ncv.addEventListener('pointermove',e=>{const o=ptr.get(e.pointerId);if(o)upd(o,pt(cv,e))});\nconst up=e=>{const o=ptr.get(e.pointerId);if(!o)return;const t=AC.currentTime;o.g.gain.setTargetAtTime(0,t,.03);o.os.stop(t+.25);st[o.i].a=0;ptr.delete(e.pointerId)};\ncv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);\nconst wf=(k,p)=>{p=p%6.2832;if(p<0)p+=6.2832;return k==0?Math.sin(p):k==1?2/Math.PI*Math.asin(Math.sin(p)):k==2?p/Math.PI-1:(p<Math.PI?1:-1)};\nraf(dt=>{if(!cv.W)return;c.clearRect(0,0,cv.W,cv.H);\n W4.forEach(([nm,,col],i)=>{const r=rect(i),s=st[i],m=6,x=r.x+m,y=r.y+m,w=r.w-2*m,h=r.h-2*m;\n  rr(c,x,y,w,h,14);c.fillStyle=css('--pn');c.fill();c.strokeStyle=s.a?col:css('--bd');c.lineWidth=s.a?3:1;c.stroke();\n  const tc=1+Math.log2(s.f/110)*3;s.cyc+=(tc-s.cyc)*Math.min(1,dt*12);s.ph+=dt*(s.a?9:2);\n  c.beginPath();c.strokeStyle=col;c.lineWidth=s.a?5:3;c.lineJoin='round';const A=h*(s.a?.3:.18);\n  for(let k=0;k<=240;k++){const u=k/240,yy=y+h/2-wf(i,u*s.cyc*6.2832-s.ph)*A;k?c.lineTo(x+u*w,yy):c.moveTo(x+u*w,yy)}c.stroke();\n  c.fillStyle=css('--mu');c.font='13px system-ui';c.textAlign='left';c.fillText(nm+(s.a?' \u00b7 '+Math.round(s.f)+' Hz':''),x+12,y+20)})});</script></body></html>";
+let oscillatorsOverlayEl = null, oscillatorsOverlayFrame = null;
+let oscillatorsReturnState = 'play';
+let oscillatorsHistoryPushed = false; // mirrors soundWavesHistoryPushed -- see openOscillatorsApp()/closeOscillatorsApp()
+
+function createOscillatorsOverlay() {
+  const style = document.createElement('style');
+  style.textContent = `
+    #oscillatorsApp {
+      position: fixed; inset: 0; z-index: 1000;
+      background: #000;
+      display: none; flex-direction: column;
+      box-sizing: border-box;
+      padding-left: env(safe-area-inset-left, 0px);
+      padding-right: env(safe-area-inset-right, 0px);
+    }
+    #oscillatorsApp.open { display: flex; }
+    #oscillatorsApp .osc-bar {
+      flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 10px 14px;
+      background: linear-gradient(#211e33, #14121f);
+      border-bottom: 2px solid #9a82ff;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    }
+    #oscillatorsApp .osc-title {
+      color: #f1eeff; font: bold 14px monospace; letter-spacing: 0.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #oscillatorsApp .osc-close {
+      flex: 0 0 auto; cursor: pointer;
+      background: rgba(154,130,255,0.16);
+      border: 1.5px solid rgba(154,130,255,0.9);
+      color: #f1eeff; border-radius: 8px;
+      padding: 7px 16px; font: bold 13px monospace; white-space: nowrap;
+      -webkit-user-select: none; user-select: none;
+    }
+    #oscillatorsApp .osc-close:active { background: rgba(154,130,255,0.45); }
+    #oscillatorsApp iframe {
+      flex: 1 1 auto; width: 100%; min-height: 0; border: 0; background: #14121f;
+    }
+    @media (max-height: 480px) {
+      #oscillatorsApp .osc-bar { padding: 4px 12px; padding-top: calc(4px + env(safe-area-inset-top, 0px)); }
+      #oscillatorsApp .osc-title { font-size: 12px; }
+      #oscillatorsApp .osc-close { padding: 4px 12px; font-size: 12px; }
+    }
+  `;
+  document.head.appendChild(style);
+
+  oscillatorsOverlayEl = document.createElement('div');
+  oscillatorsOverlayEl.id = 'oscillatorsApp';
+
+  const bar = document.createElement('div');
+  bar.className = 'osc-bar';
+  const title = document.createElement('div');
+  title.className = 'osc-title';
+  title.textContent = 'OSCILLATORS \u2014 FOUR WAVES, ONE TOUCH';
+  const closeBtn = document.createElement('div');
+  closeBtn.className = 'osc-close';
+  closeBtn.textContent = '\u2190 BACK TO BEVERAGE WAREHOUSE';
+  bindTap(closeBtn, closeOscillatorsApp);
+  bar.appendChild(title);
+  bar.appendChild(closeBtn);
+
+  oscillatorsOverlayFrame = document.createElement('iframe');
+  oscillatorsOverlayFrame.setAttribute('allow', 'autoplay');
+
+  oscillatorsOverlayEl.appendChild(bar);
+  oscillatorsOverlayEl.appendChild(oscillatorsOverlayFrame);
+  document.body.appendChild(oscillatorsOverlayEl);
+
+  // [Esc] pressed while the iframe itself has keyboard focus never reaches this page's keydown
+  // handler, so the app posts a message instead (see the head script inside OSCILLATORS_HTML).
+  window.addEventListener('message', (e) => {
+    if (!oscillatorsOverlayFrame || e.source !== oscillatorsOverlayFrame.contentWindow) return;
+    if (e.data && e.data.oscillators === 'close' && state === 'oscillatorsApp') closeOscillatorsApp();
+  });
+}
+createOscillatorsOverlay();
+
+// Opens the Oscillators overlay and switches state to 'oscillatorsApp'. Called from
+// MINIGAME_ACTIONS.oscillators (E on the note-bar stand, or tapping its floating sign).
+function openOscillatorsApp() {
+  oscillatorsReturnState = state;
+  oscillatorsOverlayFrame.srcdoc = OSCILLATORS_HTML;
+  oscillatorsOverlayEl.classList.add('open');
+  state = 'oscillatorsApp';
+  oscillatorsOverlayFrame.addEventListener('load', () => {
+    try { oscillatorsOverlayFrame.contentWindow.focus(); } catch (e) { /* a tap will focus it */ }
+  }, { once: true });
+  // Same throwaway-history-entry trick as openSoundWavesApp() etc., so the browser/OS back gesture
+  // closes the overlay instead of leaving the game.
+  history.pushState({ oscillatorsApp: true }, '');
+  oscillatorsHistoryPushed = true;
+}
+
+// Tears the iframe back down (which also stops every tone) and returns to ordinary gameplay inside
+// the shop. fromPopState mirrors closeSoundWavesApp()'s parameter -- true when triggered by
+// the browser's back button (whose history entry is already consumed), so history.back() must not
+// be called again in that case.
+function closeOscillatorsApp(fromPopState) {
+  oscillatorsOverlayEl.classList.remove('open');
+  oscillatorsOverlayFrame.removeAttribute('srcdoc');
+  oscillatorsOverlayFrame.src = 'about:blank';
+  reclaimGameFocus(oscillatorsOverlayFrame);
+  state = oscillatorsReturnState;
+  if (!fromPopState && oscillatorsHistoryPushed) {
+    oscillatorsHistoryPushed = false;
+    history.back();
+  } else {
+    oscillatorsHistoryPushed = false;
+  }
+}
+
 // SKATEBOARDING & HIP-HOP CULTURE -- a read-and-explore encyclopedia-style
 // page that lives inside TALENT (LEVEL 3, SKATEPARK) on a little zine stand in
 // the middle of the shop floor (see TALENT's `minigames` list and
@@ -26559,6 +26699,8 @@ window.addEventListener('popstate', () => {
     closeSoundWavesApp(true);
   } else if (state === 'arpeggiosApp') {
     closeArpeggiosApp(true);
+  } else if (state === 'oscillatorsApp') {
+    closeOscillatorsApp(true);
   } else if (state === 'skateHipHopReaderApp') {
     closeSkateHipHopReaderApp(true);
   } else if (state === 'travSkatesApp') {
@@ -26591,7 +26733,7 @@ canvas.addEventListener('pointerdown', (e) => {
     const vx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const vy = (e.clientY - rect.top) * (canvas.height / rect.height);
     handleStuTap(vx, vy);
-  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'reverbReefApp' || state === 'beatBrewingApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'humbleTreasuresApp' || state === 'dustRacingApp' || state === 'cbPressApp' || state === 'spotDiffApp' || state === 'guitarApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'scoopBeatsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp' || state === 'arkaiikImpactApp' || state === 'precisionPointsApp' || state === 'wishJamApp' || state === 'anthillDeluxeApp' || state === 'ricoRotaryApp' || state === 'mpumpApp' || state === 'soundWavesApp' || state === 'arpeggiosApp' || state === 'skateHipHopReaderApp' || state === 'travSkatesApp' || state === 'nineBarsApp' || state === 'drumMachineApp' || state === 'inkDeskApp' || state === 'j2sProSkaterApp') {
+  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'reverbReefApp' || state === 'beatBrewingApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'humbleTreasuresApp' || state === 'dustRacingApp' || state === 'cbPressApp' || state === 'spotDiffApp' || state === 'guitarApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'scoopBeatsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp' || state === 'arkaiikImpactApp' || state === 'precisionPointsApp' || state === 'wishJamApp' || state === 'anthillDeluxeApp' || state === 'ricoRotaryApp' || state === 'mpumpApp' || state === 'soundWavesApp' || state === 'arpeggiosApp' || state === 'oscillatorsApp' || state === 'skateHipHopReaderApp' || state === 'travSkatesApp' || state === 'nineBarsApp' || state === 'drumMachineApp' || state === 'inkDeskApp' || state === 'j2sProSkaterApp') {
     // The DOM overlay sits on top of (and outside) the canvas while an
     // instrument/the chess app/the beat bot/the organ/mini golf/the
     // blackbook/Gator Grooves/Vinyl Snake/Bayou Break Station/Gator Jam
@@ -27219,6 +27361,11 @@ function update(dt) {
     // owns input; its own back button and [Esc] close it, and the on-screen [X] touch button
     // still works via buyPressed.
     if (buyPressed) closeArpeggiosApp();
+  } else if (state === 'oscillatorsApp') {
+    // Same reasoning as 'arpeggiosApp' just above: the DOM overlay (see createOscillatorsOverlay())
+    // owns input; its own back button and [Esc] close it, and the on-screen [X] touch button
+    // still works via buyPressed.
+    if (buyPressed) closeOscillatorsApp();
   } else if (state === 'wishJamApp') {
     // Same reasoning as 'precisionPointsApp' just above: the DOM overlay (see
     // createWishJamOverlay()) owns input while WISH JAM is loaded -- its own
@@ -28774,6 +28921,66 @@ function drawMinigameArpeggios(wx, wy, time, seed, label) {
   return { cx, cy, hw: W / 2 + 14, hh: H / 2 + 34 };
 }
 
+// Alternate mini-game marker used when a map entry sets `icon: 'oscillators'` (OSCILLATORS, the four-wave
+// touch synth on the scope stand inside BEVERAGE WAREHOUSE in WINOOSKI) -- same bob/label/hitbox contract
+// as drawMinigameArpeggios() above. Drawn as a little floating violet scope panel on a thin post: four
+// stacked traces (sine, triangle, sawtooth, square) in the app's four colours that scroll sideways, so it
+// reads as "make some waves." `time` is in seconds.
+function drawMinigameOscillators(wx, wy, time, seed, label) {
+  const s = MINIGAME_OBJECT_SCALE;
+  const bob = Math.sin(time * 3 + seed) * 3;
+  const W = 34 * s, H = 26 * s;
+  const cx = wx, cy = wy - 50 + bob;
+
+  // thin post connecting the sign down to the stand
+  ctx.strokeStyle = '#241c28';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(wx, cy + H / 2);
+  ctx.lineTo(wx, wy - 14);
+  ctx.stroke();
+
+  // body: deep violet with a bright violet rim
+  ctx.fillStyle = '#14121f';
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(cx - W / 2, cy - H / 2, W, H, 4 * s); else ctx.rect(cx - W / 2, cy - H / 2, W, H);
+  ctx.fill();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = '#9a82ff';
+  ctx.stroke();
+
+  // four traces, one per waveform, scrolling left
+  const cols = ['#4dabf7', '#69db7c', '#ffa94d', '#ff6b9a'];
+  const gx = cx - W / 2 + 3 * s, gw = W - 6 * s, bandH = (H - 6 * s) / 4;
+  ctx.lineWidth = 1.2;
+  ctx.lineJoin = 'round';
+  for (let i = 0; i < 4; i++) {
+    const mid = cy - H / 2 + 3 * s + bandH * (i + 0.5), amp = bandH * 0.36;
+    ctx.strokeStyle = cols[i];
+    ctx.beginPath();
+    for (let k = 0; k <= 24; k++) {
+      const u = k / 24, p = (u * 2 - time * 0.9) * Math.PI * 2;   // two cycles across the panel
+      let v;
+      if (i === 0) v = Math.sin(p);
+      else if (i === 1) v = (2 / Math.PI) * Math.asin(Math.sin(p));
+      else if (i === 2) v = ((((p % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)) / Math.PI) - 1;
+      else v = Math.sin(p) >= 0 ? 1 : -1;
+      const px = gx + u * gw, py = mid - v * amp;
+      if (k) ctx.lineTo(px, py); else ctx.moveTo(px, py);
+    }
+    ctx.stroke();
+  }
+
+  // floating label -- flashes between the label and the tap hint
+  const flashOnLabel = Math.floor(time / 1.4) % 2 === 0;
+  ctx.fillStyle = '#c9baff';
+  ctx.font = `bold ${Math.round(9 * s)}px monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillText(flashOnLabel ? (label || 'MINI-GAME') : 'TAP TO PLAY', cx, cy - H / 2 - 7 * s);
+
+  return { cx, cy, hw: W / 2 + 14, hh: H / 2 + 34 };
+}
+
 // Alternate mini-game marker used when a map entry sets `icon: 'inkdesk'` (the InkDesk Tattoo
 // Business Toolkit inside BELLEVUE in WINOOSKI) -- same bob/label/hitbox contract as
 // drawMinigameMpumpBox() above. Drawn as a little floating clipboard on a thin post: black board
@@ -29233,7 +29440,7 @@ function render(time) {
     drawSplash();
     return;
   }
-  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'reverbReefApp' || state === 'beatBrewingApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'humbleTreasuresApp' || state === 'dustRacingApp' || state === 'cbPressApp' || state === 'spotDiffApp' || state === 'guitarApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'scoopBeatsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp' || state === 'arkaiikImpactApp' || state === 'precisionPointsApp' || state === 'wishJamApp' || state === 'anthillDeluxeApp' || state === 'ricoRotaryApp' || state === 'mpumpApp' || state === 'soundWavesApp' || state === 'arpeggiosApp' || state === 'skateHipHopReaderApp' || state === 'travSkatesApp' || state === 'nineBarsApp' || state === 'drumMachineApp' || state === 'inkDeskApp' || state === 'j2sProSkaterApp') {
+  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'reverbReefApp' || state === 'beatBrewingApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'humbleTreasuresApp' || state === 'dustRacingApp' || state === 'cbPressApp' || state === 'spotDiffApp' || state === 'guitarApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'scoopBeatsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp' || state === 'arkaiikImpactApp' || state === 'precisionPointsApp' || state === 'wishJamApp' || state === 'anthillDeluxeApp' || state === 'ricoRotaryApp' || state === 'mpumpApp' || state === 'soundWavesApp' || state === 'arpeggiosApp' || state === 'oscillatorsApp' || state === 'skateHipHopReaderApp' || state === 'travSkatesApp' || state === 'nineBarsApp' || state === 'drumMachineApp' || state === 'inkDeskApp' || state === 'j2sProSkaterApp') {
     // Same reasoning as the labApp overlay: a DOM element (the <video>,
     // see createCharacterIntroOverlay(), the chess <iframe>, see
     // createChessOverlay(), the beat bot <iframe>, see
@@ -29386,6 +29593,8 @@ function render(time) {
         ? drawMinigameSoundWaves(wx, wy, time, seed, mg.label)
         : mg.icon === 'arpeggios'
         ? drawMinigameArpeggios(wx, wy, time, seed, mg.label)
+        : mg.icon === 'oscillators'
+        ? drawMinigameOscillators(wx, wy, time, seed, mg.label)
         : mg.icon === 'inkdesk'
         ? drawMinigameInkDesk(wx, wy, time, seed, mg.label)
         : mg.icon === 'skatebillboard'
@@ -36593,6 +36802,21 @@ function paintBeverageWarehouseInterior(c) {
   }
   c.fillStyle = '#b52a2a'; c.fillRect(361, 187, 22, 7); c.fillStyle = '#d84a4a'; c.fillRect(361, 187, 22, 2);   // red crate on top
 
+  // ---------------------------------------------------------------- OSCILLATORS scope stand (blockTile (7,2))
+  // a little steel bench stand holding a violet scope panel; the four scrolling waves are drawn live
+  // in drawBeverageWarehouseInterior().
+  {
+    const bx = 7 * TILE, by = 2 * TILE;
+    c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(bx + 3, by + 28, 26, 3);
+    c.fillStyle = '#4a4d54'; c.fillRect(bx + 5, by + 21, 3, 8); c.fillRect(bx + 24, by + 21, 3, 8);     // legs
+    c.fillStyle = '#6a6e76'; c.fillRect(bx + 2, by + 18, 28, 5);                                         // steel shelf
+    c.fillStyle = '#8b9098'; c.fillRect(bx + 2, by + 18, 28, 1.5);
+    c.fillStyle = '#2f6a3a'; c.fillRect(bx + 2, by + 22, 28, 1.5);                                       // green trim
+    c.fillStyle = '#14121f'; c.fillRect(bx + 6, by + 1, 20, 17);                                         // panel
+    c.fillStyle = '#2a2547'; c.fillRect(bx + 7, by + 2, 18, 15);
+    c.fillStyle = '#9a82ff'; c.fillRect(bx + 6, by + 1, 20, 1);                                          // rim light
+  }
+
   // ---------------------------------------------------------------- front wall: white brick with windows (door gap at tile 6)
   const fy = 9 * TILE;
   for (const [x0, x1] of [[TILE, 6 * TILE], [7 * TILE, 13 * TILE]]) {
@@ -36638,6 +36862,28 @@ function drawBeverageWarehouseInterior(time) {
   // cold glow from the glass-door coolers
   ctx.fillStyle = 'rgba(190,230,255,' + (0.05 + 0.02 * a).toFixed(3) + ')';
   ctx.fillRect(34, 12, 80, 48); ctx.fillRect(334, 12, 80, 48);
+  // OSCILLATORS scope stand: four tiny traces (sine, triangle, saw, square) scrolling across the panel
+  // (static stand + panel are painted in paintBeverageWarehouseInterior(); `time` is in seconds)
+  {
+    const bx = 7 * TILE, by = 2 * TILE, cols = ['#4dabf7', '#69db7c', '#ffa94d', '#ff6b9a'];
+    ctx.lineWidth = 0.9; ctx.lineJoin = 'round';
+    for (let i = 0; i < 4; i++) {
+      const mid = by + 3.9 + i * 3.6, amp = 1.3;
+      ctx.strokeStyle = cols[i];
+      ctx.beginPath();
+      for (let k = 0; k <= 18; k++) {
+        const u = k / 18, p = (u * 2 - time * 0.9) * Math.PI * 2;
+        let v;
+        if (i === 0) v = Math.sin(p);
+        else if (i === 1) v = (2 / Math.PI) * Math.asin(Math.sin(p));
+        else if (i === 2) v = ((((p % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)) / Math.PI) - 1;
+        else v = Math.sin(p) >= 0 ? 1 : -1;
+        const px = bx + 7.5 + u * 17, py = mid - v * amp;
+        if (k) ctx.lineTo(px, py); else ctx.moveTo(px, py);
+      }
+      ctx.stroke();
+    }
+  }
 }
 
 // ---------------------------------------------------------------- MISERY LOVES CO. (Winooski, LEVEL 4)
