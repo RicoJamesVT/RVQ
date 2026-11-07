@@ -1945,6 +1945,13 @@ const MINIGAME_ACTIONS = {
   // is inlined as SOUND_WAVES_HTML and loaded through iframe.srcdoc. See openSoundWavesApp()/
   // createSoundWavesOverlay().
   soundwaves: () => openSoundWavesApp(),
+  // ARPEGGIOS -- the pick-a-chord-per-bar arpeggio step sequencer, set up on a little note-bar stand
+  // in the top-right corner of TINY THAI in WINOOSKI (LEVEL 4), see the `tinythai` shop's
+  // `minigames` list. `icon: 'arpeggios'` -- see drawMinigameArpeggios(). Fully self-contained
+  // and offline: the whole page (Web Audio oscillators + canvas, no samples, no fonts, no network)
+  // is inlined as ARPEGGIOS_HTML and loaded through iframe.srcdoc. See openArpeggiosApp()/
+  // createArpeggiosOverlay().
+  arpeggios: () => openArpeggiosApp(),
   // SKATEBOARDING & HIP-HOP CULTURE reader -- a zine stand inside TALENT (LEVEL 3,
   // SKATEPARK), see TALENT's `minigames` list. Opens an offline, fully inlined
   // reading page; see openSkateHipHopReaderApp()/createSkateHipHopReaderOverlay().
@@ -10777,6 +10784,7 @@ window.addEventListener('keydown', (e) => {
     if (k === 'escape' && state === 'ricoRotaryApp') { closeRicoRotaryApp(); }
     if (k === 'escape' && state === 'mpumpApp') { closeMpumpApp(); }
     if (k === 'escape' && state === 'soundWavesApp') { closeSoundWavesApp(); }
+    if (k === 'escape' && state === 'arpeggiosApp') { closeArpeggiosApp(); }
     if (k === 'escape' && state === 'skateHipHopReaderApp') { closeSkateHipHopReaderApp(); }
     if (k === 'escape' && state === 'travSkatesApp') { closeTravSkatesApp(); }
     if (k === 'escape' && state === 'nineBarsApp') { closeNineBarsApp(); }
@@ -14984,7 +14992,15 @@ const shops = {
     world: 'winooski',
     floor: '#6b4a2e', plank: '#5a3c24', wallColor: '#8e2230',
     tinyThai: true,
-    blockTiles: [[1, 2], [1, 3], [1, 8], [12, 8]],
+    // (12,2) = the ARPEGGIOS note-bar stand in the top-right corner (painted in paintTinyThaiInterior()
+    // with its notes stepping live in drawTinyThaiInterior()): a solid tile on open floor right of the
+    // counter (row 3, cols 4-9), clear of the cook (6,2), the dig crate (12,5), the bamboo (12,8), the
+    // door (6,9) and the spawn (6.5,7.5). Approach from (12,3) below or (11,2) left.
+    // `icon: 'arpeggios'` -- see drawMinigameArpeggios().
+    blockTiles: [[1, 2], [1, 3], [1, 8], [12, 8], [12, 2]],
+    minigames: [
+      { id: 'arpeggios', tx: 12, ty: 2, label: 'ARPEGGIOS', icon: 'arpeggios' },
+    ],
     extraTables: [[3, 6], [4, 6], [8, 6], [9, 6]],
     keeper: { name: 'KEV', shirt: '#2a2a2e', skin: '#a8643a',
       lines: [
@@ -15590,7 +15606,7 @@ const player = {
   tempItem: null, tempItemTimer: 0,
 };
 const collected = new Set();
-let state = 'splash'; // soundWavesApp (AUTUMN RECORDS Sound Waves overlay) | mpumpApp (AUTUMN RECORDS MPUMP overlay) | ricoRotaryApp (WINOOSKI RICO ROTARY overlay) | travSkatesApp (TALENT Trav Skates overlay) | nineBarsApp (BELLEVUE Nine Bars sudoku overlay) | drumMachineApp (BELLEVUE Infinite Drum Machine overlay) | inkDeskApp (BELLEVUE InkDesk Tattoo Business Toolkit overlay) | guitarApp (SPEAKING VOLUMES guitar overlay) | skateHipHopReaderApp (TALENT reader overlay) | splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | danceParty | portal | fifa | minigame | hotkeys | crate | photo | lab | labLocked | santosStuLocked | shopBackLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | qsdBalanceApp | vinylSnakeApp | waveformApp | bayouBreakApp | freqAltarApp | reverbReefApp | beatBrewingApp | drumPatternDocApp | gatorJamSlamApp | swampCaveApp | vocalChopBoothApp | vtDirtApp | penaltyKingsApp | digDashApp | digOnApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | diggerApp | hyperSwimApp | linusTugApp | connectFourApp | syrupRoadsApp | scoopBeatsApp | clawMachineApp | kangaidenVideo | kangaidenSplash | kangaidenApp | hiphopLibraryApp | truthKnocksVideo | truthKnocksSplash | truthKnocksApp | johnnySlidesVideo | johnnySlidesSplash | johnnySlidesApp | humbleTreasuresVideo | humbleTreasuresSplash | humbleTreasuresApp | dustRacingApp | cbPressApp | spotDiffApp | arkaiikImpactApp | precisionPointsApp | wishJamApp | anthillDeluxeApp
+let state = 'splash'; // arpeggiosApp (TINY THAI Arpeggios overlay) | soundWavesApp (AUTUMN RECORDS Sound Waves overlay) | mpumpApp (AUTUMN RECORDS MPUMP overlay) | ricoRotaryApp (WINOOSKI RICO ROTARY overlay) | travSkatesApp (TALENT Trav Skates overlay) | nineBarsApp (BELLEVUE Nine Bars sudoku overlay) | drumMachineApp (BELLEVUE Infinite Drum Machine overlay) | inkDeskApp (BELLEVUE InkDesk Tattoo Business Toolkit overlay) | guitarApp (SPEAKING VOLUMES guitar overlay) | skateHipHopReaderApp (TALENT reader overlay) | splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | danceParty | portal | fifa | minigame | hotkeys | crate | photo | lab | labLocked | santosStuLocked | shopBackLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | qsdBalanceApp | vinylSnakeApp | waveformApp | bayouBreakApp | freqAltarApp | reverbReefApp | beatBrewingApp | drumPatternDocApp | gatorJamSlamApp | swampCaveApp | vocalChopBoothApp | vtDirtApp | penaltyKingsApp | digDashApp | digOnApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | diggerApp | hyperSwimApp | linusTugApp | connectFourApp | syrupRoadsApp | scoopBeatsApp | clawMachineApp | kangaidenVideo | kangaidenSplash | kangaidenApp | hiphopLibraryApp | truthKnocksVideo | truthKnocksSplash | truthKnocksApp | johnnySlidesVideo | johnnySlidesSplash | johnnySlidesApp | humbleTreasuresVideo | humbleTreasuresSplash | humbleTreasuresApp | dustRacingApp | cbPressApp | spotDiffApp | arkaiikImpactApp | precisionPointsApp | wishJamApp | anthillDeluxeApp
 // State to snap back to when the [H] hotkeys popup is closed -- currently
 // always 'play' since that's the only state H can be opened from, but kept
 // as its own var in case another state wants to offer the popup later.
@@ -16291,7 +16307,7 @@ const music = {
 // enter/exit call sites, so it can't drift out of sync no matter which
 // of the several ways the player backs out of the lab popup (keyboard
 // [X], on-screen [X] button, closing the instrument iframe, etc.).
-const DUCKED_STATES = new Set(['lab', 'labApp', 'santosStu', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'qsdBalanceApp', 'vinylSnakeApp', 'waveformApp', 'bayouBreakApp', 'freqAltarApp', 'reverbReefApp', 'beatBrewingApp', 'drumPatternDocApp', 'gatorJamSlamApp', 'swampCaveApp', 'vocalChopBoothApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'digOnApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'johnnySlidesApp', 'humbleTreasuresApp', 'dustRacingApp', 'cbPressApp', 'spotDiffApp', 'guitarApp', 'hyperSwimApp', 'linusTugApp', 'connectFourApp', 'syrupRoadsApp', 'scoopBeatsApp', 'clawMachineApp', 'kangaidenVideo', 'kangaidenApp', 'hiphopLibraryApp', 'arkaiikImpactApp', 'precisionPointsApp', 'wishJamApp', 'anthillDeluxeApp', 'ricoRotaryApp', 'mpumpApp', 'soundWavesApp', 'skateHipHopReaderApp', 'travSkatesApp', 'nineBarsApp', 'drumMachineApp', 'inkDeskApp', 'j2sProSkaterApp', 'danceParty', 'truthKnocksVideo', 'truthKnocksApp', 'johnnySlidesVideo', 'humbleTreasuresVideo']);
+const DUCKED_STATES = new Set(['lab', 'labApp', 'santosStu', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'qsdBalanceApp', 'vinylSnakeApp', 'waveformApp', 'bayouBreakApp', 'freqAltarApp', 'reverbReefApp', 'beatBrewingApp', 'drumPatternDocApp', 'gatorJamSlamApp', 'swampCaveApp', 'vocalChopBoothApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'digOnApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'johnnySlidesApp', 'humbleTreasuresApp', 'dustRacingApp', 'cbPressApp', 'spotDiffApp', 'guitarApp', 'hyperSwimApp', 'linusTugApp', 'connectFourApp', 'syrupRoadsApp', 'scoopBeatsApp', 'clawMachineApp', 'kangaidenVideo', 'kangaidenApp', 'hiphopLibraryApp', 'arkaiikImpactApp', 'precisionPointsApp', 'wishJamApp', 'anthillDeluxeApp', 'ricoRotaryApp', 'mpumpApp', 'soundWavesApp', 'arpeggiosApp', 'skateHipHopReaderApp', 'travSkatesApp', 'nineBarsApp', 'drumMachineApp', 'inkDeskApp', 'j2sProSkaterApp', 'danceParty', 'truthKnocksVideo', 'truthKnocksApp', 'johnnySlidesVideo', 'humbleTreasuresVideo']);
 function syncMusicDuck() {
   const minigameDucked = state === 'minigame' && activeMinigame && activeMinigame.musicDucked;
   music.duck(DUCKED_STATES.has(state) || !!minigameDucked);
@@ -24357,6 +24373,129 @@ function closeSoundWavesApp(fromPopState) {
   }
 }
 
+// ---------------------------------------------------------------- ARPEGGIOS overlay
+// ARPEGGIOS -- pick a chord for each of the four bars, then tap cells on the grid to shape the
+// pattern (Up, Down, Up and down, Wide, Skip, Random), with tempo, key and instrument controls. It
+// lives on a little note-bar stand in the top-right corner of TINY THAI in WINOOSKI (LEVEL 4), see
+// the `tinythai` shop's `minigames` list. Same "full-screen DOM overlay with an <iframe>" pattern as
+// SOUND WAVES above, and the same INLINED-page shape: the whole page lives in ARPEGGIOS_HTML below
+// and is loaded through iframe.srcdoc, so there is no file to ship, nothing to fetch and no network
+// call anywhere -- sound is synthesized with Web Audio oscillators and the grid is drawn on a
+// canvas, so it plays identically online or offline, with mouse or touch, in portrait or landscape.
+// [Esc] inside the iframe posts a message back (keys typed there never reach this page).
+const ARPEGGIOS_HTML = "<!doctype html>\n<html lang=\"en\" data-theme=\"dark\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1, viewport-fit=cover\"><title>Arpeggios</title>\n<style>:root{--bg:#f6f4ff;--fg:#1d1b2e;--pn:#ffffff;--ac:#6c4cf5;--mu:#6b6880;--bd:#d6d1ee;color-scheme:light}\n@media (prefers-color-scheme:dark){:root:not([data-theme=\"light\"]){--bg:#14121f;--fg:#f1eeff;--pn:#211e33;--ac:#9a82ff;--mu:#a29fb8;--bd:#3a3554;color-scheme:dark}}\n:root[data-theme=\"dark\"]{--bg:#14121f;--fg:#f1eeff;--pn:#211e33;--ac:#9a82ff;--mu:#a29fb8;--bd:#3a3554;color-scheme:dark}\n:root{box-sizing:border-box;padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)}\nhtml{scroll-padding-top:env(safe-area-inset-top,0px);height:100%;background:var(--bg)}\n*,*::before,*::after{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}\nbody{margin:0;height:100%;display:flex;flex-direction:column;background:var(--bg);color:var(--fg);font:15px/1.3 system-ui,-apple-system,\"Segoe UI\",Roboto,sans-serif;overflow:hidden;overscroll-behavior:none}\n.bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;padding:8px 12px;border-bottom:1px solid var(--bd)}\nh1{font-size:17px;margin:0 auto 0 0;white-space:nowrap}\nbutton,select{font:inherit;color:var(--fg);background:var(--pn);border:1px solid var(--bd);border-radius:10px;padding:6px 12px;min-height:38px;cursor:pointer;max-width:100%}\nbutton.on{background:var(--ac);color:#fff;border-color:var(--ac)}\nlabel{display:inline-flex;align-items:center;gap:6px;color:var(--mu);font-size:13px}\ninput[type=range]{width:90px;accent-color:var(--ac)}\nmain{flex:1;min-height:0;position:relative}\ncanvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}\n.hint{position:absolute;left:8px;right:8px;bottom:6px;text-align:center;color:var(--mu);font-size:12px;pointer-events:none}\n@media (max-height:500px){.bar{padding:4px 10px;gap:4px 8px}h1{font-size:14px}button,select{min-height:32px;padding:3px 9px}.hint{display:none}}\n</style><script>addEventListener(\"keydown\",function(e){if(e.key===\"Escape\"){try{parent.postMessage({arpeggios:\"close\"},\"*\")}catch(x){}}});</script></head><body>\n<header class=\"bar\"><h1>Arpeggios</h1><button id=\"play\">\u25b6 Play</button>\n<label>Tempo <input id=\"bpm\" type=\"range\" min=\"50\" max=\"160\" value=\"90\"></label>\n<select id=\"key\"></select>\n<span id=\"chs\"></span>\n<select id=\"pat\"><option value=\"0\">Up</option><option value=\"1\">Down</option><option value=\"2\">Up and down</option><option value=\"3\">Wide</option><option value=\"4\">Skip</option><option value=\"5\">Random</option></select>\n<select id=\"ins\"><option>marimba</option><option>piano</option><option>synth</option><option>bell</option></select></header>\n<main><canvas id=\"cv\"></canvas><div class=\"hint\">Pick a chord for each of the four bars. Tap cells to change the pattern.</div></main>\n<script>const AC=new(window.AudioContext||window.webkitAudioContext)();\nconst OUT=AC.createGain();OUT.gain.value=.8;\nconst CMP=AC.createDynamicsCompressor();OUT.connect(CMP);CMP.connect(AC.destination);\nconst unlock=()=>{if(AC.state!=='running')AC.resume()};\n['pointerdown','pointerup','touchend','click','keydown'].forEach(e=>addEventListener(e,unlock,{passive:true}));\nconst $=s=>document.querySelector(s);\nconst mtof=m=>440*Math.pow(2,(m-69)/12);\nconst NN=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];\nconst NBUF=AC.createBuffer(1,AC.sampleRate,AC.sampleRate);{const d=NBUF.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1}\nfunction env(g,t,v,a,d){g.gain.cancelScheduledValues(t);g.gain.setValueAtTime(0.0001,t);g.gain.linearRampToValueAtTime(v,t+a);g.gain.exponentialRampToValueAtTime(0.0001,t+a+d)}\nfunction tone(f,t,d,o){o=o||{};t=t||AC.currentTime;const os=AC.createOscillator(),g=AC.createGain(),a=o.a||.005;os.type=o.type||'triangle';os.frequency.value=f;env(g,t,o.v||.3,a,d);os.connect(g);g.connect(o.dest||OUT);os.start(t);os.stop(t+d+a+.05);return os}\nfunction note(inst,m,t,d,v){t=t||AC.currentTime;d=d||.5;v=v||.3;const f=mtof(m);\n if(inst=='piano'){tone(f,t,d*1.6,{type:'triangle',v});tone(f*2,t,d*.6,{type:'sine',v:v*.4})}\n else if(inst=='synth'){const lp=AC.createBiquadFilter();lp.type='lowpass';lp.frequency.value=1800;lp.connect(OUT);tone(f,t,d,{type:'sawtooth',v:v*.5,dest:lp,a:.01})}\n else if(inst=='marimba'){tone(f,t,.5,{type:'sine',v});tone(f*4,t,.08,{type:'sine',v:v*.5})}\n else if(inst=='bell'){tone(f,t,1.4,{type:'sine',v:v*.8});tone(f*2.76,t,.9,{type:'sine',v:v*.3});tone(f*5.4,t,.4,{type:'sine',v:v*.15})}\n else if(inst=='organ'){[1,2,3].forEach(k=>tone(f*k,t,d,{type:'sine',v:v/(k+.5),a:.02}))}\n else tone(f,t,d*.6,{type:'square',v:v*.35})}\nfunction nz(t,d,type,fr,v,q){const s=AC.createBufferSource(),f=AC.createBiquadFilter(),g=AC.createGain();s.buffer=NBUF;f.type=type;f.frequency.value=fr;if(q)f.Q.value=q;env(g,t,v,.001,d);s.connect(f);f.connect(g);g.connect(OUT);s.start(t);s.stop(t+d+.05)}\nfunction drum(k,t,v){t=t||AC.currentTime;v=v||1;\n if(k=='kick'||k=='tom'){const o=AC.createOscillator(),g=AC.createGain(),kk=k=='kick';o.frequency.setValueAtTime(kk?150:220,t);o.frequency.exponentialRampToValueAtTime(kk?40:100,t+(kk?.12:.15));env(g,t,(kk?1:.7)*v,.002,kk?.35:.3);o.connect(g);g.connect(OUT);o.start(t);o.stop(t+.45)}\n else if(k=='snare'){nz(t,.18,'bandpass',1800,.6*v,.8);tone(190,t,.1,{type:'triangle',v:.4*v})}\n else if(k=='hat')nz(t,.05,'highpass',7000,.35*v);\n else if(k=='open')nz(t,.3,'highpass',6000,.3*v);\n else if(k=='clap'){[0,.012,.024].forEach(x=>nz(t+x,.09,'bandpass',1300,.5*v,1.2))}}\nfunction fit(cv,draw){const r=()=>{const d=Math.min(devicePixelRatio||1,2),b=cv.getBoundingClientRect();if(!b.width||!b.height)return;cv.width=Math.round(b.width*d);cv.height=Math.round(b.height*d);cv.W=b.width;cv.H=b.height;cv.getContext('2d').setTransform(d,0,0,d,0,0);if(draw)draw()};new ResizeObserver(r).observe(cv);addEventListener('orientationchange',()=>setTimeout(r,250));r()}\nconst pt=(cv,e)=>{const b=cv.getBoundingClientRect();return{x:e.clientX-b.left,y:e.clientY-b.top}};\nconst css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();\nfunction rr(c,x,y,w,h,r){c.beginPath();if(c.roundRect)c.roundRect(x,y,w,h,r);else c.rect(x,y,w,h)}\nfunction raf(fn){let l=performance.now();(function f(n){const dt=Math.min(.05,(n-l)/1000);l=n;fn(dt,n);requestAnimationFrame(f)})(l)}\n\nfunction GridSeq(cv,o){\n const S={rows:o.rows,n:o.steps||16,on:[],cur:-1,playing:false,hit:[],q:[]};\n S.clear=()=>{S.on=S.rows.map(()=>Array(S.n).fill(0))};\n S.setN=n=>{S.on=S.rows.map((_,i)=>Array.from({length:n},(_,j)=>(S.on[i]&&S.on[i][j])||0));S.n=n};\n S.clear();\n const lw=()=>o.lw?Math.min(o.lw,cv.W*.18):0;\n function draw(){if(!cv.W)return;const c=cv.getContext('2d'),L=lw(),cw=(cv.W-L)/S.n,ch=cv.H/S.rows.length,now=AC.currentTime,bd=css('--bd'),pn=css('--pn'),fg=css('--fg');\n  while(S.q.length&&S.q[0].t<=now){const e=S.q.shift();S.cur=e.i;S.rows.forEach((r,k)=>{if(S.on[k][e.i])S.hit[k]=now})}\n  c.clearRect(0,0,cv.W,cv.H);\n  S.rows.forEach((r,k)=>{\n   if(L){const b=Math.max(0,1-(now-(S.hit[k]||-9))*4);c.font=Math.min(ch*.6,L*.6)+'px serif';c.textAlign='center';c.textBaseline='middle';c.fillText(r.label,L/2,k*ch+ch/2-b*ch*.2)}\n   for(let j=0;j<S.n;j++){const x=L+j*cw,y=k*ch,on=S.on[k][j],alt=Math.floor(j/4)%2;\n    rr(c,x+1.5,y+1.5,cw-3,ch-3,Math.min(8,cw/4));\n    if(on){c.fillStyle=r.color;c.globalAlpha=1}else{c.fillStyle=alt?bd:pn;c.globalAlpha=alt?.35:1}\n    c.fill();c.globalAlpha=1;if(!on){c.strokeStyle=bd;c.stroke()}}\n  });\n  if(S.playing&&S.cur>=0){c.strokeStyle=fg;c.lineWidth=3;c.strokeRect(L+S.cur*cw,1,cw,cv.H-2);c.lineWidth=1}\n }\n let drag=null;\n const cell=e=>{const p=pt(cv,e),L=lw(),cw=(cv.W-L)/S.n,ch=cv.H/S.rows.length,j=Math.floor((p.x-L)/cw),k=Math.floor(p.y/ch);return(j>=0&&j<S.n&&k>=0&&k<S.rows.length)?[k,j]:null};\n const set=(k,j,v)=>{if(S.on[k][j]==v)return;if(o.mono&&v)S.on.forEach(r=>r[j]=0);S.on[k][j]=v;if(v)S.rows[k].play(AC.currentTime+.01,j)};\n cv.addEventListener('pointerdown',e=>{unlock();const c=cell(e);if(!c){const p=pt(cv,e);if(o.lw&&p.x<lw()){S.rows[Math.floor(p.y/(cv.H/S.rows.length))].play(AC.currentTime,0)}return}cv.setPointerCapture(e.pointerId);drag=S.on[c[0]][c[1]]?0:1;set(c[0],c[1],drag)});\n cv.addEventListener('pointermove',e=>{if(drag===null)return;const c=cell(e);if(c)set(c[0],c[1],drag)});\n const up=()=>{drag=null};cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);\n let next=0,i=0;\n const tick=()=>{if(!S.playing)return;while(next<AC.currentTime+.15){S.rows.forEach((r,k)=>{if(S.on[k][i])r.play(next,i)});S.q.push({t:next,i});const sp=60/o.bpm()/4,sw=o.swing?o.swing():0;next+=sp*(i%2?1-sw:1+sw);i=(i+1)%S.n}setTimeout(tick,25)};\n S.start=()=>{AC.resume();S.playing=true;next=AC.currentTime+.06;i=0;S.q=[];tick()};\n S.stop=()=>{S.playing=false;S.cur=-1;S.q=[]};\n S.toggle=()=>S.playing?S.stop():S.start();\n fit(cv,draw);raf(draw);\n return S}\nfunction bindPlay(S,b){b.onclick=()=>{S.toggle();b.classList.toggle('on',S.playing);b.textContent=S.playing?'\u25a0 Stop':'\u25b6 Play'}}\n\nconst SCm=[0,2,4,5,7,9,11],deg=d=>SCm[d%7]+12*Math.floor(d/7);\nconst OFF=[0,2,4,7,9,11],RN=['I','ii','iii','IV','V','vi','vii\u00b0'];\nlet key=0,bars=[0,4,5,3],inst='marimba';\nconst rows=Array.from({length:6},(_,k)=>({color:`hsl(${160+k*30},75%,55%)`,play:(t,j)=>note(inst,48+key+deg(bars[(j>>2)&3]+OFF[5-k]),t,.5,.25)}));\nconst S=GridSeq($('#cv'),{rows,steps:16,bpm:()=>+$('#bpm').value*2});\n$('#key').innerHTML=NN.map((n,i)=>`<option value=\"${i}\">Key of ${n}</option>`).join('');\n$('#chs').innerHTML=[0,1,2,3].map(b=>`<select data-b=\"${b}\">${RN.map((r,i)=>`<option value=\"${i}\"${i==bars[b]?' selected':''}>${r}</option>`).join('')}</select>`).join(' ');\nconst PT=[[0,1,2,3],[3,2,1,0],[0,1,2,1],[0,2,4,2],[0,2,1,3]];\nfunction pat(){const p=+$('#pat').value;S.clear();for(let j=0;j<16;j++){const idx=p==5?Math.floor(Math.random()*6):PT[p][j%4];S.on[5-idx][j]=1}}\npat();\n$('#pat').onchange=pat;$('#key').onchange=e=>key=+e.target.value;$('#ins').onchange=e=>inst=e.target.value;\ndocument.querySelectorAll('#chs select').forEach(s=>s.onchange=()=>bars[+s.dataset.b]=+s.value);\nbindPlay(S,$('#play'));</script></body></html>";
+let arpeggiosOverlayEl = null, arpeggiosOverlayFrame = null;
+let arpeggiosReturnState = 'play';
+let arpeggiosHistoryPushed = false; // mirrors soundWavesHistoryPushed -- see openArpeggiosApp()/closeArpeggiosApp()
+
+function createArpeggiosOverlay() {
+  const style = document.createElement('style');
+  style.textContent = `
+    #arpeggiosApp {
+      position: fixed; inset: 0; z-index: 1000;
+      background: #000;
+      display: none; flex-direction: column;
+      box-sizing: border-box;
+      padding-left: env(safe-area-inset-left, 0px);
+      padding-right: env(safe-area-inset-right, 0px);
+    }
+    #arpeggiosApp.open { display: flex; }
+    #arpeggiosApp .ar-bar {
+      flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 10px 14px;
+      background: linear-gradient(#211e33, #14121f);
+      border-bottom: 2px solid #9a82ff;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    }
+    #arpeggiosApp .ar-title {
+      color: #f1eeff; font: bold 14px monospace; letter-spacing: 0.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #arpeggiosApp .ar-close {
+      flex: 0 0 auto; cursor: pointer;
+      background: rgba(154,130,255,0.16);
+      border: 1.5px solid rgba(154,130,255,0.9);
+      color: #f1eeff; border-radius: 8px;
+      padding: 7px 16px; font: bold 13px monospace; white-space: nowrap;
+      -webkit-user-select: none; user-select: none;
+    }
+    #arpeggiosApp .ar-close:active { background: rgba(154,130,255,0.45); }
+    #arpeggiosApp iframe {
+      flex: 1 1 auto; width: 100%; min-height: 0; border: 0; background: #14121f;
+    }
+    @media (max-height: 480px) {
+      #arpeggiosApp .ar-bar { padding: 4px 12px; padding-top: calc(4px + env(safe-area-inset-top, 0px)); }
+      #arpeggiosApp .ar-title { font-size: 12px; }
+      #arpeggiosApp .ar-close { padding: 4px 12px; font-size: 12px; }
+    }
+  `;
+  document.head.appendChild(style);
+
+  arpeggiosOverlayEl = document.createElement('div');
+  arpeggiosOverlayEl.id = 'arpeggiosApp';
+
+  const bar = document.createElement('div');
+  bar.className = 'ar-bar';
+  const title = document.createElement('div');
+  title.className = 'ar-title';
+  title.textContent = 'ARPEGGIOS \u2014 ONE NOTE AT A TIME';
+  const closeBtn = document.createElement('div');
+  closeBtn.className = 'ar-close';
+  closeBtn.textContent = '\u2190 BACK TO TINY THAI';
+  bindTap(closeBtn, closeArpeggiosApp);
+  bar.appendChild(title);
+  bar.appendChild(closeBtn);
+
+  arpeggiosOverlayFrame = document.createElement('iframe');
+  arpeggiosOverlayFrame.setAttribute('allow', 'autoplay');
+
+  arpeggiosOverlayEl.appendChild(bar);
+  arpeggiosOverlayEl.appendChild(arpeggiosOverlayFrame);
+  document.body.appendChild(arpeggiosOverlayEl);
+
+  // [Esc] pressed while the iframe itself has keyboard focus never reaches this page's keydown
+  // handler, so the app posts a message instead (see the head script inside ARPEGGIOS_HTML).
+  window.addEventListener('message', (e) => {
+    if (!arpeggiosOverlayFrame || e.source !== arpeggiosOverlayFrame.contentWindow) return;
+    if (e.data && e.data.arpeggios === 'close' && state === 'arpeggiosApp') closeArpeggiosApp();
+  });
+}
+createArpeggiosOverlay();
+
+// Opens the Arpeggios overlay and switches state to 'arpeggiosApp'. Called from
+// MINIGAME_ACTIONS.arpeggios (E on the note-bar stand, or tapping its floating sign).
+function openArpeggiosApp() {
+  arpeggiosReturnState = state;
+  arpeggiosOverlayFrame.srcdoc = ARPEGGIOS_HTML;
+  arpeggiosOverlayEl.classList.add('open');
+  state = 'arpeggiosApp';
+  arpeggiosOverlayFrame.addEventListener('load', () => {
+    try { arpeggiosOverlayFrame.contentWindow.focus(); } catch (e) { /* a tap will focus it */ }
+  }, { once: true });
+  // Same throwaway-history-entry trick as openSoundWavesApp() etc., so the browser/OS back gesture
+  // closes the overlay instead of leaving the game.
+  history.pushState({ arpeggiosApp: true }, '');
+  arpeggiosHistoryPushed = true;
+}
+
+// Tears the iframe back down (which also stops every tone) and returns to ordinary gameplay inside
+// the restaurant. fromPopState mirrors closeSoundWavesApp()'s parameter -- true when triggered by
+// the browser's back button (whose history entry is already consumed), so history.back() must not
+// be called again in that case.
+function closeArpeggiosApp(fromPopState) {
+  arpeggiosOverlayEl.classList.remove('open');
+  arpeggiosOverlayFrame.removeAttribute('srcdoc');
+  arpeggiosOverlayFrame.src = 'about:blank';
+  reclaimGameFocus(arpeggiosOverlayFrame);
+  state = arpeggiosReturnState;
+  if (!fromPopState && arpeggiosHistoryPushed) {
+    arpeggiosHistoryPushed = false;
+    history.back();
+  } else {
+    arpeggiosHistoryPushed = false;
+  }
+}
+
 // SKATEBOARDING & HIP-HOP CULTURE -- a read-and-explore encyclopedia-style
 // page that lives inside TALENT (LEVEL 3, SKATEPARK) on a little zine stand in
 // the middle of the shop floor (see TALENT's `minigames` list and
@@ -26418,6 +26557,8 @@ window.addEventListener('popstate', () => {
     closeMpumpApp(true);
   } else if (state === 'soundWavesApp') {
     closeSoundWavesApp(true);
+  } else if (state === 'arpeggiosApp') {
+    closeArpeggiosApp(true);
   } else if (state === 'skateHipHopReaderApp') {
     closeSkateHipHopReaderApp(true);
   } else if (state === 'travSkatesApp') {
@@ -26450,7 +26591,7 @@ canvas.addEventListener('pointerdown', (e) => {
     const vx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const vy = (e.clientY - rect.top) * (canvas.height / rect.height);
     handleStuTap(vx, vy);
-  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'reverbReefApp' || state === 'beatBrewingApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'humbleTreasuresApp' || state === 'dustRacingApp' || state === 'cbPressApp' || state === 'spotDiffApp' || state === 'guitarApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'scoopBeatsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp' || state === 'arkaiikImpactApp' || state === 'precisionPointsApp' || state === 'wishJamApp' || state === 'anthillDeluxeApp' || state === 'ricoRotaryApp' || state === 'mpumpApp' || state === 'soundWavesApp' || state === 'skateHipHopReaderApp' || state === 'travSkatesApp' || state === 'nineBarsApp' || state === 'drumMachineApp' || state === 'inkDeskApp' || state === 'j2sProSkaterApp') {
+  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'reverbReefApp' || state === 'beatBrewingApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'humbleTreasuresApp' || state === 'dustRacingApp' || state === 'cbPressApp' || state === 'spotDiffApp' || state === 'guitarApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'scoopBeatsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp' || state === 'arkaiikImpactApp' || state === 'precisionPointsApp' || state === 'wishJamApp' || state === 'anthillDeluxeApp' || state === 'ricoRotaryApp' || state === 'mpumpApp' || state === 'soundWavesApp' || state === 'arpeggiosApp' || state === 'skateHipHopReaderApp' || state === 'travSkatesApp' || state === 'nineBarsApp' || state === 'drumMachineApp' || state === 'inkDeskApp' || state === 'j2sProSkaterApp') {
     // The DOM overlay sits on top of (and outside) the canvas while an
     // instrument/the chess app/the beat bot/the organ/mini golf/the
     // blackbook/Gator Grooves/Vinyl Snake/Bayou Break Station/Gator Jam
@@ -27073,6 +27214,11 @@ function update(dt) {
     // owns input; its own back button and [Esc] close it, and the on-screen [X] touch button
     // still works via buyPressed.
     if (buyPressed) closeSoundWavesApp();
+  } else if (state === 'arpeggiosApp') {
+    // Same reasoning as 'soundWavesApp' just above: the DOM overlay (see createArpeggiosOverlay())
+    // owns input; its own back button and [Esc] close it, and the on-screen [X] touch button
+    // still works via buyPressed.
+    if (buyPressed) closeArpeggiosApp();
   } else if (state === 'wishJamApp') {
     // Same reasoning as 'precisionPointsApp' just above: the DOM overlay (see
     // createWishJamOverlay()) owns input while WISH JAM is loaded -- its own
@@ -28574,6 +28720,60 @@ function drawMinigameSoundWaves(wx, wy, time, seed, label) {
   return { cx, cy, hw: W / 2 + 14, hh: H / 2 + 34 };
 }
 
+// Alternate mini-game marker used when a map entry sets `icon: 'arpeggios'` (ARPEGGIOS, the chord/
+// pattern sequencer on the note-bar stand inside TINY THAI in WINOOSKI) -- same bob/label/hitbox
+// contract as drawMinigameSoundWaves() above. Drawn as a little floating violet panel on a thin
+// post: a six-row note grid whose rainbow cells climb like an arpeggio while a bright playhead
+// sweeps across, so it reads as "play some chords." `time` is in seconds.
+function drawMinigameArpeggios(wx, wy, time, seed, label) {
+  const s = MINIGAME_OBJECT_SCALE;
+  const bob = Math.sin(time * 3 + seed) * 3;
+  const W = 34 * s, H = 26 * s;
+  const cx = wx, cy = wy - 50 + bob;
+
+  // thin post connecting the sign down to the stand
+  ctx.strokeStyle = '#241c28';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(wx, cy + H / 2);
+  ctx.lineTo(wx, wy - 14);
+  ctx.stroke();
+
+  // body: deep violet with a bright violet rim
+  ctx.fillStyle = '#14121f';
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(cx - W / 2, cy - H / 2, W, H, 4 * s); else ctx.rect(cx - W / 2, cy - H / 2, W, H);
+  ctx.fill();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = '#9a82ff';
+  ctx.stroke();
+
+  // 8 columns x 6 rows of note cells: one lit cell per column, climbing then repeating
+  const cols = 8, rows = 6;
+  const gx = cx - W / 2 + 4 * s, gy = cy - H / 2 + 4 * s;
+  const cw = (W - 8 * s) / cols, ch = (H - 8 * s) / rows;
+  const play = Math.floor(time * 5) % cols;
+  for (let j = 0; j < cols; j++) {
+    const k = rows - 1 - (j % 4);   // 0..3 up pattern, repeated
+    ctx.globalAlpha = j === play ? 1 : 0.55;
+    ctx.fillStyle = `hsl(${160 + k * 30},75%,${j === play ? 70 : 55}%)`;
+    ctx.fillRect(gx + j * cw + 0.5, gy + k * ch + 0.5, Math.max(1, cw - 1), Math.max(1, ch - 1));
+  }
+  ctx.globalAlpha = 1;
+  ctx.strokeStyle = '#f1eeff';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(gx + play * cw, gy, cw, ch * rows);
+
+  // floating label -- flashes between the label and the tap hint
+  const flashOnLabel = Math.floor(time / 1.4) % 2 === 0;
+  ctx.fillStyle = '#c9baff';
+  ctx.font = `bold ${Math.round(9 * s)}px monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillText(flashOnLabel ? (label || 'MINI-GAME') : 'TAP TO PLAY', cx, cy - H / 2 - 7 * s);
+
+  return { cx, cy, hw: W / 2 + 14, hh: H / 2 + 34 };
+}
+
 // Alternate mini-game marker used when a map entry sets `icon: 'inkdesk'` (the InkDesk Tattoo
 // Business Toolkit inside BELLEVUE in WINOOSKI) -- same bob/label/hitbox contract as
 // drawMinigameMpumpBox() above. Drawn as a little floating clipboard on a thin post: black board
@@ -29033,7 +29233,7 @@ function render(time) {
     drawSplash();
     return;
   }
-  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'reverbReefApp' || state === 'beatBrewingApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'humbleTreasuresApp' || state === 'dustRacingApp' || state === 'cbPressApp' || state === 'spotDiffApp' || state === 'guitarApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'scoopBeatsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp' || state === 'arkaiikImpactApp' || state === 'precisionPointsApp' || state === 'wishJamApp' || state === 'anthillDeluxeApp' || state === 'ricoRotaryApp' || state === 'mpumpApp' || state === 'soundWavesApp' || state === 'skateHipHopReaderApp' || state === 'travSkatesApp' || state === 'nineBarsApp' || state === 'drumMachineApp' || state === 'inkDeskApp' || state === 'j2sProSkaterApp') {
+  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'reverbReefApp' || state === 'beatBrewingApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'humbleTreasuresApp' || state === 'dustRacingApp' || state === 'cbPressApp' || state === 'spotDiffApp' || state === 'guitarApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'scoopBeatsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp' || state === 'arkaiikImpactApp' || state === 'precisionPointsApp' || state === 'wishJamApp' || state === 'anthillDeluxeApp' || state === 'ricoRotaryApp' || state === 'mpumpApp' || state === 'soundWavesApp' || state === 'arpeggiosApp' || state === 'skateHipHopReaderApp' || state === 'travSkatesApp' || state === 'nineBarsApp' || state === 'drumMachineApp' || state === 'inkDeskApp' || state === 'j2sProSkaterApp') {
     // Same reasoning as the labApp overlay: a DOM element (the <video>,
     // see createCharacterIntroOverlay(), the chess <iframe>, see
     // createChessOverlay(), the beat bot <iframe>, see
@@ -29184,6 +29384,8 @@ function render(time) {
         ? drawMinigameMpumpBox(wx, wy, time, seed, mg.label)
         : mg.icon === 'soundwaves'
         ? drawMinigameSoundWaves(wx, wy, time, seed, mg.label)
+        : mg.icon === 'arpeggios'
+        ? drawMinigameArpeggios(wx, wy, time, seed, mg.label)
         : mg.icon === 'inkdesk'
         ? drawMinigameInkDesk(wx, wy, time, seed, mg.label)
         : mg.icon === 'skatebillboard'
@@ -33799,6 +34001,21 @@ function paintTinyThaiInterior(c) {
     c.save(); c.translate(lx, ly); c.rotate(rot); c.beginPath(); c.ellipse(0, 0, 2.5, 8, 0, 0, Math.PI * 2); c.fill(); c.restore();
   }
 
+  // ---------------------------------------------------------------- ARPEGGIOS note-bar stand (blockTile (12,2))
+  // a little lacquered stand holding a violet note-grid panel; the stepping notes are drawn live
+  // in drawTinyThaiInterior().
+  {
+    const bx = 12 * TILE, by = 2 * TILE;
+    c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(bx + 3, by + 28, 26, 3);
+    c.fillStyle = '#3a1c14'; c.fillRect(bx + 5, by + 21, 3, 8); c.fillRect(bx + 24, by + 21, 3, 8);   // legs
+    c.fillStyle = '#c4902c'; c.fillRect(bx + 2, by + 18, 28, 5);                                       // gold-trimmed shelf
+    c.fillStyle = '#e0b040'; c.fillRect(bx + 2, by + 18, 28, 1.5);
+    c.fillStyle = '#7a1822'; c.fillRect(bx + 2, by + 22, 28, 1.5);
+    c.fillStyle = '#14121f'; c.fillRect(bx + 6, by + 1, 20, 17);                                       // panel
+    c.fillStyle = '#2a2547'; c.fillRect(bx + 7, by + 2, 18, 15);
+    c.fillStyle = '#9a82ff'; c.fillRect(bx + 6, by + 1, 20, 1);                                        // rim light
+  }
+
   // ---------------------------------------------------------------- front wall: window with red valance
   const fy = 9 * TILE;
   for (const [x0, x1] of [[TILE, 6 * TILE], [7 * TILE, 13 * TILE]]) {
@@ -33857,6 +34074,21 @@ function drawTinyThaiInterior(time) {
     ctx.fillStyle = 'rgba(255,255,255,0.28)'; ctx.fillRect(lx + sway - 5, 35, 2, 9);
     ctx.fillStyle = 'rgba(120,10,10,0.35)'; ctx.fillRect(lx + sway - 1, 32, 1, 16);
     ctx.fillStyle = '#e0b040'; ctx.fillRect(lx + sway - 4, 48, 9, 3); ctx.fillRect(lx + sway, 51, 1, 5);
+  }
+  // ARPEGGIOS note-bar stand: 4 columns x 6 rows of note cells; the lit cell in each column climbs
+  // like an arpeggio and the playhead column brightens as it steps (static panel is painted in
+  // paintTinyThaiInterior(); `time` is in seconds)
+  {
+    const bx = 12 * TILE, by = 2 * TILE, step = Math.floor(time * 5) % 4;
+    for (let j = 0; j < 4; j++) {
+      const k = 5 - j;   // rows 5..2 (low to high)
+      ctx.globalAlpha = j === step ? 1 : 0.55;
+      ctx.fillStyle = 'hsl(' + (160 + k * 30) + ',75%,' + (j === step ? 70 : 55) + '%)';
+      ctx.fillRect(bx + 8 + j * 4.5, by + 3 + k * 2.2, 3.6, 1.8);
+    }
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = '#f1eeff'; ctx.lineWidth = 0.8;
+    ctx.strokeRect(bx + 7.8 + step * 4.5, by + 2.8, 4, 13.4);
   }
 }
 
