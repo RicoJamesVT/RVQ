@@ -12836,6 +12836,16 @@ preciseMcImg.src = 'assets/precisemc.png';
 const wishImg = new Image();
 wishImg.src = 'assets/wish.png';
 
+// OLD GOLD -- a super talented beatmaker who used to live in VT and now lives in NH.
+// He's back in town digging at all his favorite spots to take some fresh goods home
+// to NH and cook up. Pixel-art sprite: gray knit beanie, black-framed glasses, navy
+// Columbia puffer jacket, blue jeans and gray boots, cradling a Roland SP-404SX
+// sampler (display reading 128). Same pre-drawn shop-npc treatment as WISH/HAGEN
+// (see SHOP_NPC_IMAGES below), digging the bins on the open floor inside AUTUMN
+// RECORDS in WINOOSKI (Level 4).
+const oldGoldImg = new Image();
+oldGoldImg.src = 'assets/oldgold.png';
+
 // ---------------------------------------------------------------- maps
 const SOLID = new Set(['#', 'w', 'f', '~', 'W', 'T', 'C', 'c', 'K', 'J', 'S', 'A', 'N', 'F', 'R', 'V', 'Z', 'U', 'X', 'm', 'h', 'q', 'e', 'x', 'H']);
 
@@ -16139,7 +16149,8 @@ const shops = {
   // (12,8) -- all clear of the counter, the four dig crates (col 1 / col 12),
   // the keeper (6,2), the door (6,9) and the spawn (6.5,7.5). Four junk
   // crates: Rotary Breaks (winDrums) is hidden in one of them, the rest are junk. The keeper is
-  // GREG, the owner (see keeperImgs.GREG).
+  // GREG, the owner (see keeperImgs.GREG). OLD GOLD, a beatmaker visiting from NH, is digging the
+  // bins at (10,5) (see `npcs` below).
   autumnrecords: makeShop('autumnrecords', {
     world: 'winooski',
     floor: '#c9a46d', plank: '#b08a58', wallColor: '#e6cf94',
@@ -16172,6 +16183,29 @@ const shops = {
     // Four crates: Winooski's first record (Rotary Breaks) plus three themed junk crates
     // (see AUTUMN_RECORDS_JUNK) -- shuffleRecordCrates() moves the real one around each game.
     crates: [ { record: 'winDrums' }, { autumnSeed: 0 }, { autumnSeed: 1 }, { autumnSeed: 2 } ],
+    // OLD GOLD -- a super talented beatmaker who used to live in VT and now lives in NH,
+    // in town digging his favorite spots to take fresh goods back and cook up. Posted up
+    // on the open floor at (10,5), right beside the east bin island (8,5)(9,5) like he's
+    // mid-dig: clear of every blockTile, the counter (row 3), the CD tower (10,3), the
+    // dig crates (12,4)/(12,6), the MPUMP station (11,8), the keeper (6,2), the door
+    // (6,9) and the spawn (6.5,7.5), with walking room on every side (talk to him from
+    // (10,4), (10,6) or (11,5)). `dance: true` gives him the same head-bob + floating
+    // notes the DJ npcs get -- fitting for a beatmaker with a sampler in his hands. Same
+    // "full pre-drawn image, feet anchored to the floor line" treatment as the other shop
+    // npcs -- see SHOP_NPC_IMAGES/drawShopImageNpcs.
+    npcs: [
+      { id: 'oldgold', tx: 10, ty: 5, name: 'OLD GOLD', sprite: 'oldgold', spriteH: 76, dance: true,
+        lines: [
+          "Old Gold. Beatmaker. I used to call Vermont home, but these days I'm over in New Hampshire. Today I'm back in town, digging.",
+          "Every spot I used to hit, I'm hitting again. Greg's bins are always the first stop -- nobody in the state keeps crates this deep, this strange, this good.",
+          "Fresh goods, that's the mission. Grab a stack here, a few more across town, then I haul it all back to NH and cook it up.",
+          "This right here's my SP-404SX. Banging out beats at one-twenty-eight. Chop a break, loop a bassline, pitch it down until it gets dusty -- there's your whole kitchen.",
+          "The best samples are the ones nobody's flipped yet. Odd little records, a drum break buried under forty seconds of nothing. That's where the gold is.",
+          "People ask how I found my sound. I never found it -- I dug it up. One crate at a time.",
+          "Do me a favor. If you pull a clean drum break out of one of these crates, don't leave it down there. Somebody's gotta flip it into something new.",
+          "Winooski's still got some of the best bins around, and the people in this scene are the real deal. I miss it, and I'm back every chance I get.",
+        ] },
+    ],
   }),
   // TINY THAI -- a little Thai restaurant on the Winooski east lawn (see
   // makeWinooski()). `world: 'winooski'` ties it to that level. `tinyThai: true`
@@ -48061,7 +48095,7 @@ function drawKeeper(k) {
 // anchored to the tile's floor line — no procedural fallback, since there's
 // no simple shape that stands in for this art; it just waits for the image
 // to finish loading.
-const SHOP_NPC_IMAGES = { kanga: kangaImg, truth: truthImg, bill: billImg, rza: rzaImg, gza: gzaImg, zach: zachImg, humble: humbleImg, hicks: hicksImg, mavstar: mavstarImg, boxguts: boxgutsImg, trav: travImg, sinnn: sinnnImg, bigrye: bigRyeImg, emma: emmaImg, esk: esKImg, krishna: krishnaImg, sk1: keeperImgs['SK1'], arkaiik: arkaiikImg, ghost: ghostImg, hagen: hagenImg, precisemc: preciseMcImg, wish: wishImg };
+const SHOP_NPC_IMAGES = { kanga: kangaImg, truth: truthImg, bill: billImg, rza: rzaImg, gza: gzaImg, zach: zachImg, humble: humbleImg, hicks: hicksImg, mavstar: mavstarImg, boxguts: boxgutsImg, trav: travImg, sinnn: sinnnImg, bigrye: bigRyeImg, emma: emmaImg, esk: esKImg, krishna: krishnaImg, sk1: keeperImgs['SK1'], arkaiik: arkaiikImg, ghost: ghostImg, hagen: hagenImg, precisemc: preciseMcImg, wish: wishImg, oldgold: oldGoldImg };
 
 function drawShopImageNpcs(map) {
   if (!map.npcs) return;
