@@ -16232,7 +16232,8 @@ const shops = {
   // extraTables = gig tables (9,6)(10,6) and a small round one at (12,6) -- all
   // clear of the door (6,9) and spawn (6.5,7.5). The stage front row (y=3) is
   // walkable, so you can hop up and stand by the mic. Two dig crates (record + junk) at (1,5)/(12,5).
-  // The bartender is JAKE, a vegan punk from Winooski (see keeperImgs.JAKE).
+  // The bartender is JAKE, a vegan punk from Winooski (see keeperImgs.JAKE). THA TRUTH, KRISHNA,
+  // SKYSPLITTERINK and SK1 are in the crowd on row 5 watching THE AZTEXT (see `npcs` below).
   monkeyhouse: makeShop('monkeyhouse', {
     world: 'winooski',
     floor: '#4b3321', plank: '#3b281a', wallColor: '#4a2e28',
@@ -16258,6 +16259,45 @@ const shops = {
       { id: 'chords', tx: 1, ty: 4, label: 'CHORDS', icon: 'chords' },
     ],
     extraTables: [[9, 6], [10, 6], [12, 6]],
+    // THA TRUTH, KRISHNA, SKYSPLITTERINK + SK1 -- out front in the crowd, watching THE AZTEXT's
+    // set. Parked on row 5, a row back from the stage so their heads (spriteH 70) stay below the
+    // Aztext's feet (stage front y~120): (3,5) (5,5) (7,5) (8,5). Clear of the CHORDS stand (1,4),
+    // POWER MOVES approach (8,3), the dig crates (1,5)/(12,5), the pool table (2..4,6..7), the gig
+    // tables (9,6)(10,6)(12,6), and the center aisle (6, 4..9) between the door (6,9) and the
+    // stage. Same pre-drawn image treatment as the other shop npcs -- see SHOP_NPC_IMAGES/
+    // drawShopImageNpcs (SK1's art is the keeper PNG, registered there as `sk1`).
+    npcs: [
+      { id: 'truth', tx: 3, ty: 5, name: 'THA TRUTH', sprite: 'truth', spriteH: 70,
+        lines: [
+          'Pro and Learic, right up front. Aztext been holding Vermont down since before half this room could drive.',
+          'Listen to the pocket those two ride. No wasted words, no wasted bars. That\'s craft.',
+          'Me, Krishna and Rico -- Solo Lexicon. But when The Aztext is on, I\'m just another head in the crowd.',
+          'Don\'t talk over the verse. Nod, rewind it in your head, and tell somebody about it tomorrow.',
+        ] },
+      { id: 'krishna', tx: 5, ty: 5, name: 'KRISHNA', sprite: 'krishna', spriteH: 70,
+        lines: [
+          'Peace, friend. Come stand with us. The room sounds best right about here.',
+          'Hear how Pro and Learic trade lines? Two voices, one breath. That\'s a conversation, not a performance.',
+          'I\'ve been to a lot of shows. A room like this, a set like this -- that\'s a small prayer, loud.',
+          'Let the bass move through you. You don\'t have to do anything. Just let it.',
+        ] },
+      { id: 'zach', tx: 7, ty: 5, name: 'SKYSPLITTERINK', sprite: 'zach', spriteH: 70,
+        lines: [
+          'Zach -- SkySplitterInk. Off the clock tonight, but my ears never are.',
+          'Check the vocals sitting on top of that kick. Clean mix, tight low end. Whoever\'s running sound back there knows what they\'re doing.',
+          'The Aztext in a room this size? Can\'t beat it. Wood walls, a little natural slap -- it\'s basically a free reverb.',
+          () => collected.size >= 3
+            ? 'Heard you\'ve been digging crates all over town. Come back after the set -- I\'ll tell you which of those breaks I\'d chop.'
+            : null,
+        ] },
+      { id: 'sk1', tx: 8, ty: 5, name: 'SK1', sprite: 'sk1', spriteH: 70,
+        lines: [
+          'SK1. Shop\'s closed, show\'s open. Grab a spot and watch these two work.',
+          'Aztext is local royalty. Bellevue\'s walls are covered with flash, but this is the real art right here.',
+          'Third Thursdays I\'m hosting, but tonight I\'m just a fan with a cold drink.',
+          'The whole scene shows up for nights like this. Skaters, printers, emcees, ink. Everybody connects.',
+        ] },
+    ],
     keeper: { x: 11, y: 2, name: 'JAKE', shirt: '#1f1f24', skin: '#e8a47c',
       lines: [
         'Welcome to The Monkey House! I\'m Jake. Grab a stool -- there\'s a show in the back tonight.',
@@ -48021,7 +48061,7 @@ function drawKeeper(k) {
 // anchored to the tile's floor line — no procedural fallback, since there's
 // no simple shape that stands in for this art; it just waits for the image
 // to finish loading.
-const SHOP_NPC_IMAGES = { kanga: kangaImg, truth: truthImg, bill: billImg, rza: rzaImg, gza: gzaImg, zach: zachImg, humble: humbleImg, hicks: hicksImg, mavstar: mavstarImg, boxguts: boxgutsImg, trav: travImg, sinnn: sinnnImg, bigrye: bigRyeImg, emma: emmaImg, esk: esKImg, krishna: krishnaImg, arkaiik: arkaiikImg, ghost: ghostImg, hagen: hagenImg, precisemc: preciseMcImg, wish: wishImg };
+const SHOP_NPC_IMAGES = { kanga: kangaImg, truth: truthImg, bill: billImg, rza: rzaImg, gza: gzaImg, zach: zachImg, humble: humbleImg, hicks: hicksImg, mavstar: mavstarImg, boxguts: boxgutsImg, trav: travImg, sinnn: sinnnImg, bigrye: bigRyeImg, emma: emmaImg, esk: esKImg, krishna: krishnaImg, sk1: keeperImgs['SK1'], arkaiik: arkaiikImg, ghost: ghostImg, hagen: hagenImg, precisemc: preciseMcImg, wish: wishImg };
 
 function drawShopImageNpcs(map) {
   if (!map.npcs) return;
