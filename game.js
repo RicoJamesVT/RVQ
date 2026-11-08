@@ -1976,6 +1976,15 @@ const MINIGAME_ACTIONS = {
   // and only falls back to a relative lib/three.min.js script tag, so it plays the same online or offline.
   // See openForkliftApp()/createForkliftOverlay().
   forklift: () => openForkliftApp(),
+  // WOK STAR -- a 3D stir-fry rush: drop ingredients into a wok over a live flame, slide the wok on and off the heat,
+  // toss the food to flip it, and serve each order when the pieces are golden (not raw, not burnt). It lives on a little
+  // wok-burner stand in the top-left corner of TINY THAI in WINOOSKI (LEVEL 4), see the `tinythai` shop's `minigames`
+  // list. `icon: 'wokstar'` -- see drawMinigameWokStar(). Same \"full-screen DOM overlay with an <iframe>\" pattern and the
+  // same INLINED-page shape as FORKLIFT FRENZY above (the whole page is WOK_STAR_HTML, loaded through iframe.srcdoc --
+  // nothing to ship, nothing to fetch, sounds are synthesized with Web Audio, no fonts/images), and its 3D scene reuses
+  // the game's own vendored lib/three.min.js, so it plays the same online or offline. See openWokStarApp()/
+  // createWokStarOverlay().
+  wokstar: () => openWokStarApp(),
   // HARMONICS -- the swipe-across-the-strings overtone-series toy (eight strings, each a whole-number
   // multiple of a base pitch), set up on a little string stand at the back of SNEAKERS BISTRO in
   // WINOOSKI (LEVEL 4), see the `sneakersbistro` shop's `minigames` list. `icon: 'harmonics'` -- see
@@ -11426,6 +11435,7 @@ window.addEventListener('keydown', (e) => {
     if (k === 'escape' && state === 'arpeggiosApp') { closeArpeggiosApp(); }
     if (k === 'escape' && state === 'oscillatorsApp') { closeOscillatorsApp(); }
     if (k === 'escape' && state === 'forkliftApp') { closeForkliftApp(); }
+    if (k === 'escape' && state === 'wokStarApp') { closeWokStarApp(); }
     if (k === 'escape' && state === 'harmonicsApp') { closeHarmonicsApp(); }
     if (k === 'escape' && state === 'powerMovesApp') { closePowerMovesApp(); }
     if (k === 'escape' && state === 'chordsApp') { closeChordsApp(); }
@@ -15641,9 +15651,14 @@ const shops = {
     // counter (row 3, cols 4-9), clear of the cook (6,2), the dig crate (12,5), the bamboo (12,8), the
     // door (6,9) and the spawn (6.5,7.5). Approach from (12,3) below or (11,2) left.
     // `icon: 'arpeggios'` -- see drawMinigameArpeggios().
-    blockTiles: [[1, 2], [1, 3], [1, 8], [12, 8], [12, 2]],
+    // (2,2) = the WOK STAR burner stand in the top-left corner (painted in paintTinyThaiInterior() with its
+    // flames and tossed bits animating live in drawTinyThaiInterior()): a solid tile on open floor right of
+    // the drinks cooler (1,2)(1,3), left of the counter (row 3, cols 4-9) and clear of the cook (6,2). Approach
+    // from (2,3) below or (3,2) right. `icon: 'wokstar'` -- see drawMinigameWokStar().
+    blockTiles: [[1, 2], [1, 3], [1, 8], [12, 8], [12, 2], [2, 2]],
     minigames: [
       { id: 'arpeggios', tx: 12, ty: 2, label: 'ARPEGGIOS', icon: 'arpeggios' },
+      { id: 'wokstar', tx: 2, ty: 2, label: 'WOK STAR', icon: 'wokstar' },
     ],
     extraTables: [[3, 6], [4, 6], [8, 6], [9, 6]],
     keeper: { name: 'KEV', shirt: '#2a2a2e', skin: '#a8643a',
@@ -16296,7 +16311,7 @@ const player = {
   tempItem: null, tempItemTimer: 0,
 };
 const collected = new Set();
-let state = 'splash'; // chordsApp (THE MONKEY HOUSE Chords overlay) | powerMovesApp (THE MONKEY HOUSE Power Moves overlay) | harmonicsApp (SNEAKERS BISTRO Harmonics overlay) | oscillatorsApp (BEVERAGE WAREHOUSE Oscillators overlay) | forkliftApp (BEVERAGE WAREHOUSE Forklift Frenzy overlay) | arpeggiosApp (TINY THAI Arpeggios overlay) | soundWavesApp (AUTUMN RECORDS Sound Waves overlay) | mpumpApp (AUTUMN RECORDS MPUMP overlay) | ricoRotaryApp (WINOOSKI RICO ROTARY overlay) | travSkatesApp (TALENT Trav Skates overlay) | nineBarsApp (BELLEVUE Nine Bars sudoku overlay) | drumMachineApp (BELLEVUE Infinite Drum Machine overlay) | inkDeskApp (BELLEVUE InkDesk Tattoo Business Toolkit overlay) | guitarApp (SPEAKING VOLUMES guitar overlay) | skateHipHopReaderApp (TALENT reader overlay) | splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | danceParty | portal | fifa | minigame | hotkeys | crate | photo | lab | labLocked | santosStuLocked | shopBackLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | qsdBalanceApp | vinylSnakeApp | waveformApp | bayouBreakApp | freqAltarApp | reverbReefApp | beatBrewingApp | drumPatternDocApp | gatorJamSlamApp | swampCaveApp | vocalChopBoothApp | vtDirtApp | penaltyKingsApp | digDashApp | digOnApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | diggerApp | hyperSwimApp | linusTugApp | connectFourApp | syrupRoadsApp | scoopBeatsApp | clawMachineApp | kangaidenVideo | kangaidenSplash | kangaidenApp | hiphopLibraryApp | truthKnocksVideo | truthKnocksSplash | truthKnocksApp | johnnySlidesVideo | johnnySlidesSplash | johnnySlidesApp | humbleTreasuresVideo | humbleTreasuresSplash | humbleTreasuresApp | dustRacingApp | cbPressApp | spotDiffApp | arkaiikImpactApp | precisionPointsApp | wishJamApp | anthillDeluxeApp
+let state = 'splash'; // wokStarApp (TINY THAI Wok Star overlay) | chordsApp (THE MONKEY HOUSE Chords overlay) | powerMovesApp (THE MONKEY HOUSE Power Moves overlay) | harmonicsApp (SNEAKERS BISTRO Harmonics overlay) | oscillatorsApp (BEVERAGE WAREHOUSE Oscillators overlay) | forkliftApp (BEVERAGE WAREHOUSE Forklift Frenzy overlay) | arpeggiosApp (TINY THAI Arpeggios overlay) | soundWavesApp (AUTUMN RECORDS Sound Waves overlay) | mpumpApp (AUTUMN RECORDS MPUMP overlay) | ricoRotaryApp (WINOOSKI RICO ROTARY overlay) | travSkatesApp (TALENT Trav Skates overlay) | nineBarsApp (BELLEVUE Nine Bars sudoku overlay) | drumMachineApp (BELLEVUE Infinite Drum Machine overlay) | inkDeskApp (BELLEVUE InkDesk Tattoo Business Toolkit overlay) | guitarApp (SPEAKING VOLUMES guitar overlay) | skateHipHopReaderApp (TALENT reader overlay) | splash | title | digChoice | history | slotChoose | select | characterIntro | play | dialog | record | win | danceParty | portal | fifa | minigame | hotkeys | crate | photo | lab | labLocked | santosStuLocked | shopBackLocked | labApp | chessApp | beatBotApp | organApp | minigolfApp | blackbookApp | crocSwampApp | qsdBalanceApp | vinylSnakeApp | waveformApp | bayouBreakApp | freqAltarApp | reverbReefApp | beatBrewingApp | drumPatternDocApp | gatorJamSlamApp | swampCaveApp | vocalChopBoothApp | vtDirtApp | penaltyKingsApp | digDashApp | digOnApp | rico1200App | ricoDawApp | filterLabApp | vinylNinjaSplash | vinylNinjaApp | diggerApp | hyperSwimApp | linusTugApp | connectFourApp | syrupRoadsApp | scoopBeatsApp | clawMachineApp | kangaidenVideo | kangaidenSplash | kangaidenApp | hiphopLibraryApp | truthKnocksVideo | truthKnocksSplash | truthKnocksApp | johnnySlidesVideo | johnnySlidesSplash | johnnySlidesApp | humbleTreasuresVideo | humbleTreasuresSplash | humbleTreasuresApp | dustRacingApp | cbPressApp | spotDiffApp | arkaiikImpactApp | precisionPointsApp | wishJamApp | anthillDeluxeApp
 // State to snap back to when the [H] hotkeys popup is closed -- currently
 // always 'play' since that's the only state H can be opened from, but kept
 // as its own var in case another state wants to offer the popup later.
@@ -16997,7 +17012,7 @@ const music = {
 // enter/exit call sites, so it can't drift out of sync no matter which
 // of the several ways the player backs out of the lab popup (keyboard
 // [X], on-screen [X] button, closing the instrument iframe, etc.).
-const DUCKED_STATES = new Set(['lab', 'labApp', 'santosStu', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'qsdBalanceApp', 'vinylSnakeApp', 'waveformApp', 'bayouBreakApp', 'freqAltarApp', 'reverbReefApp', 'beatBrewingApp', 'drumPatternDocApp', 'gatorJamSlamApp', 'swampCaveApp', 'vocalChopBoothApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'digOnApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'johnnySlidesApp', 'humbleTreasuresApp', 'dustRacingApp', 'cbPressApp', 'spotDiffApp', 'guitarApp', 'hyperSwimApp', 'linusTugApp', 'connectFourApp', 'syrupRoadsApp', 'scoopBeatsApp', 'clawMachineApp', 'kangaidenVideo', 'kangaidenApp', 'hiphopLibraryApp', 'arkaiikImpactApp', 'precisionPointsApp', 'wishJamApp', 'anthillDeluxeApp', 'ricoRotaryApp', 'mpumpApp', 'soundWavesApp', 'arpeggiosApp', 'oscillatorsApp', 'forkliftApp', 'harmonicsApp', 'powerMovesApp', 'chordsApp', 'skateHipHopReaderApp', 'travSkatesApp', 'nineBarsApp', 'drumMachineApp', 'inkDeskApp', 'j2sProSkaterApp', 'danceParty', 'truthKnocksVideo', 'truthKnocksApp', 'johnnySlidesVideo', 'humbleTreasuresVideo']);
+const DUCKED_STATES = new Set(['lab', 'labApp', 'santosStu', 'chessApp', 'sunnySideDinerApp', 'beatBotApp', 'organApp', 'minigolfApp', 'blackbookApp', 'crocSwampApp', 'qsdBalanceApp', 'vinylSnakeApp', 'waveformApp', 'bayouBreakApp', 'freqAltarApp', 'reverbReefApp', 'beatBrewingApp', 'drumPatternDocApp', 'gatorJamSlamApp', 'swampCaveApp', 'vocalChopBoothApp', 'vtDirtApp', 'penaltyKingsApp', 'digDashApp', 'digOnApp', 'rico1200App', 'ricoDawApp', 'filterLabApp', 'characterIntro', 'vinylNinjaApp', 'diggerApp', 'johnnySlidesApp', 'humbleTreasuresApp', 'dustRacingApp', 'cbPressApp', 'spotDiffApp', 'guitarApp', 'hyperSwimApp', 'linusTugApp', 'connectFourApp', 'syrupRoadsApp', 'scoopBeatsApp', 'clawMachineApp', 'kangaidenVideo', 'kangaidenApp', 'hiphopLibraryApp', 'arkaiikImpactApp', 'precisionPointsApp', 'wishJamApp', 'anthillDeluxeApp', 'ricoRotaryApp', 'mpumpApp', 'soundWavesApp', 'arpeggiosApp', 'oscillatorsApp', 'forkliftApp', 'wokStarApp', 'harmonicsApp', 'powerMovesApp', 'chordsApp', 'skateHipHopReaderApp', 'travSkatesApp', 'nineBarsApp', 'drumMachineApp', 'inkDeskApp', 'j2sProSkaterApp', 'danceParty', 'truthKnocksVideo', 'truthKnocksApp', 'johnnySlidesVideo', 'humbleTreasuresVideo']);
 function syncMusicDuck() {
   const minigameDucked = state === 'minigame' && activeMinigame && activeMinigame.musicDucked;
   music.duck(DUCKED_STATES.has(state) || !!minigameDucked);
@@ -25455,6 +25470,154 @@ function closeForkliftApp(fromPopState) {
   }
 }
 
+// ---------------------------------------------------------------- WOK STAR overlay
+// WOK STAR -- a 3D stir-fry rush: each shift is five orders from Kev's ticket rail (BASIL SHRIMP, PAD THAI,
+// DRUNKEN NOODLES ...). Tap an ingredient bowl to fling a portion into the wok, slide the wok around over the gas
+// flame (off the flame = cooking slows down, on it = fast), TOSS to flip everything into the air (food sitting
+// still on the hot steel scorches faster; tossing while the wok is moving sends it flying over the rim) and
+// SERVE when the gauge on the ticket sits in the green zone -- raw pieces, burnt pieces, spilled pieces and wrong
+// ingredients all cost points, and finishing early earns a time bonus. It lives on a little wok-burner stand in
+// the top-left corner of TINY THAI in WINOOSKI (LEVEL 4), see the `tinythai` shop's `minigames` list. Same
+// \"full-screen DOM overlay with an <iframe>\" pattern as FORKLIFT FRENZY above, and the same INLINED-page shape:
+// the whole page lives in WOK_STAR_HTML below and is loaded through iframe.srcdoc, so there is no file to ship and
+// no network call anywhere. The 3D scene runs on the game's own vendored lib/three.min.js (the page borrows
+// window.parent.THREE, falling back to a relative lib/three.min.js script tag when the parent's copy isn't
+// reachable), sound is synthesized with Web Audio and the best score is kept in localStorage -- so it plays
+// identically online or offline. Controls: WASD / arrows or drag to slide the wok, [Space] or tap to toss,
+// keys 1-6 or the on-screen bowls to add ingredients, [Enter] or the SERVE button to plate; the camera re-fits on
+// every resize/rotation, so portrait and landscape both work. [Esc] inside the iframe posts a message back (keys
+// typed there never reach this page).
+const WOK_STAR_HTML = "<!doctype html>\n<html lang=\"en\"><head><meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1,viewport-fit=cover\">\n<title>Wok Star<\/title>\n<style>\n*{box-sizing:border-box}\nhtml,body{margin:0;height:100%;background:#1a0c0c;overflow:hidden;font-family:ui-monospace,Menlo,Consolas,monospace;color:#fff;-webkit-user-select:none;user-select:none;touch-action:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}\n#c{position:fixed;inset:0;width:100%;height:100%;display:block;outline:none;touch-action:none}\n.hud{position:fixed;left:0;right:0;top:0;display:flex;justify-content:space-between;align-items:flex-start;gap:6px;padding:8px 10px;pointer-events:none;text-shadow:0 2px 0 rgba(0,0,0,.65)}\n.pill{background:rgba(40,12,14,.78);border:2px solid #e0b040;border-radius:10px;padding:4px 9px;font-weight:bold;font-size:13px;letter-spacing:.5px;white-space:nowrap}\n.pill b{color:#ffd54a}\n.pill.warn{border-color:#ff5a3a;color:#ffb0a0}\n#ticket{background:rgba(40,12,14,.82);border:2px solid #e0b040;border-radius:10px;padding:6px 8px;min-width:168px;max-width:46vw}\n#tkName{font-weight:900;font-size:13px;letter-spacing:1px;color:#ffd54a;margin-bottom:4px}\n#tkTime{height:5px;background:#3a1a1a;border-radius:3px;overflow:hidden;margin-bottom:5px}\n#tkTimeFill{height:100%;width:100%;background:#7cd68a}\n.row{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:bold;margin:3px 0;white-space:nowrap}\n.row i{display:inline-block;width:10px;height:10px;border-radius:50%;border:1px solid #0008;flex:0 0 auto}\n.row .nm{width:62px;overflow:hidden;text-overflow:ellipsis}\n.gauge{position:relative;flex:1 1 auto;min-width:54px;height:9px;border-radius:5px;overflow:hidden;background:linear-gradient(90deg,#6d6a66 0%,#6d6a66 46%,#41c85a 46%,#41c85a 73%,#d24a2a 73%,#d24a2a 100%);border:1px solid #000a}\n.gauge u{position:absolute;top:-1px;bottom:-1px;width:3px;margin-left:-1px;background:#fff;box-shadow:0 0 3px #000;border-radius:2px;opacity:0}\n.row em{font-style:normal;color:#ffe9a0;width:20px;text-align:right}\n#toast{position:fixed;left:0;right:0;top:30%;text-align:center;font-size:clamp(22px,6vw,40px);font-weight:900;letter-spacing:1px;pointer-events:none;opacity:0;text-shadow:0 3px 0 rgba(0,0,0,.75),0 0 18px rgba(0,0,0,.5);transform:scale(.8)}\n#toast.show{opacity:1;transform:scale(1);transition:transform .15s,opacity .1s}\n#bar{position:fixed;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;gap:6px;padding:6px 8px calc(8px + env(safe-area-inset-bottom,0px));pointer-events:none}\n#ings{display:grid;grid-template-columns:repeat(6,minmax(0,78px));gap:6px;width:100%;justify-content:center}\n#acts{display:flex;gap:10px;pointer-events:auto}\n.ing,.act{pointer-events:auto;cursor:pointer;touch-action:manipulation;border-radius:10px;font-weight:900;text-align:center;border:2px solid #e0b040;background:rgba(40,12,14,.86);color:#fff3c8;font-family:inherit}\n.ing{padding:5px 2px 4px;font-size:10px;letter-spacing:.3px;line-height:1.15}\n.ing i{display:block;width:20px;height:20px;border-radius:50%;margin:0 auto 3px;border:2px solid #0009}\n.ing small{display:block;color:#ffcf70;font-size:9px}\n.ing:active,.ing.pulse{background:rgba(224,176,64,.5)}\n.act{padding:10px 20px;font-size:15px;letter-spacing:1px}\n#tossB{background:#c4283a;border-color:#ffd9a0}\n#serveB{background:#2c8a4a;border-color:#c8ffd0}\n.act:active{filter:brightness(1.4)}\n#hint{position:fixed;left:0;right:0;bottom:calc(138px + env(safe-area-inset-bottom,0px));text-align:center;font-size:11px;color:#ffe9b0;text-shadow:0 2px 0 #000a;pointer-events:none;opacity:.85}\n@media (max-height:430px){#bar{flex-direction:row;flex-wrap:wrap;justify-content:center}#ings{width:auto;grid-template-columns:repeat(6,64px)}.act{padding:7px 14px;font-size:13px}.ing{font-size:9px}.ing i{width:14px;height:14px;margin-bottom:1px}#hint{display:none}.pill{font-size:11px;padding:3px 7px}#ticket{min-width:150px}}\n@media (min-width:700px) and (min-height:431px){#ings{grid-template-columns:repeat(6,92px)}.ing{font-size:11px}}\n#card{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(18,6,8,.66);z-index:5}\n#card.hide{display:none}\n.panel{width:min(470px,100%);max-height:100%;overflow:auto;background:linear-gradient(#5a1620,#2e0b10);border:3px solid #e0b040;border-radius:16px;padding:18px 18px 16px;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.6)}\n.panel h1{margin:0 0 4px;font-size:clamp(26px,8vw,38px);letter-spacing:3px;color:#ffd54a;text-shadow:0 3px 0 #7a3a00}\n.panel .sub{font-size:12px;color:#ffb98a;letter-spacing:1px;margin-bottom:10px}\n.panel p{margin:8px 0;font-size:13px;line-height:1.45;color:#ffeccf}\n.panel .keys{font-size:12px;color:#ffe9a0}\n.panel .big{font-size:clamp(30px,9vw,46px);font-weight:900;color:#ffd54a;margin:4px 0}\n.panel .rank{font-size:15px;font-weight:bold;color:#ffb98a;margin-bottom:6px}\n#go{margin-top:10px;cursor:pointer;display:inline-block;background:#e0b040;color:#3a1400;border:3px solid #fff1b8;border-radius:12px;padding:10px 26px;font-weight:900;font-size:18px;letter-spacing:1px}\n#go:active{filter:brightness(1.2)}\n#err{position:fixed;inset:0;display:none;align-items:center;justify-content:center;text-align:center;padding:24px;background:#1a0c0c;color:#ffd0c0;font-size:15px;z-index:9}\n#snd{pointer-events:auto;cursor:pointer}\n<\/style>\n<script>addEventListener(\"keydown\",function(e){if(e.key===\"Escape\"){try{parent.postMessage({wokstar:\"close\"},\"*\")}catch(x){}}});<\/script>\n<\/head><body>\n<canvas id=\"c\" tabindex=\"0\"><\/canvas>\n<div class=\"hud\">\n <div id=\"ticket\"><div id=\"tkName\">ORDER<\/div><div id=\"tkTime\"><div id=\"tkTimeFill\"><\/div><\/div><div id=\"tkRows\"><\/div><\/div>\n <div style=\"display:flex;flex-direction:column;gap:6px;align-items:flex-end\">\n  <div class=\"pill\">ORDER <b id=\"hOrd\">1/5<\/b><\/div>\n  <div class=\"pill\">SCORE <b id=\"hScore\">0<\/b><\/div>\n  <div class=\"pill\" id=\"snd\">SOUND: ON<\/div>\n <\/div>\n<\/div>\n<div id=\"toast\"><\/div>\n<div id=\"hint\">Drag to slide the wok &middot; tap to toss &middot; keep it over the flame, but don't let it burn!<\/div>\n<div id=\"bar\"><div id=\"ings\"><\/div><div id=\"acts\"><div class=\"act\" id=\"tossB\">TOSS<\/div><div class=\"act\" id=\"serveB\">SERVE<\/div><\/div><\/div>\n<div id=\"card\"><div class=\"panel\" id=\"panel\"><\/div><\/div>\n<div id=\"err\"><\/div>\n<script>\n(function () {\n'use strict';\nfunction $(id) { return document.getElementById(id); }\nfunction clamp(v, a, b) { return v < a ? a : v > b ? b : v; }\nfunction lerp(a, b, t) { return a + (b - a) * t; }\nfunction rnd(a, b) { return a + Math.random() * (b - a); }\nfunction fail(msg) { var e = $('err'); e.style.display = 'flex'; e.textContent = msg || 'The 3D engine could not start on this device.'; }\nfunction tellParentClose() { try { window.parent.postMessage({ wokstar: 'close' }, '*'); } catch (e) { /* standalone */ } }\n\nfunction getThree(cb) {\n  try { if (window.parent && window.parent !== window && window.parent.THREE) { cb(window.parent.THREE); return; } } catch (e) { /* cross-origin */ }\n  if (window.THREE) { cb(window.THREE); return; }\n  var s = document.createElement('script');\n  s.src = 'lib/three.min.js';\n  s.onload = function () { if (window.THREE) cb(window.THREE); else fail(); };\n  s.onerror = function () { fail('Could not load the 3D engine (lib/three.min.js).'); };\n  document.head.appendChild(s);\n}\ngetThree(start);\n\nfunction start(T) {\n  var canvas = $('c'), renderer;\n  try { renderer = new T.WebGLRenderer({ canvas: canvas, antialias: true }); }\n  catch (e) { fail('WebGL is not available on this device.'); return; }\n  if (T.sRGBEncoding) { try { renderer.outputEncoding = T.sRGBEncoding; } catch (e) { /* newer builds */ } }\n  var LS = (T.REVISION && parseInt(T.REVISION, 10) >= 155) ? Math.PI : 1;\n  renderer.setClearColor(0x1a0c0c);\n\n  /* ------------------------------------------------------------ data */\n  var TYPES = [\n    { id: 'noodles', name: 'NOODLES', n: 3, rate: 0.085, raw: 0xf4eed8, gold: 0xe2a63a, burnt: 0x2e2012, keyc: '#e2c070' },\n    { id: 'shrimp',  name: 'SHRIMP',  n: 3, rate: 0.115, raw: 0xa9b1ba, gold: 0xff7f55, burnt: 0x4a2418, keyc: '#ff8a6a' },\n    { id: 'egg',     name: 'EGG',     n: 2, rate: 0.150, raw: 0xfff6c0, gold: 0xf4c230, burnt: 0x3e2c0c, keyc: '#ffe27a' },\n    { id: 'basil',   name: 'BASIL',   n: 4, rate: 0.190, raw: 0x7ee66a, gold: 0x2f9440, burnt: 0x14180c, keyc: '#58d060' },\n    { id: 'chili',   name: 'CHILI',   n: 3, rate: 0.125, raw: 0xf03c30, gold: 0xff5a1a, burnt: 0x2e1410, keyc: '#f03c30' },\n    { id: 'peanut',  name: 'PEANUT',  n: 5, rate: 0.100, raw: 0xeed9aa, gold: 0xc4863a, burnt: 0x241610, keyc: '#d8b070' }\n  ];\n  var IDX = {}; TYPES.forEach(function (t, i) { IDX[t.id] = i; });\n  var ORDERS = [\n    { name: 'BASIL SHRIMP',      need: ['shrimp', 'basil', 'chili'] },\n    { name: 'CHILI NOODLES',     need: ['noodles', 'chili', 'peanut'] },\n    { name: 'GOLDEN OMELET',     need: ['egg', 'shrimp', 'basil'] },\n    { name: 'PEANUT NOODLES',    need: ['noodles', 'egg', 'peanut'] },\n    { name: 'PAD THAI',          need: ['noodles', 'shrimp', 'egg', 'peanut'] },\n    { name: 'DRUNKEN NOODLES',   need: ['noodles', 'basil', 'chili', 'egg'] },\n    { name: 'KING PRAWN STIR',   need: ['shrimp', 'chili', 'basil', 'peanut'] },\n    { name: 'THE WORKS',         need: ['noodles', 'shrimp', 'egg', 'basil', 'chili'] }\n  ];\n  var N_ORDERS = 5, TARGET = 0.78, MAXITEMS = 34;\n\n  /* ------------------------------------------------------------ scene */\n  var scene = new T.Scene();\n  scene.background = new T.Color(0x1a0c0c);\n  scene.fog = new T.Fog(0x1a0c0c, 16, 40);\n  var camera = new T.PerspectiveCamera(50, 1, 0.1, 80);\n  scene.add(new T.AmbientLight(0xffe6d0, 0.62 * LS));\n  var key = new T.DirectionalLight(0xfff0dc, 0.75 * LS); key.position.set(-4, 9, 6); scene.add(key);\n  var rim = new T.DirectionalLight(0xff9a6a, 0.3 * LS); rim.position.set(5, 4, -6); scene.add(rim);\n  var fireLight = new T.PointLight(0xff8a2a, 1.4 * LS, 7); fireLight.position.set(0, 1.4, 0); scene.add(fireLight);\n\n  var matCache = {};\n  function mat(c) { return matCache[c] || (matCache[c] = new T.MeshLambertMaterial({ color: c })); }\n  function bas(c, o) { var m = new T.MeshBasicMaterial({ color: c }); if (o !== undefined) { m.transparent = true; m.opacity = o; } return m; }\n  function add(mesh, x, y, z, parent) { mesh.position.set(x, y, z); (parent || scene).add(mesh); return mesh; }\n\n  // room: floor + back wall with a gold trim stripe + sign\n  add(new T.Mesh(new T.PlaneGeometry(30, 20), mat(0x3a2216)), 0, 0, 0).rotation.x = -Math.PI / 2;\n  add(new T.Mesh(new T.PlaneGeometry(30, 12), mat(0x7a1c2a)), 0, 6, -4.6);\n  add(new T.Mesh(new T.BoxGeometry(30, 0.12, 0.1), mat(0xe0b040)), 0, 3.2, -4.55);\n  add(new T.Mesh(new T.BoxGeometry(30, 2.2, 0.1), mat(0x5a1220)), 0, 2.1, -4.55);\n  (function () {\n    var cv = document.createElement('canvas'); cv.width = 512; cv.height = 128;\n    var g = cv.getContext('2d');\n    g.fillStyle = '#2a1410'; g.fillRect(0, 0, 512, 128);\n    g.strokeStyle = '#e0b040'; g.lineWidth = 6; g.strokeRect(6, 6, 500, 116);\n    g.fillStyle = '#ffd54a'; g.font = 'bold 56px Georgia, serif'; g.textAlign = 'center'; g.textBaseline = 'middle';\n    g.fillText('TINY THAI', 256, 52);\n    g.fillStyle = '#ffb98a'; g.font = 'bold 24px Georgia, serif'; g.fillText('WOK  STAR', 256, 100);\n    var tex = new T.CanvasTexture(cv);\n    var sm = new T.MeshBasicMaterial({ map: tex });\n    add(new T.Mesh(new T.PlaneGeometry(4.4, 1.1), sm), 0, 4.6, -4.5);\n  })();\n  // lanterns\n  [-4.2, 4.2].forEach(function (lx, i) {\n    add(new T.Mesh(new T.CylinderGeometry(0.015, 0.015, 2, 4), mat(0x2a1a14)), lx, 5.2, -3.4);\n    var lan = add(new T.Mesh(new T.SphereGeometry(0.5, 12, 10), bas(0xe02a2e)), lx, 4.1, -3.4); lan.scale.y = 1.15;\n    add(new T.Mesh(new T.CylinderGeometry(0.2, 0.2, 0.1, 8), mat(0xe0b040)), lx, 4.65, -3.4);\n    add(new T.Mesh(new T.CylinderGeometry(0.2, 0.2, 0.1, 8), mat(0xe0b040)), lx, 3.55, -3.4);\n  });\n\n  // back counter with six ingredient bowls\n  add(new T.Mesh(new T.BoxGeometry(8, 1.0, 1.6), mat(0x4a2c1a)), 0, 0.5, -3.3);\n  add(new T.Mesh(new T.BoxGeometry(8.1, 0.08, 1.7), mat(0xc4902c)), 0, 1.02, -3.3);\n  var bowls = [];\n  var BOWL_X = [-3.05, -1.83, -0.61, 0.61, 1.83, 3.05];\n  TYPES.forEach(function (t, i) {\n    var g = new T.Group(); g.position.set(BOWL_X[i], 1.06, -3.3); scene.add(g);\n    var bw = new T.Mesh(new T.CylinderGeometry(0.46, 0.3, 0.3, 14, 1, true), new T.MeshLambertMaterial({ color: 0xe8eef0, side: T.DoubleSide }));\n    bw.position.y = 0.15; g.add(bw);\n    var br = new T.Mesh(new T.CylinderGeometry(0.47, 0.47, 0.04, 14), mat(0x2c5f78)); br.position.y = 0.3; g.add(br);\n    var bb = new T.Mesh(new T.CylinderGeometry(0.3, 0.3, 0.04, 14), mat(0xe8eef0)); bb.position.y = 0.02; g.add(bb);\n    var mound = new T.Mesh(new T.SphereGeometry(0.4, 12, 8), mat(t.raw)); mound.scale.set(1, 0.42, 1); mound.position.y = 0.26; g.add(mound);\n    bowls.push({ g: g, pulse: 0 });\n  });\n\n  // stove\n  add(new T.Mesh(new T.BoxGeometry(4.2, 1.0, 3.8), mat(0x8a9096)), 0, 0.5, 0.1);\n  add(new T.Mesh(new T.BoxGeometry(4.3, 0.08, 3.9), mat(0xb4bac0)), 0, 1.01, 0.1);\n  add(new T.Mesh(new T.BoxGeometry(4.0, 0.5, 0.06), mat(0x2a2a2e)), 0, 0.55, 2.03);\n  [-1.2, -0.4, 0.4, 1.2].forEach(function (kx) { var kn = add(new T.Mesh(new T.CylinderGeometry(0.14, 0.14, 0.12, 10), mat(0x1a1a1e)), kx, 0.55, 2.1); kn.rotation.x = Math.PI / 2; });\n  var burner = add(new T.Mesh(new T.TorusGeometry(0.72, 0.1, 6, 20), mat(0x151518)), 0, 1.07, 0); burner.rotation.x = Math.PI / 2;\n  var flames = [];\n  for (var fi = 0; fi < 14; fi++) {\n    var fa = fi / 14 * Math.PI * 2;\n    var fm = new T.Mesh(new T.ConeGeometry(0.1, 0.42, 5), bas(fi % 2 ? 0xff7a1c : 0xffc02a));\n    add(fm, Math.cos(fa) * 0.72, 1.28, Math.sin(fa) * 0.72);\n    flames.push({ m: fm, ph: Math.random() * 6 });\n  }\n\n  /* ------------------------------------------------------------ wok */\n  var R = 1.5, DEPTH = 0.66, S = (R * R + DEPTH * DEPTH) / (2 * DEPTH), WOK_Y = 1.62;\n  function surf(r) { return S - Math.sqrt(Math.max(0.0001, S * S - r * r)); }\n  var wok = new T.Group(); scene.add(wok);\n  (function () {\n    var pts = [], i;\n    for (i = 0; i <= 18; i++) { var r = R * i / 18; pts.push(new T.Vector2(r, surf(r))); }\n    for (i = 18; i >= 0; i--) { var r2 = R * i / 18 + 0.05 * (i / 18); pts.push(new T.Vector2(r2, surf(R * i / 18) - 0.06)); }\n    var wm = new T.Mesh(new T.LatheGeometry(pts, 28), new T.MeshLambertMaterial({ color: 0x3c3c44, side: T.DoubleSide }));\n    wok.add(wm);\n    var rimM = new T.Mesh(new T.TorusGeometry(R + 0.01, 0.05, 6, 28), mat(0x6a6a74)); rimM.rotation.x = Math.PI / 2; rimM.position.y = DEPTH; wok.add(rimM);\n    var hd = new T.Mesh(new T.CylinderGeometry(0.07, 0.09, 1.9, 8), mat(0x6a3d1c));\n    hd.rotation.x = Math.PI / 2 - 0.28; hd.position.set(0, DEPTH + 0.2, R + 0.82); wok.add(hd);\n    var hc = new T.Mesh(new T.BoxGeometry(0.1, 0.08, 0.45), mat(0x6a6a74)); hc.position.set(0, DEPTH + 0.05, R + 0.1); wok.add(hc);\n  })();\n  var W = { x: 0, z: 0.1, vx: 0, vz: 0, yOff: 0, tilt: 0, tossT: -1, cd: 0 };\n  var XMAX = 1.5, ZMIN = -0.9, ZMAX = 1.2;\n\n  /* ------------------------------------------------------------ items */\n  var G = {\n    noodles: new T.TorusGeometry(0.095, 0.045, 6, 10),\n    shrimp: new T.TorusGeometry(0.1, 0.05, 6, 10, Math.PI * 1.35),\n    egg: new T.SphereGeometry(0.16, 8, 6),\n    basil: new T.SphereGeometry(0.15, 8, 6),\n    chili: new T.ConeGeometry(0.05, 0.3, 6),\n    peanut: new T.SphereGeometry(0.07, 7, 5)\n  };\n  var SCALE = { noodles: [1, 1, 1], shrimp: [1, 1, 1], egg: [1, 0.45, 0.8], basil: [1, 0.16, 0.62], chili: [1, 1, 1], peanut: [1.35, 0.95, 0.95] };\n  var HGT = { noodles: 0.1, shrimp: 0.1, egg: 0.08, basil: 0.04, chili: 0.06, peanut: 0.06 };\n  var items = [], lost = 0;\n  var cRaw = new T.Color(), cGold = new T.Color(), cBurn = new T.Color();\n  function itemColor(it) {\n    var t = TYPES[it.t];\n    cRaw.set(t.raw); cGold.set(t.gold); cBurn.set(t.burnt);\n    var c = it.cook;\n    if (c < TARGET) it.mat.color.copy(cRaw).lerp(cGold, clamp(c / TARGET, 0, 1));\n    else it.mat.color.copy(cGold).lerp(cBurn, clamp((c - TARGET) / 0.55, 0, 1));\n  }\n  function spawnItem(ti, sx, sy, sz, tx, ty, tz, T0) {\n    var t = TYPES[ti];\n    var m = new T.Mesh(G[t.id], new T.MeshLambertMaterial({ color: t.raw }));\n    var sc = SCALE[t.id]; m.scale.set(sc[0], sc[1], sc[2]);\n    m.position.set(sx, sy, sz); scene.add(m);\n    var g = 16;\n    var it = { t: ti, m: m, mat: m.material, x: sx, y: sy, z: sz,\n      vx: (tx - sx) / T0, vz: (tz - sz) / T0, vy: (ty - sy) / T0 + g * T0 / 2,\n      sx: rnd(-6, 6), sy: rnd(-6, 6), sz: rnd(-6, 6), cook: 0, contact: false, dead: 0, burnFx: 0, wasGold: false, flung: false, stick: 0 };\n    m.rotation.set(rnd(0, 6), rnd(0, 6), rnd(0, 6));\n    itemColor(it); items.push(it); return it;\n  }\n  function removeItem(it) { scene.remove(it.m); it.mat.dispose(); }\n  function clearItems() { items.forEach(removeItem); items = []; }\n\n  /* ------------------------------------------------------------ particles */\n  var parts = [], PG = new T.SphereGeometry(0.1, 6, 5);\n  for (var pi = 0; pi < 44; pi++) {\n    var pm = new T.Mesh(PG, new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false }));\n    pm.visible = false; scene.add(pm);\n    parts.push({ m: pm, life: 0, max: 1, vx: 0, vy: 0, vz: 0, grow: 1 });\n  }\n  function puff(x, y, z, col, vy, life, size, grow, op) {\n    for (var i = 0; i < parts.length; i++) {\n      var p = parts[i]; if (p.life > 0) continue;\n      p.life = p.max = life; p.vx = rnd(-0.15, 0.15); p.vy = vy; p.vz = rnd(-0.15, 0.15); p.grow = grow; p.op = op;\n      p.m.position.set(x, y, z); p.m.scale.setScalar(size); p.m.material.color.set(col); p.m.visible = true; p.size = size;\n      return;\n    }\n  }\n  function stepParts(dt) {\n    for (var i = 0; i < parts.length; i++) {\n      var p = parts[i]; if (p.life <= 0) continue;\n      p.life -= dt;\n      if (p.life <= 0) { p.m.visible = false; continue; }\n      var k = 1 - p.life / p.max;\n      p.m.position.x += p.vx * dt; p.m.position.y += p.vy * dt; p.m.position.z += p.vz * dt;\n      p.m.scale.setScalar(p.size * (1 + k * p.grow));\n      p.m.material.opacity = p.op * (1 - k);\n    }\n  }\n\n  /* ------------------------------------------------------------ audio */\n  var AC = null, sizzle = null, sizG = null, soundOn = true;\n  function initAudio() {\n    if (AC) { if (AC.state !== 'running') AC.resume(); return; }\n    try {\n      AC = new (window.AudioContext || window.webkitAudioContext)();\n      var len = AC.sampleRate * 2, buf = AC.createBuffer(1, len, AC.sampleRate), d = buf.getChannelData(0);\n      for (var i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;\n      sizzle = AC.createBufferSource(); sizzle.buffer = buf; sizzle.loop = true;\n      var hp = AC.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 3200;\n      sizG = AC.createGain(); sizG.gain.value = 0;\n      sizzle.connect(hp); hp.connect(sizG); sizG.connect(AC.destination); sizzle.start();\n      window.__noiseBuf = buf;\n    } catch (e) { AC = null; }\n  }\n  function tone(f, d, type, v, f2) {\n    if (!AC || !soundOn) return;\n    var o = AC.createOscillator(), g = AC.createGain(), t = AC.currentTime;\n    o.type = type || 'sine'; o.frequency.setValueAtTime(f, t);\n    if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + d);\n    g.gain.setValueAtTime(v || 0.2, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d);\n    o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t + d + 0.02);\n  }\n  function whoosh() {\n    if (!AC || !soundOn || !window.__noiseBuf) return;\n    var s = AC.createBufferSource(), f = AC.createBiquadFilter(), g = AC.createGain(), t = AC.currentTime;\n    s.buffer = window.__noiseBuf; f.type = 'bandpass'; f.Q.value = 1.2;\n    f.frequency.setValueAtTime(500, t); f.frequency.exponentialRampToValueAtTime(2400, t + 0.25);\n    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.35, t + 0.08); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.4);\n    s.connect(f); f.connect(g); g.connect(AC.destination); s.start(t); s.stop(t + 0.45);\n  }\n  function ding() { tone(1046, 0.7, 'sine', 0.25); tone(1568, 0.9, 'sine', 0.14); }\n  $('snd').addEventListener('click', function () {\n    soundOn = !soundOn; $('snd').textContent = 'SOUND: ' + (soundOn ? 'ON' : 'OFF'); if (!soundOn && sizG) sizG.gain.value = 0;\n  });\n\n  /* ------------------------------------------------------------ game state */\n  var mode = 'intro', score = 0, orderIdx = 0, orders = [], orderTime = 0, orderMax = 1, serveT = 0, best = 0, toastT = 0, burnWarn = 0;\n  var added = {};  // pieces added this order, per type\n  try { best = parseInt(localStorage.getItem('tt_wokstar_best') || '0', 10) || 0; } catch (e) { best = 0; }\n\n  function toast(msg, col, t) {\n    var el = $('toast'); el.textContent = msg; el.style.color = col || '#ffd54a'; el.classList.add('show'); toastT = t || 1.1;\n  }\n  function buildButtons() {\n    var h = '';\n    TYPES.forEach(function (t, i) {\n      h += '<div class=\"ing\" data-i=\"' + i + '\"><i style=\"background:' + t.keyc + '\"><\/i>' + t.name + '<small>[' + (i + 1) + ']<\/small><\/div>';\n    });\n    $('ings').innerHTML = h;\n    var els = $('ings').children;\n    for (var i = 0; i < els.length; i++) (function (el) {\n      el.addEventListener('pointerdown', function (e) { e.preventDefault(); e.stopPropagation(); initAudio(); addIngredient(+el.getAttribute('data-i')); });\n    })(els[i]);\n  }\n  buildButtons();\n  function buildTicket() {\n    var o = orders[orderIdx];\n    $('tkName').textContent = o.name;\n    var h = '';\n    o.need.forEach(function (id) {\n      var t = TYPES[IDX[id]];\n      h += '<div class=\"row\" data-id=\"' + id + '\"><i style=\"background:' + t.keyc + '\"><\/i><span class=\"nm\">' + t.name + '<\/span><div class=\"gauge\"><u><\/u><\/div><em><\/em><\/div>';\n    });\n    $('tkRows').innerHTML = h;\n    $('hOrd').textContent = (orderIdx + 1) + '/' + N_ORDERS;\n  }\n  function resetGame() {\n    var pool = ORDERS.slice().sort(function () { return Math.random() - 0.5; }).slice(0, N_ORDERS);\n    pool.sort(function (a, b) { return a.need.length - b.need.length; });\n    orders = pool; orderIdx = 0; score = 0; lost = 0; clearItems();\n    $('hScore').textContent = '0';\n    W.x = 0; W.z = 0.1; W.vx = W.vz = 0;\n    beginOrder();\n  }\n  function beginOrder() {\n    var o = orders[orderIdx];\n    orderMax = orderTime = 38 + o.need.length * 6;\n    added = {}; burnWarn = 0;\n    buildTicket();\n    mode = 'play';\n    toast(o.name + '!', '#ffd54a', 1.4);\n  }\n\n  /* ------------------------------------------------------------ actions */\n  function addIngredient(ti) {\n    if (mode !== 'play') return;\n    var t = TYPES[ti], b = bowls[ti];\n    if (items.length + t.n > MAXITEMS) { toast('WOK IS FULL', '#ff9a7a', 0.7); tone(180, 0.15, 'square', 0.12); return; }\n    b.pulse = 1;\n    tone(520 + ti * 40, 0.12, 'triangle', 0.18, 380);\n    var T0 = 0.62;\n    for (var i = 0; i < t.n; i++) {\n      var a = rnd(0, 6.28), rr = rnd(0.1, 0.75);\n      spawnItem(ti, BOWL_X[ti] + rnd(-0.2, 0.2), 1.5, -3.3 + rnd(-0.1, 0.1), W.x + Math.cos(a) * rr, WOK_Y + W.yOff + surf(rr) + 0.12, W.z + Math.sin(a) * rr, T0 + i * 0.05);\n    }\n    added[t.id] = (added[t.id] || 0) + t.n;\n  }\n  function toss() {\n    if (mode !== 'play' || W.cd > 0) return;\n    W.tossT = 0; W.cd = 0.7;\n    whoosh();\n    items.forEach(function (it) {\n      if (!it.contact || it.dead) return;\n      it.contact = false;\n      it.vy = rnd(7.4, 8.8);\n      it.vx = W.vx * 0.9 + rnd(-0.5, 0.5);\n      it.vz = W.vz * 0.9 + rnd(-0.5, 0.5);\n      it.sx = rnd(-14, 14); it.sy = rnd(-14, 14); it.sz = rnd(-14, 14);\n    });\n  }\n  function quality(c) { return clamp(1 - Math.max(0, Math.abs(c - TARGET) - 0.1) / 0.32, 0, 1); }\n  function serve(auto) {\n    if (mode !== 'play') return;\n    var live = items.filter(function (i) { return !i.dead; });\n    if (!live.length) {\n      if (!auto) { toast('WOK IS EMPTY', '#ff9a7a', 0.8); return; }\n      mode = 'serve'; serveT = 0; finishServe.pending = { pts: 0, bonus: 0 }; return;\n    }\n    var o = orders[orderIdx], need = {}, sum = 0, pen = 0;\n    o.need.forEach(function (id) { need[id] = true; });\n    o.need.forEach(function (id) {\n      var ti = IDX[id], ps = live.filter(function (i) { return i.t === ti; });\n      if (!ps.length) return;\n      var q = 0; ps.forEach(function (p) { q += quality(p.cook); }); q /= ps.length;\n      var frac = Math.min(1, ps.length / TYPES[ti].n);\n      sum += q * (0.45 + 0.55 * frac);\n    });\n    var seen = {};\n    live.forEach(function (i) { var id = TYPES[i.t].id; if (!need[id] && !seen[id]) { seen[id] = 1; pen += 12; } });\n    var pts = Math.max(0, Math.round(sum / o.need.length * 100) - pen);\n    var bonus = pts >= 55 ? Math.floor(orderTime * 1.5) : 0;\n    // fling everything toward the plate\n    mode = 'serve'; serveT = 0;\n    var k = 0;\n    live.forEach(function (it) {\n      it.contact = false; it.flung = true; it.dead = 0;\n      var T0 = 0.6;\n      it.vx = (PLATE.x + rnd(-0.45, 0.45) - it.x) / T0; it.vz = (PLATE.z + rnd(-0.45, 0.45) - it.z) / T0; it.vy = (PLATE.y + 0.5 + (k++ % 4) * 0.1 - it.y) / T0 + 8 * T0;\n    });\n    W.tossT = 0; whoosh();\n    finishServe.pending = { pts: pts, bonus: bonus };\n    plate.position.set(PLATE.x, PLATE.y, PLATE.z); plate.visible = true;\n    plateStand.position.set(PLATE.x, 0.5, PLATE.z); plateStand.visible = true;\n  }\n  function finishServe() {\n    var p = finishServe.pending || { pts: 0, bonus: 0 };\n    finishServe.pending = null;\n    score += p.pts + p.bonus;\n    $('hScore').textContent = score;\n    var m = p.pts >= 92 ? 'PERFECT!' : p.pts >= 72 ? 'DELICIOUS!' : p.pts >= 45 ? 'NOT BAD' : p.pts > 0 ? 'YIKES...' : 'EMPTY PLATE';\n    toast(m + '  +' + (p.pts + p.bonus), p.pts >= 72 ? '#9dff9a' : p.pts >= 45 ? '#ffd54a' : '#ff9a7a', 1.6);\n    if (p.pts >= 45) ding(); else tone(220, 0.4, 'sawtooth', 0.12, 110);\n  }\n  var PLATE = { x: 3.3, y: 1.12, z: 0.6 };\n  var plate = new T.Group(); plate.visible = false; scene.add(plate);\n  var plateStand = new T.Mesh(new T.BoxGeometry(1.9, 1.0, 1.9), mat(0x4a2c1a)); plateStand.visible = false; scene.add(plateStand);\n  var plateTop = new T.Mesh(new T.BoxGeometry(2.0, 0.08, 2.0), mat(0xc4902c)); plateTop.position.y = 0.54; plateStand.add(plateTop);\n  plate.add(new T.Mesh(new T.CylinderGeometry(0.95, 0.75, 0.1, 18), mat(0xf4f0e6)));\n  var pr = new T.Mesh(new T.TorusGeometry(0.88, 0.04, 6, 20), mat(0x2c5f78)); pr.rotation.x = Math.PI / 2; pr.position.y = 0.06; plate.add(pr);\n  function nextOrder() {\n    clearItems(); plate.visible = false; plateStand.visible = false;\n    orderIdx++;\n    if (orderIdx >= N_ORDERS) { endGame(); return; }\n    beginOrder();\n  }\n  function endGame() {\n    mode = 'over';\n    var isBest = score > best;\n    if (isBest) { best = score; try { localStorage.setItem('tt_wokstar_best', String(best)); } catch (e) { /* private mode */ } }\n    var stars = score >= 620 ? 3 : score >= 430 ? 2 : score >= 200 ? 1 : 0;\n    var rank = stars === 3 ? 'WOK STAR!' : stars === 2 ? 'SOLID LINE COOK' : stars === 1 ? 'APPRENTICE' : 'STILL LEARNING';\n    var s = ''; for (var i = 0; i < 3; i++) s += i < stars ? '\\u2605' : '\\u2606';\n    $('panel').innerHTML = '<h1>SHIFT OVER<\/h1><div class=\"sub\">TINY THAI \\u00b7 KEV SAYS THANKS<\/div>' +\n      '<div class=\"big\">' + score + '<\/div><div class=\"rank\">' + s + ' ' + rank + '<\/div>' +\n      '<p>' + (isBest ? 'NEW BEST SCORE!' : 'Best: ' + best) + '<\/p><div id=\"go\">COOK AGAIN<\/div>';\n    $('card').className = ''; bindGo();\n  }\n  function bindGo() {\n    var g = $('go'); if (!g) return;\n    g.addEventListener('pointerdown', function (e) { e.preventDefault(); initAudio(); $('card').className = 'hide'; resetGame(); });\n  }\n  function showIntro() {\n    $('panel').innerHTML = '<h1>WOK STAR<\/h1><div class=\"sub\">TINY THAI \\u00b7 STIR-FRY RUSH<\/div>' +\n      '<p>Kev needs <b>' + N_ORDERS + '<\/b> orders out fast. Tap ingredients to drop them in the wok, <b>toss<\/b> to flip them, and <b>serve<\/b> when everything is <b>golden<\/b> \\u2014 the gauge on your ticket turns green.<\/p>' +\n      '<p>The flame sits in the middle: slide the wok <b>off the heat<\/b> to slow things down, but tossing while you\\u2019re moving sends food flying out!<\/p>' +\n      '<p class=\"keys\">Move: WASD / arrows or drag \\u00b7 Toss: Space or tap<br>Add: 1\\u20136 \\u00b7 Serve: Enter \\u00b7 Exit: Esc<\/p>' +\n      (best ? '<p>Best: <b>' + best + '<\/b><\/p>' : '') + '<div id=\"go\">START COOKING<\/div>';\n    bindGo();\n  }\n  showIntro();\n\n  /* ------------------------------------------------------------ input */\n  var keys = {}, drag = null, tgt = null;\n  window.addEventListener('keydown', function (e) {\n    var k = e.key;\n    if (k === 'Escape') { e.preventDefault(); tellParentClose(); return; }\n    initAudio();\n    if (k === ' ' || k.indexOf('Arrow') === 0) e.preventDefault();\n    if (mode === 'intro' || mode === 'over') { if (k === 'Enter' && $('go')) { $('card').className = 'hide'; resetGame(); } return; }\n    if (k === ' ') { toss(); return; }\n    if (k === 'Enter') { serve(false); return; }\n    if (k >= '1' && k <= '6') { addIngredient(+k - 1); return; }\n    keys[k.toLowerCase()] = true;\n  });\n  window.addEventListener('keyup', function (e) { keys[e.key.toLowerCase()] = false; });\n  window.addEventListener('blur', function () { keys = {}; });\n  $('tossB').addEventListener('pointerdown', function (e) { e.preventDefault(); e.stopPropagation(); initAudio(); toss(); });\n  $('serveB').addEventListener('pointerdown', function (e) { e.preventDefault(); e.stopPropagation(); initAudio(); serve(false); });\n\n  var ray = new T.Raycaster(), ndc = new T.Vector2(), planeHit = new T.Vector3();\n  function groundPoint(e) {\n    var r = canvas.getBoundingClientRect();\n    ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);\n    ray.setFromCamera(ndc, camera);\n    var o = ray.ray.origin, d = ray.ray.direction;\n    if (Math.abs(d.y) < 1e-5) return null;\n    var t = (WOK_Y - o.y) / d.y; if (t < 0) return null;\n    return { x: o.x + d.x * t, z: o.z + d.z * t };\n  }\n  canvas.addEventListener('pointerdown', function (e) {\n    initAudio();\n    try { canvas.setPointerCapture(e.pointerId); } catch (x) { /* ok */ }\n    drag = { id: e.pointerId, x0: e.clientX, y0: e.clientY, t0: performance.now(), moved: false };\n  });\n  canvas.addEventListener('pointermove', function (e) {\n    if (!drag || e.pointerId !== drag.id) return;\n    if (!drag.moved && Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) > 9) drag.moved = true;\n    if (drag.moved) { var p = groundPoint(e); if (p) tgt = p; }\n  });\n  function endDrag(e) {\n    if (!drag || e.pointerId !== drag.id) return;\n    if (!drag.moved && performance.now() - drag.t0 < 320) toss();\n    drag = null; tgt = null;\n  }\n  canvas.addEventListener('pointerup', endDrag);\n  canvas.addEventListener('pointercancel', endDrag);\n  canvas.addEventListener('contextmenu', function (e) { e.preventDefault(); });\n\n  /* ------------------------------------------------------------ sizing */\n  var portrait = false;\n  function resize() {\n    var w = Math.max(1, window.innerWidth), h = Math.max(1, window.innerHeight);\n    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));\n    renderer.setSize(w, h, false);\n    portrait = h > w * 1.05;\n    camera.aspect = w / h; camera.fov = portrait ? 66 : 50;\n    if (portrait) { camera.position.set(0, 8.4, 8.4); camera.lookAt(0, 0.9, -0.2); PLATE.x = 0; PLATE.z = 2.8; }\n    else { camera.position.set(0, 5.8, 6.8); camera.lookAt(0, 0.6, 0.75); PLATE.x = 3.3; PLATE.z = 0.6; }\n    camera.updateProjectionMatrix();\n  }\n  window.addEventListener('resize', resize);\n  window.addEventListener('orientationchange', function () { setTimeout(resize, 120); });\n  resize();\n\n  /* ------------------------------------------------------------ simulation */\n  var G0 = 16, time = 0;\n  function heatAt(x, z) { return Math.exp(-(x * x + z * z) / (2 * 0.85 * 0.85)); }\n\n  function stepItems(dt) {\n    var wokY = WOK_Y + W.yOff, i, j, it;\n    var nContact = 0, heatSum = 0, burning = 0;\n    for (i = 0; i < items.length; i++) {\n      it = items[i];\n      if (it.dead > 0) { it.dead += dt; it.m.position.y -= dt * 3; it.m.scale.multiplyScalar(1 - dt * 1.4); continue; }\n      var dx = it.x - W.x, dz = it.z - W.z, r = Math.hypot(dx, dz);\n      var inBowl = r < R * 0.985 && !it.flung;\n      var hitY = inBowl ? wokY + surf(r) + HGT[TYPES[it.t].id] : -9;\n      if (inBowl && it.y <= hitY && it.vy <= 0.8) {\n        // resting / sliding on the inside of the wok\n        it.y = hitY;\n        if (!it.contact) { it.vx = it.vx * 0.22 + W.vx * 0.5; it.vz = it.vz * 0.22 + W.vz * 0.5; }\n        if (it.vy < -3.5) { it.vy = -it.vy * 0.18; puff(it.x, it.y + 0.1, it.z, 0xffe0b0, 0.5, 0.45, 0.07, 1.5, 0.35); }\n        else it.vy = 0;\n        it.contact = true;\n        var slope = r / Math.sqrt(Math.max(0.01, S * S - r * r));\n        if (r > 0.001) { it.vx -= (dx / r) * G0 * slope * 0.5 * dt; it.vz -= (dz / r) * G0 * slope * 0.5 * dt; }\n        var cpl = Math.min(1, 3.0 * dt);\n        it.vx += (W.vx - it.vx) * cpl * 0.55; it.vz += (W.vz - it.vz) * cpl * 0.55;\n        it.vx *= (1 - 0.9 * dt); it.vz *= (1 - 0.9 * dt);\n      } else {\n        it.contact = false;\n        it.vy -= G0 * dt;\n      }\n      it.x += it.vx * dt; it.y += it.vy * dt; it.z += it.vz * dt;\n      if (it.contact) {\n        // keep glued to the bowl surface after sliding\n        var r2 = Math.hypot(it.x - W.x, it.z - W.z);\n        if (r2 > R * 0.97) {\n          var sc = R * 0.97 / r2, nx = (it.x - W.x) / r2, nz = (it.z - W.z) / r2;\n          it.x = W.x + (it.x - W.x) * sc; it.z = W.z + (it.z - W.z) * sc; r2 = R * 0.97;\n          var vo = it.vx * nx + it.vz * nz; if (vo > 0) { it.vx -= vo * nx * 1.3; it.vz -= vo * nz * 1.3; }\n        }\n        it.y = wokY + surf(r2) + HGT[TYPES[it.t].id];\n      } else {\n        if (it.flung !== 'landed') { it.m.rotation.x += it.sx * dt; it.m.rotation.y += it.sy * dt; it.m.rotation.z += it.sz * dt; }\n        // fell out of the wok -> spilled onto the stovetop\n        if (!it.flung && it.y < 1.1) { it.dead = 0.001; lost++; if (mode === 'play') toast('SPILLED!', '#ff9a7a', 0.6); tone(160, 0.2, 'square', 0.1); }\n        if (it.flung && it.vy < 0 && it.y < PLATE.y + 0.1) { it.vx = it.vy = it.vz = 0; it.y = PLATE.y + 0.1; it.flung = 'landed'; }\n      }\n      if (it.flung === 'landed') { it.vx = it.vy = it.vz = 0; it.y = PLATE.y + 0.1; }\n      // cooking\n      if (!it.flung) {\n        var h = heatAt(it.x, it.z);\n        if (it.contact) it.stick = Math.min(5, it.stick + dt); else it.stick = 0;\n        var rate = TYPES[it.t].rate * (it.contact ? (0.25 + 0.75 * h) * (0.55 + 0.45 * h) * 1.35 * (1 + 0.6 * it.stick / 5) : 0.06 * h);\n        it.cook += rate * dt;\n        if (it.contact) { nContact++; heatSum += h; }\n        itemColor(it);\n        if (!it.wasGold && it.cook >= TARGET - 0.08) { it.wasGold = true; puff(it.x, it.y + 0.15, it.z, 0xffe070, 1.4, 0.7, 0.06, 1.2, 0.9); }\n        if (it.cook > 1.12) {\n          burning++;\n          it.burnFx -= dt;\n          if (it.burnFx <= 0) { it.burnFx = rnd(0.25, 0.5); puff(it.x, it.y + 0.2, it.z, 0x202020, 1.2, 1.0, 0.1, 2.5, 0.55); }\n        }\n      }\n      it.m.position.set(it.x, it.y, it.z);\n    }\n    // pairwise push so the pieces spread out inside the wok\n    for (i = 0; i < items.length; i++) {\n      var a = items[i]; if (!a.contact || a.dead) continue;\n      for (j = i + 1; j < items.length; j++) {\n        var b = items[j]; if (!b.contact || b.dead) continue;\n        var ax = b.x - a.x, az = b.z - a.z, d = Math.hypot(ax, az);\n        if (d < 0.27 && d > 0.0001) {\n          var push = (0.27 - d) * 0.5 / d;\n          a.x -= ax * push; a.z -= az * push; b.x += ax * push; b.z += az * push;\n        }\n      }\n    }\n    if (burning && mode === 'play') { burnWarn -= dt; if (burnWarn <= 0) { burnWarn = 2.2; toast('BURNING!', '#ff7a4a', 0.7); } }\n    // sizzle sound level follows how much food is touching the hot steel\n    if (sizG && AC) { var lv = soundOn && mode !== 'intro' && mode !== 'over' ? Math.min(0.16, nContact * 0.012 * (0.4 + heatSum / Math.max(1, nContact))) : 0; sizG.gain.value += (lv - sizG.gain.value) * Math.min(1, dt * 6); }\n    // steam\n    if (nContact > 0 && Math.random() < dt * 14) puff(W.x + rnd(-0.6, 0.6), wokY + 0.5, W.z + rnd(-0.6, 0.6), 0xffffff, 0.9, 1.1, 0.12, 2.2, 0.28);\n  }\n\n  function updateGauges() {\n    if (mode === 'intro' || mode === 'over') return;\n    var o = orders[orderIdx]; if (!o) return;\n    var rows = $('tkRows').children;\n    for (var r = 0; r < rows.length; r++) {\n      var id = rows[r].getAttribute('data-id'), ti = IDX[id], s = 0, n = 0;\n      for (var i = 0; i < items.length; i++) if (items[i].t === ti && !items[i].dead && !items[i].flung) { s += items[i].cook; n++; }\n      var u = rows[r].querySelector('u'), em = rows[r].querySelector('em');\n      if (n) { u.style.opacity = 1; u.style.left = (clamp(s / n / 1.3, 0, 1) * 100) + '%'; em.textContent = 'x' + n; }\n      else { u.style.opacity = 0; em.textContent = '\\u2013'; }\n    }\n    var f = $('tkTimeFill'); f.style.width = (clamp(orderTime / orderMax, 0, 1) * 100) + '%';\n    f.style.background = orderTime < 10 ? '#ff5a3a' : '#7cd68a';\n  }\n\n  var last = performance.now();\n  function frame(now) {\n    requestAnimationFrame(frame);\n    var dt = Math.min(0.033, (now - last) / 1000); last = now; time += dt;\n    // wok movement\n    var ax = 0, az = 0;\n    if (mode === 'play') {\n      if (keys.a || keys.arrowleft) ax -= 1; if (keys.d || keys.arrowright) ax += 1;\n      if (keys.w || keys.arrowup) az -= 1; if (keys.s || keys.arrowdown) az += 1;\n    }\n    if (tgt && mode === 'play') {\n      ax += clamp((clamp(tgt.x, -XMAX, XMAX) - W.x) * 6 - W.vx * 2.2, -3, 3);\n      az += clamp((clamp(tgt.z, ZMIN, ZMAX) - W.z) * 6 - W.vz * 2.2, -3, 3);\n    }\n    W.vx += ax * 14 * dt; W.vz += az * 14 * dt;\n    var damp = Math.max(0, 1 - 5 * dt); if (!ax && !az) { W.vx *= damp; W.vz *= damp; } else { W.vx *= 1 - 1.2 * dt; W.vz *= 1 - 1.2 * dt; }\n    var sp = Math.hypot(W.vx, W.vz); if (sp > 3.4) { W.vx *= 3.4 / sp; W.vz *= 3.4 / sp; }\n    W.x += W.vx * dt; W.z += W.vz * dt;\n    if (W.x < -XMAX) { W.x = -XMAX; W.vx = 0; } if (W.x > XMAX) { W.x = XMAX; W.vx = 0; }\n    if (W.z < ZMIN) { W.z = ZMIN; W.vz = 0; } if (W.z > ZMAX) { W.z = ZMAX; W.vz = 0; }\n    if (W.cd > 0) W.cd -= dt;\n    // toss animation\n    if (W.tossT >= 0) {\n      W.tossT += dt; var k = W.tossT / 0.5;\n      if (k >= 1) { W.tossT = -1; W.yOff = 0; W.tilt = 0; }\n      else { W.yOff = Math.sin(k * Math.PI) * 0.34; W.tilt = Math.sin(k * Math.PI) * -0.3; }\n    }\n    wok.position.set(W.x, WOK_Y + W.yOff, W.z);\n    wok.rotation.x = W.tilt + W.vz * 0.04; wok.rotation.z = -W.vx * 0.05;\n\n    // flames + light\n    var heatNear = heatAt(W.x, W.z);\n    for (var i = 0; i < flames.length; i++) {\n      var f = flames[i], fl = 0.7 + Math.abs(Math.sin(time * 9 + f.ph)) * 0.8;\n      f.m.scale.set(1, fl, 1); f.m.position.y = 1.07 + 0.21 * fl;\n    }\n    fireLight.intensity = (1.2 + Math.sin(time * 13) * 0.25) * LS;\n    for (i = 0; i < bowls.length; i++) {\n      var b = bowls[i]; if (b.pulse > 0) b.pulse = Math.max(0, b.pulse - dt * 3);\n      b.g.scale.setScalar(1 + Math.sin(b.pulse * Math.PI) * 0.18);\n    }\n\n    if (mode === 'play' || mode === 'serve') {\n      var steps = 2, sdt = dt / steps;\n      for (var s = 0; s < steps; s++) stepItems(sdt);\n    } else if (sizG) sizG.gain.value *= 0.9;\n    stepParts(dt);\n\n    if (mode === 'play') {\n      orderTime -= dt;\n      if (orderTime <= 0) { orderTime = 0; toast(\"TIME'S UP!\", '#ff9a7a', 0.8); serve(true); }\n    } else if (mode === 'serve') {\n      serveT += dt;\n      if (serveT >= 0.5 && serveT - dt < 0.5 && finishServe.pending) finishServe();\n      if (serveT >= 1.9) nextOrder();\n    }\n    if (toastT > 0) { toastT -= dt; if (toastT <= 0) $('toast').classList.remove('show'); }\n    updateGauges();\n    renderer.render(scene, camera);\n  }\n  requestAnimationFrame(frame);\n}\n})();\n<\/script>\n<\/body><\/html>\n";
+let wokStarOverlayEl = null, wokStarOverlayFrame = null;
+let wokStarReturnState = 'play';
+let wokStarHistoryPushed = false; // mirrors forkliftHistoryPushed -- see openWokStarApp()/closeWokStarApp()
+let wokStarOpenToken = 0;         // bumped on every open/close so a pending (waiting-for-Three.js) launch can be cancelled
+
+function createWokStarOverlay() {
+  const style = document.createElement('style');
+  style.textContent = `
+    #wokStarApp {
+      position: fixed; inset: 0; z-index: 1000;
+      background: #000;
+      display: none; flex-direction: column;
+      box-sizing: border-box;
+      padding-left: env(safe-area-inset-left, 0px);
+      padding-right: env(safe-area-inset-right, 0px);
+    }
+    #wokStarApp.open { display: flex; }
+    #wokStarApp .ws-bar {
+      flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 10px 14px;
+      background: linear-gradient(#5a1620, #34090f);
+      border-bottom: 2px solid #e0b040;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    }
+    #wokStarApp .ws-title {
+      color: #ffe9b0; font: bold 14px monospace; letter-spacing: 0.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #wokStarApp .ws-close {
+      flex: 0 0 auto; cursor: pointer;
+      background: rgba(224,176,64,0.16);
+      border: 1.5px solid rgba(224,176,64,0.9);
+      color: #ffe9b0; border-radius: 8px;
+      padding: 7px 16px; font: bold 13px monospace; white-space: nowrap;
+      -webkit-user-select: none; user-select: none;
+    }
+    #wokStarApp .ws-close:active { background: rgba(224,176,64,0.45); }
+    #wokStarApp iframe {
+      flex: 1 1 auto; width: 100%; min-height: 0; border: 0; background: #1a0c0c;
+    }
+    @media (max-height: 480px) {
+      #wokStarApp .ws-bar { padding: 4px 12px; padding-top: calc(4px + env(safe-area-inset-top, 0px)); }
+      #wokStarApp .ws-title { font-size: 12px; }
+      #wokStarApp .ws-close { padding: 4px 12px; font-size: 12px; }
+    }
+  `;
+  document.head.appendChild(style);
+
+  wokStarOverlayEl = document.createElement('div');
+  wokStarOverlayEl.id = 'wokStarApp';
+
+  const bar = document.createElement('div');
+  bar.className = 'ws-bar';
+  const title = document.createElement('div');
+  title.className = 'ws-title';
+  title.textContent = 'WOK STAR \u2014 STIR-FRY RUSH';
+  const closeBtn = document.createElement('div');
+  closeBtn.className = 'ws-close';
+  closeBtn.textContent = '\u2190 BACK TO TINY THAI';
+  bindTap(closeBtn, closeWokStarApp);
+  bar.appendChild(title);
+  bar.appendChild(closeBtn);
+
+  wokStarOverlayFrame = document.createElement('iframe');
+  wokStarOverlayFrame.setAttribute('allow', 'autoplay');
+
+  wokStarOverlayEl.appendChild(bar);
+  wokStarOverlayEl.appendChild(wokStarOverlayFrame);
+  document.body.appendChild(wokStarOverlayEl);
+
+  // [Esc] pressed while the iframe itself has keyboard focus never reaches this page's keydown
+  // handler, so the app posts a message instead (see the head script inside WOK_STAR_HTML).
+  window.addEventListener('message', (e) => {
+    if (!wokStarOverlayFrame || e.source !== wokStarOverlayFrame.contentWindow) return;
+    if (e.data && e.data.wokstar === 'close' && state === 'wokStarApp') closeWokStarApp();
+  });
+}
+createWokStarOverlay();
+
+// Opens the Wok Star overlay and switches state to 'wokStarApp'. Called from MINIGAME_ACTIONS.wokstar (E on the
+// wok stand, or tapping its floating sign). The vendored Three.js is (lazily) loaded first -- it's a local file,
+// so this is near-instant even offline -- and the page is only handed to the iframe once window.THREE exists (or
+// the load failed / took far too long, in which case the page falls back to loading lib/three.min.js itself and
+// shows its own error if that fails).
+function openWokStarApp() {
+  wokStarReturnState = state;
+  wokStarOverlayEl.classList.add('open');
+  state = 'wokStarApp';
+  const token = ++wokStarOpenToken;
+  loadThreeJS();
+  let waited = 0;
+  const launch = () => {
+    if (token !== wokStarOpenToken || state !== 'wokStarApp') return;
+    wokStarOverlayFrame.addEventListener('load', () => {
+      try { wokStarOverlayFrame.contentWindow.focus(); } catch (e) { /* a tap will focus it */ }
+    }, { once: true });
+    wokStarOverlayFrame.srcdoc = WOK_STAR_HTML;
+  };
+  const wait = () => {
+    if (token !== wokStarOpenToken || state !== 'wokStarApp') return;
+    if (window.THREE || threeLoadState === 'error' || waited > 8000) { launch(); return; }
+    waited += 50;
+    setTimeout(wait, 50);
+  };
+  wait();
+  // Same throwaway-history-entry trick as openForkliftApp() etc., so the browser/OS back gesture
+  // closes the overlay instead of leaving the game.
+  history.pushState({ wokStarApp: true }, '');
+  wokStarHistoryPushed = true;
+}
+
+// Tears the iframe back down (which also stops every sound and the render loop) and returns to ordinary
+// gameplay inside the shop. fromPopState mirrors closeForkliftApp()'s parameter -- true when triggered
+// by the browser's back button (whose history entry is already consumed), so history.back() must not be
+// called again in that case.
+function closeWokStarApp(fromPopState) {
+  wokStarOpenToken++;
+  wokStarOverlayEl.classList.remove('open');
+  wokStarOverlayFrame.removeAttribute('srcdoc');
+  wokStarOverlayFrame.src = 'about:blank';
+  reclaimGameFocus(wokStarOverlayFrame);
+  state = wokStarReturnState;
+  if (!fromPopState && wokStarHistoryPushed) {
+    wokStarHistoryPushed = false;
+    history.back();
+  } else {
+    wokStarHistoryPushed = false;
+  }
+}
+
 // ---------------------------------------------------------------- HARMONICS overlay
 // HARMONICS -- eight strings stacked on screen, each a whole-number multiple of the base pitch (1x, 2x,
 // 3x ... 8x): swipe across them to pluck a run of overtones, pick a different base note, or tap
@@ -27895,6 +28058,8 @@ window.addEventListener('popstate', () => {
     closeOscillatorsApp(true);
   } else if (state === 'forkliftApp') {
     closeForkliftApp(true);
+  } else if (state === 'wokStarApp') {
+    closeWokStarApp(true);
   } else if (state === 'harmonicsApp') {
     closeHarmonicsApp(true);
   } else if (state === 'powerMovesApp') {
@@ -27933,7 +28098,7 @@ canvas.addEventListener('pointerdown', (e) => {
     const vx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const vy = (e.clientY - rect.top) * (canvas.height / rect.height);
     handleStuTap(vx, vy);
-  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'reverbReefApp' || state === 'beatBrewingApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'humbleTreasuresApp' || state === 'dustRacingApp' || state === 'cbPressApp' || state === 'spotDiffApp' || state === 'guitarApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'scoopBeatsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp' || state === 'arkaiikImpactApp' || state === 'precisionPointsApp' || state === 'wishJamApp' || state === 'anthillDeluxeApp' || state === 'ricoRotaryApp' || state === 'mpumpApp' || state === 'soundWavesApp' || state === 'arpeggiosApp' || state === 'oscillatorsApp' || state === 'forkliftApp' || state === 'harmonicsApp' || state === 'powerMovesApp' || state === 'chordsApp' || state === 'skateHipHopReaderApp' || state === 'travSkatesApp' || state === 'nineBarsApp' || state === 'drumMachineApp' || state === 'inkDeskApp' || state === 'j2sProSkaterApp') {
+  } else if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'reverbReefApp' || state === 'beatBrewingApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'humbleTreasuresApp' || state === 'dustRacingApp' || state === 'cbPressApp' || state === 'spotDiffApp' || state === 'guitarApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'scoopBeatsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp' || state === 'arkaiikImpactApp' || state === 'precisionPointsApp' || state === 'wishJamApp' || state === 'anthillDeluxeApp' || state === 'ricoRotaryApp' || state === 'mpumpApp' || state === 'soundWavesApp' || state === 'arpeggiosApp' || state === 'oscillatorsApp' || state === 'forkliftApp' || state === 'wokStarApp' || state === 'harmonicsApp' || state === 'powerMovesApp' || state === 'chordsApp' || state === 'skateHipHopReaderApp' || state === 'travSkatesApp' || state === 'nineBarsApp' || state === 'drumMachineApp' || state === 'inkDeskApp' || state === 'j2sProSkaterApp') {
     // The DOM overlay sits on top of (and outside) the canvas while an
     // instrument/the chess app/the beat bot/the organ/mini golf/the
     // blackbook/Gator Grooves/Vinyl Snake/Bayou Break Station/Gator Jam
@@ -28571,6 +28736,11 @@ function update(dt) {
     // owns input; its own back button and [Esc] close it, and the on-screen [X] touch button
     // still works via buyPressed.
     if (buyPressed) closeForkliftApp();
+  } else if (state === 'wokStarApp') {
+    // Same reasoning as 'forkliftApp' just above: the DOM overlay (see createWokStarOverlay())
+    // owns input; its own back button and [Esc] close it, and the on-screen [X] touch button
+    // still works via buyPressed.
+    if (buyPressed) closeWokStarApp();
   } else if (state === 'harmonicsApp') {
     // Same reasoning as 'oscillatorsApp' just above: the DOM overlay (see createHarmonicsOverlay())
     // owns input; its own back button and [Esc] close it, and the on-screen [X] touch button
@@ -30264,6 +30434,75 @@ function drawMinigameForklift(wx, wy, time, seed, label) {
   return { cx, cy, hw: W / 2 + 14, hh: H / 2 + 34 };
 }
 
+// Alternate mini-game marker used when a map entry sets `icon: 'wokstar'` (WOK STAR, the 3D stir-fry game on the
+// wok-burner stand inside TINY THAI in WINOOSKI) -- same bob/label/hitbox contract as drawMinigameForklift() above.
+// Drawn as a little floating deep-red panel with a gold rim on a thin post: a tiny wok sits over flickering flames
+// and tosses three bits of food (noodle, shrimp, basil) in looping arcs, so it reads as "come cook." `time` is in seconds.
+function drawMinigameWokStar(wx, wy, time, seed, label) {
+  const s = MINIGAME_OBJECT_SCALE;
+  const bob = Math.sin(time * 3 + seed) * 3;
+  const W = 38 * s, H = 28 * s;
+  const cx = wx, cy = wy - 50 + bob;
+
+  // thin post connecting the sign down to the stand
+  ctx.strokeStyle = '#241c28';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(wx, cy + H / 2);
+  ctx.lineTo(wx, wy - 14);
+  ctx.stroke();
+
+  // body: deep red with a gold rim
+  ctx.fillStyle = '#2a0e12';
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(cx - W / 2, cy - H / 2, W, H, 4 * s); else ctx.rect(cx - W / 2, cy - H / 2, W, H);
+  ctx.fill();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = '#e0b040';
+  ctx.stroke();
+
+  // flames under a little wok (bowl facing up, handle to the right)
+  const gx = cx - 2 * s, gy = cy + H / 2 - 5 * s;
+  for (let i = 0; i < 3; i++) {
+    const fl = (2.2 + Math.abs(Math.sin(time * 9 + i * 1.9)) * 2.6) * s;
+    ctx.fillStyle = i === 1 ? '#ffc02a' : '#ff6a1c';
+    ctx.beginPath();
+    ctx.moveTo(gx - 5 * s + i * 5 * s - 1.8 * s, gy);
+    ctx.lineTo(gx - 5 * s + i * 5 * s, gy - fl);
+    ctx.lineTo(gx - 5 * s + i * 5 * s + 1.8 * s, gy);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.fillStyle = '#3c3c44';
+  ctx.beginPath();
+  ctx.arc(gx, gy - 4.5 * s, 9 * s, 0, Math.PI);
+  ctx.fill();
+  ctx.fillStyle = '#6a6a74';
+  ctx.fillRect(gx - 9.4 * s, gy - 5 * s, 18.8 * s, 1.3 * s);                       // rim
+  ctx.fillStyle = '#6a3d1c';
+  ctx.fillRect(gx + 9 * s, gy - 5.2 * s, 7 * s, 1.8 * s);                          // handle
+
+  // three bits being tossed in staggered arcs: noodle (tan), shrimp (orange), basil (green)
+  const bits = ['#e2c070', '#ff8a5a', '#58d060'];
+  for (let i = 0; i < 3; i++) {
+    const t = ((time * 0.9 + i / 3) % 1);
+    const arc = Math.sin(t * Math.PI);
+    ctx.fillStyle = bits[i];
+    ctx.beginPath();
+    ctx.arc(gx + (i - 1) * 4.5 * s + Math.sin(t * Math.PI * 2 + i) * 1.4 * s, gy - 6 * s - arc * 11 * s, 1.7 * s, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // floating label -- flashes between the label and the tap hint
+  const flashOnLabel = Math.floor(time / 1.4) % 2 === 0;
+  ctx.fillStyle = '#ffe08a';
+  ctx.font = `bold ${Math.round(9 * s)}px monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillText(flashOnLabel ? (label || 'MINI-GAME') : 'TAP TO PLAY', cx, cy - H / 2 - 7 * s);
+
+  return { cx, cy, hw: W / 2 + 14, hh: H / 2 + 34 };
+}
+
 // Alternate mini-game marker used when a map entry sets `icon: 'harmonics'` (HARMONICS, the overtone-series
 // string toy on the string stand inside SNEAKERS BISTRO in WINOOSKI) -- same bob/label/hitbox contract
 // as drawMinigameOscillators() above. Drawn as a little floating violet panel on a thin post: five
@@ -30950,7 +31189,7 @@ function render(time) {
     drawSplash();
     return;
   }
-  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'reverbReefApp' || state === 'beatBrewingApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'humbleTreasuresApp' || state === 'dustRacingApp' || state === 'cbPressApp' || state === 'spotDiffApp' || state === 'guitarApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'scoopBeatsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp' || state === 'arkaiikImpactApp' || state === 'precisionPointsApp' || state === 'wishJamApp' || state === 'anthillDeluxeApp' || state === 'ricoRotaryApp' || state === 'mpumpApp' || state === 'soundWavesApp' || state === 'arpeggiosApp' || state === 'oscillatorsApp' || state === 'forkliftApp' || state === 'harmonicsApp' || state === 'powerMovesApp' || state === 'chordsApp' || state === 'skateHipHopReaderApp' || state === 'travSkatesApp' || state === 'nineBarsApp' || state === 'drumMachineApp' || state === 'inkDeskApp' || state === 'j2sProSkaterApp') {
+  if (state === 'labApp' || state === 'chessApp' || state === 'sunnySideDinerApp' || state === 'beatBotApp' || state === 'organApp' || state === 'minigolfApp' || state === 'blackbookApp' || state === 'crocSwampApp' || state === 'qsdBalanceApp' || state === 'vinylSnakeApp' || state === 'waveformApp' || state === 'bayouBreakApp' || state === 'freqAltarApp' || state === 'reverbReefApp' || state === 'beatBrewingApp' || state === 'drumPatternDocApp' || state === 'gatorJamSlamApp' || state === 'swampCaveApp' || state === 'vocalChopBoothApp' || state === 'vtDirtApp' || state === 'penaltyKingsApp' || state === 'digDashApp' || state === 'digOnApp' || state === 'rico1200App' || state === 'ricoDawApp' || state === 'filterLabApp' || state === 'characterIntro' || state === 'vinylNinjaApp' || state === 'diggerApp' || state === 'johnnySlidesApp' || state === 'humbleTreasuresApp' || state === 'dustRacingApp' || state === 'cbPressApp' || state === 'spotDiffApp' || state === 'guitarApp' || state === 'hyperSwimApp' || state === 'linusTugApp' || state === 'connectFourApp' || state === 'syrupRoadsApp' || state === 'scoopBeatsApp' || state === 'clawMachineApp' || state === 'kangaidenApp' || state === 'truthKnocksApp' || state === 'hiphopLibraryApp' || state === 'arkaiikImpactApp' || state === 'precisionPointsApp' || state === 'wishJamApp' || state === 'anthillDeluxeApp' || state === 'ricoRotaryApp' || state === 'mpumpApp' || state === 'soundWavesApp' || state === 'arpeggiosApp' || state === 'oscillatorsApp' || state === 'forkliftApp' || state === 'wokStarApp' || state === 'harmonicsApp' || state === 'powerMovesApp' || state === 'chordsApp' || state === 'skateHipHopReaderApp' || state === 'travSkatesApp' || state === 'nineBarsApp' || state === 'drumMachineApp' || state === 'inkDeskApp' || state === 'j2sProSkaterApp') {
     // Same reasoning as the labApp overlay: a DOM element (the <video>,
     // see createCharacterIntroOverlay(), the chess <iframe>, see
     // createChessOverlay(), the beat bot <iframe>, see
@@ -31107,6 +31346,8 @@ function render(time) {
         ? drawMinigameOscillators(wx, wy, time, seed, mg.label)
         : mg.icon === 'forklift'
         ? drawMinigameForklift(wx, wy, time, seed, mg.label)
+        : mg.icon === 'wokstar'
+        ? drawMinigameWokStar(wx, wy, time, seed, mg.label)
         : mg.icon === 'harmonics'
         ? drawMinigameHarmonics(wx, wy, time, seed, mg.label)
         : mg.icon === 'powermoves'
@@ -35745,6 +35986,21 @@ function paintTinyThaiInterior(c) {
     c.fillStyle = '#9a82ff'; c.fillRect(bx + 6, by + 1, 20, 1);                                        // rim light
   }
 
+  // ---------------------------------------------------------------- WOK STAR burner stand (blockTile (2,2))
+  // a stainless burner box with a black wok on top and a wooden handle; the flames and the bits being
+  // tossed are drawn live in drawTinyThaiInterior().
+  {
+    const bx = 2 * TILE, by = 2 * TILE;
+    c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(bx + 2, by + 28, 28, 3);
+    c.fillStyle = '#8a9096'; c.fillRect(bx + 4, by + 21, 24, 8);                                       // burner box
+    c.fillStyle = '#b4bac0'; c.fillRect(bx + 3, by + 20, 26, 2);                                       // top plate
+    c.fillStyle = '#e0b040'; c.fillRect(bx + 4, by + 27, 24, 1.5);                                     // gold trim
+    c.fillStyle = '#1a1a1e'; c.fillRect(bx + 8, by + 24, 3, 3); c.fillRect(bx + 14, by + 24, 3, 3); c.fillRect(bx + 20, by + 24, 3, 3);   // knobs
+    c.fillStyle = '#2a2a30'; c.beginPath(); c.arc(bx + 15, by + 12, 11, 0, Math.PI); c.closePath(); c.fill();   // wok bowl
+    c.fillStyle = '#6a6a74'; c.fillRect(bx + 3.5, by + 11.5, 23, 1.6);                                 // wok rim
+    c.fillStyle = '#6a3d1c'; c.fillRect(bx + 26, by + 10.5, 6, 2.2);                                   // handle
+  }
+
   // ---------------------------------------------------------------- front wall: window with red valance
   const fy = 9 * TILE;
   for (const [x0, x1] of [[TILE, 6 * TILE], [7 * TILE, 13 * TILE]]) {
@@ -35818,6 +36074,24 @@ function drawTinyThaiInterior(time) {
     ctx.globalAlpha = 1;
     ctx.strokeStyle = '#f1eeff'; ctx.lineWidth = 0.8;
     ctx.strokeRect(bx + 7.8 + step * 4.5, by + 2.8, 4, 13.4);
+  }
+  // WOK STAR burner stand: little flames lick up either side of the wok bottom, and three bits of food (noodle,
+  // shrimp, basil) are tossed up out of the bowl in staggered arcs (static stand is painted in
+  // paintTinyThaiInterior(); `time` is in seconds)
+  {
+    const bx = 2 * TILE, by = 2 * TILE;
+    for (let i = 0; i < 5; i++) {
+      const fl = 2 + Math.abs(Math.sin(time * 10 + i * 1.7)) * 3.2;
+      const fx = bx + 8 + i * 4;
+      ctx.fillStyle = i % 2 ? '#ffc02a' : '#e8601c';
+      ctx.beginPath(); ctx.moveTo(fx - 1.6, by + 21); ctx.lineTo(fx, by + 21 - fl); ctx.lineTo(fx + 1.6, by + 21); ctx.closePath(); ctx.fill();
+    }
+    const bits = ['#e2c070', '#ff8a5a', '#58d060'];
+    for (let i = 0; i < 3; i++) {
+      const t = (time * 0.8 + i / 3) % 1;
+      ctx.fillStyle = bits[i];
+      ctx.fillRect(bx + 9 + i * 6 + Math.sin(t * Math.PI * 2 + i) * 1.5, by + 10 - Math.sin(t * Math.PI) * 9, 2.4, 2.4);
+    }
   }
 }
 
