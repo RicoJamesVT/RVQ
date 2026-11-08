@@ -12846,6 +12846,16 @@ wishImg.src = 'assets/wish.png';
 const oldGoldImg = new Image();
 oldGoldImg.src = 'assets/oldgold.png';
 
+// MISTER BURNS -- a long-time emcee, DJ and promoter in the Vermont scene. He's
+// spent years bringing legends to the area and rockin' shows. He's inside AUTUMN
+// RECORDS in WINOOSKI (Level 4) digging the crates for some new stuff. Pixel-art
+// sprite: black-and-white Nike snapback, full dark beard and mustache, black-and-
+// gray Nike windrunner hoodie, gray jeans and black-and-white Nike Dunks. Same
+// pre-drawn shop-npc treatment as OLD GOLD (see SHOP_NPC_IMAGES below), with the
+// `dig: true` lean-and-flip animation in drawShopImageNpcs().
+const misterBurnsImg = new Image();
+misterBurnsImg.src = 'assets/misterburns.png';
+
 // ---------------------------------------------------------------- maps
 const SOLID = new Set(['#', 'w', 'f', '~', 'W', 'T', 'C', 'c', 'K', 'J', 'S', 'A', 'N', 'F', 'R', 'V', 'Z', 'U', 'X', 'm', 'h', 'q', 'e', 'x', 'H']);
 
@@ -16204,6 +16214,26 @@ const shops = {
           "People ask how I found my sound. I never found it -- I dug it up. One crate at a time.",
           "Do me a favor. If you pull a clean drum break out of one of these crates, don't leave it down there. Somebody's gotta flip it into something new.",
           "Winooski's still got some of the best bins around, and the people in this scene are the real deal. I miss it, and I'm back every chance I get.",
+        ] },
+      // MISTER BURNS -- long-time emcee, DJ and promoter in the VT scene, digging the
+      // crates for some new stuff. Posted at (2,4), right beside the west-wall dig crate at
+      // (1,4) so he reads as mid-dig: clear of every blockTile, the counter (row 3, cols
+      // 4-9), the white doodle door (painted in the wall column), the other dig crates
+      // (1,6)/(12,4)/(12,6), OLD GOLD (10,5), the keeper (6,2), the door (6,9) and the
+      // spawn (6.5,7.5). Crate (1,4) stays reachable from (1,3)/(1,5), and he can be
+      // talked to from (2,3), (2,5) or (3,4). `dig: true` gives him a lean-over-the-crate
+      // flipping animation -- see drawShopImageNpcs().
+      { id: 'misterburns', tx: 2, ty: 4, name: 'MISTER BURNS', sprite: 'misterburns', spriteH: 76, dig: true,
+        lines: [
+          "Mister Burns. Emcee, DJ, promoter. If there's a mic and a room full of people in Vermont, odds are I've been on it, behind it, or booking it.",
+          "I've been in this scene a long, long time. Spinning records, rocking the crowd, putting shows together -- it's been my whole life.",
+          "My favorite part? Bringing the legends to town. Folks who shaped the music we all love, standing right here in Vermont, in front of our people. Never gets old.",
+          "A good promoter's job is simple: get the right artist in the right room, then get out of the way and let the night happen.",
+          "Right now I'm digging for some new stuff. A rare groove, a deep cut, a break nobody's heard in a while. Gotta keep the crates fresh for the next set.",
+          "Greg keeps the weirdest, deepest bins in the state. I always find something here I didn't know I needed.",
+          "Thirty seconds on a record and you know -- either it moves the room or it doesn't. I flip through fast, but I listen close.",
+          "Support the local scene, young blood. Go to the shows. Buy the records. Bring a friend. That's how the whole thing keeps going.",
+          "And if you ever hear me on the mic -- yeah, that's me. Make some noise!",
         ] },
     ],
   }),
@@ -48095,7 +48125,7 @@ function drawKeeper(k) {
 // anchored to the tile's floor line — no procedural fallback, since there's
 // no simple shape that stands in for this art; it just waits for the image
 // to finish loading.
-const SHOP_NPC_IMAGES = { kanga: kangaImg, truth: truthImg, bill: billImg, rza: rzaImg, gza: gzaImg, zach: zachImg, humble: humbleImg, hicks: hicksImg, mavstar: mavstarImg, boxguts: boxgutsImg, trav: travImg, sinnn: sinnnImg, bigrye: bigRyeImg, emma: emmaImg, esk: esKImg, krishna: krishnaImg, sk1: keeperImgs['SK1'], arkaiik: arkaiikImg, ghost: ghostImg, hagen: hagenImg, precisemc: preciseMcImg, wish: wishImg, oldgold: oldGoldImg };
+const SHOP_NPC_IMAGES = { kanga: kangaImg, truth: truthImg, bill: billImg, rza: rzaImg, gza: gzaImg, zach: zachImg, humble: humbleImg, hicks: hicksImg, mavstar: mavstarImg, boxguts: boxgutsImg, trav: travImg, sinnn: sinnnImg, bigrye: bigRyeImg, emma: emmaImg, esk: esKImg, krishna: krishnaImg, sk1: keeperImgs['SK1'], arkaiik: arkaiikImg, ghost: ghostImg, hagen: hagenImg, precisemc: preciseMcImg, wish: wishImg, oldgold: oldGoldImg, misterburns: misterBurnsImg };
 
 function drawShopImageNpcs(map) {
   if (!map.npcs) return;
@@ -48108,7 +48138,21 @@ function drawShopImageNpcs(map) {
     const kw = Math.round(kh * img.naturalWidth / img.naturalHeight);
     ctx.fillStyle = 'rgba(0,0,0,0.25)';
     ctx.fillRect(px + 16 - kw * 0.3, py + 27, kw * 0.6, 4);
-    if (n.dance) {
+    if (n.dig) {
+      // Digging through the crates: he leans over toward the crate on his left, flipping
+      // records with a quick little bob, pivoting about the feet so he stays planted. A
+      // slow lean (the "reading the sleeve" part) plus a faster flip bump. Purely visual --
+      // only npcs flagged `dig: true` do this.
+      const t = performance.now() / 1000;
+      const lean = -(0.07 + 0.05 * Math.sin(t * 1.6 + n.tx));
+      const flip = Math.max(0, Math.sin(t * 5.2 + n.ty)) * 2.5;
+      const footX = px + 16, footY = py + 30;
+      ctx.save();
+      ctx.translate(footX, footY - flip);
+      ctx.rotate(lean);
+      ctx.drawImage(img, Math.round(-kw / 2), -kh, kw, kh);
+      ctx.restore();
+    } else if (n.dance) {
       // Rockin out on the decks: a quick head-bob bounce on the beat plus a
       // gentle sway, pivoting about the feet so he stays planted. Purely
       // visual -- only npcs flagged `dance: true` do this.
