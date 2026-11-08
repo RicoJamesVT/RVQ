@@ -1435,6 +1435,11 @@ const MINIGAME_ACTIONS = {
   whackpigeon: () => enterMinigame(createWhackPigeonModeSelect()),
   cratedig: () => enterMinigame(createCrateDiggingModeSelect()),
   speedsweep: () => enterMinigame(createSpeedSweepModeSelect()),
+  // Mug Slide -- a 3D bar-top shuffleboard on the slide-bar inside MISERY LOVES CO. in WINOOSKI
+  // (Level 4); see the `miseryloves` shop's `minigames` list + paintMiseryLovesInterior(). Two-tap
+  // aim/power, real sliding friction, rail bounces, mug-on-mug knocks. Standard
+  // createModeSelectMenu() shape (3D first, flat version only as the fallback). Reports as 'mugslide'.
+  mugslide: () => enterMinigame(createMugSlideModeSelect()),
   staringcontest: () => enterMinigame(createStaringContestGame()),
   // Mic Drop -- an endless three-lane freestyle-cypher rhythm game tucked
   // into VT COMEDY CLUB next to the staring contest (see the `comedy`
@@ -2105,6 +2110,8 @@ const MINIGAME_TROPHIES = [
     flavor: 'Four lanes, one boardwalk, Crawdad Drums keeping time.' },
   { id: 'tightrope', label: 'Tightrope Walk', unit: 'pts',
     flavor: 'Lean into the gusts and don\'t look down.' },
+  { id: 'mugslide', label: 'Mug Slide', unit: 'pts',
+    flavor: 'Slide the copper mug down the bar and stop it on the brass -- before it hits the floor.' },
 ];
 
 function trophyMetaFor(id) { return MINIGAME_TROPHIES.find((t) => t.id === id); }
@@ -8401,6 +8408,598 @@ function createSpeedSweep3DGame() {
       ctx.fillStyle = '#6a6070';
       ctx.font = '15px monospace';
       ctx.fillText('X to walk away anytime', cx, phase === 'done' ? 556 : 544);
+    },
+  };
+}
+
+// ---------------------------------------------------------------- MUG SLIDE
+// MISERY LOVES CO. (WINOOSKI, LEVEL 4) -- Christie's bar-top mug slide. Eight copper
+// mugs, one long polished bar, and a brass-lined scoring strip at the far end. Same
+// idiom as Darts: two taps per mug. Tap E to lock the aim (the angle sweeps side to
+// side; <- -> slides the starting spot), tap E again to lock the power (a meter that
+// speeds up every mug). The mug then slides with real friction: it bounces off the
+// rails, clacks into mugs already on the bar (knock a rival off the brass, or nudge your
+// own into a better zone) and, if it goes past the end of the bar, drops to the floor.
+// Zones score 1/2/3/4 by where each mug's center finally rests, +1 for a mug sitting on
+// the center line. Mugs count at the END, so a late knock can swing the whole round.
+//
+// Shape: createMugSlideModeSelect() -> createModeSelectMenu() -> 3D version, with the
+// flat top-down version as the automatic fallback if Three.js/WebGL fails. Both
+// renderers share ONE sim (createMugSlideSim) and ONE rules/input core
+// (createMugSlideCore), so they play identically. Reports into the trophy case as
+// 'mugslide'.
+const MUGSLIDE = {
+  HW: 0.5,            // half the bar's width (world units)
+  L: 4.0,             // bar length; a mug whose center passes this falls off the end
+  START_D: 0.28,      // distance along the bar where every mug is released
+  R: 0.07,            // mug radius
+  MU: 1.1,            // sliding deceleration (units/s^2)
+  MUGS: 8,
+  VMIN: 1.15, VSPAN: 2.15,   // release speed = VMIN + power * VSPAN
+  CENTER: 0.09,       // |x| inside this on a scoring zone earns the center-line bonus
+  AIM_AMP: 0.065,     // max aim angle (radians) either side of straight
+  ZONES: [
+    { from: 2.30, to: 2.85, pts: 1, color: 0x8a6a3a, css: '#8a6a3a', name: 'ONE' },
+    { from: 2.85, to: 3.35, pts: 2, color: 0xb08a40, css: '#b08a40', name: 'TWO' },
+    { from: 3.35, to: 3.75, pts: 3, color: 0xd8a830, css: '#d8a830', name: 'THREE' },
+    { from: 3.75, to: 4.00, pts: 4, color: 0xffc83c, css: '#ffc83c', name: 'FOUR' },
+  ],
+};
+
+function mugSlideZoneFor(d) {
+  const Z = MUGSLIDE.ZONES;
+  for (let i = Z.length - 1; i >= 0; i--) if (d >= Z[i].from) return Z[i];
+  return null;
+}
+function mugSlideMugPoints(m) {
+  if (m.state !== 'rest') return 0;
+  const z = mugSlideZoneFor(m.d);
+  if (!z) return 0;
+  return z.pts + (Math.abs(m.x) <= MUGSLIDE.CENTER ? 1 : 0);
+}
+// Power (0..1) whose straight-down-the-bar slide ends with its center at distance dd.
+function mugSlidePowerForDistance(dd) {
+  const C = MUGSLIDE;
+  const v = Math.sqrt(Math.max(0, 2 * C.MU * (dd - C.START_D)));
+  return Math.max(0, Math.min(1, (v - C.VMIN) / C.VSPAN));
+}
+
+// ---- physics: 2D (x across the bar, d along it), no rendering ------------------
+function createMugSlideSim() {
+  const C = MUGSLIDE;
+  const mugs = [];
+  const events = [];   // drained by the renderer: { type: 'rail'|'hit'|'fell'|'rest', mug, power }
+  let nextId = 0;
+
+  function launch(x, angle, power) {
+    const v = C.VMIN + power * C.VSPAN;
+    const m = {
+      id: nextId++, x, d: C.START_D,
+      vx: Math.sin(angle) * v, vd: Math.cos(angle) * v,
+      state: 'moving', fy: 0, fv: 0, spin: 0, turn: Math.random() * Math.PI * 2,
+    };
+    mugs.push(m);
+    return m;
+  }
+
+  function stepOnce(h) {
+    for (const m of mugs) {
+      if (m.state === 'falling') {
+        m.fv += 7 * h; m.fy -= m.fv * h; m.d += m.vd * h; m.x += m.vx * h; m.spin += 5 * h;
+        if (m.fy < -1.4) m.state = 'gone';
+        continue;
+      }
+      if (m.state !== 'moving') continue;
+      const s = Math.hypot(m.vx, m.vd);
+      if (s > 0) {
+        const ns = s - C.MU * h;
+        if (ns <= 0.03) { m.vx = 0; m.vd = 0; m.state = 'rest'; events.push({ type: 'rest', mug: m }); continue; }
+        const k = ns / s; m.vx *= k; m.vd *= k;
+      }
+      m.x += m.vx * h; m.d += m.vd * h;
+      if (m.x < -C.HW + C.R) { m.x = -C.HW + C.R; if (m.vx < 0) { events.push({ type: 'rail', mug: m, power: -m.vx }); m.vx = -m.vx * 0.55; } }
+      else if (m.x > C.HW - C.R) { m.x = C.HW - C.R; if (m.vx > 0) { events.push({ type: 'rail', mug: m, power: m.vx }); m.vx = -m.vx * 0.55; } }
+      if (m.d < C.R) { m.d = C.R; if (m.vd < 0) m.vd = -m.vd * 0.5; }
+      if (m.d > C.L) { m.state = 'falling'; m.fv = 0; m.fy = 0; events.push({ type: 'fell', mug: m }); }
+    }
+    // mug-on-mug collisions (equal mass, bouncy)
+    for (let i = 0; i < mugs.length; i++) {
+      const a = mugs[i];
+      if (a.state === 'falling' || a.state === 'gone') continue;
+      for (let j = i + 1; j < mugs.length; j++) {
+        const b = mugs[j];
+        if (b.state === 'falling' || b.state === 'gone') continue;
+        const dx = b.x - a.x, dd = b.d - a.d, dist = Math.hypot(dx, dd);
+        if (dist >= 2 * C.R || dist < 1e-6) continue;
+        const nx = dx / dist, nd = dd / dist, overlap = 2 * C.R - dist;
+        a.x -= nx * overlap / 2; a.d -= nd * overlap / 2;
+        b.x += nx * overlap / 2; b.d += nd * overlap / 2;
+        const rel = (a.vx - b.vx) * nx + (a.vd - b.vd) * nd;
+        if (rel > 0) {
+          const jj = rel * (1 + 0.85) / 2;
+          a.vx -= jj * nx; a.vd -= jj * nd; b.vx += jj * nx; b.vd += jj * nd;
+          if (rel > 0.12) events.push({ type: 'hit', mug: b, other: a, power: rel });
+        }
+        for (const m of [a, b]) if (Math.hypot(m.vx, m.vd) > 0.03) m.state = 'moving';
+      }
+    }
+  }
+
+  return {
+    mugs, events, launch,
+    step(dt) {
+      dt = Math.min(dt, 0.05);
+      const n = Math.max(1, Math.ceil(dt / 0.008)), h = dt / n;
+      for (let i = 0; i < n; i++) stepOnce(h);
+    },
+    anyMoving() { return mugs.some((m) => m.state === 'moving' || m.state === 'falling'); },
+    score() { let s = 0; for (const m of mugs) s += mugSlideMugPoints(m); return s; },
+  };
+}
+
+// ---- rules + input: shared by the 3D and the classic renderer -------------------
+function createMugSlideCore() {
+  const C = MUGSLIDE;
+  const sim = createMugSlideSim();
+  const core = {
+    sim,
+    phase: 'aim',          // 'aim' | 'power' | 'slide' | 'done'
+    mugsLeft: C.MUGS, thrown: 0,
+    startX: 0, angle: 0, lockedAngle: 0, power: 0,
+    msg: null,             // { text, color, t }
+    t: 0, isNewBest: false,
+    lastThrow: null,
+    launched: false,       // true for exactly one update after a mug is released
+  };
+  let aimT = 0, powerT = 0, settleT = 0, bestRecorded = false;
+
+  function powerPeriod() { return 1.25 - 0.45 * (core.thrown / Math.max(1, C.MUGS - 1)); }
+
+  core.update = function (dt) {
+    dt = Math.min(dt, 0.05);
+    core.t += dt;
+    core.launched = false;
+    if (core.msg) { core.msg.t -= dt; if (core.msg.t <= 0) core.msg = null; }
+
+    if (core.phase === 'aim') {
+      let dx = 0;
+      if (keys['arrowleft'] || keys['a']) dx -= 1;
+      if (keys['arrowright'] || keys['d']) dx += 1;
+      core.startX = Math.max(-0.36, Math.min(0.36, core.startX + dx * 0.55 * dt));
+      aimT += dt;
+      core.angle = Math.sin(aimT * 2.6) * C.AIM_AMP;
+      if (interactPressed) { core.lockedAngle = core.angle; core.phase = 'power'; powerT = 0; core.power = 0; }
+    } else if (core.phase === 'power') {
+      powerT += dt;
+      const u = (powerT / powerPeriod()) % 2;
+      core.power = u < 1 ? u : 2 - u;
+      if (interactPressed) {
+        core.lastThrow = sim.launch(core.startX, core.lockedAngle, core.power);
+        core.launched = true;
+        core.phase = 'slide'; settleT = 0;
+      }
+    } else if (core.phase === 'slide') {
+      sim.step(dt);
+      if (!sim.anyMoving()) {
+        settleT += dt;
+        if (settleT > 0.55) {
+          const m = core.lastThrow;
+          const z = m.state === 'rest' ? mugSlideZoneFor(m.d) : null;
+          if (m.state !== 'rest') core.msg = { text: 'OFF THE END!  0', color: '#e0603a', t: 1.6 };
+          else if (z) {
+            const center = Math.abs(m.x) <= C.CENTER;
+            core.msg = { text: `ZONE ${z.pts}  +${z.pts}` + (center ? '  CENTER LINE +1' : ''), color: z.css, t: 1.6 };
+          } else core.msg = { text: 'SHORT OF THE BRASS', color: '#9a90a8', t: 1.6 };
+          core.mugsLeft--; core.thrown++;
+          if (core.mugsLeft <= 0) core.phase = 'done';
+          else { core.phase = 'aim'; aimT = 0; }
+        }
+      } else settleT = 0;
+    } else if (core.phase === 'done') {
+      if (!bestRecorded) { core.isNewBest = recordMinigameScore('mugslide', sim.score()); bestRecorded = true; }
+    }
+  };
+
+  core.quip = function () {
+    const s = sim.score();
+    if (s >= 24) return 'Christie: "That round is on the house. Peace, love, and fresh bread."';
+    if (s >= 16) return 'Christie: "Now that is some bar-top barrel racing. Nice."';
+    if (s >= 8) return 'Christie: "Not bad. Wipe up the rings and go again."';
+    return 'Christie: "The bar is long, friend. The mugs are heavy. Try again."';
+  };
+  return core;
+}
+
+// ---- classic: flat top-down bar (automatic fallback if 3D can't start) -----------
+function createMugSlideGame() {
+  const C = MUGSLIDE;
+  const core = createMugSlideCore();
+  const sim = core.sim;
+  const BX = 90, BY = 330, SC = 200;   // d=0 at x=BX; scale px per unit; bar centerline y=BY
+  const px = (d) => BX + d * SC, py = (x) => BY + x * SC;
+  function leave() { exitMinigame(); }
+
+  return {
+    update(dt) {
+      if (buyPressed) { leave(); return; }
+      if (core.phase === 'done' && interactPressed) { leave(); return; }
+      core.update(dt);
+      sim.events.length = 0;
+    },
+    draw() {
+      ctx.fillStyle = '#140c08'; ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+      ctx.fillStyle = '#8a3d2e'; ctx.fillRect(0, 0, VIEW_W, 120);
+      ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(0, 0, VIEW_W, 120);
+      // bar top + rails
+      ctx.fillStyle = '#4a2c18'; ctx.fillRect(px(-0.3), py(-C.HW), (C.L + 0.3) * SC, C.HW * 2 * SC);
+      for (const z of C.ZONES) {
+        ctx.fillStyle = z.css; ctx.globalAlpha = 0.85;
+        ctx.fillRect(px(z.from), py(-C.HW), (z.to - z.from) * SC, C.HW * 2 * SC);
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = z.css; ctx.font = 'bold 22px monospace'; ctx.textAlign = 'center';
+        ctx.fillText(String(z.pts), px((z.from + z.to) / 2), py(-C.HW) - 10);
+      }
+      ctx.fillStyle = '#c8963c';
+      ctx.fillRect(px(-0.3), py(-C.HW) - 4, (C.L + 0.3) * SC, 4);
+      ctx.fillRect(px(-0.3), py(C.HW), (C.L + 0.3) * SC, 4);
+      ctx.fillRect(px(-0.3) - 4, py(-C.HW) - 4, 4, C.HW * 2 * SC + 8);
+      ctx.fillStyle = 'rgba(42,26,16,0.5)'; ctx.fillRect(px(2.3), py(0) - 1, (C.L - 2.3) * SC, 2);
+      // aim guide
+      if (core.phase === 'aim' || core.phase === 'power') {
+        const a = core.phase === 'aim' ? core.angle : core.lockedAngle;
+        ctx.strokeStyle = 'rgba(255,230,160,0.6)'; ctx.lineWidth = 2; ctx.setLineDash([6, 8]);
+        ctx.beginPath(); ctx.moveTo(px(C.START_D), py(core.startX));
+        ctx.lineTo(px(C.START_D + Math.cos(a) * 1.4), py(core.startX + Math.sin(a) * 1.4)); ctx.stroke();
+        ctx.setLineDash([]);
+        mugDot(C.START_D, core.startX, 0);
+      }
+      for (const m of sim.mugs) if (m.state !== 'gone') mugDot(m.d, m.x, m.fy);
+      hud(VIEW_W / 2, 520);
+    },
+  };
+  function mugDot(d, x, fy) {
+    const r = C.R * SC * (1 + Math.max(-0.5, fy) * 0.3);
+    ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.beginPath(); ctx.arc(px(d) + 3, py(x) + 3, r, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#b8662e'; ctx.beginPath(); ctx.arc(px(d), py(x), r, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#d8884a'; ctx.beginPath(); ctx.arc(px(d) - 3, py(x) - 3, r * 0.45, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#6aa53a'; ctx.beginPath(); ctx.arc(px(d) + r * 0.35, py(x) - r * 0.2, r * 0.3, 0, Math.PI * 2); ctx.fill();
+  }
+  function hud(cx, promptY) { mugSlideDrawHud(core, 'MUG SLIDE', cx, promptY, null); }
+}
+
+// ---- shared HUD (drawn over both renderers) -------------------------------------
+function mugSlideDrawHud(core, title, cx, promptY, project) {
+  const C = MUGSLIDE;
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#e0b040'; ctx.font = 'bold 28px monospace';
+  ctx.fillText(title, cx, 50);
+  ctx.fillStyle = '#f4ecd8'; ctx.font = '17px monospace';
+  ctx.fillText(`SCORE ${core.sim.score()}`, cx, 74);
+  // mugs left, as little copper dots
+  for (let i = 0; i < C.MUGS; i++) {
+    const used = i < core.thrown;
+    const x = cx - (C.MUGS - 1) * 11 + i * 22;
+    ctx.fillStyle = used ? 'rgba(244,236,216,0.18)' : '#b8662e';
+    ctx.beginPath(); ctx.arc(x, 92, 6, 0, Math.PI * 2); ctx.fill();
+    if (!used) { ctx.fillStyle = '#d8884a'; ctx.beginPath(); ctx.arc(x - 2, 90, 2.4, 0, Math.PI * 2); ctx.fill(); }
+  }
+  // zone numbers pinned to the bar (3D only: project() maps a bar point to the screen)
+  if (project) {
+    ctx.font = 'bold 20px monospace';
+    for (const z of C.ZONES) {
+      const p = project(-C.HW - 0.14, (z.from + z.to) / 2);
+      if (!p) continue;
+      ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.beginPath(); ctx.arc(p.x, p.y - 6, 14, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = z.css; ctx.fillText(String(z.pts), p.x, p.y);
+    }
+  }
+  // result callout
+  if (core.msg) {
+    ctx.globalAlpha = Math.max(0, Math.min(1, core.msg.t / 0.5));
+    ctx.fillStyle = core.msg.color; ctx.font = 'bold 22px monospace';
+    ctx.fillText(core.msg.text, cx, 150);
+    ctx.globalAlpha = 1;
+  }
+  // aim / power meters
+  const mw = 300, mx = cx - mw / 2, my = promptY - 56;
+  if (core.phase === 'aim' || core.phase === 'power') {
+    // aim: a centered track with a sliding marker
+    ctx.fillStyle = 'rgba(244,236,216,0.15)'; ctx.fillRect(mx, my, mw, 8);
+    ctx.fillStyle = 'rgba(244,236,216,0.5)'; ctx.fillRect(cx - 1, my - 3, 2, 14);
+    const a = core.phase === 'aim' ? core.angle : core.lockedAngle;
+    ctx.fillStyle = core.phase === 'aim' ? '#8cff5f' : '#9a90a8';
+    ctx.fillRect(cx + (a / C.AIM_AMP) * (mw / 2) - 3, my - 5, 6, 18);
+    ctx.fillStyle = '#9a90a8'; ctx.font = '12px monospace'; ctx.fillText('AIM', mx - 22, my + 8);
+    // power: banded by the zone each power level would stop in
+    const py2 = my + 22;
+    const bands = [{ p: 0, c: '#4a3a30' }];
+    for (const z of C.ZONES) bands.push({ p: mugSlidePowerForDistance(z.from), c: z.css });
+    bands.push({ p: mugSlidePowerForDistance(C.L), c: '#a02a2a' });
+    for (let i = 0; i < bands.length; i++) {
+      const p0 = bands[i].p, p1 = i + 1 < bands.length ? bands[i + 1].p : 1;
+      ctx.fillStyle = bands[i].c; ctx.globalAlpha = core.phase === 'power' ? 0.9 : 0.4;
+      ctx.fillRect(mx + p0 * mw, py2, Math.max(0, (p1 - p0)) * mw, 10);
+    }
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#9a90a8'; ctx.font = '12px monospace'; ctx.fillText('POWER', mx - 30, py2 + 9);
+    if (core.phase === 'power') {
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(mx + core.power * mw - 2, py2 - 5, 4, 20);
+    }
+  }
+  ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#8cff5f' : '#f4ecd8';
+  ctx.font = 'bold 19px monospace';
+  if (core.phase === 'aim') ctx.fillText('- \u25c0 \u25b6 MOVE, TAP E TO LOCK THE AIM -', cx, promptY);
+  else if (core.phase === 'power') ctx.fillText('- TAP E TO SLIDE: AIM FOR THE BRASS -', cx, promptY);
+  else if (core.phase === 'slide') { ctx.fillStyle = '#f4ecd8'; ctx.fillText('...', cx, promptY); }
+  ctx.fillStyle = '#6a6070'; ctx.font = '15px monospace';
+  ctx.fillText('X to walk away anytime', cx, promptY + 22);
+
+  if (core.phase === 'done') {
+    ctx.fillStyle = 'rgba(8,6,12,0.78)'; ctx.fillRect(cx - 300, 300, 600, 210);
+    ctx.strokeStyle = '#c8963c'; ctx.lineWidth = 2; ctx.strokeRect(cx - 300, 300, 600, 210);
+    ctx.fillStyle = '#e0b040'; ctx.font = 'bold 26px monospace'; ctx.fillText('LAST CALL!', cx, 334);
+    ctx.fillStyle = '#f4ecd8'; ctx.font = 'bold 22px monospace'; ctx.fillText(`FINAL SCORE: ${core.sim.score()}`, cx, 372);
+    ctx.font = '16px monospace'; ctx.fillStyle = core.isNewBest ? '#8cff5f' : '#9a90a8';
+    ctx.fillText(core.isNewBest ? 'NEW BEST!' : `BEST: ${bestFor('mugslide')}`, cx, 398);
+    ctx.fillStyle = '#f4ecd8'; ctx.font = '15px monospace';
+    ctx.fillText(core.quip(), cx, 432, 560);
+    ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#8cff5f' : '#f4ecd8'; ctx.font = 'bold 18px monospace';
+    ctx.fillText('PRESS E TO LEAVE', cx, 480);
+  }
+}
+
+// ---- mode select: straight into 3D, flat version only as the fallback --------------
+function createMugSlideModeSelect() {
+  return createModeSelectMenu({
+    title: 'MUG SLIDE',
+    pickLabel: 'PICK YOUR BAR',
+    classicSub: 'The flat top-down bar',
+    threeDSub: 'Belly up to the bar -- full 3D',
+    createClassic: () => createMugSlideGame(),
+    createThreeD: () => createMugSlide3DGame(),
+  });
+}
+
+// ---- Mug Slide 3D --------------------------------------------------------------------
+// The Three.js version: a long polished bar under pendant lamps in front of the
+// back-bar brick, brass rails down both sides, copper mugs with a lime wheel. World
+// space: x across the bar, y up (bar top = 0), z = -d (down the bar, away from you).
+// Renders to the cached offscreen WebGL canvas that's blitted into the main canvas
+// (see getMinigame3DRenderer()); the HUD is drawn over the blit.
+function createMugSlide3DGame() {
+  const T = window.THREE;
+  const { renderer, canvas: mug3DCanvas } = getMinigame3DRenderer('mugslide');
+  const C = MUGSLIDE;
+  const core = createMugSlideCore();
+  const sim = core.sim;
+
+  const scene = new T.Scene();
+  scene.background = new T.Color(0x140c08);
+  scene.fog = new T.Fog(0x140c08, 6, 15);
+  const camera = new T.PerspectiveCamera(44, VIEW_W / VIEW_H, 0.05, 40);
+  const CAM = new T.Vector3(0, 2.25, 2.35);
+  const LOOK = new T.Vector3(0, -0.2, -1.85);
+  camera.position.copy(CAM);
+  camera.lookAt(LOOK);
+
+  const mat = (color, rough, metal, extra) => new T.MeshStandardMaterial(Object.assign({ color, roughness: rough, metalness: metal || 0 }, extra || {}));
+  function box(w, h, d, material, x, y, z, shadows) {
+    const m = new T.Mesh(new T.BoxGeometry(w, h, d), material);
+    m.position.set(x, y, z);
+    if (shadows) m.receiveShadow = true;
+    scene.add(m);
+    return m;
+  }
+
+  // ---- the bar: walnut top, a face with a brass foot rail, brass side rails ----
+  const barLen = C.L + 0.35, barMidZ = -(C.L - 0.35) / 2 + 0;     // spans d = -0.35 .. L
+  const top = box(C.HW * 2, 0.08, barLen, mat(0x4a2c18, 0.32, 0.05), 0, -0.04, -((C.L - 0.35) / 2), true);
+  box(C.HW * 2 + 0.2, 0.55, barLen, mat(0x3a2416, 0.8), 0, -0.4, -((C.L - 0.35) / 2), false);
+  const brass = mat(0xc8963c, 0.3, 0.7);
+  box(0.045, 0.05, barLen, brass, -C.HW - 0.0225, 0.02, -((C.L - 0.35) / 2));
+  box(C.HW * 2 + 0.09, 0.05, 0.045, brass, 0, 0.02, 0.35 + 0.0225);   // near-end bumper (d = -0.35)
+  // plank seams
+  for (let i = -3; i <= 3; i++) box(0.004, 0.0805, barLen, mat(0x2a1a10, 0.9), i * 0.125, -0.04, -((C.L - 0.35) / 2));
+  // scoring zones: tinted strips + brass dividers + a dark center line
+  for (const z of C.ZONES) {
+    const dm = (z.from + z.to) / 2;
+    box(C.HW * 2 - 0.004, 0.006, z.to - z.from, mat(z.color, 0.4, 0.15, { emissive: z.pts === 4 ? 0x442200 : 0x000000 }), 0, 0.003, -dm, true);
+    box(C.HW * 2, 0.008, 0.012, brass, 0, 0.004, -z.from);
+  }
+  box(0.01, 0.009, C.L - 2.3, mat(0x2a1a10, 0.6), 0, 0.005, -(2.3 + C.L) / 2);
+  // little brass tick marks down the near half so distance reads
+  for (let d = 0.5; d < 2.3; d += 0.5) box(0.18, 0.006, 0.008, mat(0x8a6a3a, 0.5, 0.3), 0, 0.003, -d);
+  // the far lip: a darker edge so "off the end" reads
+  box(C.HW * 2, 0.085, 0.03, mat(0x2a1a10, 0.5), 0, -0.04, -(C.L + 0.015));
+
+  // ---- the room: floor, brick back wall, back-bar shelves, side walls ----
+  const floor = new T.Mesh(new T.PlaneGeometry(14, 14), mat(0x2a1a10, 0.9));
+  floor.rotation.x = -Math.PI / 2; floor.position.set(0, -1.0, -4); floor.receiveShadow = true; scene.add(floor);
+  const wallZ = -(C.L + 2.1);
+  box(10, 4.2, 0.1, mat(0x8a3d2e, 1), 0, 1.1, wallZ);
+  for (let row = 0; row < 14; row++) for (let i = -9; i < 9; i++) {      // brick courses (cheap relief)
+    if ((i + row) % 3 === 0) continue;
+    box(0.5, 0.02, 0.02, mat(0x6a2a1e, 1), i * 0.55 + (row % 2) * 0.27, -0.7 + row * 0.27, wallZ + 0.06);
+  }
+  box(10, 0.18, 0.2, mat(0x2a1a10, 0.8), 0, 3.0, wallZ + 0.08);              // ceiling beam
+  box(0.1, 4.2, 12, mat(0x3a2418, 1), -4.6, 1.1, -3);
+  box(0.1, 4.2, 12, mat(0x5a2a20, 1), 4.6, 1.1, -3);
+  // shelves of bottles
+  const bottleCols = [0x3a7a4a, 0xa8601c, 0x7a2a2a, 0xc8b060, 0x2a5a7a, 0x8a3a6a];
+  for (const sy of [0.55, 1.15, 1.75]) {
+    box(5.2, 0.05, 0.28, mat(0x7a5230, 0.7), 0, sy, wallZ + 0.22);
+    for (let i = 0; i < 17; i++) {
+      const col = bottleCols[(i * 5 + Math.round(sy * 10)) % 6], h = 0.2 + ((i * 7 + Math.round(sy * 7)) % 5) * 0.03;
+      const b = new T.Mesh(new T.CylinderGeometry(0.035, 0.04, h, 10), mat(col, 0.35, 0.1));
+      b.position.set(-2.4 + i * 0.3, sy + 0.025 + h / 2, wallZ + 0.22);
+      scene.add(b);
+      const n = new T.Mesh(new T.CylinderGeometry(0.013, 0.02, 0.08, 8), mat(col, 0.35, 0.1));
+      n.position.set(b.position.x, sy + 0.025 + h + 0.04, wallZ + 0.22);
+      scene.add(n);
+    }
+  }
+  // Edison string lights along the back wall + pendant lamps over the bar
+  const bulbMat = new T.MeshBasicMaterial({ color: 0xffe6a0 });
+  const bulbs = [];
+  for (let i = 0; i <= 18; i++) {
+    const x = -4 + i * 0.44, y = 2.55 - Math.sin((i / 18) * Math.PI * 4) * 0.08 - 0.15 * Math.sin((i / 18) * Math.PI);
+    const bl = new T.Mesh(new T.SphereGeometry(0.035, 8, 8), bulbMat.clone());
+    bl.position.set(x, y, wallZ + 0.18);
+    scene.add(bl); bulbs.push(bl);
+  }
+  const lampMat = mat(0xf3dfb0, 0.6, 0, { side: T.DoubleSide, emissive: 0x4a3a18 });
+  for (const lz of [-3.3, -4.6]) {
+    const cone = new T.Mesh(new T.CylinderGeometry(0.07, 0.24, 0.2, 18, 1, true), lampMat);
+    cone.position.set(0, 1.55, lz); scene.add(cone);
+    const wire = new T.Mesh(new T.CylinderGeometry(0.004, 0.004, 1.6, 4), mat(0x1a110a, 1));
+    wire.position.set(0, 2.45, lz); scene.add(wire);
+    const bulb = new T.Mesh(new T.SphereGeometry(0.05, 10, 10), new T.MeshBasicMaterial({ color: 0xfff0c0 }));
+    bulb.position.set(0, 1.48, lz); scene.add(bulb);
+  }
+
+  // ---- lights ----
+  scene.add(new T.AmbientLight(0x5a4030, 0.55));
+  const key = new T.SpotLight(0xffd9a0, 0.85, 14, 0.62, 0.55);
+  key.position.set(0, 3.4, -2.4);
+  key.target.position.set(0, 0, -2.9);
+  key.castShadow = true;
+  key.shadow.mapSize.set(1024, 1024);
+  scene.add(key); scene.add(key.target);
+  const warmA = new T.PointLight(0xffb060, 0.35, 6); warmA.position.set(0, 1.3, -1.0); scene.add(warmA);
+  const warmB = new T.PointLight(0xffb060, 0.3, 6); warmB.position.set(0, 1.3, -3.6); scene.add(warmB);
+
+  // ---- mugs ----
+  const copper = mat(0xc4702e, 0.5, 0.2, { emissive: 0x2a1204 });
+  const copperLight = mat(0xe8985a, 0.4, 0.3, { emissive: 0x2a1608 });
+  const limeMat = mat(0x6aa53a, 0.6, 0);
+  const drinkMat = mat(0x2a1208, 0.5, 0);
+  function buildMug(turn) {
+    const g = new T.Group();
+    const body = new T.Mesh(new T.CylinderGeometry(0.062, 0.052, 0.105, 18), copper);
+    body.position.y = 0.0525; body.castShadow = true; body.receiveShadow = true; g.add(body);
+    const rim = new T.Mesh(new T.TorusGeometry(0.062, 0.004, 6, 18), copperLight);
+    rim.rotation.x = Math.PI / 2; rim.position.y = 0.105; g.add(rim);
+    const band = new T.Mesh(new T.CylinderGeometry(0.0605, 0.0585, 0.012, 18), copperLight);
+    band.position.y = 0.03; g.add(band);
+    const drink = new T.Mesh(new T.CylinderGeometry(0.056, 0.056, 0.004, 18), drinkMat);
+    drink.position.y = 0.098; g.add(drink);
+    const lime = new T.Mesh(new T.CylinderGeometry(0.026, 0.026, 0.006, 14), limeMat);
+    lime.position.set(0.03, 0.108, 0.01); lime.rotation.z = 0.35; g.add(lime);
+    const handle = new T.Mesh(new T.TorusGeometry(0.03, 0.0075, 8, 14, Math.PI), copper);
+    handle.rotation.z = -Math.PI / 2; handle.position.set(0.062, 0.055, 0); handle.castShadow = true; g.add(handle);
+    g.rotation.y = turn;
+    scene.add(g);
+    return g;
+  }
+  const held = buildMug(0);               // the mug waiting at the near end
+  const meshes = new Map();
+
+  // dotted aim line
+  const dotMat = new T.MeshBasicMaterial({ color: 0xffe6a0, transparent: true, opacity: 0.8 });
+  const dots = [];
+  for (let i = 0; i < 12; i++) {
+    const dt = new T.Mesh(new T.CylinderGeometry(0.01, 0.01, 0.003, 8), dotMat);
+    scene.add(dt); dots.push(dt);
+  }
+
+  // particles: brass sparkles / clink puffs / fall splashes
+  let bursts = [];
+  function spawnBurst(x, y, z, color, n, speed) {
+    for (let i = 0; i < n; i++) {
+      const mesh = new T.Mesh(new T.SphereGeometry(0.014, 6, 6), new T.MeshBasicMaterial({ color, transparent: true, opacity: 1 }));
+      mesh.position.set(x, y, z);
+      scene.add(mesh);
+      const a = Math.random() * Math.PI * 2;
+      bursts.push({ mesh, vx: Math.cos(a) * speed * (0.4 + Math.random()), vy: 0.5 + Math.random() * 0.7, vz: Math.sin(a) * speed * (0.4 + Math.random()), life: 0 });
+    }
+  }
+
+  let shake = 0, t = 0;
+
+  function cleanup() {
+    bursts.forEach((b) => { scene.remove(b.mesh); b.mesh.geometry.dispose(); b.mesh.material.dispose(); });
+    bursts = [];
+    scene.traverse((obj) => {
+      if (obj.geometry) obj.geometry.dispose();
+      if (obj.material) {
+        if (Array.isArray(obj.material)) obj.material.forEach((m) => m.dispose());
+        else obj.material.dispose();
+      }
+    });
+    scene.clear();
+  }
+  function leave() { cleanup(); exitMinigame(); }
+
+  const _v = new T.Vector3();
+  function project(x, d) {
+    _v.set(x, 0.02, -d).project(camera);
+    if (_v.z > 1) return null;
+    return { x: (_v.x * 0.5 + 0.5) * VIEW_W, y: (-_v.y * 0.5 + 0.5) * VIEW_H };
+  }
+
+  return {
+    update(dt) {
+      dt = Math.min(dt, 0.05);
+      t += dt;
+      if (buyPressed) { leave(); return; }
+      if (core.phase === 'done' && interactPressed) { leave(); return; }
+      core.update(dt);
+
+      // events -> particles / shake
+      for (const e of sim.events.splice(0)) {
+        const m = e.mug;
+        if (e.type === 'hit') { spawnBurst(m.x, 0.09, -m.d, 0xffd9a0, 5, 0.5); shake = Math.max(shake, Math.min(0.02, e.power * 0.01)); }
+        else if (e.type === 'rail') spawnBurst(m.x, 0.06, -m.d, 0xc8963c, 3, 0.3);
+        else if (e.type === 'fell') { shake = 0.03; spawnBurst(m.x, 0.05, -m.d, 0xe0603a, 8, 0.6); }
+        else if (e.type === 'rest') {
+          const z = mugSlideZoneFor(m.d);
+          if (z && z.pts >= 3) spawnBurst(m.x, 0.1, -m.d, z.pts === 4 ? 0xffe36a : 0xffc83c, z.pts === 4 ? 14 : 8, 0.7);
+        }
+      }
+
+      // the held mug: visible while aiming/charging, at the chosen spot
+      held.visible = core.phase === 'aim' || core.phase === 'power';
+      held.position.set(core.startX, 0, -C.START_D);
+      const ang = core.phase === 'aim' ? core.angle : core.lockedAngle;
+      for (let i = 0; i < dots.length; i++) {
+        const s = 0.14 + i * 0.12;
+        dots[i].visible = held.visible;
+        dots[i].position.set(core.startX + Math.sin(ang) * s, 0.012, -(C.START_D + Math.cos(ang) * s));
+      }
+      dotMat.opacity = core.phase === 'aim' ? 0.85 : 0.45;
+
+      // sim mugs -> meshes
+      for (const m of sim.mugs) {
+        let g = meshes.get(m.id);
+        if (!g) { g = buildMug(m.turn); meshes.set(m.id, g); }
+        if (m.state === 'gone') { g.visible = false; continue; }
+        g.position.set(m.x, m.fy, -m.d);
+        if (m.state === 'falling') { g.rotation.z = m.spin * 0.6; g.rotation.x = m.spin * 0.35; }
+      }
+
+      bursts.forEach((b) => {
+        b.life += dt;
+        b.mesh.position.x += b.vx * dt;
+        b.mesh.position.y += (b.vy - b.life * 3.2) * dt;
+        b.mesh.position.z += b.vz * dt;
+        b.mesh.material.opacity = Math.max(0, 1 - b.life * 1.6);
+      });
+      bursts = bursts.filter((b) => {
+        if (b.life * 1.6 >= 1 || b.mesh.position.y < -0.9) { scene.remove(b.mesh); b.mesh.geometry.dispose(); b.mesh.material.dispose(); return false; }
+        return true;
+      });
+
+      bulbs.forEach((bl, i) => { const k = 0.8 + 0.2 * Math.sin(t * 2.2 + i * 1.3); bl.material.color.setRGB(1 * k, 0.9 * k, 0.62 * k); });
+
+      shake = Math.max(0, shake - dt * 0.12);
+      const sx = (Math.random() - 0.5) * shake, sy = (Math.random() - 0.5) * shake;
+      camera.position.set(CAM.x + Math.sin(t * 0.45) * 0.015 + sx, CAM.y + Math.sin(t * 0.6) * 0.008 + sy, CAM.z);
+      camera.lookAt(LOOK);
+    },
+    draw() {
+      renderer.render(scene, camera);
+      ctx.drawImage(mug3DCanvas, 0, 0);
+      mugSlideDrawHud(core, 'MUG SLIDE 3D', VIEW_W / 2, 556, project);
     },
   };
 }
@@ -15193,6 +15792,14 @@ const shops = {
     blockTiles: [
       [1, 1], [2, 1], [3, 1], [4, 1], [5, 1], [6, 1], [7, 1], [8, 1], [9, 1], [10, 1], [11, 1], [12, 1],
       [1, 2], [1, 3], [8, 2], [9, 2], [12, 8],
+      [4, 2], [5, 2],
+    ],
+    // (4,2)(5,2) = the MUG SLIDE bar against the back wall between the chalkboard and the back-bar:
+    // two solid tiles on open floor, clear of the pantry (1,2)(1,3), the cabinet (8,2), the door (6,9)
+    // and the spawn (6.5,7.5). Approach from (4,3) or (5,3) below. Painted in
+    // paintMiseryLovesInterior(); `icon: 'mugslide'` -- see drawMinigameMugSlide().
+    minigames: [
+      { id: 'mugslide', tx: 4, ty: 2, alsoTiles: [[5, 2]], label: 'MUG SLIDE', icon: 'mugslide' },
     ],
     extraTables: [[3, 5], [3, 7], [10, 6], [10, 8]],
     keeper: { x: 10, y: 2, name: 'CHRISTIE', shirt: '#cfc6a8', skin: '#d9a47a', cook: true,
@@ -29711,6 +30318,70 @@ function drawMinigameHarmonics(wx, wy, time, seed, label) {
   return { cx, cy, hw: W / 2 + 14, hh: H / 2 + 34 };
 }
 
+// Alternate mini-game marker used when a map entry sets `icon: 'mugslide'` (MUG SLIDE, the bar-top
+// shuffleboard against the back wall inside MISERY LOVES CO. in WINOOSKI) -- same bob/label/hitbox
+// contract as drawMinigameHarmonics() above. Drawn as a copper mug with a lime wheel floating on a
+// thin post, speed streaks trailing behind it, so it reads as "give it a slide." `time` is in seconds.
+function drawMinigameMugSlide(wx, wy, time, seed, label) {
+  const s = MINIGAME_OBJECT_SCALE;
+  const bob = Math.sin(time * 3 + seed) * 3;
+  const cx = wx, cy = wy - 50 + bob;
+  const mw = 20 * s, mh = 22 * s;
+
+  // thin post connecting the sign down to the bar
+  ctx.strokeStyle = '#241c28';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(wx, cy + mh / 2);
+  ctx.lineTo(wx, wy - 14);
+  ctx.stroke();
+
+  // speed streaks trailing off to the left, sliding in and out
+  const slide = (time * 1.6 + seed) % 1;
+  ctx.lineWidth = 1.5 * s;
+  for (let i = 0; i < 3; i++) {
+    const yy = cy - mh * 0.25 + i * mh * 0.28;
+    const len = (10 + i * 3) * s * (0.6 + 0.4 * Math.sin(slide * Math.PI));
+    ctx.strokeStyle = 'rgba(255,224,160,' + (0.55 - i * 0.12).toFixed(2) + ')';
+    ctx.beginPath();
+    ctx.moveTo(cx - mw / 2 - 4 * s, yy);
+    ctx.lineTo(cx - mw / 2 - 4 * s - len, yy);
+    ctx.stroke();
+  }
+
+  // copper mug: handle, tapered body, bright band, lime wheel on the rim
+  ctx.strokeStyle = '#b8662e';
+  ctx.lineWidth = 3 * s;
+  ctx.beginPath();
+  ctx.arc(cx + mw / 2 + 1 * s, cy + 1 * s, mh * 0.27, -Math.PI / 2, Math.PI / 2);
+  ctx.stroke();
+  ctx.fillStyle = '#b8662e';
+  ctx.beginPath();
+  ctx.moveTo(cx - mw / 2, cy - mh / 2);
+  ctx.lineTo(cx + mw / 2, cy - mh / 2);
+  ctx.lineTo(cx + mw / 2 - 2 * s, cy + mh / 2);
+  ctx.lineTo(cx - mw / 2 + 2 * s, cy + mh / 2);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#e8985a';
+  ctx.fillRect(cx - mw / 2 + 2 * s, cy - mh / 2 + 3 * s, 3 * s, mh - 6 * s);
+  ctx.fillStyle = '#8a4a1e';
+  ctx.fillRect(cx - mw / 2 + 1 * s, cy + 2 * s, mw - 2 * s, 3 * s);
+  ctx.fillStyle = '#6aa53a';
+  ctx.beginPath();
+  ctx.arc(cx + mw / 2 - 3 * s, cy - mh / 2, 4 * s, Math.PI, 0);
+  ctx.fill();
+
+  // floating label -- flashes between the label and the tap hint
+  const flashOnLabel = Math.floor(time / 1.4) % 2 === 0;
+  ctx.fillStyle = '#ffd89a';
+  ctx.font = `bold ${Math.round(9 * s)}px monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillText(flashOnLabel ? (label || 'MINI-GAME') : 'TAP TO PLAY', cx, cy - mh / 2 - 9 * s);
+
+  return { cx, cy, hw: mw / 2 + 18, hh: mh / 2 + 34 };
+}
+
 // Alternate mini-game marker used when a map entry sets `icon: 'powermoves'` (POWER MOVES, the
 // one-button flap-through-the-gaps game on the arcade cabinet inside THE MONKEY HOUSE in WINOOSKI) --
 // same bob/label/hitbox contract as drawMinigameHarmonics() above. Drawn as a little floating black
@@ -30444,6 +31115,8 @@ function render(time) {
         ? drawMinigameChords(wx, wy, time, seed, mg.label)
         : mg.icon === 'inkdesk'
         ? drawMinigameInkDesk(wx, wy, time, seed, mg.label)
+        : mg.icon === 'mugslide'
+        ? drawMinigameMugSlide(wx, wy, time, seed, mg.label)
         : mg.icon === 'skatebillboard'
         ? drawMinigameSkateBillboard(wx, wy, time, seed, mg.label)
         : drawMinigameArcadeSign(wx, wy, time, seed, mg.label);
@@ -38230,6 +38903,30 @@ function paintMiseryLovesInterior(c) {
   for (const [lx, ly, r] of [[399, 236, 9], [399, 252, 8], [399, 222, 7]]) {
     c.fillStyle = '#2f7a34'; c.beginPath(); c.arc(lx, ly, r, 0, Math.PI * 2); c.fill();
     c.fillStyle = '#4a9a42'; c.beginPath(); c.arc(lx - 2, ly - 2, r * 0.55, 0, Math.PI * 2); c.fill();
+  }
+
+  // ---------------------------------------------------------------- MUG SLIDE bar (tiles (4,2)(5,2))
+  // A long walnut slide-bar against the back wall: brass-railed top with the gold scoring zones at
+  // the right end, copper mugs mid-slide, a cream plaque on the apron. Solid -- see minigames.
+  c.fillStyle = 'rgba(0,0,0,0.28)'; c.fillRect(130, 94, 62, 3);
+  c.fillStyle = '#2a1a10'; c.fillRect(131, 80, 60, 14);                   // apron
+  c.fillStyle = '#3a2416'; c.fillRect(132, 82, 58, 11);
+  c.fillStyle = '#14100c'; c.fillRect(133, 93, 3, 3); c.fillRect(186, 93, 3, 3);
+  c.fillStyle = BRASS; c.fillRect(131, 80, 60, 1); c.fillRect(131, 93, 60, 1);
+  c.fillStyle = CREAM; c.fillRect(144, 84, 34, 6);                         // plaque
+  c.fillStyle = '#2a1a10'; c.font = '700 5px monospace'; c.textAlign = 'center'; c.fillText('MUG SLIDE', 161, 89);
+  c.fillStyle = '#5a3a22'; c.beginPath();                                  // polished top (3/4 view)
+  c.moveTo(135, 69); c.lineTo(187, 69); c.lineTo(191, 80); c.lineTo(131, 80); c.closePath(); c.fill();
+  c.fillStyle = 'rgba(255,255,255,0.10)'; c.fillRect(137, 71, 48, 1);
+  for (const [zx, zw, zc] of [[162, 6, '#8a6a3a'], [168, 6, '#b08a40'], [174, 5, '#d8a830'], [179, 6, '#ffc83c']]) {
+    c.fillStyle = zc; c.fillRect(zx, 70, zw, 9);
+  }
+  c.fillStyle = BRASS; c.fillRect(135, 69, 52, 1); c.fillRect(131, 79, 60, 1);
+  for (const [mx, my] of [[146, 75], [172, 73]]) {                          // two copper mugs on the bar
+    c.fillStyle = '#b8662e'; c.fillRect(mx - 3, my - 5, 6, 6);
+    c.fillStyle = '#e8985a'; c.fillRect(mx - 3, my - 5, 2, 6);
+    c.fillStyle = '#6aa53a'; c.fillRect(mx + 1, my - 6, 3, 1);
+    c.fillStyle = '#b8662e'; c.fillRect(mx + 3, my - 4, 2, 3);
   }
 
   // ---------------------------------------------------------------- front wall: black-framed windows
