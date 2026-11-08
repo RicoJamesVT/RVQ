@@ -1440,6 +1440,11 @@ const MINIGAME_ACTIONS = {
   // aim/power, real sliding friction, rail bounces, mug-on-mug knocks. Standard
   // createModeSelectMenu() shape (3D first, flat version only as the fallback). Reports as 'mugslide'.
   mugslide: () => enterMinigame(createMugSlideModeSelect()),
+  // Waffle Stack -- a 3D waffle-tower stacker on the waffle iron station inside SNEAKERS BISTRO in WINOOSKI
+  // (Level 4); see the `sneakersbistro` shop's `minigames` list + paintSneakersInterior(). One-tap timing
+  // game: drop the sliding waffle, overhang gets chopped, perfects build a combo. Standard
+  // createModeSelectMenu() shape (3D first, flat version only as the fallback). Reports as 'wafflestack'.
+  wafflestack: () => enterMinigame(createWaffleStackModeSelect()),
   staringcontest: () => enterMinigame(createStaringContestGame()),
   // Mic Drop -- an endless three-lane freestyle-cypher rhythm game tucked
   // into VT COMEDY CLUB next to the staring contest (see the `comedy`
@@ -2121,6 +2126,8 @@ const MINIGAME_TROPHIES = [
     flavor: 'Lean into the gusts and don\'t look down.' },
   { id: 'mugslide', label: 'Mug Slide', unit: 'pts',
     flavor: 'Slide the copper mug down the bar and stop it on the brass -- before it hits the floor.' },
+  { id: 'wafflestack', label: 'Waffle Stack', unit: 'pts',
+    flavor: 'Drop each waffle dead-center -- the overhang gets chopped off.' },
 ];
 
 function trophyMetaFor(id) { return MINIGAME_TROPHIES.find((t) => t.id === id); }
@@ -9013,6 +9020,542 @@ function createMugSlide3DGame() {
   };
 }
 
+// ---------------------------------------------------------------- WAFFLE STACK
+// SNEAKERS BISTRO (WINOOSKI, LEVEL 4) -- the brunch-line waffle iron by the back wall. Golden waffles
+// slide back and forth over a plate; tap E to drop one on the tower. Whatever hangs over the edge of the
+// waffle below gets CHOPPED OFF and falls away, so the tower keeps getting narrower -- unless you drop
+// one PERFECTLY (inside the tolerance) which snaps it into place, builds a combo, and after three in a
+// row grows the waffle back toward full size. The slide axis alternates every floor (left-right, then
+// front-back) and gets faster as the tower climbs. Miss the stack completely and the order is over;
+// reach the top floor for the TOWER COMPLETE bonus. When the tower ends it gets syrup and a pat of butter.
+//
+// Shape: createWaffleStackModeSelect() -> createModeSelectMenu() -> 3D version, with a flat top-down
+// version as the automatic fallback if Three.js/WebGL fails. Both renderers share ONE rules/input core
+// (createWaffleStackCore) so they play identically. Reports into the trophy case as 'wafflestack'.
+const WAFFLE = {
+  BASE: 1.0,        // full waffle size (square, world units)
+  H: 0.16,          // slab thickness
+  AMP: 1.45,        // slide amplitude either side of the waffle below
+  TOL: 0.05,        // |offset| inside this counts as a PERFECT drop
+  MIN: 0.06,        // overlap at or under this = a miss
+  GROW: 0.06,       // size regained per perfect once the combo reaches 3
+  MAX: 40,          // floors to complete the tower
+};
+
+// ---- rules core: no rendering, shared by both versions --------------------------------
+function createWaffleStackCore() {
+  const C = WAFFLE;
+  const core = {
+    phase: 'ready',            // 'ready' | 'play' | 'settle' | 'fall' | 'over'
+    stack: [{ x: 0, z: 0, w: C.BASE, d: C.BASE }],   // index 0 = the base waffle on the plate
+    cur: null,                 // the sliding waffle: { axis, w, d, x, z, c, pos, phase, omega }
+    level: 0, combo: 0, perfects: 0, score: 0, bestCombo: 0,
+    events: [],                // drained by the renderer: land / chop / miss
+    msg: null, reason: '', isNewBest: false, t: 0,
+  };
+  let settleT = 0, fallT = 0, recorded = false;
+
+  function spawn() {
+    const top = core.stack[core.stack.length - 1];
+    const axis = core.level % 2 === 0 ? 'x' : 'z';
+    const ph = core.level % 4 < 2 ? 0 : Math.PI;
+    const cur = {
+      axis, w: top.w, d: top.d,
+      c: axis === 'x' ? top.x : top.z,
+      phase: ph, omega: 2.0 + Math.min(core.level, 30) * 0.06,
+      x: top.x, z: top.z, pos: 0,
+    };
+    cur.pos = cur.c + C.AMP * Math.cos(cur.phase);
+    if (axis === 'x') cur.x = cur.pos; else cur.z = cur.pos;
+    core.cur = cur;
+    core.phase = 'play';
+  }
+
+  function drop() {
+    const top = core.stack[core.stack.length - 1], cur = core.cur, a = cur.axis;
+    const tc = a === 'x' ? top.x : top.z, ts = a === 'x' ? top.w : top.d;
+    const cs = a === 'x' ? cur.w : cur.d, p = cur.pos;
+    const delta = p - tc;
+    const lo = Math.max(tc - ts / 2, p - cs / 2), hi = Math.min(tc + ts / 2, p + cs / 2);
+    const ov = hi - lo;
+    const index = core.stack.length;
+
+    if (ov <= C.MIN) {                                 // clean miss: the waffle slides off the tower
+      core.events.push({ type: 'miss', slab: { x: cur.x, z: cur.z, w: cur.w, d: cur.d }, index });
+      core.cur = null; core.combo = 0; core.reason = 'miss';
+      core.msg = { text: 'MISSED THE STACK!', color: '#e0603a', t: 1.6 };
+      core.phase = 'fall'; fallT = 1.1;
+      return;
+    }
+
+    const perfect = Math.abs(delta) <= C.TOL;
+    let newSize, newCenter, grew = false;
+    if (perfect) {
+      newCenter = tc; newSize = ts;
+      core.combo++; core.perfects++;
+      core.bestCombo = Math.max(core.bestCombo, core.combo);
+      if (core.combo >= 3 && ts < C.BASE) { newSize = Math.min(C.BASE, ts + C.GROW); grew = newSize > ts; }
+    } else {
+      newSize = ov; newCenter = (lo + hi) / 2; core.combo = 0;
+      const chopSize = cs - ov;
+      const chopCenter = delta > 0 ? hi + chopSize / 2 : lo - chopSize / 2;
+      core.events.push({
+        type: 'chop', index,
+        slab: a === 'x' ? { x: chopCenter, z: cur.z, w: chopSize, d: cur.d } : { x: cur.x, z: chopCenter, w: cur.w, d: chopSize },
+        dir: delta > 0 ? 1 : -1, axis: a,
+      });
+    }
+    const slab = a === 'x'
+      ? { x: newCenter, z: top.z, w: newSize, d: top.d }
+      : { x: top.x, z: newCenter, w: top.w, d: newSize };
+    core.stack.push(slab);
+    core.level++;
+    const pts = 1 + (perfect ? Math.min(core.combo, 5) : 0);
+    core.score += pts;
+    core.events.push({ type: 'land', index, slab, perfect, grew });
+    core.cur = null;
+
+    if (perfect) {
+      core.msg = { text: `PERFECT${core.combo > 1 ? ' x' + core.combo : ''}  +${pts}` + (grew ? '  WAFFLE GROWS!' : ''), color: '#ffd36a', t: 1.3 };
+    } else if (newSize < 0.25) {
+      core.msg = { text: 'CLOSE CALL  +1', color: '#ff9a6a', t: 1.1 };
+    } else {
+      core.msg = { text: 'CHOPPED!  +1', color: '#f4ecd8', t: 0.9 };
+    }
+
+    if (core.level >= C.MAX) {
+      core.score += 25; core.reason = 'win';
+      core.msg = { text: 'TOWER COMPLETE!  +25', color: '#8cff5f', t: 2.2 };
+      core.phase = 'fall'; fallT = 1.2;
+    } else {
+      core.phase = 'settle'; settleT = 0.18;
+    }
+  }
+
+  core.update = function (dt) {
+    dt = Math.min(dt, 0.05);
+    core.t += dt;
+    if (core.msg) { core.msg.t -= dt; if (core.msg.t <= 0) core.msg = null; }
+    if (core.phase === 'ready') {
+      if (core.t > 0.35 && interactPressed) spawn();
+    } else if (core.phase === 'play') {
+      const cur = core.cur;
+      cur.phase += cur.omega * dt;
+      cur.pos = cur.c + C.AMP * Math.cos(cur.phase);
+      if (cur.axis === 'x') cur.x = cur.pos; else cur.z = cur.pos;
+      if (interactPressed) drop();
+    } else if (core.phase === 'settle') {
+      settleT -= dt;
+      if (settleT <= 0) spawn();
+    } else if (core.phase === 'fall') {
+      fallT -= dt;
+      if (fallT <= 0) core.phase = 'over';
+    } else if (core.phase === 'over') {
+      if (!recorded) { core.isNewBest = recordMinigameScore('wafflestack', core.score); recorded = true; }
+    }
+  };
+
+  core.quip = function () {
+    const s = core.score;
+    if (s >= 150) return 'Host: "That tower is a health-code violation. Brunch legend."';
+    if (s >= 80) return 'Host: "Okay, architect. That is a serious stack."';
+    if (s >= 30) return 'Host: "Solid short stack. Syrup is on the house."';
+    return 'Host: "Hot iron, steady hands. Try again -- the line is waiting."';
+  };
+  return core;
+}
+
+// ---- shared HUD (drawn over the 3D blit, or over the flat fallback) ---------------------
+function waffleStackDrawHud(core, label) {
+  const C = WAFFLE, cx = VIEW_W / 2;
+  ctx.textAlign = 'center';
+  // scoreboard plaque
+  ctx.fillStyle = 'rgba(22,39,122,0.82)'; ctx.fillRect(cx - 175, 12, 350, 76);
+  ctx.strokeStyle = '#e8b64a'; ctx.lineWidth = 2; ctx.strokeRect(cx - 174, 13, 348, 74);
+  ctx.fillStyle = '#fbf5e6'; ctx.font = 'bold 13px monospace'; ctx.fillText(label, cx, 31);
+  ctx.fillStyle = '#ffd36a'; ctx.font = 'bold 26px monospace'; ctx.fillText('SCORE ' + core.score, cx, 59);
+  const best = bestFor('wafflestack');
+  ctx.fillStyle = '#bfe3d4'; ctx.font = '13px monospace';
+  ctx.fillText(`FLOOR ${core.level} / ${C.MAX}    BEST ${best === undefined ? '--' : best}`, cx, 79);
+  if (core.combo >= 2 && core.phase !== 'over') {
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#ff9a3a'; ctx.font = 'bold 22px monospace'; ctx.fillText('COMBO x' + core.combo, VIEW_W - 24, 50);
+    ctx.textAlign = 'center';
+  }
+  // result callout
+  if (core.msg) {
+    ctx.globalAlpha = Math.max(0, Math.min(1, core.msg.t / 0.4));
+    ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillText(core.msg.text, cx + 2, 152);
+    ctx.fillStyle = core.msg.color; ctx.font = 'bold 24px monospace'; ctx.fillText(core.msg.text, cx, 150);
+    ctx.globalAlpha = 1;
+  }
+  const blink = Math.floor(performance.now() / 400) % 2;
+  if (core.phase === 'ready') {
+    const bx = cx - 310, by = 190, bw = 620, bh = 230;
+    ctx.fillStyle = 'rgba(8,6,12,0.82)'; ctx.fillRect(bx, by, bw, bh);
+    ctx.strokeStyle = '#e8b64a'; ctx.lineWidth = 2; ctx.strokeRect(bx, by, bw, bh);
+    ctx.fillStyle = '#e8b64a'; ctx.font = 'bold 28px monospace'; ctx.fillText('WAFFLE STACK', cx, by + 44);
+    ctx.fillStyle = '#f4ecd8'; ctx.font = '16px monospace';
+    ctx.fillText('The waffles slide -- tap E to drop one on the tower.', cx, by + 82);
+    ctx.fillText('Anything hanging over the edge gets chopped off.', cx, by + 108);
+    ctx.fillText('Land one dead-center for a PERFECT and a combo:', cx, by + 134);
+    ctx.fillText('three in a row grows your waffle back.', cx, by + 158);
+    ctx.fillStyle = blink ? '#8cff5f' : '#f4ecd8'; ctx.font = 'bold 19px monospace';
+    ctx.fillText('PRESS E TO START', cx, by + 198);
+  } else if (core.phase === 'play' || core.phase === 'settle') {
+    ctx.fillStyle = blink ? '#8cff5f' : '#f4ecd8'; ctx.font = 'bold 19px monospace';
+    ctx.fillText('- TAP E TO DROP THE WAFFLE -', cx, VIEW_H - 54);
+    ctx.fillStyle = '#6a6070'; ctx.font = '15px monospace';
+    ctx.fillText('X to walk away anytime', cx, VIEW_H - 32);
+  } else if (core.phase === 'over') {
+    const bx = cx - 300, by = 250, bw = 600, bh = 240;
+    ctx.fillStyle = 'rgba(8,6,12,0.82)'; ctx.fillRect(bx, by, bw, bh);
+    ctx.strokeStyle = '#e8b64a'; ctx.lineWidth = 2; ctx.strokeRect(bx, by, bw, bh);
+    ctx.fillStyle = '#e0b040'; ctx.font = 'bold 26px monospace';
+    ctx.fillText(core.reason === 'win' ? 'TOWER COMPLETE!' : 'ORDER UP!', cx, by + 36);
+    ctx.fillStyle = '#f4ecd8'; ctx.font = 'bold 22px monospace';
+    ctx.fillText(`FINAL SCORE: ${core.score}`, cx, by + 74);
+    ctx.font = '15px monospace'; ctx.fillStyle = '#bfe3d4';
+    ctx.fillText(`FLOORS: ${core.level}   PERFECTS: ${core.perfects}   BEST COMBO: ${core.bestCombo}`, cx, by + 100);
+    ctx.font = '16px monospace'; ctx.fillStyle = core.isNewBest ? '#8cff5f' : '#9a90a8';
+    ctx.fillText(core.isNewBest ? 'NEW BEST!' : `BEST: ${bestFor('wafflestack')}`, cx, by + 128);
+    ctx.fillStyle = '#f4ecd8'; ctx.font = '15px monospace';
+    ctx.fillText(core.quip(), cx, by + 166, 560);
+    ctx.fillStyle = blink ? '#8cff5f' : '#f4ecd8'; ctx.font = 'bold 18px monospace';
+    ctx.fillText('PRESS E TO LEAVE', cx, by + 208);
+  }
+}
+
+// ---- classic: flat top-down griddle (automatic fallback if 3D can't start) ----------------
+function createWaffleStackGame() {
+  const core = createWaffleStackCore();
+  return {
+    update(dt) {
+      if (buyPressed) { exitMinigame(); return; }
+      if (core.phase === 'over' && interactPressed) { exitMinigame(); return; }
+      core.update(dt);
+      core.events.length = 0;
+    },
+    draw() {
+      ctx.fillStyle = '#f4cdbf'; ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+      const S = 170, cx = VIEW_W / 2, cy = 340;
+      ctx.fillStyle = '#fbf5e6'; ctx.beginPath(); ctx.arc(cx, cy, 1.15 * S, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#16277a'; ctx.lineWidth = 3; ctx.stroke();
+      const n = core.stack.length;
+      for (let i = 0; i < n; i++) {
+        const s = core.stack[i], k = Math.min(1, 0.45 + i * 0.06);
+        ctx.fillStyle = `hsl(38,${58 + k * 10}%,${34 + k * 24}%)`;
+        ctx.fillRect(cx + (s.x - s.w / 2) * S, cy + (s.z - s.d / 2) * S, s.w * S, s.d * S);
+        ctx.strokeStyle = 'rgba(90,50,10,0.55)'; ctx.lineWidth = 1;
+        ctx.strokeRect(cx + (s.x - s.w / 2) * S, cy + (s.z - s.d / 2) * S, s.w * S, s.d * S);
+      }
+      if (core.cur) {
+        const s = core.cur;
+        ctx.fillStyle = '#ffd36a'; ctx.globalAlpha = 0.85;
+        ctx.fillRect(cx + (s.x - s.w / 2) * S, cy + (s.z - s.d / 2) * S, s.w * S, s.d * S);
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = '#8a4a14'; ctx.lineWidth = 2;
+        ctx.strokeRect(cx + (s.x - s.w / 2) * S, cy + (s.z - s.d / 2) * S, s.w * S, s.d * S);
+      }
+      waffleStackDrawHud(core, 'WAFFLE STACK');
+    },
+  };
+}
+
+// ---- mode select: straight into 3D, flat version only as the fallback ---------------------
+function createWaffleStackModeSelect() {
+  return createModeSelectMenu({
+    title: 'WAFFLE STACK',
+    pickLabel: 'PICK YOUR IRON',
+    classicSub: 'The flat top-down griddle',
+    threeDSub: 'Pull up a stool -- full 3D',
+    createClassic: () => createWaffleStackGame(),
+    createThreeD: () => createWaffleStack3DGame(),
+  });
+}
+
+// ---- Waffle Stack 3D ---------------------------------------------------------------------
+// The Three.js version: a marble brunch counter in front of mint subway tile, a white plate, a syrup
+// bottle, a mug and a butter dish. World space: y up (plate top = 0.06), x/z across the counter. The
+// camera sits on a diagonal so both slide axes read, and rises with the tower. Renders to the cached
+// offscreen WebGL canvas that's blitted into the main canvas (see getMinigame3DRenderer()).
+function createWaffleStack3DGame() {
+  const T = window.THREE;
+  const { renderer, canvas: ws3DCanvas } = getMinigame3DRenderer('wafflestack');
+  const C = WAFFLE;
+  const core = createWaffleStackCore();
+  const PLATE_TOP = 0.06;
+  const yFor = (i) => PLATE_TOP + C.H * (i + 0.5);
+
+  const scene = new T.Scene();
+  scene.background = new T.Color(0xf4cdbf);
+  scene.fog = new T.Fog(0xf4cdbf, 14, 42);
+  const camera = new T.PerspectiveCamera(40, VIEW_W / VIEW_H, 0.1, 80);
+  let camY = 0.45, shake = 0, t = 0;
+
+  const mat = (color, rough, metal, extra) => new T.MeshStandardMaterial(Object.assign({ color, roughness: rough, metalness: metal || 0 }, extra || {}));
+  function box(w, h, d, material, x, y, z, shadows) {
+    const m = new T.Mesh(new T.BoxGeometry(w, h, d), material);
+    m.position.set(x, y, z);
+    if (shadows) m.receiveShadow = true;
+    scene.add(m);
+    return m;
+  }
+
+  // ---- the room: marble counter, mint tile wainscot, blush wall above ----
+  box(10, 0.4, 7, mat(0xf6efe0, 0.35, 0.02), 0, -0.2, 0, true);
+  box(10.1, 0.06, 0.25, mat(0x16277a, 0.6), 0, 0.0, 3.5);
+  box(22, 3.4, 0.1, mat(0xa9d8c4, 0.7), 0, 1.3, -4.2);
+  for (let r = 0; r < 12; r++) for (let i = -10; i <= 10; i++) {               // subway-tile courses
+    box(0.96, 0.012, 0.02, mat(0xe9f6f0, 1), i * 1.0 + (r % 2) * 0.5, -0.38 + r * 0.28, -4.13);
+  }
+  box(22, 0.12, 0.2, mat(0xfbf5e6, 0.6), 0, 3.0, -4.12);                         // chair rail
+  box(22, 70, 0.1, mat(0xf4cdbf, 1), 0, 38, -4.25);                              // blush wall above
+  // neon sign on the tile
+  {
+    const nc = document.createElement('canvas'); nc.width = 256; nc.height = 96;
+    const g = nc.getContext('2d');
+    g.fillStyle = '#0e1640'; g.fillRect(0, 0, 256, 96);
+    g.strokeStyle = '#f4f0e4'; g.lineWidth = 3; g.strokeRect(5, 5, 246, 86);
+    g.font = 'italic 800 46px "Brush Script MT","Segoe Script",cursive'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.strokeStyle = 'rgba(255,80,50,0.4)'; g.lineWidth = 9; g.strokeText('sneakers', 128, 50);
+    g.fillStyle = '#ff7a5a'; g.fillText('sneakers', 128, 50);
+    const nt = new T.CanvasTexture(nc); nt.encoding = T.sRGBEncoding;
+    const neon = new T.Mesh(new T.PlaneGeometry(2.6, 0.98), new T.MeshBasicMaterial({ map: nt }));
+    neon.position.set(0.4, 1.9, -4.05); scene.add(neon);
+    var neonTex = nt;
+  }
+  // plate
+  {
+    const plate = new T.Mesh(new T.CylinderGeometry(1.2, 0.95, 0.06, 44), mat(0xfdfaf2, 0.25));
+    plate.position.y = 0.03; plate.receiveShadow = true; plate.castShadow = true; scene.add(plate);
+    const rim = new T.Mesh(new T.TorusGeometry(1.16, 0.022, 8, 48), mat(0x16277a, 0.5));
+    rim.rotation.x = Math.PI / 2; rim.position.y = 0.058; scene.add(rim);
+  }
+  // props: syrup bottle, mug of coffee, butter dish
+  {
+    const bottle = new T.Mesh(new T.CylinderGeometry(0.17, 0.2, 0.55, 18), mat(0x9a5a18, 0.25, 0.1));
+    bottle.position.set(-2.35, 0.275, -1.1); bottle.castShadow = true; scene.add(bottle);
+    const neck = new T.Mesh(new T.CylinderGeometry(0.07, 0.12, 0.2, 14), mat(0x9a5a18, 0.25, 0.1));
+    neck.position.set(-2.35, 0.65, -1.1); scene.add(neck);
+    const cap = new T.Mesh(new T.CylinderGeometry(0.085, 0.085, 0.09, 14), mat(0xd9382a, 0.5));
+    cap.position.set(-2.35, 0.79, -1.1); scene.add(cap);
+    const lab = new T.Mesh(new T.CylinderGeometry(0.205, 0.205, 0.2, 18, 1, true), mat(0xfbf5e6, 0.8, 0, { side: T.DoubleSide }));
+    lab.position.set(-2.35, 0.25, -1.1); scene.add(lab);
+    const mug = new T.Mesh(new T.CylinderGeometry(0.24, 0.21, 0.36, 22), mat(0x2f8f8f, 0.4));
+    mug.position.set(2.1, 0.18, -1.6); mug.castShadow = true; scene.add(mug);
+    const coffee = new T.Mesh(new T.CylinderGeometry(0.2, 0.2, 0.01, 22), mat(0x2a1208, 0.3));
+    coffee.position.set(2.1, 0.345, -1.6); scene.add(coffee);
+    const handle = new T.Mesh(new T.TorusGeometry(0.11, 0.028, 8, 16, Math.PI), mat(0x2f8f8f, 0.4));
+    handle.rotation.z = -Math.PI / 2; handle.position.set(2.34, 0.18, -1.6); scene.add(handle);
+    box(0.62, 0.1, 0.42, mat(0xfbf5e6, 0.4), -1.3, 0.05, -2.3, false).castShadow = true;
+    box(0.42, 0.08, 0.28, mat(0xffe27a, 0.45), -1.3, 0.14, -2.3, false);
+  }
+
+  // ---- lights ----
+  scene.add(new T.HemisphereLight(0xfff1e0, 0xf0c8b8, 0.75));
+  const key = new T.DirectionalLight(0xfff0d8, 0.85);
+  key.position.set(2.5, 6, 3);
+  key.castShadow = true;
+  key.shadow.mapSize.set(1024, 1024);
+  key.shadow.camera.left = -3; key.shadow.camera.right = 3; key.shadow.camera.top = 3; key.shadow.camera.bottom = -3;
+  key.shadow.camera.near = 0.5; key.shadow.camera.far = 16;
+  scene.add(key); scene.add(key.target);
+
+  // ---- waffle slabs ----
+  const wc = document.createElement('canvas'); wc.width = wc.height = 64;
+  {
+    const g = wc.getContext('2d');
+    g.fillStyle = '#e2a94a'; g.fillRect(0, 0, 64, 64);
+    g.fillStyle = '#f0c36a'; g.fillRect(9, 9, 46, 46);
+    g.fillStyle = '#cf9338'; g.fillRect(9, 50, 46, 5); g.fillRect(50, 9, 5, 46);
+    g.fillStyle = '#a8681c'; g.fillRect(0, 0, 64, 6); g.fillRect(0, 0, 6, 64);
+  }
+  const baseTex = new T.CanvasTexture(wc);
+  baseTex.wrapS = baseTex.wrapT = T.RepeatWrapping; baseTex.encoding = T.sRGBEncoding; baseTex.anisotropy = 4;
+  const unit = new T.BoxGeometry(1, 1, 1);
+  const owned = [];
+  function makeSlab(w, d, level) {
+    const tex = baseTex.clone(); tex.needsUpdate = true;
+    tex.repeat.set(Math.max(0.5, w * 4), Math.max(0.5, d * 4));
+    const topMat = new T.MeshStandardMaterial({ map: tex, roughness: 0.75 });
+    const sideMat = new T.MeshStandardMaterial({ color: new T.Color().setHSL(0.095, 0.62, Math.max(0.38, 0.5 - level * 0.003)), roughness: 0.85 });
+    const mesh = new T.Mesh(unit, [sideMat, sideMat, topMat, sideMat, sideMat, sideMat]);
+    mesh.scale.set(w, C.H, d);
+    mesh.castShadow = true; mesh.receiveShadow = true;
+    scene.add(mesh);
+    owned.push(tex, topMat, sideMat);
+    return mesh;
+  }
+  const placed = [];       // meshes for core.stack
+  const falling = [];      // chopped / missed pieces
+  let moving = null;       // the sliding waffle's mesh
+  const b0 = core.stack[0];
+  placed[0] = makeSlab(b0.w, b0.d, 0);
+  placed[0].position.set(b0.x, yFor(0), b0.z);
+
+  // ---- effects ----
+  let bursts = [], rings = [];
+  function spawnBurst(x, y, z, color, n, speed) {
+    for (let i = 0; i < n; i++) {
+      const mesh = new T.Mesh(new T.SphereGeometry(0.03, 6, 6), new T.MeshBasicMaterial({ color, transparent: true, opacity: 1 }));
+      mesh.position.set(x, y, z); scene.add(mesh);
+      const a = Math.random() * Math.PI * 2;
+      bursts.push({ mesh, vx: Math.cos(a) * speed * (0.4 + Math.random()), vy: 0.8 + Math.random() * 1.2, vz: Math.sin(a) * speed * (0.4 + Math.random()), life: 0 });
+    }
+  }
+  function spawnRing(x, y, z, size, color) {
+    const mesh = new T.Mesh(new T.TorusGeometry(0.5, 0.018, 6, 40), new T.MeshBasicMaterial({ color, transparent: true, opacity: 1 }));
+    mesh.rotation.x = Math.PI / 2; mesh.position.set(x, y, z); scene.add(mesh);
+    rings.push({ mesh, life: 0, size });
+  }
+
+  // syrup + butter once the order is over
+  let served = false, syrup = null, syrupT = 0, butter = null;
+  function serve() {
+    served = true;
+    const i = core.stack.length - 1, s = core.stack[i], topY = yFor(i) + C.H / 2;
+    syrup = new T.Mesh(unit, new T.MeshStandardMaterial({ color: 0x7a3a0c, roughness: 0.12, metalness: 0.1, transparent: true, opacity: 0.92 }));
+    syrup.position.set(s.x, topY + 0.007, s.z); syrup.scale.set(0.01, 0.014, 0.01);
+    syrup.userData.target = { w: s.w * 0.92, d: s.d * 0.92 };
+    scene.add(syrup);
+    butter = new T.Mesh(unit, new T.MeshStandardMaterial({ color: 0xffe27a, roughness: 0.4 }));
+    butter.scale.set(Math.min(0.26, s.w * 0.5), 0.07, Math.min(0.18, s.d * 0.5));
+    butter.position.set(s.x, topY + 0.04, s.z); butter.rotation.y = 0.35;
+    butter.visible = false;
+    scene.add(butter);
+  }
+
+  function cleanup() {
+    bursts.forEach((b) => { scene.remove(b.mesh); b.mesh.geometry.dispose(); b.mesh.material.dispose(); });
+    rings.forEach((r) => { scene.remove(r.mesh); r.mesh.geometry.dispose(); r.mesh.material.dispose(); });
+    bursts = []; rings = [];
+    owned.forEach((o) => o.dispose());
+    baseTex.dispose(); neonTex.dispose(); unit.dispose();
+    scene.traverse((obj) => {
+      if (obj.geometry) obj.geometry.dispose();
+      if (obj.material) {
+        if (Array.isArray(obj.material)) obj.material.forEach((m) => m.dispose());
+        else obj.material.dispose();
+      }
+    });
+    scene.clear();
+  }
+  function leave() { cleanup(); exitMinigame(); }
+
+  return {
+    update(dt) {
+      dt = Math.min(dt, 0.05);
+      t += dt;
+      if (buyPressed) { leave(); return; }
+      if (core.phase === 'over' && interactPressed) { leave(); return; }
+      core.update(dt);
+
+      // rules events -> meshes / effects
+      for (const ev of core.events.splice(0)) {
+        const y = yFor(ev.index);
+        if (ev.type === 'land') {
+          const m = moving; moving = null;
+          if (m) {
+            m.scale.set(ev.slab.w, C.H, ev.slab.d);
+            m.position.set(ev.slab.x, y, ev.slab.z);
+            m.material[2].map.repeat.set(Math.max(0.5, ev.slab.w * 4), Math.max(0.5, ev.slab.d * 4));
+            m.userData.pop = 0.2;
+            placed[ev.index] = m;
+          }
+          if (ev.perfect) {
+            spawnRing(ev.slab.x, y + C.H / 2 + 0.01, ev.slab.z, Math.max(ev.slab.w, ev.slab.d) * 1.1, ev.grew ? 0x8cff5f : 0xffd36a);
+            spawnBurst(ev.slab.x, y + C.H / 2, ev.slab.z, 0xffe36a, ev.grew ? 16 : 10, 1.1);
+          } else shake = Math.max(shake, 0.014);
+        } else if (ev.type === 'chop') {
+          const piece = makeSlab(ev.slab.w, ev.slab.d, ev.index);
+          piece.position.set(ev.slab.x, y + 0.1, ev.slab.z);
+          const out = ev.axis === 'x' ? { x: ev.dir, z: 0 } : { x: 0, z: ev.dir };
+          falling.push({ mesh: piece, vx: out.x * 0.9, vy: 0.4, vz: out.z * 0.9, rx: (Math.random() - 0.5) * 3, rz: (Math.random() - 0.5) * 3 + ev.dir * (ev.axis === 'x' ? -1.5 : 0) });
+          spawnBurst(ev.slab.x, y + 0.1, ev.slab.z, 0xe2a94a, 5, 0.7);
+        } else if (ev.type === 'miss') {
+          if (moving) {
+            falling.push({ mesh: moving, vx: (moving.position.x > 0 ? 1 : -1) * 0.5, vy: 0.3, vz: (moving.position.z > 0 ? 1 : -1) * 0.5, rx: 1.6, rz: 1.2 });
+            moving = null;
+          }
+          shake = 0.035;
+        }
+      }
+
+      // the sliding waffle
+      if (core.cur) {
+        if (!moving) moving = makeSlab(core.cur.w, core.cur.d, core.level);
+        moving.position.set(core.cur.x, yFor(core.level) + 0.1, core.cur.z);
+      }
+
+      // placed-slab squash on landing
+      for (const m of placed) {
+        if (m && m.userData.pop > 0) {
+          m.userData.pop = Math.max(0, m.userData.pop - dt);
+          const k = m.userData.pop / 0.2;
+          m.scale.y = C.H * (1 - 0.18 * Math.sin(k * Math.PI));
+        } else if (m) m.scale.y = C.H;
+      }
+
+      // chopped pieces tumble off the counter
+      for (let i = falling.length - 1; i >= 0; i--) {
+        const f = falling[i];
+        f.vy -= 9.8 * dt;
+        f.mesh.position.x += f.vx * dt; f.mesh.position.y += f.vy * dt; f.mesh.position.z += f.vz * dt;
+        f.mesh.rotation.x += f.rx * dt; f.mesh.rotation.z += f.rz * dt;
+        if (f.mesh.position.y < -6) { scene.remove(f.mesh); falling.splice(i, 1); }
+      }
+
+      // syrup + butter when the order is up
+      if (core.phase === 'over' && !served) serve();
+      if (syrup) {
+        syrupT += dt;
+        const k = Math.min(1, syrupT / 1.1), e = 1 - Math.pow(1 - k, 3);
+        syrup.scale.x = Math.max(0.01, syrup.userData.target.w * e);
+        syrup.scale.z = Math.max(0.01, syrup.userData.target.d * e);
+        if (butter && k > 0.55) butter.visible = true;
+      }
+
+      // particles + rings
+      bursts.forEach((b) => {
+        b.life += dt;
+        b.mesh.position.x += b.vx * dt; b.mesh.position.y += (b.vy - b.life * 4) * dt; b.mesh.position.z += b.vz * dt;
+        b.mesh.material.opacity = Math.max(0, 1 - b.life * 1.8);
+      });
+      bursts = bursts.filter((b) => {
+        if (b.life * 1.8 >= 1) { scene.remove(b.mesh); b.mesh.geometry.dispose(); b.mesh.material.dispose(); return false; }
+        return true;
+      });
+      rings.forEach((r) => {
+        r.life += dt;
+        const s = r.size * (1 + r.life * 2.4);
+        r.mesh.scale.set(s, s, s);
+        r.mesh.material.opacity = Math.max(0, 1 - r.life / 0.55);
+      });
+      rings = rings.filter((r) => {
+        if (r.life >= 0.55) { scene.remove(r.mesh); r.mesh.geometry.dispose(); r.mesh.material.dispose(); return false; }
+        return true;
+      });
+
+      // the camera climbs with the tower
+      const topY = yFor(core.stack.length - 1) + C.H / 2;
+      camY += (Math.max(0.45, topY) - camY) * Math.min(1, dt * 3.2);
+      shake = Math.max(0, shake - dt * 0.09);
+      const sx = (Math.random() - 0.5) * shake, sy = (Math.random() - 0.5) * shake;
+      const back = core.phase === 'over' ? 1.25 : 1;
+      camera.position.set(3.9 * back + Math.sin(t * 0.4) * 0.03 + sx, camY + 2.7 * back + sy, 3.9 * back);
+      camera.lookAt(0, camY - 0.1, 0);
+      key.position.set(2.5, camY + 6, 3);
+      key.target.position.set(0, camY, 0);
+    },
+    draw() {
+      renderer.render(scene, camera);
+      ctx.drawImage(ws3DCanvas, 0, 0);
+      waffleStackDrawHud(core, 'WAFFLE STACK 3D');
+    },
+  };
+}
+
 // "LEARN ABOUT ANDY" pop-up -- A_DOG SKATE SHOP's tribute plaque. A simple
 // two-page canvas card (same shape as every other enterMinigame() overlay:
 // update/draw, exits via exitMinigame()) with a short bio of Andy "A_Dog"
@@ -15839,7 +16382,7 @@ const shops = {
   // brunch menu, plant + mug shelves, bunting, a checkerboard floor, a marble counter with
   // an espresso station, mint velvet booths, round tables and a monstera. Solid props are
   // plain tiles the painter dresses up: row 1 is walled off (back wall); blockTiles =
-  // espresso station (8,2)(9,2), HARMONICS string stand (5,2), booths (1,4)..(1,7), potted monstera (12,8); the counter is
+  // espresso station (8,2)(9,2), HARMONICS string stand (5,2), WAFFLE STACK iron station (2,2), booths (1,4)..(1,7), potted monstera (12,8); the counter is
   // the row y=3 over x 8..12 with the host behind it at (10,2); extraTables = four round
   // tables (2,5)(2,7)(10,6)(10,8). All clear of the door (6,9) and spawn (6.5,7.5). No
   // crates: two junk dig crates at (12,5)/(12,6) -- see SNEAKERS_JUNK.
@@ -15852,7 +16395,7 @@ const shops = {
     blockTiles: [
       [1, 1], [2, 1], [3, 1], [4, 1], [5, 1], [6, 1], [7, 1], [8, 1], [9, 1], [10, 1], [11, 1], [12, 1],
       [8, 2], [9, 2], [1, 4], [1, 5], [1, 6], [1, 7], [12, 8],
-      [5, 2],
+      [5, 2], [2, 2],
     ],
     // (5,2) = the HARMONICS string stand against the back wall left of the chalkboard (painted in
     // paintSneakersInterior() with its strings vibrating live in drawSneakersInterior()): a solid tile
@@ -15860,6 +16403,11 @@ const shops = {
     // spawn (6.5,7.5). Approach from (5,3) below. `icon: 'harmonics'` -- see drawMinigameHarmonics().
     minigames: [
       { id: 'harmonics', tx: 5, ty: 2, label: 'HARMONICS', icon: 'harmonics' },
+      // (2,2) = the WAFFLE STACK waffle-iron station against the back wall left of the neon (painted in
+      // paintSneakersInterior(), steam drawn live in drawSneakersInterior()): a solid tile on open floor,
+      // clear of the booths (x 1), the table (2,5), the door (6,9) and the spawn (6.5,7.5). Approach from
+      // (2,3) below. `icon: 'wafflestack'` -- see drawMinigameWaffleStack().
+      { id: 'wafflestack', tx: 2, ty: 2, label: 'WAFFLE STACK', icon: 'wafflestack' },
     ],
     extraTables: [[2, 5], [2, 7], [10, 6], [10, 8]],
     keeper: { x: 10, y: 2, name: 'HOST', shirt: '#f4efe4', skin: '#d9a47a',
@@ -15871,6 +16419,7 @@ const shops = {
         'See the neon on the wall? Same one that\'s in the front window. It\'s been glowing since before I started.',
         'Doors open at 7 and we close up at 3, every single day. Come early, the line out the door is real.',
         'Patio\'s open when the weather behaves. Picnic tables, brick underfoot, an orange spritz in your hand. Hard to beat.',
+        'Try the waffle iron by the back wall -- stack \'em high, but if you get greedy the whole tower goes over.',
         'There are a couple of record crates over by the window. Brunch music, mostly. Dig while you wait for a table.',
       ] },
     // Two junk crates (right wall): no hunted record here.
@@ -30557,6 +31106,55 @@ function drawMinigameHarmonics(wx, wy, time, seed, label) {
   return { cx, cy, hw: W / 2 + 14, hh: H / 2 + 34 };
 }
 
+// Alternate mini-game marker used when a map entry sets `icon: 'wafflestack'` (WAFFLE STACK, the waffle-iron
+// station inside SNEAKERS BISTRO in WINOOSKI) -- same bob/label/hitbox contract as drawMinigameHarmonics()
+// above. Drawn as a little floating navy plaque on a thin post holding a wobbling tower of four golden
+// waffles with a drip of syrup on top, so it reads as "stack the waffles." `time` is in seconds.
+function drawMinigameWaffleStack(wx, wy, time, seed, label) {
+  const s = MINIGAME_OBJECT_SCALE;
+  const bob = Math.sin(time * 3 + seed) * 3;
+  const W = 34 * s, H = 30 * s;
+  const cx = wx, cy = wy - 50 + bob;
+
+  ctx.strokeStyle = '#241c28';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(wx, cy + H / 2);
+  ctx.lineTo(wx, wy - 14);
+  ctx.stroke();
+
+  ctx.fillStyle = '#16277a';
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(cx - W / 2, cy - H / 2, W, H, 4 * s); else ctx.rect(cx - W / 2, cy - H / 2, W, H);
+  ctx.fill();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = '#e8b64a';
+  ctx.stroke();
+
+  const sw = W - 12 * s, sh = 4.4 * s;
+  let topX = cx, topY = cy;
+  for (let i = 0; i < 4; i++) {
+    const off = i === 0 ? 0 : Math.sin(time * 2.4 + i * 1.3 + seed) * 3 * s;
+    const y = cy + H / 2 - 4 * s - sh - i * (sh + 0.7 * s);
+    const w = sw * (1 - i * 0.05);
+    ctx.fillStyle = '#e2a94a'; ctx.fillRect(cx - w / 2 + off, y, w, sh);
+    ctx.fillStyle = '#a8681c'; ctx.fillRect(cx - w / 2 + off, y + sh - 1, w, 1);
+    ctx.fillStyle = '#f0c36a'; ctx.fillRect(cx - w / 2 + off + 1, y, w - 2, 1);
+    topX = cx + off; topY = y;
+  }
+  ctx.fillStyle = '#7a3a0c';
+  ctx.fillRect(topX - sw * 0.35, topY - 1.4 * s, sw * 0.7, 1.8 * s);
+  ctx.fillRect(topX + sw * 0.15, topY, 1.6 * s, 3.2 * s);
+
+  const flashOnLabel = Math.floor(time / 1.4) % 2 === 0;
+  ctx.fillStyle = '#ffd36a';
+  ctx.font = `bold ${Math.round(9 * s)}px monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillText(flashOnLabel ? (label || 'MINI-GAME') : 'TAP TO PLAY', cx, cy - H / 2 - 7 * s);
+
+  return { cx, cy, hw: W / 2 + 14, hh: H / 2 + 34 };
+}
+
 // Alternate mini-game marker used when a map entry sets `icon: 'mugslide'` (MUG SLIDE, the bar-top
 // shuffleboard against the back wall inside MISERY LOVES CO. in WINOOSKI) -- same bob/label/hitbox
 // contract as drawMinigameHarmonics() above. Drawn as a copper mug with a lime wheel floating on a
@@ -31356,6 +31954,8 @@ function render(time) {
         ? drawMinigameChords(wx, wy, time, seed, mg.label)
         : mg.icon === 'inkdesk'
         ? drawMinigameInkDesk(wx, wy, time, seed, mg.label)
+        : mg.icon === 'wafflestack'
+        ? drawMinigameWaffleStack(wx, wy, time, seed, mg.label)
         : mg.icon === 'mugslide'
         ? drawMinigameMugSlide(wx, wy, time, seed, mg.label)
         : mg.icon === 'skatebillboard'
@@ -37548,6 +38148,31 @@ function paintSneakersInterior(c) {
     c.fillStyle = '#9a82ff'; c.fillRect(bx + 6, by + 1, 20, 1);                                        // rim light
   }
 
+  // ---------------------------------------------------------------- WAFFLE STACK iron station (blockTile (2,2))
+  // a cream-and-navy bistro stand (same family as the HARMONICS stand) holding a black waffle iron with a
+  // golden waffle peeking out, plus a plate with a short syrupy stack; the steam is drawn live in
+  // drawSneakersInterior().
+  {
+    const bx = 2 * TILE, by = 2 * TILE;
+    c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(bx + 3, by + 28, 26, 3);
+    c.fillStyle = '#c9a36c'; c.fillRect(bx + 5, by + 21, 3, 8); c.fillRect(bx + 24, by + 21, 3, 8);     // wood legs
+    c.fillStyle = CREAM; c.fillRect(bx + 2, by + 18, 28, 5);                                           // cream shelf
+    c.fillStyle = '#fff'; c.fillRect(bx + 2, by + 18, 28, 1.5);
+    c.fillStyle = NAVY; c.fillRect(bx + 2, by + 22, 28, 1.5);                                          // navy trim
+    c.fillStyle = '#2b2530'; c.fillRect(bx + 4, by + 10, 16, 8);                                       // iron body
+    c.fillStyle = '#4a3f52'; c.fillRect(bx + 4, by + 10, 16, 1.5);
+    c.fillStyle = '#d9382a'; c.fillRect(bx + 17, by + 13, 2, 2);                                       // "ready" lamp
+    c.fillStyle = '#e2a94a'; c.fillRect(bx + 5, by + 5, 14, 6);                                        // golden waffle lid
+    c.fillStyle = '#a8681c';
+    for (let i = 0; i < 4; i++) c.fillRect(bx + 8 + i * 3, by + 5, 1, 6);
+    c.fillRect(bx + 5, by + 7, 14, 1); c.fillRect(bx + 5, by + 9, 14, 1);
+    c.fillStyle = '#fbf5e6'; c.fillRect(bx + 21, by + 16, 9, 2);                                       // plate
+    c.fillStyle = '#e2a94a'; c.fillRect(bx + 22, by + 14, 7, 2); c.fillRect(bx + 22, by + 12, 7, 2); c.fillRect(bx + 23, by + 10, 5, 2);
+    c.fillStyle = '#a8681c'; c.fillRect(bx + 22, by + 15.5, 7, 0.5); c.fillRect(bx + 22, by + 13.5, 7, 0.5);
+    c.fillStyle = '#7a3a0c'; c.fillRect(bx + 23, by + 9, 5, 1.5); c.fillRect(bx + 27, by + 10, 1, 3);   // syrup
+    c.fillStyle = '#ffe27a'; c.fillRect(bx + 24, by + 8, 3, 1.5);                                      // butter
+  }
+
   // ---------------------------------------------------------------- mint velvet booths (1,4)..(1,7)
   c.fillStyle = 'rgba(0,0,0,0.2)'; c.fillRect(34, 254, 28, 3);
   c.fillStyle = '#3f8a70'; c.fillRect(33, 129, 31, 126);
@@ -37630,6 +38255,15 @@ function drawSneakersInterior(time) {
         if (k) ctx.lineTo(px, py); else ctx.moveTo(px, py);
       }
       ctx.stroke();
+    }
+  }
+  // WAFFLE STACK iron: three little wisps of steam curling up off the waffle iron
+  {
+    const bx = 2 * TILE, by = 2 * TILE;
+    for (let n = 0; n < 3; n++) {
+      const ph = (time * 0.7 + n * 0.33) % 1;
+      ctx.fillStyle = 'rgba(255,255,255,' + (0.38 * (1 - ph)).toFixed(3) + ')';
+      ctx.beginPath(); ctx.arc(bx + 9 + n * 4 + Math.sin(time * 2 + n * 2) * 1.6, by + 4 - ph * 9, 1.4 + ph * 1.6, 0, Math.PI * 2); ctx.fill();
     }
   }
 }
