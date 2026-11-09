@@ -1512,6 +1512,13 @@ const MINIGAME_ACTIONS = {
   // nine-artist circle over three rounds, and pull a screen-printed poster
   // of the night. See createCBPrintsCypherGame().
   cbcypher: () => enterMinigame(createCBPrintsCypherGame()),
+  // THE MONKEY HOUSE Cypher -- the Vermont hip hop scene's favorite room for a
+  // circle, in WINOOSKI (LEVEL 4): pick Pro / Jake / SkySplitterInk to set the
+  // beat, trade verses with the seven-person circle (The Aztext, Tha Truth,
+  // Krishna, SkySplitterInk, SK1 and Jake) over three rounds, close out with a
+  // line from everybody, and press a gig flyer of the night. See
+  // createMonkeyHouseCypherGame().
+  mhcypher: () => enterMinigame(createMonkeyHouseCypherGame()),
   // CB PRESS -- the CB PRINTS screen printing mini game, set up on the
   // shop's four-color carousel press (see the `cbprints` shop's
   // `minigames` list). Same "full standalone web app, not a canvas
@@ -6287,6 +6294,719 @@ function createCBPrintsCypherGame() {
       else if (phase === 'finale') drawFinale();
     },
     onExit() { /* the print is saved when it's pulled, so nothing to do here */ },
+  };
+}
+
+// ---- THE MONKEY HOUSE Cypher: "Last Call" ------------------------------------
+// The Vermont hip hop scene's favorite room for a circle, set inside THE MONKEY
+// HOUSE in WINOOSKI (LEVEL 4). Same spirit as the Green Door / CB PRINTS cyphers --
+// collaborative, no fail state, a missed beat is just a stumble -- but built
+// around the Monkey House crowd:
+//   * WHO'S SETTING THE BEAT: pick PRO (boom bap), JAKE (last call skank) or
+//     SKYSPLITTERINK (clean low end). Each brings their own tempo + drum feel,
+//     and you hear the beat while you browse.
+//   * A real circle: all seven people inside the Monkey House stand around the
+//     floor ring -- THE AZTEXT (Pro + Learic) hop down off the stage, Tha Truth,
+//     Krishna, SkySplitterInk and SK1 come up from the crowd, and Jake comes
+//     out from behind the bar.
+//   * Trade-off rounds: you -> pass the mic -> them, three times. Whoever you
+//     hand the mic to rides the last words YOU hit. A NEW VOICE lifts the room
+//     more, and getting both halves of The Aztext on the mic is a bonus.
+//   * Closing circle: when the rounds are done, all seven step to the middle
+//     for one last line each, so the whole room gets a turn.
+//   * The finale presses a photocopied gig flyer of the night, and the Monkey
+//     House remembers it in localStorage. Fully offline: no network, no new art.
+// All seven characters use art that is already loaded elsewhere in this file.
+function createMonkeyHouseCypherGame() {
+  const cx = VIEW_W / 2;
+  const ROUNDS = 3;
+  const TURN_STEPS = 20;   // words the player can land per turn
+  const NPC_STEPS = 12;    // eighth-note steps a voice holds the mic
+  const CLOSE_STEP = 1.25; // seconds each person gets in the closing circle
+  const BEAT_WINDOW = 0.23;
+  const MH = { banana: '#ffd83a', pink: '#ff4696', cyan: '#6ad4ff', wood: '#2a1e16', dark: '#120c08',
+    brick: '#4a2e28', paper: '#f4ecd8', ink: '#16110d', copy: '#efe6cf' };
+
+  // The three beat-makers. Picking one sets the tempo and the drum feel for the
+  // whole night. Patterns are 16-step bars: kicks/snares are step lists,
+  // bass/lead/stabs are [step, midiNote] pairs.
+  const BEATS = [
+    { id: 'pro', name: 'PRO', img: aztextProImg, accent: MH.pink, bpm: 92,
+      tag: 'BOOM BAP', blurb: 'Dusty kick, cracking snare. The Aztext pocket, no wasted notes.',
+      kicks: [0, 4, 8, 11], snares: [4, 12], openHat: 14,
+      bass: [[0, 41], [6, 41], [8, 43], [14, 40]], lead: [[2, 65], [10, 67]], leadType: 'square' },
+    { id: 'jake', name: 'JAKE', img: jakeImg, accent: MH.banana, bpm: 112,
+      tag: 'LAST CALL SKANK', blurb: 'Punk-rock tempo, off-beat chops. Nobody leaves till the lights come up.',
+      kicks: [0, 4, 8, 12], snares: [4, 12], openHat: 15,
+      bass: [[0, 40], [4, 43], [8, 45], [12, 43]], lead: [[6, 69]], leadType: 'square',
+      stabs: [[2, 64], [6, 64], [10, 67], [14, 67]] },
+    { id: 'zach', name: 'SKYSPLITTERINK', img: zachImg, accent: '#8cff5f', bpm: 100,
+      tag: 'CLEAN LOW END', blurb: 'Tight kick, deep sub, a little natural slap off the wood walls.',
+      kicks: [0, 3, 6, 8, 11], snares: [4, 12], openHat: 15,
+      bass: [[0, 36], [3, 36], [8, 39], [11, 34]], lead: [[6, 60], [14, 63]], leadType: 'sine' },
+  ];
+
+  // The full circle -- everyone inside THE MONKEY HOUSE. `outro` is the line each
+  // person drops in the closing circle.
+  const NPCS = [
+    { id: 'pro', name: 'PRO', img: aztextProImg, accent: MH.pink, tag: 'PRO KNOWS MUSIC', lines: [
+      "Pro Knows Music. Me and Learic hold it down as The Aztext -- Vermont hip hop, one bar at a time.",
+      "Left mic, right mic, middle of the room. A cypher's just a stage with no edges.",
+      "Don't overthink it. Catch the pocket and ride it.",
+    ], outro: "Pro. Knows. Music. Peace to the whole circle." },
+    { id: 'learic', name: 'LEARIC', img: aztextLearicImg, accent: MH.cyan, tag: 'THE AZTEXT', lines: [
+      "Learic. Blue cap, BVT on the chest, Vermont all day.",
+      "Me and Pro trade lines like it's one voice. Now somebody trade with us.",
+      "The Monkey House made a lot of us. Respect the room and it respects you back.",
+    ], outro: "Learic. Run it back next week, same room." },
+    { id: 'truth', name: 'THA TRUTH', img: truthImg, accent: '#e0a030', tag: 'SOLO LEXICON', lines: [
+      "Tha Truth, Solo Lexicon. Aztext set the table, so I'm stepping in.",
+      "Me, Krishna and Rico -- Solo Lexicon. When a circle opens, I'm in it.",
+      "No wasted words, no wasted bars. That's craft.",
+    ], outro: "Tha Truth. Nod, rewind it in your head, tell somebody tomorrow." },
+    { id: 'krishna', name: 'KRISHNA', img: krishnaImg, accent: '#b98cff', tag: 'SOLO LEXICON', lines: [
+      "Peace, friend. Step in. The circle sounds best from the middle.",
+      "Two voices, one breath. That's a conversation, not a performance.",
+      "A circle like this is a small prayer, loud.",
+    ], outro: "Krishna. Let the bass move through you. Peace." },
+    { id: 'zach', name: 'SKYSPLITTERINK', img: zachImg, accent: '#8cff5f', tag: 'SOUND HEAD', lines: [
+      "Zach -- SkySplitterInk. Off the clock tonight, but my ears never are.",
+      "Wood walls, a little natural slap. This room is a free reverb.",
+      "Keep the low end clean and the verses honest.",
+    ], outro: "SkySplitterInk. Clean mix, tight low end. That's a wrap." },
+    { id: 'sk1', name: 'SK1', img: keeperImgs['SK1'], accent: '#ff6b4a', tag: 'THE HOST', lines: [
+      "SK1. Third Thursdays is my night, but the Monkey House is everybody's.",
+      "Skaters, printers, emcees, ink. The whole scene shows up for nights like this.",
+      "Freestyle's a responsibility, not just a flex. Take it seriously, have fun with it.",
+    ], outro: "SK1. Support the scene: buy a drink, catch a set, tell a friend." },
+    { id: 'jake', name: 'JAKE', img: jakeImg, accent: MH.banana, tag: 'THE KEEPER', lines: [
+      "Jake. I pour the pints, you pour the bars. Seems fair.",
+      "Local bands, loud amps, no cover if you get here early. Cyphers too.",
+      "The monkey over the door was here before I was. He's heard every circle in this room.",
+    ], outro: "Jake. Last call is whenever the cypher says it is. Tip your bartender." },
+  ];
+
+  const WORD_SETS = [
+    ['WINOOSKI', 'FALLS', 'RIVER'],
+    ['MONKEY', 'STAGE', 'MIC'],
+    ['VERMONT', 'GREEN', 'MOUNTAIN'],
+    ['LAKE', 'CHAMPLAIN', 'SNOW'],
+    ['PINTS', 'LOUD', 'AMPS'],
+    ['PUNK', 'BOOM', 'BAP'],
+    ['LOCAL', 'FAMILY', 'SCENE'],
+    ['CROWD', 'BASS', 'SOUL'],
+    ['LAST', 'CALL', 'SKANK'],
+    ['PASS', 'MIC', 'LOVE'],
+  ];
+  const PROMPTS = [
+    'WHAT DOES WINOOSKI SOUND LIKE?',
+    'WHO PUT YOU ON IN VERMONT?',
+    "WHAT'S YOUR LAST CALL?",
+    'WHAT DOES THE SCENE MEAN TO YOU?',
+    'WHERE YOU REPPING?',
+  ];
+  const TIERS = [
+    { min: 0,  name: 'OPEN MIC' },
+    { min: 55, name: 'FIRST SET' },
+    { min: 75, name: 'HEADLINER' },
+    { min: 90, name: 'LAST CALL' },
+  ];
+  function tierFor(v) { let t = TIERS[0]; for (const x of TIERS) if (v >= x.min) t = x; return t; }
+
+  // ---- state ----
+  let phase = 'intro'; // intro | beat | player | pass | npc | closing | flyer
+  let phaseTimer = 0;
+  let beatIndex = 0;
+  let beat = BEATS[0];
+  let STEP = 60 / beat.bpm / 2;
+  let round = 0;
+  let playerStep = 0;
+  let countIn = 0;
+  let npcStep = 0;
+  let turnIndex = 0;
+  let passIndex = 0;
+  let vibe = 42, peakVibe = 42, combo = 0;
+  let playerHits = 0, playerMisses = 0;
+  let lastJudge = '', judgeTimer = 0;
+  let toast = '', toastTimer = 0;
+  let wordSetIndex = 0;
+  let currentPrompt = PROMPTS[0];
+  let roundWords = [[], [], []];
+  let featured = [];            // voice ids who have had the mic tonight
+  let aztextBonus = false;
+  let closeShown = -1;
+  let audioNext = 0, audioStep = 0, gridLockUntil = 0, audioOn = false;
+  let saved = false, nightCount = 0, bestVibe = 0;
+  let finalMessage = '';
+  let lastTier = TIERS[0].name;
+  const prevKeys = {};
+  try { nightCount = Number(localStorage.getItem('monkeyHouseCypherCount') || 0); } catch (e) { nightCount = 0; }
+  try { bestVibe = Number(localStorage.getItem('monkeyHouseCypherBest') || 0); } catch (e) { bestVibe = 0; }
+
+  // ---- phase flow ----
+  function setPhase(next) {
+    phase = next;
+    phaseTimer = 0;
+    if (next === 'beat') { startAudio(); }
+    if (next === 'player') {
+      playerStep = 0; wordSetIndex = 0; roundWords[round] = [];
+      currentPrompt = PROMPTS[Math.floor(Math.random() * PROMPTS.length)];
+      countIn = round === 0 ? 1.3 : 0.5;
+    }
+    if (next === 'pass') passIndex = Math.min(passIndex, NPCS.length - 1);
+    if (next === 'npc') npcStep = 0;
+    if (next === 'closing') {
+      closeShown = -1;
+      finalMessage = vibe >= 78 ? "THAT'S LAST CALL. PRESS THE FLYER." : "THAT'S WHAT THE CIRCLE IS FOR.";
+    }
+    if (next === 'flyer') { persistFlyer(); }
+  }
+
+  // ---- audio (the picked beat; runs continuously from the beat screen on) ----
+  function startAudio() {
+    music.start();
+    audioNext = music.ctx ? music.ctx.currentTime + 0.06 : 0;
+    audioStep = 0;
+    audioOn = true;
+  }
+  function beatNow() { return music.ctx ? music.ctx.currentTime : performance.now() / 1000; }
+  function scheduleBeat() {
+    if (!music.ctx || !audioOn) return;
+    const now = music.ctx.currentTime;
+    if (!audioNext) audioNext = now + 0.05;
+    while (audioNext < now + 0.8) {
+      const t = audioNext, s = audioStep % 16;
+      if (beat.kicks.includes(s)) music.kick(t);
+      if (beat.snares.includes(s)) music.snare(t);
+      music.hat(t, s === beat.openHat, s % 2 ? 0.045 : 0.075);
+      for (const [bs, midi] of beat.bass) if (bs === s) music.note(t, 'triangle', midi, STEP * 1.8, 0.045, 0.04);
+      for (const [ls, midi] of beat.lead) if (ls === s) music.note(t, beat.leadType, midi, STEP * 0.6, 0.025, 0.02);
+      if (beat.stabs) for (const [ss, midi] of beat.stabs) if (ss === s) music.note(t, 'square', midi, STEP * 0.35, 0.02, 0.01);
+      audioNext += STEP;
+      audioStep++;
+    }
+  }
+  function timingOffset() {
+    const local = beatNow() - (audioNext - STEP);
+    const wrapped = ((local + STEP / 2) % STEP + STEP) % STEP - STEP / 2;
+    return Math.abs(wrapped);
+  }
+  function lockBeat() {
+    beat = BEATS[beatIndex];
+    STEP = 60 / beat.bpm / 2;
+    // The grid only agrees with the new tempo once the already-scheduled
+    // lookahead (0.8s) has played out, so no hits count until then.
+    gridLockUntil = beatNow() + 1.2;
+    setPhase('player');
+  }
+
+  // ---- player turn ----
+  function judgeChoice(index) {
+    if (phase !== 'player' || countIn > 0 || beatNow() < gridLockUntil) return;
+    const off = timingOffset();
+    let label, gain;
+    if (off <= 0.075) { label = 'PERFECT'; gain = 5; }
+    else if (off <= 0.14) { label = 'NICE'; gain = 3; }
+    else if (off <= BEAT_WINDOW) { label = 'GOOD'; gain = 2; }
+    else { label = 'SHAKE IT OFF'; gain = -2; }
+    if (gain > 0) {
+      combo++; playerHits++;
+      vibe = Math.min(100, vibe + gain + Math.min(3, Math.floor(combo / 4)));
+      roundWords[round].push(WORD_SETS[wordSetIndex % WORD_SETS.length][index]);
+      wordSetIndex++;
+    } else {
+      combo = 0; playerMisses++;
+      vibe = Math.max(10, vibe - 1);
+    }
+    peakVibe = Math.max(peakVibe, vibe);
+    lastJudge = label; judgeTimer = 0.7;
+    playerStep++;
+    if (playerStep >= TURN_STEPS) setPhase('pass');
+  }
+
+  // ---- passing the mic ----
+  function movePass(delta) { passIndex = (passIndex + delta + NPCS.length) % NPCS.length; }
+  function passMic() {
+    turnIndex = passIndex;
+    const who = NPCS[turnIndex];
+    if (!featured.includes(who.id)) {
+      featured.push(who.id);
+      vibe = Math.min(100, vibe + 6);
+      peakVibe = Math.max(peakVibe, vibe);
+      toast = 'NEW VOICE  +6'; toastTimer = 1.4;
+      if (!aztextBonus && featured.includes('pro') && featured.includes('learic')) {
+        aztextBonus = true;
+        vibe = Math.min(100, vibe + 4);
+        peakVibe = Math.max(peakVibe, vibe);
+        toast = 'THE AZTEXT TOGETHER  +10'; toastTimer = 1.8;
+      }
+    }
+    setPhase('npc');
+  }
+  // 7 voices in a 3-wide grid; the last one sits centered on its own row.
+  const PASS_W = 250, PASS_H = 86, PASS_GX = 14, PASS_GY = 12;
+  const PASS_X0 = cx - (3 * PASS_W + 2 * PASS_GX) / 2, PASS_Y0 = 224;
+  function passRect(i) {
+    const c = i % 3, r = Math.floor(i / 3);
+    const alone = (NPCS.length - r * 3) === 1;
+    const x = alone ? cx - PASS_W / 2 : PASS_X0 + c * (PASS_W + PASS_GX);
+    return { x, y: PASS_Y0 + r * (PASS_H + PASS_GY), w: PASS_W, h: PASS_H };
+  }
+  function beatRect(i) { return { x: cx - 385 + i * 270, y: 190, w: 250, h: 250 }; }
+  function inRect(vx, vy, r) { return vx >= r.x && vx <= r.x + r.w && vy >= r.y && vy <= r.y + r.h; }
+
+  // ---- persistence ----
+  function persistFlyer() {
+    if (saved) return;
+    saved = true;
+    nightCount++;
+    const tier = tierFor(vibe);
+    lastTier = tier.name;
+    const entry = {
+      count: nightCount,
+      date: new Date().toISOString().slice(0, 10),
+      vibe: Math.round(vibe), peak: Math.round(peakVibe),
+      tier: tier.name, beat: beat.name,
+      circle: NPCS.map((n) => n.name),
+      tookTheMic: featured.map((id) => NPCS.find((n) => n.id === id).name),
+      bars: roundWords.map((w) => w.slice(-4)),
+    };
+    if (Math.round(vibe) > bestVibe) bestVibe = Math.round(vibe);
+    try {
+      localStorage.setItem('monkeyHouseCypherCount', String(nightCount));
+      localStorage.setItem('monkeyHouseCypherLast', JSON.stringify(entry));
+      localStorage.setItem('monkeyHouseCypherBest', String(bestVibe));
+    } catch (e) { /* private/incognito storage may be unavailable; the night still completes */ }
+  }
+
+  // ---- drawing helpers ----
+  function sprite(img, x, y, w, h, sheet) {
+    if (!img || !img.complete || !img.naturalWidth) return false;
+    if (sheet) {
+      const frame = Math.floor(performance.now() / 160) % 3;
+      ctx.drawImage(img, frame * SHEET_CW, 1 * SHEET_CH, SHEET_CW, SHEET_CH, x - w / 2, y - h, w, h);
+    } else {
+      const sc = Math.min(w / img.naturalWidth, h / img.naturalHeight);
+      const dw = img.naturalWidth * sc, dh = img.naturalHeight * sc;
+      ctx.drawImage(img, x - dw / 2, y - dh, dw, dh);
+    }
+    return true;
+  }
+  // Same as sprite(), but falls back to a colored initial if the art hasn't
+  // loaded (offline / missing asset) so no card is ever blank.
+  function face(n, x, y, w, h) {
+    if (sprite(n.img, x, y, w, h, false)) return;
+    ctx.fillStyle = n.accent;
+    ctx.beginPath(); ctx.arc(x, y - h / 2, Math.min(w, h) * 0.4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = MH.dark; ctx.textAlign = 'center'; ctx.font = 'bold ' + Math.round(h * 0.4) + 'px monospace';
+    ctx.fillText(n.name[0], x, y - h / 2 + h * 0.14);
+  }
+  // Neon lettering: soft glow layers under a bright core.
+  function neonText(text, x, y, font, col, core, flick) {
+    const f = flick === undefined ? 1 : flick;
+    ctx.font = font; ctx.textAlign = 'center'; ctx.lineJoin = 'round';
+    ctx.globalAlpha = 0.16 * f; ctx.fillStyle = col;
+    for (const [ox, oy] of [[-3, 0], [3, 0], [0, -3], [0, 3], [-2, -2], [2, 2]]) ctx.fillText(text, x + ox, y + oy);
+    ctx.globalAlpha = f; ctx.strokeStyle = col; ctx.lineWidth = 3; ctx.strokeText(text, x, y);
+    ctx.fillStyle = core || MH.paper; ctx.fillText(text, x, y);
+    ctx.globalAlpha = 1;
+  }
+  function ringPos(i) {
+    const a = (-90 + 180 / NPCS.length + i * 360 / NPCS.length) * Math.PI / 180;
+    return { x: cx + Math.cos(a) * 330, y: 405 + Math.sin(a) * 100, depth: (Math.sin(a) + 1) / 2 };
+  }
+
+  function drawRoom(time) {
+    // dark brick back wall with a wood beam, like the real room
+    ctx.fillStyle = '#1a1210'; ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+    ctx.fillStyle = MH.brick; ctx.fillRect(0, 0, VIEW_W, 108);
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    for (let y = 14, row = 0; y < 104; y += 16, row++) {
+      ctx.fillRect(0, y + 14, VIEW_W, 2);
+      const off = row % 2 ? 24 : 0;
+      for (let x = -off; x < VIEW_W; x += 48) ctx.fillRect(x + 47, y, 2, 14);
+    }
+    ctx.fillStyle = MH.dark; ctx.fillRect(0, 0, VIEW_W, 12); ctx.fillRect(0, 104, VIEW_W, 6);
+    ctx.fillStyle = MH.banana; ctx.fillRect(0, 110, VIEW_W, 2);
+    // wood plank floor
+    ctx.fillStyle = '#3b281a'; ctx.fillRect(0, 112, VIEW_W, VIEW_H - 112);
+    for (let y = 124, row = 0; y < VIEW_H; y += 26, row++) {
+      ctx.fillStyle = 'rgba(0,0,0,0.28)'; ctx.fillRect(0, y, VIEW_W, 2);
+      const off = row % 2 ? 60 : 0;
+      for (let x = -off; x < VIEW_W; x += 120) ctx.fillRect(x + 119, y - 24, 2, 24);
+    }
+    // string lights on the beam: the more vibe, the more bulbs light up
+    const bulbs = 18, lit = Math.round(vibe / 100 * bulbs);
+    for (let i = 0; i < bulbs; i++) {
+      const bx = 36 + i * ((VIEW_W - 72) / (bulbs - 1));
+      ctx.fillStyle = '#0c0a08'; ctx.fillRect(bx - 1, 12, 2, 5);
+      const on = i < lit;
+      if (on) {
+        ctx.fillStyle = 'rgba(255,214,120,0.18)'; ctx.beginPath(); ctx.arc(bx, 22, 9, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.fillStyle = on ? '#ffe08a' : '#4a3a2a'; ctx.beginPath(); ctx.arc(bx, 21, 3.5, 0, Math.PI * 2); ctx.fill();
+    }
+    // the sign
+    let flick = 1;
+    if ((time % 9) > 8.4 && Math.sin(time * 37) > 0) flick = 0.35;
+    ctx.fillStyle = '#15101a'; ctx.fillRect(28, 32, VIEW_W - 56, 66);
+    ctx.strokeStyle = MH.banana; ctx.lineWidth = 2; ctx.strokeRect(28, 32, VIEW_W - 56, 66);
+    neonText('THE MONKEY HOUSE CYPHER', cx, 68, 'italic 800 30px "Trebuchet MS", Verdana, sans-serif', MH.banana, '#fff6b0', flick);
+    ctx.textAlign = 'center'; ctx.fillStyle = '#c9c0b4'; ctx.font = 'bold 12px monospace';
+    ctx.fillText('LIVE MUSIC  \u2022  LOCAL TAPS  \u2022  ONE CIRCLE  \u2022  PASS THE MIC', cx, 88);
+    // roaming stage-light cones onto the floor circle
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (const [bx, col, ph] of [[cx - 220, 'rgba(255,70,120,0.07)', 0], [cx, 'rgba(255,214,60,0.07)', 2.1], [cx + 220, 'rgba(70,190,255,0.07)', 4.2]]) {
+      const sw = Math.sin(time * 0.9 + ph) * 60;
+      ctx.fillStyle = col;
+      ctx.beginPath(); ctx.moveTo(bx - 6, 112); ctx.lineTo(bx + 6, 112); ctx.lineTo(bx + sw + 60, 405); ctx.lineTo(bx + sw - 60, 405); ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
+    // floor circle: taped neon ring on the planks
+    const pulse = 0.4 + 0.1 * Math.sin(time * 2.2);
+    ctx.fillStyle = 'rgba(255,216,58,0.07)'; ctx.beginPath(); ctx.ellipse(cx, 405, 300, 100, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,216,58,' + (pulse + 0.1).toFixed(3) + ')'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.ellipse(cx, 405, 300, 100, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,70,150,0.25)'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.ellipse(cx, 405, 308, 106, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = 'rgba(244,236,216,0.10)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(cx - 330, 405); ctx.lineTo(cx + 330, 405); ctx.moveTo(cx, 295); ctx.lineTo(cx, 515); ctx.stroke();
+  }
+
+  // Everyone standing around the ring. `skipId` leaves a gap for whoever has
+  // stepped to center, `highlightId` lights up one person's spot.
+  function drawRing(skipId, highlightId) {
+    const order = NPCS.map((n, i) => ({ n, i, p: ringPos(i) })).sort((a, b) => a.p.y - b.p.y);
+    for (const { n, p } of order) {
+      if (n.id === skipId) continue;
+      const sc = 0.8 + 0.3 * p.depth;
+      const bob = Math.sin(performance.now() / 200 + p.x) * (vibe > 70 ? 3 : 1.2);
+      if (n.id === highlightId) {
+        ctx.fillStyle = n.accent; ctx.globalAlpha = 0.28;
+        ctx.beginPath(); ctx.ellipse(p.x, p.y + 2, 34, 9, 0, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
+      }
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.beginPath(); ctx.ellipse(p.x, p.y + 1, 22 * sc, 6 * sc, 0, 0, Math.PI * 2); ctx.fill();
+      face(n, p.x, p.y + bob, 64 * sc, 64 * sc);
+      if (featured.includes(n.id)) { // little banana dot: they've had the mic
+        ctx.fillStyle = MH.banana; ctx.beginPath(); ctx.arc(p.x, p.y + 10, 3, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+  }
+
+  function drawHud() {
+    ctx.textAlign = 'left'; ctx.fillStyle = MH.paper; ctx.font = 'bold 14px monospace';
+    ctx.fillText('BEAT BY: ' + beat.name, 34, 130);
+    ctx.textAlign = 'center'; ctx.fillStyle = '#8b8290'; ctx.font = '11px monospace';
+    ctx.fillText('ROUND ' + Math.min(round + 1, ROUNDS) + ' / ' + ROUNDS, cx, 124);
+    for (let i = 0; i < ROUNDS; i++) {
+      ctx.fillStyle = i < round ? [MH.banana, MH.pink, MH.cyan][i % 3] : (i === round ? MH.paper : 'rgba(244,236,216,0.2)');
+      ctx.beginPath(); ctx.arc(cx - 20 + i * 20, 136, 4.5, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.textAlign = 'right'; ctx.fillStyle = MH.banana; ctx.font = 'bold 14px monospace';
+    ctx.fillText('VIBE ' + Math.round(vibe), 926, 130);
+    ctx.fillStyle = 'rgba(244,236,216,0.12)'; ctx.fillRect(650, 136, 276, 8);
+    ctx.fillStyle = vibe >= 70 ? '#8cff5f' : MH.banana; ctx.fillRect(650, 136, 276 * (vibe / 100), 8);
+    if (toast && toastTimer > 0) {
+      ctx.textAlign = 'right'; ctx.fillStyle = '#8cff5f'; ctx.font = 'bold 13px monospace';
+      ctx.fillText(toast, 926, 162);
+    }
+  }
+
+  function drawPlayerTurn() {
+    drawHud();
+    drawRing(null, null);
+    sprite(CHARACTERS[selectedCharacter].img, cx, 432, 70, 96, true);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = MH.paper; ctx.font = 'bold 16px monospace'; ctx.fillText('YOUR TURN  --  ' + currentPrompt, cx, 168);
+    const ready = countIn <= 0 && beatNow() >= gridLockUntil;
+    ctx.fillStyle = '#8b8290'; ctx.font = '12px monospace';
+    ctx.fillText(ready ? 'HIT A WORD ON THE BEAT. THERE IS NO WRONG ANSWER.' : 'GET READY... ' + beat.name + "'S BEAT IS LOCKING IN", cx, 186);
+    const words = WORD_SETS[wordSetIndex % WORD_SETS.length];
+    const xs = [cx - 190, cx, cx + 190];
+    for (let i = 0; i < 3; i++) {
+      const pulse = ready ? 1 + 0.035 * Math.sin(performance.now() / 110 + i) : 1;
+      ctx.save(); ctx.translate(xs[i], 222); ctx.scale(pulse, pulse);
+      ctx.globalAlpha = ready ? 1 : 0.45;
+      ctx.fillStyle = '#2c2018'; ctx.fillRect(-110, -26, 220, 52);
+      ctx.strokeStyle = [MH.banana, MH.pink, MH.cyan][i]; ctx.lineWidth = 3; ctx.strokeRect(-110, -26, 220, 52);
+      ctx.fillStyle = MH.paper; ctx.font = 'bold 18px monospace'; ctx.fillText(words[i], 0, 6);
+      ctx.restore();
+    }
+    ctx.globalAlpha = 1;
+    const bar = roundWords[round].slice(-4).join('  \u2022  ');
+    ctx.fillStyle = beat.accent; ctx.font = 'bold 13px monospace';
+    ctx.fillText(bar ? 'YOUR BAR: ' + bar : '', cx, 530);
+    if (lastJudge && judgeTimer > 0) {
+      ctx.fillStyle = lastJudge === 'SHAKE IT OFF' ? '#c06a7d' : '#8cff5f'; ctx.font = 'bold 22px monospace';
+      ctx.fillText(lastJudge, cx, 556);
+    }
+    if (combo > 1) { ctx.fillStyle = MH.banana; ctx.font = 'bold 13px monospace'; ctx.fillText('FLOW x' + combo, cx, 574); }
+    ctx.fillStyle = '#8b8290'; ctx.font = '11px monospace';
+    ctx.fillText('\u25C0 1 / A     \u25B2 2 / W     3 / D \u25B6', cx, 592);
+  }
+
+  function drawPass() {
+    drawHud();
+    ctx.fillStyle = 'rgba(18,12,8,0.92)'; ctx.fillRect(0, 150, VIEW_W, VIEW_H - 150);
+    ctx.textAlign = 'center';
+    neonText('PASS THE MIC', cx, 190, 'italic 800 24px "Trebuchet MS", Verdana, sans-serif', MH.banana, '#fff6b0');
+    ctx.fillStyle = '#8b8290'; ctx.font = '12px monospace';
+    ctx.fillText('WHO DO YOU WANT TO HEAR NEXT?  A NEW VOICE LIFTS THE ROOM.', cx, 207);
+    for (let i = 0; i < NPCS.length; i++) {
+      const n = NPCS[i], r = passRect(i), active = i === passIndex;
+      ctx.fillStyle = active ? '#3a2a1e' : '#1e1510'; ctx.fillRect(r.x, r.y, r.w, r.h);
+      ctx.strokeStyle = active ? n.accent : '#4a3a30'; ctx.lineWidth = active ? 3 : 1; ctx.strokeRect(r.x, r.y, r.w, r.h);
+      face(n, r.x + 40, r.y + r.h - 6, 58, 72);
+      ctx.textAlign = 'left';
+      ctx.fillStyle = active ? n.accent : MH.paper; ctx.font = 'bold 14px monospace'; ctx.fillText(n.name, r.x + 78, r.y + 28);
+      ctx.fillStyle = '#8b8290'; ctx.font = '10px monospace'; ctx.fillText(n.tag, r.x + 78, r.y + 45);
+      const had = featured.includes(n.id);
+      ctx.fillStyle = had ? '#8b8290' : (active ? n.accent : '#a79fb0'); ctx.font = '10px monospace';
+      ctx.fillText((had ? '\u2713 HAD THE MIC' : 'ON THE MIC'), r.x + 78, r.y + 62);
+      if (n.id === beat.id) { ctx.fillStyle = beat.accent; ctx.fillText('SETTING THE BEAT', r.x + 78, r.y + 77); }
+    }
+    ctx.textAlign = 'center'; ctx.fillStyle = '#8b8290'; ctx.font = '12px monospace';
+    ctx.fillText('ARROWS CHOOSE     E / TAP AGAIN TO PASS THE MIC', cx, 566);
+  }
+
+  function drawNpc() {
+    drawHud();
+    const n = NPCS[turnIndex];
+    drawRing(n.id, null);
+    // spotlight + center-stage voice
+    ctx.fillStyle = n.accent; ctx.globalAlpha = 0.16; ctx.beginPath(); ctx.ellipse(cx, 428, 120, 26, 0, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
+    face(n, cx, 425, 150, 150);
+    ctx.textAlign = 'center'; ctx.fillStyle = n.accent; ctx.font = 'bold 18px monospace'; ctx.fillText(n.name + '  --  ' + n.tag, cx, 168);
+    const line = n.lines[Math.min(n.lines.length - 1, Math.floor(npcStep / 4))];
+    ctx.fillStyle = MH.paper; ctx.font = '14px monospace'; ctx.fillText(line, cx, 192);
+    const mine = roundWords[round].slice(-3).join('  \u2022  ');
+    if (mine) {
+      ctx.fillStyle = '#a79fb0'; ctx.font = '12px monospace';
+      ctx.fillText('RIDING YOUR WORDS: ' + mine, cx, 214);
+    }
+    ctx.fillStyle = '#8b8290'; ctx.font = '12px monospace';
+    ctx.fillText('THE CIRCLE IS LISTENING...', cx, 534);
+    const p = Math.min(1, npcStep / NPC_STEPS);
+    ctx.fillStyle = 'rgba(244,236,216,0.12)'; ctx.fillRect(300, 548, 360, 7);
+    ctx.fillStyle = n.accent; ctx.fillRect(300, 548, 360 * p, 7);
+  }
+
+  function drawBeatSelect() {
+    ctx.fillStyle = 'rgba(12,8,6,0.82)'; ctx.fillRect(0, 112, VIEW_W, VIEW_H - 112);
+    ctx.textAlign = 'center';
+    neonText("WHO'S SETTING THE BEAT TONIGHT?", cx, 160, 'italic 800 22px "Trebuchet MS", Verdana, sans-serif', MH.banana, '#fff6b0');
+    for (let i = 0; i < BEATS.length; i++) {
+      const d = BEATS[i], r = beatRect(i), active = i === beatIndex;
+      ctx.fillStyle = active ? '#3a2a1e' : '#1e1510'; ctx.fillRect(r.x, r.y, r.w, r.h);
+      ctx.strokeStyle = active ? d.accent : '#4a3a30'; ctx.lineWidth = active ? 4 : 1; ctx.strokeRect(r.x, r.y, r.w, r.h);
+      face({ img: d.img, accent: d.accent, name: d.name }, r.x + r.w / 2, r.y + 130, 110, 110);
+      ctx.textAlign = 'center';
+      ctx.fillStyle = active ? d.accent : MH.paper; ctx.font = 'bold 16px monospace'; ctx.fillText(d.name, r.x + r.w / 2, r.y + 158);
+      ctx.fillStyle = '#a79fb0'; ctx.font = '11px monospace'; ctx.fillText(d.tag + '  \u2022  ' + d.bpm + ' BPM', r.x + r.w / 2, r.y + 178);
+      ctx.fillStyle = '#8b8290'; ctx.font = '10px monospace';
+      // wrap the blurb to two lines
+      const words = d.blurb.split(' '); let l1 = '', l2 = '';
+      for (const w of words) { if ((l1 + w).length < 38 && !l2) l1 += w + ' '; else l2 += w + ' '; }
+      ctx.fillText(l1.trim(), r.x + r.w / 2, r.y + 200); ctx.fillText(l2.trim(), r.x + r.w / 2, r.y + 214);
+      if (active) {
+        // little equalizer: you're hearing this beat right now
+        for (let b = 0; b < 8; b++) {
+          const h = 4 + Math.abs(Math.sin(performance.now() / (120 + b * 17) + b)) * 14;
+          ctx.fillStyle = d.accent; ctx.fillRect(r.x + r.w / 2 - 40 + b * 10, r.y + 244 - h, 6, h);
+        }
+      }
+    }
+    ctx.fillStyle = '#8b8290'; ctx.font = '12px monospace';
+    ctx.fillText('\u25C0 \u25B6 HEAR EACH BEAT     E / TAP AGAIN TO LOCK IT IN', cx, 500);
+    ctx.fillText('THE BEAT-MAKER SETS THE TEMPO FOR THE WHOLE NIGHT.', cx, 522);
+  }
+
+  // Closing circle: every one of the seven steps to the middle for one last line.
+  function drawClosing() {
+    drawHud();
+    const i = Math.min(NPCS.length - 1, Math.floor(phaseTimer / CLOSE_STEP));
+    const n = NPCS[i];
+    drawRing(n.id, null);
+    ctx.fillStyle = n.accent; ctx.globalAlpha = 0.16; ctx.beginPath(); ctx.ellipse(cx, 428, 120, 26, 0, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
+    face(n, cx, 425, 150, 150);
+    const pulse = 1 + 0.02 * Math.sin(performance.now() / 90);
+    ctx.save(); ctx.translate(cx, 182); ctx.scale(pulse, pulse);
+    neonText('LAST CALL -- EVERYBODY GETS A LINE', 0, 0, 'italic 800 20px "Trebuchet MS", Verdana, sans-serif', MH.pink, '#ffd6ec');
+    ctx.restore();
+    ctx.textAlign = 'center'; ctx.fillStyle = n.accent; ctx.font = 'bold 16px monospace';
+    ctx.fillText(n.name + '  --  ' + n.tag, cx, 212);
+    ctx.fillStyle = MH.paper; ctx.font = '14px monospace'; ctx.fillText(n.outro, cx, 236);
+    ctx.fillStyle = '#8cff5f'; ctx.font = 'bold 13px monospace'; ctx.fillText(finalMessage, cx, 534);
+    for (let k = 0; k < NPCS.length; k++) {
+      ctx.fillStyle = k <= i ? NPCS[k].accent : 'rgba(244,236,216,0.2)';
+      ctx.beginPath(); ctx.arc(cx - 60 + k * 20, 556, 4.5, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  // The finished flyer: a photocopied gig poster taped to the wall. It slides in
+  // and straightens out over ~1.4s.
+  function drawFlyer() {
+    ctx.fillStyle = '#120c08'; ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+    ctx.fillStyle = MH.brick; ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    for (let y = 6, row = 0; y < VIEW_H; y += 16, row++) {
+      ctx.fillRect(0, y + 14, VIEW_W, 2);
+      const off = row % 2 ? 24 : 0;
+      for (let x = -off; x < VIEW_W; x += 48) ctx.fillRect(x + 47, y, 2, 14);
+    }
+    const p = Math.min(1, phaseTimer / 1.4), e = 1 - (1 - p) * (1 - p);
+    const pw = 380, ph = 536;
+    ctx.save();
+    ctx.translate(cx, 22 + ph / 2 - (1 - e) * 560);
+    ctx.rotate((1 - e) * 0.18 - 0.012);
+    const px = -pw / 2, py = -ph / 2;
+    ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(px + 6, py + 8, pw, ph);
+    ctx.fillStyle = MH.copy; ctx.fillRect(px, py, pw, ph);
+    // photocopy grit
+    ctx.fillStyle = 'rgba(22,17,13,0.05)';
+    for (let i = 0; i < 70; i++) ctx.fillRect(px + ((i * 53) % pw), py + ((i * 97) % ph), 2, 2);
+    // banana band + heading
+    ctx.fillStyle = MH.banana; ctx.fillRect(px, py + 14, pw, 74);
+    ctx.fillStyle = MH.ink; ctx.fillRect(px, py + 14, pw, 4); ctx.fillRect(px, py + 84, pw, 4);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = MH.ink; ctx.font = '900 30px "Arial Black", Impact, sans-serif'; ctx.fillText('THE MONKEY HOUSE', 0, py + 56);
+    ctx.font = 'bold 12px monospace'; ctx.fillText('WINOOSKI, VERMONT  \u2022  LIVE MUSIC', 0, py + 76);
+    ctx.font = '900 40px "Arial Black", Impact, sans-serif'; ctx.fillStyle = MH.pink; ctx.fillText('CYPHER', 0, py + 138);
+    ctx.fillStyle = MH.ink; ctx.fillText('CYPHER', -2, py + 136);
+    ctx.font = 'bold 12px monospace';
+    ctx.fillText('NIGHT #' + nightCount + '   \u2022   BEAT BY: ' + beat.name, 0, py + 164);
+    ctx.fillStyle = MH.ink; ctx.fillRect(-80, py + 176, 160, 26);
+    ctx.fillStyle = MH.banana; ctx.font = 'bold 15px monospace'; ctx.fillText(lastTier, 0, py + 194);
+    ctx.fillStyle = MH.ink; ctx.font = 'bold 11px monospace'; ctx.fillText('THE CIRCLE', 0, py + 226);
+    ctx.font = '12px monospace';
+    ctx.fillText('PRO  +  LEARIC  +  THA TRUTH', 0, py + 246);
+    ctx.fillText('KRISHNA  +  SKYSPLITTERINK', 0, py + 262);
+    ctx.fillText('SK1  +  JAKE  +  YOU', 0, py + 278);
+    const took = featured.map((id) => NPCS.find((n) => n.id === id).name);
+    ctx.font = 'bold 11px monospace'; ctx.fillText('TOOK THE MIC', 0, py + 306);
+    ctx.font = '12px monospace'; ctx.fillText(took.join('  +  ') || 'THE WHOLE CIRCLE', 0, py + 324);
+    ctx.font = 'bold 11px monospace'; ctx.fillText('THE BARS', 0, py + 352);
+    ctx.font = '12px monospace';
+    for (let i = 0; i < ROUNDS; i++) {
+      const w = roundWords[i].slice(-4).join(' \u2022 ') || 'YOU SHOWED UP';
+      ctx.fillStyle = [MH.banana, MH.pink, MH.cyan][i]; ctx.fillRect(px + 30, py + 366 + i * 24, 8, 8);
+      ctx.fillStyle = MH.ink; ctx.textAlign = 'left'; ctx.fillText(w, px + 46, py + 375 + i * 24); ctx.textAlign = 'center';
+    }
+    ctx.font = 'bold 13px monospace';
+    ctx.fillText('VIBE ' + Math.round(vibe) + '    PEAK ' + Math.round(peakVibe) + '    BEST ' + bestVibe, 0, py + 462);
+    ctx.fillStyle = '#5a4a3a'; ctx.font = '11px monospace';
+    ctx.fillText('NO COVER IF YOU GET HERE EARLY.', 0, py + 492);
+    ctx.fillText('SUPPORT THE SCENE.', 0, py + 508);
+    // tape
+    ctx.fillStyle = 'rgba(230,220,170,0.7)'; ctx.fillRect(px + 20, py - 6, 56, 14); ctx.fillRect(px + pw - 76, py - 6, 56, 14);
+    ctx.restore();
+    ctx.textAlign = 'center';
+    ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? MH.banana : MH.paper; ctx.font = 'bold 14px monospace';
+    ctx.fillText('- PRESS E OR TAP TO STEP BACK INTO THE MONKEY HOUSE -', cx, 590);
+  }
+
+  return {
+    musicDucked: true,
+    onPointerDown(vx, vy) {
+      if (phase === 'intro') { setPhase('beat'); return; }
+      if (phase === 'beat') {
+        for (let i = 0; i < BEATS.length; i++) {
+          if (inRect(vx, vy, beatRect(i))) {
+            if (i === beatIndex) lockBeat();
+            else { beatIndex = i; beat = BEATS[i]; STEP = 60 / beat.bpm / 2; }
+            return;
+          }
+        }
+        return;
+      }
+      if (phase === 'player') { judgeChoice(vx < cx - 80 ? 0 : (vx > cx + 80 ? 2 : 1)); return; }
+      if (phase === 'pass') {
+        for (let i = 0; i < NPCS.length; i++) {
+          if (inRect(vx, vy, passRect(i))) {
+            if (i === passIndex) passMic(); else passIndex = i;
+            return;
+          }
+        }
+        return;
+      }
+      if (phase === 'closing' && phaseTimer > 0.5) { setPhase('flyer'); return; }
+      if (phase === 'flyer' && phaseTimer > 1.0) { exitMinigame(); }
+    },
+    update(dt) {
+      if (buyPressed) { exitMinigame(); return; }
+      phaseTimer += dt;
+      judgeTimer = Math.max(0, judgeTimer - dt);
+      toastTimer = Math.max(0, toastTimer - dt);
+      if (audioOn) scheduleBeat();
+      if (phase === 'intro') { if (interactPressed && phaseTimer > 0.15) setPhase('beat'); return; }
+      if (phase === 'beat') {
+        const move = selectMove || 0;
+        if (move) {
+          beatIndex = (beatIndex + move + BEATS.length) % BEATS.length;
+          beat = BEATS[beatIndex]; STEP = 60 / beat.bpm / 2; selectMove = 0;
+        }
+        if (interactPressed && phaseTimer > 0.15) lockBeat();
+        return;
+      }
+      if (phase === 'player') {
+        countIn = Math.max(0, countIn - dt);
+        const keysMap = [['arrowleft', 0], ['a', 0], ['arrowup', 1], ['w', 1], ['arrowright', 2], ['d', 2]];
+        for (const [k, idx] of keysMap) {
+          const down = !!keys[k];
+          if (down && !prevKeys[k]) judgeChoice(idx);
+          prevKeys[k] = down;
+        }
+        // hard musical length so nobody gets stuck by not pressing anything
+        if (phaseTimer >= TURN_STEPS * STEP + 1.3 + 0.35) setPhase('pass');
+        return;
+      }
+      if (phase === 'pass') {
+        if (selectMove) { movePass(selectMove); selectMove = 0; }
+        if (menuMove) { movePass(3 * menuMove); menuMove = 0; }
+        if (interactPressed && phaseTimer > 0.15) passMic();
+        return;
+      }
+      if (phase === 'npc') {
+        npcStep += dt / STEP;
+        vibe = Math.min(100, vibe + 0.04 * dt * 60); peakVibe = Math.max(peakVibe, vibe);
+        if (npcStep >= NPC_STEPS) {
+          round++;
+          if (round >= ROUNDS) setPhase('closing'); else setPhase('player');
+        }
+        return;
+      }
+      if (phase === 'closing') {
+        const i = Math.min(NPCS.length - 1, Math.floor(phaseTimer / CLOSE_STEP));
+        if (i !== closeShown) { closeShown = i; vibe = Math.min(100, vibe + 1.5); peakVibe = Math.max(peakVibe, vibe); }
+        if ((interactPressed && phaseTimer > 0.5) || phaseTimer >= NPCS.length * CLOSE_STEP + 0.8) setPhase('flyer');
+        return;
+      }
+      if (phase === 'flyer') { if (interactPressed && phaseTimer > 1.0) exitMinigame(); }
+    },
+    draw() {
+      const t = performance.now() / 1000;
+      if (phase === 'flyer') { drawFlyer(); return; }
+      drawRoom(t);
+      if (phase === 'intro') {
+        drawRing(null, null);
+        ctx.fillStyle = 'rgba(12,8,6,0.76)'; ctx.fillRect(0, 112, VIEW_W, VIEW_H - 112);
+        ctx.textAlign = 'center';
+        neonText('THE MONKEY HOUSE CYPHER', cx, 245, 'italic 800 30px "Trebuchet MS", Verdana, sans-serif', MH.banana, '#fff6b0');
+        ctx.fillStyle = MH.paper; ctx.font = '16px monospace'; ctx.fillText('SEVEN VOICES. ONE CIRCLE. THE WHOLE ROOM IS LISTENING.', cx, 285);
+        ctx.fillStyle = '#8b8290'; ctx.font = '13px monospace'; ctx.fillText('PICK THE BEAT.  TRADE VERSES.  PASS THE MIC.  PRESS THE FLYER.', cx, 315);
+        ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? MH.banana : MH.paper; ctx.font = 'bold 17px monospace';
+        ctx.fillText('- PRESS E OR TAP TO STEP IN -', cx, 375);
+        ctx.fillStyle = '#8b8290'; ctx.font = '11px monospace';
+        ctx.fillText(nightCount + ' NIGHTS PRESSED  \u2022  BEST VIBE ' + bestVibe, cx, 410);
+      } else if (phase === 'beat') drawBeatSelect();
+      else if (phase === 'player') drawPlayerTurn();
+      else if (phase === 'pass') drawPass();
+      else if (phase === 'npc') drawNpc();
+      else if (phase === 'closing') drawClosing();
+    },
+    onExit() { /* the flyer is saved when it's pressed, so nothing to do here */ },
   };
 }
 
@@ -16308,7 +17028,7 @@ const shops = {
   // clear of the door (6,9) and spawn (6.5,7.5). The stage front row (y=3) is
   // walkable, so you can hop up and stand by the mic. Two dig crates (record + junk) at (1,5)/(12,5).
   // The bartender is JAKE, a vegan punk from Winooski (see keeperImgs.JAKE). THA TRUTH, KRISHNA,
-  // SKYSPLITTERINK and SK1 are in the crowd on row 5 watching THE AZTEXT (see `npcs` below).
+  // SKYSPLITTERINK and SK1 stand in the cypher ring around the floor spot at (6,6) in front of THE AZTEXT (see `npcs`/`minigames` below).
   monkeyhouse: makeShop('monkeyhouse', {
     world: 'winooski',
     floor: '#4b3321', plank: '#3b281a', wallColor: '#4a2e28',
@@ -16329,25 +17049,35 @@ const shops = {
     // (painted in paintMonkeyHouseInterior() with its screen animating live in
     // drawMonkeyHouseInterior()): a solid tile in the gap left of the bar counter. Approach from
     // (8,3) below, which is open floor. `icon: 'powermoves'` -- see drawMinigamePowerMoves().
+    // THE MONKEY HOUSE CYPHER spot (6,6): open floor in the middle of the room, straight up the center
+    // aisle from the door (6,9)/spawn (6,7). It is NOT a blockTile -- the player can walk onto it -- and
+    // the ring painted on the floor around it (see drawMonkeyHouseCypherRing()) is where the crowd
+    // stands. Approach from (6,7) below, (5,6)/(7,6) beside it or (6,5) above. See
+    // MINIGAME_ACTIONS.mhcypher/createMonkeyHouseCypherGame().
     minigames: [
+      { id: 'mhcypher', tx: 6, ty: 6, label: 'JOIN THE CYPHER' },
       { id: 'powermoves', tx: 8, ty: 2, label: 'POWER MOVES', icon: 'powermoves' },
       { id: 'chords', tx: 1, ty: 4, label: 'CHORDS', icon: 'chords' },
     ],
     extraTables: [[9, 6], [10, 6], [12, 6]],
-    // THA TRUTH, KRISHNA, SKYSPLITTERINK + SK1 -- out front in the crowd, watching THE AZTEXT's
-    // set. Parked on row 5, a row back from the stage so their heads (spriteH 70) stay below the
-    // Aztext's feet (stage front y~120): (3,5) (5,5) (7,5) (8,5). Clear of the CHORDS stand (1,4),
-    // POWER MOVES approach (8,3), the dig crates (1,5)/(12,5), the pool table (2..4,6..7), the gig
-    // tables (9,6)(10,6)(12,6), and the center aisle (6, 4..9) between the door (6,9) and the
-    // stage. Same pre-drawn image treatment as the other shop npcs -- see SHOP_NPC_IMAGES/
-    // drawShopImageNpcs (SK1's art is the keeper PNG, registered there as `sk1`).
+    // THA TRUTH, KRISHNA, SKYSPLITTERINK + SK1 -- standing in the cypher ring on the floor, watching THE
+    // AZTEXT's set. The four of them sit on the corners of a diamond around the cypher spot (6,6):
+    // KRISHNA (5,5), SKYSPLITTERINK (7,5), THA TRUTH (5,7), SK1 (7,7). Row 5 is still a row back from
+    // the stage so their heads (spriteH 70) stay below the Aztext's feet (stage front y~120). The
+    // center aisle (6, 5..8) stays open between the door (6,9) and the cypher spot, and the pool
+    // table (2..4,6..7), the gig tables (9,6)(10,6)(12,6), the CHORDS stand (1,4), POWER MOVES approach
+    // (8,3) and the dig crates (1,5)/(12,5) are all clear. Inside the minigame all seven people in the
+    // room (these four, THE AZTEXT's PRO + LEARIC on stage, and JAKE behind the bar) are in the circle.
+    // Same pre-drawn image treatment as the other shop npcs -- see SHOP_NPC_IMAGES/drawShopImageNpcs
+    // (SK1's art is the keeper PNG, registered there as `sk1`).
     npcs: [
-      { id: 'truth', tx: 3, ty: 5, name: 'THA TRUTH', sprite: 'truth', spriteH: 70,
+      { id: 'truth', tx: 5, ty: 7, name: 'THA TRUTH', sprite: 'truth', spriteH: 70,
         lines: [
           'Pro and Learic, right up front. Aztext been holding Vermont down since before half this room could drive.',
           'Listen to the pocket those two ride. No wasted words, no wasted bars. That\'s craft.',
           'Me, Krishna and Rico -- Solo Lexicon. But when The Aztext is on, I\'m just another head in the crowd.',
           'Don\'t talk over the verse. Nod, rewind it in your head, and tell somebody about it tomorrow.',
+          'Circle\'s open right here. Step on the ring, get the mic when it comes around, and keep it moving.',
         ] },
       { id: 'krishna', tx: 5, ty: 5, name: 'KRISHNA', sprite: 'krishna', spriteH: 70,
         lines: [
@@ -16355,6 +17085,7 @@ const shops = {
           'Hear how Pro and Learic trade lines? Two voices, one breath. That\'s a conversation, not a performance.',
           'I\'ve been to a lot of shows. A room like this, a set like this -- that\'s a small prayer, loud.',
           'Let the bass move through you. You don\'t have to do anything. Just let it.',
+          'Step into the middle whenever you\'re ready. A circle only works if somebody steps in.',
         ] },
       { id: 'zach', tx: 7, ty: 5, name: 'SKYSPLITTERINK', sprite: 'zach', spriteH: 70,
         lines: [
@@ -16364,13 +17095,15 @@ const shops = {
           () => collected.size >= 3
             ? 'Heard you\'ve been digging crates all over town. Come back after the set -- I\'ll tell you which of those breaks I\'d chop.'
             : null,
+          'I\'ll be in the ring too. Pick the beat, trade a few bars with us. Low end stays clean, I promise.',
         ] },
-      { id: 'sk1', tx: 8, ty: 5, name: 'SK1', sprite: 'sk1', spriteH: 70,
+      { id: 'sk1', tx: 7, ty: 7, name: 'SK1', sprite: 'sk1', spriteH: 70,
         lines: [
           'SK1. Shop\'s closed, show\'s open. Grab a spot and watch these two work.',
           'Aztext is local royalty. Bellevue\'s walls are covered with flash, but this is the real art right here.',
           'Third Thursdays I\'m hosting, but tonight I\'m just a fan with a cold drink.',
           'The whole scene shows up for nights like this. Skaters, printers, emcees, ink. Everybody connects.',
+          'Cypher\'s forming on the floor. Walk into the ring and say something. That\'s all it takes.',
         ] },
     ],
     keeper: { x: 11, y: 2, name: 'JAKE', shirt: '#1f1f24', skin: '#e8a47c',
@@ -16384,6 +17117,7 @@ const shops = {
         'The monkey over the door? Don\'t ask. Everybody asks. He was here before I was.',
         'That\'s The Aztext up on stage -- Pro Knows Music and Learic. VT hip hop legends, local royalty. Stay for the whole set.',
         'There are a couple of crates by the wall if you want a record for the jukebox. Punk, pool-hall singles, whatever the bands left behind.',
+        'The Monkey House is one of the spots for a cypher in this scene. Step into the ring on the floor and the whole room -- Aztext, the crew, even me -- will trade bars with you.',
       ],
       foundLine: 'Last Call Skank?! The Door Monkeys cut that on the night we ran out of pint glasses. Take it. Four horns, one chord, and nobody leaves till the lights come up.' },
     // Two crates, one each side: Last Call Skank plus one junk crate (left wall x1, right wall x1).
@@ -37564,6 +38298,27 @@ function drawMonkeyHouseChordsPads(time) {
   }
 }
 
+// THE MONKEY HOUSE cypher ring: a taped neon ring on the floor around the cypher spot (6,6). The
+// four crowd members stand on its corners (see the `monkeyhouse` shop's `npcs`), so it reads as
+// a real circle forming in front of the stage. Centered on (208, 222), `time` is seconds.
+function drawMonkeyHouseCypherRing(time) {
+  const cx0 = 208, cy0 = 222, rx = 50, ry = 41;
+  const pulse = 0.5 + 0.12 * Math.sin(time * 2.2);
+  ctx.save();
+  // faint warm glow on the planks
+  ctx.fillStyle = 'rgba(255,216,58,' + (0.06 + 0.02 * Math.sin(time * 2.2)).toFixed(3) + ')';
+  ctx.beginPath(); ctx.ellipse(cx0, cy0, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
+  // taped banana ring + a thin pink outer ring
+  ctx.strokeStyle = 'rgba(255,216,58,' + pulse.toFixed(3) + ')'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.ellipse(cx0, cy0, rx, ry, 0, 0, Math.PI * 2); ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,70,150,0.28)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.ellipse(cx0, cy0, rx + 4, ry + 3, 0, 0, Math.PI * 2); ctx.stroke();
+  // center mark: a small chalk cross where the mic gets passed
+  ctx.strokeStyle = 'rgba(244,236,216,0.22)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(cx0 - 6, cy0); ctx.lineTo(cx0 + 6, cy0); ctx.moveTo(cx0, cy0 - 5); ctx.lineTo(cx0, cy0 + 5); ctx.stroke();
+  ctx.restore();
+}
+
 let _mhInteriorCache = null;
 function drawMonkeyHouseInterior(time) {
   if (!_mhInteriorCache) {
@@ -37573,6 +38328,9 @@ function drawMonkeyHouseInterior(time) {
     _mhInteriorCache = cv;
   }
   ctx.drawImage(_mhInteriorCache, 0, 0);
+
+  // the cypher ring on the floor (under the crowd standing around it)
+  drawMonkeyHouseCypherRing(time);
 
   // THE AZTEXT on stage (PRO + LEARIC), under the sweeping lights below
   drawAztext(time);
