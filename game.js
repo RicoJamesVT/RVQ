@@ -1963,7 +1963,7 @@ const MINIGAME_ACTIONS = {
   // createSoundWavesOverlay().
   soundwaves: () => openSoundWavesApp(),
   // ARPEGGIOS -- the pick-a-chord-per-bar arpeggio step sequencer, set up on a little note-bar stand
-  // in the top-right corner of TINY THAI in WINOOSKI (LEVEL 4), see the `tinythai` shop's
+  // in the middle of the dining floor in TINY THAI in WINOOSKI (LEVEL 4), see the `tinythai` shop's
   // `minigames` list. `icon: 'arpeggios'` -- see drawMinigameArpeggios(). Fully self-contained
   // and offline: the whole page (Web Audio oscillators + canvas, no samples, no fonts, no network)
   // is inlined as ARPEGGIOS_HTML and loaded through iframe.srcdoc. See openArpeggiosApp()/
@@ -1990,7 +1990,7 @@ const MINIGAME_ACTIONS = {
   forklift: () => openForkliftApp(),
   // WOK STAR -- a 3D stir-fry rush: drop ingredients into a wok over a live flame, slide the wok on and off the heat,
   // toss the food to flip it, and serve each order when the pieces are golden (not raw, not burnt). It lives on a little
-  // wok-burner stand in the top-left corner of TINY THAI in WINOOSKI (LEVEL 4), see the `tinythai` shop's `minigames`
+  // wok-burner stand in the middle of the dining floor in TINY THAI in WINOOSKI (LEVEL 4), see the `tinythai` shop's `minigames`
   // list. `icon: 'wokstar'` -- see drawMinigameWokStar(). Same \"full-screen DOM overlay with an <iframe>\" pattern and the
   // same INLINED-page shape as FORKLIFT FRENZY above (the whole page is WOK_STAR_HTML, loaded through iframe.srcdoc --
   // nothing to ship, nothing to fetch, sounds are synthesized with Web Audio, no fonts/images), and its 3D scene reuses
@@ -16974,7 +16974,7 @@ const shops = {
   // a kitchen pass-through with a flaming wok, chalk menu board, gold elephant
   // panel, lacquered counter, swaying paper lanterns, rice sacks, a drinks
   // cooler and a bamboo plant. Solid props are plain tiles that painter dresses
-  // up: blockTiles = drinks cooler (1,2)(1,3), rice sacks (1,8), bamboo (12,8);
+  // up: blockTiles = drinks cooler (1,2)(1,3), rice sacks (1,8), bamboo (12,8), WOK STAR (5,5), ARPEGGIOS (7,5);
   // extraTables = two 2-tile dining tables at (3,6)(4,6) and (8,6)(9,6) -- all
   // clear of the counter (row 3), the cook (6,2), the door (6,9) and the spawn
   // (6.5,7.5). Two junk dig crates at (1,5)/(12,5) -- see TINY_THAI_JUNK. The keeper is KEV,
@@ -16984,19 +16984,22 @@ const shops = {
     world: 'winooski',
     floor: '#6b4a2e', plank: '#5a3c24', wallColor: '#8e2230',
     tinyThai: true,
-    // (12,2) = the ARPEGGIOS note-bar stand in the top-right corner (painted in paintTinyThaiInterior()
-    // with its notes stepping live in drawTinyThaiInterior()): a solid tile on open floor right of the
-    // counter (row 3, cols 4-9), clear of the cook (6,2), the dig crate (12,5), the bamboo (12,8), the
-    // door (6,9) and the spawn (6.5,7.5). Approach from (12,3) below or (11,2) left.
+    // (7,5) = the ARPEGGIOS note-bar stand in the middle of the dining floor, just right of the center
+    // aisle (painted in paintTinyThaiInterior() with its notes stepping live in drawTinyThaiInterior()):
+    // a solid tile on open floor between the counter (row 3, cols 4-9) and the entry rug, between the
+    // door aisle (col 6) and the right-hand dining table (8,6)(9,6); clear of the cook (6,2), the door
+    // (6,9) and the spawn (6.5,7.5). Approach from (7,4) above, (7,6) below or (6,5) left.
     // `icon: 'arpeggios'` -- see drawMinigameArpeggios().
-    // (2,2) = the WOK STAR burner stand in the top-left corner (painted in paintTinyThaiInterior() with its
-    // flames and tossed bits animating live in drawTinyThaiInterior()): a solid tile on open floor right of
-    // the drinks cooler (1,2)(1,3), left of the counter (row 3, cols 4-9) and clear of the cook (6,2). Approach
-    // from (2,3) below or (3,2) right. `icon: 'wokstar'` -- see drawMinigameWokStar().
-    blockTiles: [[1, 2], [1, 3], [1, 8], [12, 8], [12, 2], [2, 2]],
+    // (5,5) = the WOK STAR burner stand in the middle of the dining floor, just left of the center aisle
+    // (painted in paintTinyThaiInterior() with its flames and tossed bits animating live in
+    // drawTinyThaiInterior()): a solid tile on open floor between the counter (row 3, cols 4-9) and the
+    // entry rug, between the left-hand dining table (3,6)(4,6) and the door aisle (col 6); clear of the
+    // cook (6,2). Approach from (5,4) above, (5,6) below or (6,5) right. `icon: 'wokstar'` -- see
+    // drawMinigameWokStar().
+    blockTiles: [[1, 2], [1, 3], [1, 8], [12, 8], [7, 5], [5, 5]],
     minigames: [
-      { id: 'arpeggios', tx: 12, ty: 2, label: 'ARPEGGIOS', icon: 'arpeggios' },
-      { id: 'wokstar', tx: 2, ty: 2, label: 'WOK STAR', icon: 'wokstar' },
+      { id: 'arpeggios', tx: 7, ty: 5, label: 'ARPEGGIOS', icon: 'arpeggios' },
+      { id: 'wokstar', tx: 5, ty: 5, label: 'WOK STAR', icon: 'wokstar' },
     ],
     extraTables: [[3, 6], [4, 6], [8, 6], [9, 6]],
     keeper: { name: 'KEV', shirt: '#2a2a2e', skin: '#a8643a',
@@ -26488,7 +26491,7 @@ function closeSoundWavesApp(fromPopState) {
 // ---------------------------------------------------------------- ARPEGGIOS overlay
 // ARPEGGIOS -- pick a chord for each of the four bars, then tap cells on the grid to shape the
 // pattern (Up, Down, Up and down, Wide, Skip, Random), with tempo, key and instrument controls. It
-// lives on a little note-bar stand in the top-right corner of TINY THAI in WINOOSKI (LEVEL 4), see
+// lives on a little note-bar stand in the middle of the dining floor in TINY THAI in WINOOSKI (LEVEL 4), see
 // the `tinythai` shop's `minigames` list. Same "full-screen DOM overlay with an <iframe>" pattern as
 // SOUND WAVES above, and the same INLINED-page shape: the whole page lives in ARPEGGIOS_HTML below
 // and is loaded through iframe.srcdoc, so there is no file to ship, nothing to fetch and no network
@@ -26884,7 +26887,7 @@ function closeForkliftApp(fromPopState) {
 // still on the hot steel scorches faster; tossing while the wok is moving sends it flying over the rim) and
 // SERVE when the gauge on the ticket sits in the green zone -- raw pieces, burnt pieces, spilled pieces and wrong
 // ingredients all cost points, and finishing early earns a time bonus. It lives on a little wok-burner stand in
-// the top-left corner of TINY THAI in WINOOSKI (LEVEL 4), see the `tinythai` shop's `minigames` list. Same
+// the middle of the dining floor in TINY THAI in WINOOSKI (LEVEL 4), see the `tinythai` shop's `minigames` list. Same
 // \"full-screen DOM overlay with an <iframe>\" pattern as FORKLIFT FRENZY above, and the same INLINED-page shape:
 // the whole page lives in WOK_STAR_HTML below and is loaded through iframe.srcdoc, so there is no file to ship and
 // no network call anywhere. The 3D scene runs on the game's own vendored lib/three.min.js (the page borrows
@@ -37630,11 +37633,11 @@ function paintTinyThaiInterior(c) {
     c.save(); c.translate(lx, ly); c.rotate(rot); c.beginPath(); c.ellipse(0, 0, 2.5, 8, 0, 0, Math.PI * 2); c.fill(); c.restore();
   }
 
-  // ---------------------------------------------------------------- ARPEGGIOS note-bar stand (blockTile (12,2))
+  // ---------------------------------------------------------------- ARPEGGIOS note-bar stand (blockTile (7,5))
   // a little lacquered stand holding a violet note-grid panel; the stepping notes are drawn live
   // in drawTinyThaiInterior().
   {
-    const bx = 12 * TILE, by = 2 * TILE;
+    const bx = 7 * TILE, by = 5 * TILE;
     c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(bx + 3, by + 28, 26, 3);
     c.fillStyle = '#3a1c14'; c.fillRect(bx + 5, by + 21, 3, 8); c.fillRect(bx + 24, by + 21, 3, 8);   // legs
     c.fillStyle = '#c4902c'; c.fillRect(bx + 2, by + 18, 28, 5);                                       // gold-trimmed shelf
@@ -37645,11 +37648,11 @@ function paintTinyThaiInterior(c) {
     c.fillStyle = '#9a82ff'; c.fillRect(bx + 6, by + 1, 20, 1);                                        // rim light
   }
 
-  // ---------------------------------------------------------------- WOK STAR burner stand (blockTile (2,2))
+  // ---------------------------------------------------------------- WOK STAR burner stand (blockTile (5,5))
   // a stainless burner box with a black wok on top and a wooden handle; the flames and the bits being
   // tossed are drawn live in drawTinyThaiInterior().
   {
-    const bx = 2 * TILE, by = 2 * TILE;
+    const bx = 5 * TILE, by = 5 * TILE;
     c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(bx + 2, by + 28, 28, 3);
     c.fillStyle = '#8a9096'; c.fillRect(bx + 4, by + 21, 24, 8);                                       // burner box
     c.fillStyle = '#b4bac0'; c.fillRect(bx + 3, by + 20, 26, 2);                                       // top plate
@@ -37723,7 +37726,7 @@ function drawTinyThaiInterior(time) {
   // like an arpeggio and the playhead column brightens as it steps (static panel is painted in
   // paintTinyThaiInterior(); `time` is in seconds)
   {
-    const bx = 12 * TILE, by = 2 * TILE, step = Math.floor(time * 5) % 4;
+    const bx = 7 * TILE, by = 5 * TILE, step = Math.floor(time * 5) % 4;
     for (let j = 0; j < 4; j++) {
       const k = 5 - j;   // rows 5..2 (low to high)
       ctx.globalAlpha = j === step ? 1 : 0.55;
@@ -37738,7 +37741,7 @@ function drawTinyThaiInterior(time) {
   // shrimp, basil) are tossed up out of the bowl in staggered arcs (static stand is painted in
   // paintTinyThaiInterior(); `time` is in seconds)
   {
-    const bx = 2 * TILE, by = 2 * TILE;
+    const bx = 5 * TILE, by = 5 * TILE;
     for (let i = 0; i < 5; i++) {
       const fl = 2 + Math.abs(Math.sin(time * 10 + i * 1.7)) * 3.2;
       const fx = bx + 8 + i * 4;
