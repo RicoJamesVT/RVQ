@@ -43169,15 +43169,14 @@ function drawSkateparkPortalArrow(px, py, time, phase) {
   ctx.restore();
 }
 
-// Two pulsing arrow markers planted on Main Street (row 9) pointing east
+// A single pulsing arrow marker planted on Main Street (row 9) pointing east
 // toward the new SKATEPARK portal at the right edge of the Main Map -- so a
 // level 3 that just opened up is obvious even to a player who never wanders
 // that far east on their own. Purely cosmetic decoration, same as
 // drawSwampPortalArrows().
 function drawSkateparkPortalArrows(time) {
   const y = 9 * TILE + TILE / 2;
-  drawSkateparkPortalArrow(34.5 * TILE, y, time, 0);
-  drawSkateparkPortalArrow(36.5 * TILE, y, time, 0.8);
+  drawSkateparkPortalArrow(36.5 * TILE, y, time, 0);
 }
 
 // Little curbside newspaper boxes scattered around town. Purely a sprite;
