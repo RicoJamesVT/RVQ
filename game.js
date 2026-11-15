@@ -13758,7 +13758,9 @@ function makeOverworld() {
   // draws it clipped to this footprint); the bottom 1/4 is meant to continue
   // into the map area planned for directly south of here, to be connected
   // once that map exists.
-  const STADIUM_X = 17, STADIUM_Y = 17, STADIUM_W = 6, STADIUM_H = 7;
+  // STADIUM_H = 8 (rows 17-24) so the bowl sits flush against the bottom border row (25),
+  // with no walkway strip in between.
+  const STADIUM_X = 17, STADIUM_Y = 17, STADIUM_W = 6, STADIUM_H = 8;
   for (let yy = STADIUM_Y; yy < STADIUM_Y + STADIUM_H; yy++)
     for (let xx = STADIUM_X; xx < STADIUM_X + STADIUM_W; xx++) g[yy][xx] = 'w';
   // carve out the pitch itself so the player can walk around inside the
@@ -13766,13 +13768,13 @@ function makeOverworld() {
   // row) so there's a way in and out on either side of the field.
   for (let yy = STADIUM_Y + 1; yy < STADIUM_Y + STADIUM_H - 1; yy++)
     for (let xx = STADIUM_X + 1; xx < STADIUM_X + STADIUM_W - 1; xx++) g[yy][xx] = '.';
-  const STADIUM_OPEN_Y = STADIUM_Y + Math.floor(STADIUM_H / 2); // must match drawStadium()'s gate row
+  const STADIUM_OPEN_Y = STADIUM_Y + 3; // must match drawStadium()'s gate row (row 20)
   g[STADIUM_OPEN_Y][STADIUM_X] = '.';                     // west opening
   g[STADIUM_OPEN_Y][STADIUM_X + STADIUM_W - 1] = '.';     // east opening
   // south opening, directly above the vertical cross-street (column 19) so
   // the pitch connects straight down through the one open road row below
   // the stadium (24) to the south portal on the map's bottom edge (25).
-  g[STADIUM_Y + STADIUM_H - 1][19] = '.';
+  // (south opening removed: the bowl now runs right down to the map's bottom border)
 
   // flea market corner: crates only (the fence stalls were removed — they
   // boxed the player in too much while walking around), one holds the white label
@@ -43356,9 +43358,9 @@ function drawWinooskiPortalArrow(px, py, time, phase) {
   const cy = py + bob; // bobs toward the door
   ctx.save();
   ctx.globalAlpha = 0.8 + 0.2 * Math.sin(t * 3 + (phase || 0));
-  ctx.fillStyle = '#f2b61e';
-  ctx.strokeStyle = '#5b2fa8';
-  ctx.lineWidth = 2;
+  ctx.fillStyle = '#ff2fa0';
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 2.5;
   ctx.beginPath();
   ctx.moveTo(px, cy + 12);
   ctx.lineTo(px - 11, cy - 6);
@@ -43640,7 +43642,7 @@ function drawFloodlight(x, y) {
 // the remaining 1/4 is meant to reappear in the map area planned for
 // directly south of this one, once it's built and the two are connected.
 function drawStadium() {
-  const TX = 17, TY = 17, TW = 6, TH = 7; // must match STADIUM_* in makeOverworld()
+  const TX = 17, TY = 17, TW = 6, TH = 8; // must match STADIUM_* in makeOverworld()
   const px = TX * TILE, py = TY * TILE;
   const w = TW * TILE, hVis = TH * TILE;
   const hFull = hVis / 0.75; // full stadium height if it weren't cut off
@@ -43686,7 +43688,7 @@ function drawStadium() {
   // west & east entrance gaps in the outer wall, at the same map row as the
   // walkable openings carved into the collision grid (STADIUM_OPEN_Y in
   // makeOverworld) so the visual lines up with where the player can walk in.
-  const gateY = py + TILE * Math.floor(TH / 2), gateH = TILE;
+  const gateY = py + TILE * 3, gateH = TILE;
   ctx.fillStyle = '#3e7c34';
   ctx.fillRect(px - 12, gateY, 26, gateH);       // west gate
   ctx.fillRect(px + w - 14, gateY, 26, gateH);   // east gate
