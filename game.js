@@ -1337,6 +1337,48 @@ const SKATE_NEWS = [
     body: 'Editors confirm today\'s front page was filled entirely with wheel sounds, one lake observation, and a strong opinion about tacos.' },
 ];
 
+// Fake front-page stories for WINOOSKI's newsstands -- same Onion-style
+// silliness as the other three sets, re-themed around the rotary, the
+// Champlain Mill, the river and falls, and the shops and food around the
+// circle. Keep these harmless and generic, no real people, same as the rest.
+const WINOOSKI_NEWS_PAPER = 'THE ROTARY RECORD';
+const WINOOSKI_NEWS = [
+  { headline: 'LOCAL DRIVER COMPLETES THIRD LAP OF THE ROTARY, SAYS HE "JUST WANTED TO SEE IT AGAIN"',
+    body: 'Witnesses describe his demeanor as "calm" and "strangely proud." The exit, a spokesperson noted, was "right there the whole time."' },
+  { headline: 'ROTARY YIELD DEBATE ENTERS FOURTH DECADE, NO ONE YIELDS',
+    body: 'Residents agree that everybody yields to somebody. They have not been able to agree on who, or why, or when.' },
+  { headline: 'FREE SHOW IN THE MIDDLE OF THE ROTARY DRAWS BIG CROWD, BIGGER TRAFFIC',
+    body: 'Fans say the best seats were \"wherever the crosswalk would let you stand.\" The band called the monitor mix \"mostly car horns, but in a good key.\"' },
+  { headline: 'CHAMPLAIN MILL REPORTS RECORD WEEK FOR VISITORS SAYING \"I THINK THIS USED TO BE A MILL\"',
+    body: 'Staff confirm that it was, in fact, a mill. Several guests then asked what it is now. Staff said \"also still sort of a mill.\"' },
+  { headline: 'WINOOSKI RIVER ASKED TO KEEP IT DOWN AT THE FALLS, RUSHES AHEAD ANYWAY',
+    body: 'The river declined to comment, being busy. A nearby bridge was seen nodding in what witnesses called \"quiet solidarity.\"' },
+  { headline: 'THE MONKEY HOUSE POOL TABLE REPORTEDLY HAS \"OPINIONS ABOUT THE LEFT CORNER POCKET\"',
+    body: 'Regulars say the table plays \"a little lopsided, but with conviction.\" The table did not respond, though a chalk cube was found on the floor afterward.' },
+  { headline: 'CRATE DIGGER EMERGES FROM AUTUMN RECORDS AFTER SIX HOURS WITH ONE RECORD, \"THE RIGHT ONE\"',
+    body: 'Onlookers say he looked tired but \"strangely rested.\" The record, reached for comment, was in great shape and mostly just wanted to go home.' },
+  { headline: 'TINY THAI SPICE LEVEL \"FIVE\" CONFIRMED TO BE A WARNING, NOT A SUGGESTION',
+    body: 'A group of diners who ordered it anyway agreed that \"four would have been plenty\" and then agreed on nothing else for eleven minutes.' },
+  { headline: 'BEVERAGE WAREHOUSE SHOPPER STANDS BEFORE EVERY BEER FOR FORTY MINUTES, LEAVES WITH THE FIRST ONE HE PICKED UP',
+    body: 'Staff describe the decision as \"extremely thorough and also completely circular.\" The shopper described it as \"research.\"' },
+  { headline: 'SCOUT COFFEE CART LINE MOVES SO SMOOTHLY THAT CUSTOMERS GROW SUSPICIOUS',
+    body: 'Several people reportedly checked behind them to see whether they were in the right line. They were. The line is simply, in the words of one, \"good at its job.\"' },
+  { headline: 'HIGHWAY OVERPASS SPRAY CAN CLEARING VOTED \"BEST ART GALLERY WITH A ROOF\"',
+    body: 'The pillars, which serve as the gallery\'s only curators, declined to comment. Visiting artists praised the lighting, which is \"mostly sky.\"' },
+  { headline: 'BELLEVUE CUSTOMER BRINGS IN DRAWING OF \"A SMALL SNAIL,\" LEAVES WITH A VERY CONFIDENT SNAIL',
+    body: 'Friends say the snail now \"walks into rooms like it owns them.\" The artist called the result \"exactly what I asked for, but more.\"' },
+  { headline: 'GOLDEN HOUR PINK VISIBLE FROM THE BRIDGE, NEIGHBORS REPORT THEY \"STOPPED ARGUING ABOUT IT\"',
+    body: 'A town survey found that 9 in 10 residents have an opinion about the color, and the tenth just says \"yep, that\'s pink.\"' },
+  { headline: 'MISERY LOVES CO. HOSTS \"EVERYBODY IS WELCOME TO COMPLAIN\" NIGHT, TURNOUT STRONG',
+    body: 'Organizers say the evening was \"a real success, which is the worst thing anyone could have said about it.\" Guests left in good spirits and very bad moods.' },
+  { headline: 'SNEAKERS BISTRO PATIO TABLES NARROWLY VOTED \"THE ONES THAT WOBBLE LEAST\"',
+    body: 'Diners praised the tables for being \"mostly level, emotionally.\" A folded napkin under one leg declined to be recognized for its service.' },
+  { headline: 'GEESE CROSS THE ROTARY IN SINGLE FILE, EVERY CAR YIELDS, EVERYONE FEELS SEEN',
+    body: 'Witnesses called it the most orderly moment in the history of the circle. The lead goose, asked if it would do it again, did not blink.' },
+  { headline: 'ROTARY RECORD ANNOUNCES IT IS, ONCE AGAIN, OUT OF ACTUAL NEWS',
+    body: 'Editors confirm today\'s front page was filled entirely with one lap around the circle, one river observation, and a strong opinion about the bridge.' },
+];
+
 // ---------------------------------------------------------------- input
 const keys = {};
 
@@ -15621,6 +15663,21 @@ function makeWinooski() {
     id: 'winooski', world: 'winooski', w: W, h: H, grid: g, outside: true,
     returnPortal: { x: RETURN_PORTAL_X, y: RETURN_PORTAL_Y },
     buildings: winBuildings, doors: {}, crates, npcs: [], riverTiles: waterTiles,
+    // Five newsstands scattered across WINOOSKI's open lawns -- north-center, far
+    // north-east, north-west, south-west and the south-center lawn above the mill --
+    // so a stand is never far from wherever the player wanders. Each sits on a plain
+    // '.' grass tile whose full 3x3 neighborhood is walkable (no trees, benches,
+    // buildings or lamps), well clear of every door, dig crate, mini-game sign
+    // (ANTHILL DELUXE, RICO ROTARY, CRIBBAGE) and the SCOUT cart -- verified
+    // against the finished grid this function builds. Stories come from
+    // WINOOSKI_NEWS (see the 'newspaper' branch in doInteract()).
+    newsstands: [
+      { id: 'news1', tx: 33, ty: 7 },   // north lawn, between the rotary and BELLEVUE
+      { id: 'news2', tx: 60, ty: 3 },   // far north-east corner
+      { id: 'news3', tx: 8,  ty: 2 },   // north-west lawn, above THE MONKEY HOUSE
+      { id: 'news4', tx: 9,  ty: 28 },  // south-west lawn, above TINY THAI
+      { id: 'news5', tx: 31, ty: 25 },  // south-center lawn, above the Champlain Mill
+    ],
     // ANTHILL DELUXE -- a spray can standing on the concrete clearing under the
     // highway overpass in the lower-right quadrant, right where the dirt trail
     // from the waterfront walkway lands. (59, 42) is a plain 'k' concrete tile:
@@ -18979,13 +19036,16 @@ function doInteract() {
     state = 'dialog';
   } else if (target.type === 'newspaper') {
     // each outdoor map carries its own local paper: the swamp gets the
-    // Swamp Gazette, the skatepark gets the Kickflip Courier, and every
-    // other outdoor map (Burlington) still gets the Green Mountain Bugle.
+    // Swamp Gazette, the skatepark gets the Kickflip Courier, Winooski gets
+    // the Rotary Record, and every other outdoor map (Burlington) still gets
+    // the Green Mountain Bugle.
     const curMap = maps[player.map] || {};
     const paperName = curMap.swamp ? SWAMP_NEWS_PAPER
-      : curMap.skatepark ? SKATE_NEWS_PAPER : VERMONT_NEWS_PAPER;
+      : curMap.skatepark ? SKATE_NEWS_PAPER
+      : curMap.winooski ? WINOOSKI_NEWS_PAPER : VERMONT_NEWS_PAPER;
     const stories = curMap.swamp ? SWAMP_NEWS
-      : curMap.skatepark ? SKATE_NEWS : VERMONT_NEWS;
+      : curMap.skatepark ? SKATE_NEWS
+      : curMap.winooski ? WINOOSKI_NEWS : VERMONT_NEWS;
     const story = stories[Math.floor(Math.random() * stories.length)];
     dialog = { name: paperName, lines: [story.headline, story.body], i: 0 };
     state = 'dialog';
@@ -34859,6 +34919,8 @@ function drawWinooskiDecorations(time, map, camX, camY) {
   drawWinooskiConcert(time, map, camX, camY);
   // SCOUT coffee cart on the east lawn
   drawScoutCart();
+  // Newsstands -- same sprite the town/swamp/skatepark use; see map.newsstands in makeWinooski()
+  drawNewsstands();
   // BEVERAGE WAREHOUSE's parking lot paint, wheel stops and accessible-space sign
   if (wk.bwLot) drawBeverageWarehouseLot(wk.bwLot, x0, x1, y0, y1);
 }
