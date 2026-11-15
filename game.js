@@ -13527,6 +13527,15 @@ kevImg.src = 'assets/kev.png';
 const sandyImg = new Image();
 sandyImg.src = 'assets/sandy.png';
 
+// WILL -- the keeper of SNEAKERS BISTRO in WINOOSKI (Level 4): he runs the show.
+// Pixel-art sprite: cream trucker cap with a green brim and a fried-egg-and-crossed-
+// utensils logo, curly brown hair, mustache and goatee, cream tee under a green
+// coffee-cup apron, blue jeans and green-and-cream sneakers. Drawn as a shop keeper
+// (see keeperImgs.WILL below), not a roaming npc, so he doesn't need an entry in
+// SHOP_NPC_IMAGES.
+const willImg = new Image();
+willImg.src = 'assets/will.png';
+
 // THE AZTEXT -- the VT hip hop duo and local legends, rocking the stage at THE
 // MONKEY HOUSE in WINOOSKI (Level 4). PRO (aka "Pro Knows Music") is on the left
 // in the teal cap, grey v-neck and black backpack; LEARIC is on the right in the
@@ -17295,9 +17304,9 @@ const shops = {
       { id: 'wafflestack', tx: 2, ty: 2, label: 'WAFFLE STACK', icon: 'wafflestack' },
     ],
     extraTables: [[2, 5], [2, 7], [10, 6], [10, 8]],
-    keeper: { x: 10, y: 2, name: 'HOST', shirt: '#f4efe4', skin: '#d9a47a',
+    keeper: { x: 10, y: 2, name: 'WILL', shirt: '#2f5d3a', skin: '#e0a070',
       lines: [
-        'Welcome to Sneakers! Sit anywhere you like -- the booths by the window go first, so grab one while you can.',
+        'Welcome to Sneakers! I\'m Will -- I run the show around here. Sit anywhere you like, the booths by the window go first, so grab one while you can.',
         'We\'re an institution around here. Half of Winooski has had a Saturday morning in this room.',
         'Brunch is the whole point. Eggs benny, avocado toast, stuffed French toast -- and yes, you can get a mimosa with any of it.',
         'The espresso martini is the move. Ask anybody on the patio.',
@@ -49358,7 +49367,7 @@ function drawDeliSeatingArea() {
 }
 
 // ---------------------------------------------------------------- keeper
-const KEEPER_HAIR = { DEE: '#5a2e1c', ROSIE: '#c8c0b0', ZEKE: '#241a12', JADE: '#141014', TONY: '#2a2018', LANNY: '#3a1a5c', MITCH: '#5a3a1c', BIGDOG: '#3a2a1c', EDNA: '#a8a8a8', OPHELIA: '#8a5a2e', GOLDIE: '#8a4a26' };
+const KEEPER_HAIR = { WILL: '#6a3f22', DEE: '#5a2e1c', ROSIE: '#c8c0b0', ZEKE: '#241a12', JADE: '#141014', TONY: '#2a2018', LANNY: '#3a1a5c', MITCH: '#5a3a1c', BIGDOG: '#3a2a1c', EDNA: '#a8a8a8', OPHELIA: '#8a5a2e', GOLDIE: '#8a4a26' };
 
 // Optional per-keeper artwork. Drop a PNG at assets/keepers/<name>.png (any
 // size — it's scaled to KEEPER_SPR_H, feet anchored at the same floor line
@@ -49423,6 +49432,8 @@ keeperImgs.JAKE = jakeImg;
 keeperImgs.KEV = kevImg;
 // GOLDEN HOUR's keeper, SANDY -- same idea as KEV above.
 keeperImgs.SANDY = sandyImg;
+// SNEAKERS BISTRO's keeper, WILL -- same idea as SANDY above.
+keeperImgs.WILL = willImg;
 
 function drawAnt(cx, cy, s) {
   // A white ant silhouette (the Anthill Collective mark), drawn on SK1's hat.
