@@ -15730,10 +15730,16 @@ function makeWinooski() {
       bwLot: BW_LOT,
     },
     spawn: { x: 21.5, y: 30.5 },   // tile coords: the bridge's east sidewalk, just south of the rotary
+    // AUTUMN: same fall look as BURLINGTON's Main Map. `autumn: true` switches on the dry
+    // golden-brown grass + leaf litter (drawTiles()), the per-tree crimson / orange / gold /
+    // russet canopies (drawTree() via AUTUMN_TREE_SETS) and the drifting leaves + warm wash
+    // (drawAutumnLeaves(), called from render()). The grass is a touch lighter than
+    // Burlington's so it still reads under the evening darkness sheet (see WIN_NIGHT_TINT).
     palette: {
-      groundA: '#6b9650', groundB: '#5b8644', groundDot: '#8fb25e',
-      water: '#35708f', waterHi: '#68a4c2',
-      trunk: '#5a3a20', leafDark: '#3b7530', leafMid: '#58963a', leafLight: '#86b84a',
+      autumn: true,
+      groundA: '#a8964a', groundB: '#928040', groundDot: '#dc962f',
+      water: '#35607f', waterHi: '#6a95b3',
+      trunk: '#4a2e1a', leafDark: '#a8481c', leafMid: '#d9741e', leafLight: '#f2b13a',
     },
     // Fish in the river; no bikes/walkers/dogs yet (their lanes are switched off with -1/[]).
     ambient: { bikeRows: [], walkerRow: -1, dogRow: -1 },
@@ -35242,7 +35248,9 @@ function drawWinooskiConcertLights(time, wk, seen) {
 // the shared glow sprites), so it costs a handful of drawImage calls per frame.
 // Set WINOOSKI_NIGHT to false to get the plain daytime look back.
 const WINOOSKI_NIGHT = true;
-const WIN_NIGHT_TINT = 'rgba(8,12,46,0.64)';
+// AUTUMN: a warm plum-brown dusk instead of the old deep blue (was 'rgba(8,12,46,0.64)'), and a
+// touch lighter, so the red/orange/gold foliage and golden grass don't get crushed to mud.
+const WIN_NIGHT_TINT = 'rgba(36,16,34,0.56)';
 const winNightCanvas = document.createElement('canvas');
 winNightCanvas.width = VIEW_W; winNightCanvas.height = VIEW_H;
 const winNightCtx = winNightCanvas.getContext('2d');
