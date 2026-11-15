@@ -40655,6 +40655,17 @@ function drawGoldenHourInterior(time) {
     _ghInteriorCache = cv;
   }
   ctx.drawImage(_ghInteriorCache, 0, 0);
+  // The cached interior above is painted over the whole room, which buries the tile-layer
+  // record crates (they were walkable/diggable but invisible). Redraw them on top of it.
+  {
+    const ghMap = maps[player.map];
+    if (ghMap && ghMap.crates) {
+      Object.keys(ghMap.crates).forEach((k) => {
+        const [cx, cy] = k.split(',').map(Number);
+        drawCrateProp(cx * TILE, cy * TILE, ghMap.crates[k], ghMap.world);
+      });
+    }
+  }
   // the logo plaque glows softly, as if the afternoon sun is hitting it
   const a = 0.5 + 0.5 * Math.sin(time * 1.2);
   ctx.fillStyle = 'rgba(255,190,110,' + (0.07 + 0.04 * a).toFixed(3) + ')';
