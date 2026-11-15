@@ -18640,10 +18640,19 @@ function checkSwampPortal(map) {
       saveGame(); // silent autosave checkpoint, same as every ordinary door transition
     });
   } else if (map.id === 'winooski') {
-    // Return trip: straight back to town, one tile north of the south portal.
+    // Return trip: straight back to town, a few tiles north of the south portal.
+    // The player walks into Winooski's return portal holding DOWN, so if they
+    // landed right beside the town portal they'd keep walking south and bounce
+    // straight back into Winooski. Drop them ~4 tiles north instead, falling
+    // back to the nearest clear spot closer in if a tile there is blocked.
     player.map = 'town';
     player.x = 27.5 * TILE;
-    player.y = (maps.town.h - 1.5) * TILE;
+    let backY = (maps.town.h - 1.5) * TILE;
+    for (let off = 4.5; off >= 1.5; off -= 1) {
+      const cy = (maps.town.h - off) * TILE;
+      if (boxClear(maps.town, player.x, cy)) { backY = cy; break; }
+    }
+    player.y = backY;
     saveGame();
   } else if (map.id === 'town') {
     showLevelIntro('swamp', () => {
