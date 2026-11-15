@@ -17353,14 +17353,15 @@ const shops = {
     blockTiles: [
       [1, 1], [2, 1], [3, 1], [4, 1], [5, 1], [6, 1], [7, 1], [8, 1], [9, 1], [10, 1], [11, 1], [12, 1],
       [1, 2], [1, 3], [8, 2], [9, 2], [12, 8],
-      [4, 2], [5, 2],
+      [6, 5], [7, 5],
     ],
-    // (4,2)(5,2) = the MUG SLIDE bar against the back wall between the chalkboard and the back-bar:
-    // two solid tiles on open floor, clear of the pantry (1,2)(1,3), the cabinet (8,2), the door (6,9)
-    // and the spawn (6.5,7.5). Approach from (4,3) or (5,3) below. Painted in
+    // (6,5)(7,5) = the MUG SLIDE bar, a free-standing slide-bar in the middle of the room (centered
+    // on the room's midline, straight ahead of the entry): two solid tiles on open floor, clear of the
+    // bistro tables (3,5)(3,7)(10,6)(10,8), the bar (8..12,3), the door (6,9) and the spawn (6.5,7.5).
+    // Approach from (6,6) or (7,6) below, or from the sides/top. Painted in
     // paintMiseryLovesInterior(); `icon: 'mugslide'` -- see drawMinigameMugSlide().
     minigames: [
-      { id: 'mugslide', tx: 4, ty: 2, alsoTiles: [[5, 2]], label: 'MUG SLIDE', icon: 'mugslide' },
+      { id: 'mugslide', tx: 6, ty: 5, alsoTiles: [[7, 5]], label: 'MUG SLIDE', icon: 'mugslide' },
     ],
     extraTables: [[3, 5], [3, 7], [10, 6], [10, 8]],
     keeper: { x: 10, y: 2, name: 'CHRISTIE', shirt: '#cfc6a8', skin: '#d9a47a', cook: true,
@@ -32710,7 +32711,7 @@ function drawMinigameWaffleStack(wx, wy, time, seed, label) {
 }
 
 // Alternate mini-game marker used when a map entry sets `icon: 'mugslide'` (MUG SLIDE, the bar-top
-// shuffleboard against the back wall inside MISERY LOVES CO. in WINOOSKI) -- same bob/label/hitbox
+// shuffleboard in the middle of the room inside MISERY LOVES CO. in WINOOSKI) -- same bob/label/hitbox
 // contract as drawMinigameHarmonics() above. Drawn as a copper mug with a lime wheel floating on a
 // thin post, speed streaks trailing behind it, so it reads as "give it a slide." `time` is in seconds.
 function drawMinigameMugSlide(wx, wy, time, seed, label) {
@@ -41667,9 +41668,11 @@ function paintMiseryLovesInterior(c) {
     c.fillStyle = '#4a9a42'; c.beginPath(); c.arc(lx - 2, ly - 2, r * 0.55, 0, Math.PI * 2); c.fill();
   }
 
-  // ---------------------------------------------------------------- MUG SLIDE bar (tiles (4,2)(5,2))
-  // A long walnut slide-bar against the back wall: brass-railed top with the gold scoring zones at
-  // the right end, copper mugs mid-slide, a cream plaque on the apron. Solid -- see minigames.
+  // ---------------------------------------------------------------- MUG SLIDE bar (tiles (6,5)(7,5))
+  // A long walnut slide-bar standing in the middle of the room: brass-railed top with the gold scoring
+  // zones at the right end, copper mugs mid-slide, a cream plaque on the apron. Solid -- see minigames.
+  // (Originally drawn at tiles (4,2)(5,2); the translate below carries it to (6,5)(7,5).)
+  c.save(); c.translate(2 * TILE, 3 * TILE);
   c.fillStyle = 'rgba(0,0,0,0.28)'; c.fillRect(130, 94, 62, 3);
   c.fillStyle = '#2a1a10'; c.fillRect(131, 80, 60, 14);                   // apron
   c.fillStyle = '#3a2416'; c.fillRect(132, 82, 58, 11);
@@ -41690,6 +41693,7 @@ function paintMiseryLovesInterior(c) {
     c.fillStyle = '#6aa53a'; c.fillRect(mx + 1, my - 6, 3, 1);
     c.fillStyle = '#b8662e'; c.fillRect(mx + 3, my - 4, 2, 3);
   }
+  c.restore();
 
   // ---------------------------------------------------------------- front wall: black-framed windows
   const fy = 9 * TILE;
