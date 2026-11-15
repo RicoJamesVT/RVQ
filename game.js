@@ -15701,6 +15701,17 @@ function makeWinooski() {
       // CRIBBAGE W/ BURNS game against MISTER BURNS in its own DOM overlay; see openCribbageApp()/
       // createCribbageOverlay().
       { id: 'cribbage', tx: 33, ty: 21, label: 'CRIBBAGE W/ BURNS', icon: 'cribbage' },
+      // DANCE PARTY -- the same boombox as the one out on the grass in Level 1
+      // BURLINGTON and Level 3 SKATEPARK, set on the open lawn south of the east
+      // road, below RICO ROTARY and east of the Champlain Mill. (44, 26) is a plain
+      // '.' grass tile with all eight neighbours walkable: clear of the mill
+      // (cols 32-41), GOLDEN HOUR's brick sidewalk (rows 23-24), BEVERAGE
+      // WAREHOUSE's lot (cols 55+), every lamp, newsstand, dig crate and the other
+      // mini-game markers. `icon: 'boombox'` reuses drawMinigameBoombox(), and the
+      // `danceparty` id reuses MINIGAME_ACTIONS.danceparty -> startDanceParty():
+      // [E] (or a tap) plays danceparty.mp3/.ogg/.wav once while the vinyl cascade
+      // takes over the screen, then hands control back to the street.
+      { id: 'danceparty', tx: 44, ty: 26, label: 'START A DANCE PARTY', icon: 'boombox' },
     ],
     autumnRecordsDoor: { x: AR_DOOR_X, y: AR_DOOR_Y },
     tinyThaiDoor: { x: TT_DOOR_X, y: TT_DOOR_Y },
