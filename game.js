@@ -13658,7 +13658,11 @@ function makeOverworld() {
   // look (drawSwampPortalDoor() / drawSkateparkPortalDoor()).
   g[9][W - 1] = 'Q';
   g[0][19] = 'Q';
-  g[H - 1][19] = 'P';
+  // The south placeholder portal sits out in the open on the bottom edge, 8 tiles
+  // east of the cross-street (column 19 -> 27), well clear of the soccer stadium.
+  // Column 19 on the bottom edge goes back to the border tree.
+  const SOUTH_PORTAL_X = 27;
+  g[H - 1][SOUTH_PORTAL_X] = 'P';
   // Rico's Lab door — the west end of Main Street, a stone's throw from
   // Green Door Studio. Locked until every record in town has been found;
   // see checkLabDoor()/drawLabDoor() for the two looks it can have and
