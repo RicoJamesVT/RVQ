@@ -12661,6 +12661,9 @@ window.addEventListener('keydown', (e) => {
       else if (state === 'crate') state = crateReturnState;
     }
     if (k === 'escape' && state === 'crate') { state = crateReturnState; }
+    // [P] in The Crate plays the WINOOSKI MIX once the gold record is earned.
+    if (k === 'p' && state === 'crate') openWinookiMixFromCrate();
+    if (k === 'escape' && state === 'winookiMix') stopWinookiMix();
     // [T] Turbo Taunt / Trick Button -- flavor only, see triggerTrick();
     // it's a no-op unless the player is actively skating.
     if (k === 't') triggerTrick();
@@ -18226,6 +18229,10 @@ const music = {
   layersByWorld: {},
   menuDusty: false,
   ducked: false,
+  // WINOOSKI MIX (see startWinookiMix()): when set, pump()/schedule() play
+  // that world's beat through a time-varying layer arrangement instead of
+  // the current map's own unlocked layers. { world, steps, t0 }
+  mix: null,
 
   start() {
     if (this.ctx) return;
@@ -18305,6 +18312,17 @@ const music = {
   },
   enable(layer) { this.layersFor(currentWorldId()).add(layer); },
   setMenuBreak(on) { this.menuDusty = on; },
+  // Start the mix on the next free step of the audio clock (right after
+  // whatever's already been scheduled, so nothing overlaps or clips), from
+  // bar 0 of the arrangement. t0 is the audio-clock time of that first step
+  // -- the mix screen reads it to stay in sync with what's being heard.
+  startMix(worldId) {
+    if (!this.ctx) return;
+    this.step = 0;
+    this.nextTime = Math.max(this.nextTime, this.ctx.currentTime + 0.15);
+    this.mix = { world: worldId, steps: 0, t0: this.nextTime };
+  },
+  stopMix() { this.mix = null; },
   // Fully silences the background music bus (independent of the M-key
   // mute toggle) for rooms like Rico's Beat Lab where the player needs to
   // actually hear the sampler/drum-pad audio they're triggering, not have
@@ -18354,7 +18372,8 @@ const music = {
     // Each world sets its own tempo via WORLD_DEFS.<id>.beat.bpm (see the
     // worlds & records section above) -- falls back to the classic 92 BPM
     // default if a world hasn't defined a beat yet.
-    const bpm = (worldDef().beat && worldDef().beat.bpm) || this.BPM;
+    const mixBeat = this.mix && WORLD_DEFS[this.mix.world] && WORLD_DEFS[this.mix.world].beat;
+    const bpm = (mixBeat && mixBeat.bpm) || (worldDef().beat && worldDef().beat.bpm) || this.BPM;
     const stepDur = 60 / bpm / 4;
     const now = this.ctx.currentTime;
     // If something stalled the main thread for a long stretch (tab backgrounded,
@@ -18369,6 +18388,7 @@ const music = {
       const beatDur = stepDur * stepsPerBeat;
       const beatsAhead = Math.ceil((now + this.MIN_MARGIN - this.nextTime) / beatDur);
       this.step = (this.step + beatsAhead * stepsPerBeat) % 32;
+      if (this.mix) this.mix.steps += beatsAhead * stepsPerBeat;
       this.nextTime += beatsAhead * beatDur;
     }
     // Scheduled well ahead of real time (not just ~1 frame) so a slow
@@ -18396,14 +18416,22 @@ const music = {
       return;
     }
     const bar = Math.floor(gs / 16);
-    const worldId = currentWorldId();
-    const L = this.layersFor(worldId);
+    let worldId, L, beat;
+    if (this.mix) {
+      // WINOOSKI MIX: fixed world + the arrangement's layers for this bar.
+      worldId = this.mix.world;
+      L = winookiMixLayersForBar(Math.floor(this.mix.steps++ / 16));
+      beat = (WORLD_DEFS[worldId] && WORLD_DEFS[worldId].beat) || WORLD_DEFS.town.beat;
+    } else {
+      worldId = currentWorldId();
+      L = this.layersFor(worldId);
+    }
     // Nothing unlocked in this world yet -> schedule nothing at all, so no
     // audio nodes are created and the output stays truly silent.
-    if (L.size === 0) return;
+    if (!this.mix && L.size === 0) return;
     // Falls back to town's beat if a world hasn't defined one yet, same
     // spirit as worldDef()'s own `|| WORLD_DEFS.town` fallback.
-    const beat = worldDef().beat || WORLD_DEFS.town.beat;
+    if (!this.mix) beat = worldDef().beat || WORLD_DEFS.town.beat;
     if (L.has('drums')) {
       if (beat.kickSteps.includes(s)) this.kick(t);
       if (beat.snareSteps.includes(s)) this.snare(t);
@@ -30031,6 +30059,15 @@ canvas.addEventListener('pointerdown', (e) => {
     const vx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const vy = (e.clientY - rect.top) * (canvas.height / rect.height);
     activeMinigame.onPointerDown(vx, vy);
+  } else if (state === 'crate' && winookiMixBtnRect && hasWinookiGoldRecord()) {
+    // The Crate: tapping its gold-record button plays the WINOOSKI MIX,
+    // any other tap closes the book like before.
+    const rect = canvas.getBoundingClientRect();
+    const vx = (e.clientX - rect.left) * (canvas.width / rect.width);
+    const vy = (e.clientY - rect.top) * (canvas.height / rect.height);
+    const b = winookiMixBtnRect;
+    if (vx >= b.x && vx <= b.x + b.w && vy >= b.y && vy <= b.y + b.h) openWinookiMixFromCrate();
+    else interactPressed = true;
   } else {
     interactPressed = true;
   }
@@ -30247,6 +30284,7 @@ function update(dt) {
         const doneWorld = currentWorldId();
         state = (doneWorld === 'town') ? 'labUnlock'
               : (doneWorld === 'skatepark') ? 'santosStuUnlock'
+              : (doneWorld === 'winooski') ? 'winookiUnlock'
               : 'win';
         saveGame(); // silent autosave checkpoint
       }
@@ -30256,6 +30294,15 @@ function update(dt) {
     if (interactPressed) state = 'win';
   } else if (state === 'santosStuUnlock') {
     if (interactPressed) state = 'win';
+  } else if (state === 'winookiUnlock') {
+    // LEVEL 4 prize splash -- [E]/tap drops the needle on the WINOOSKI MIX,
+    // [X] skips straight to the usual win screen. See drawWinookiUnlock().
+    if (interactPressed) startWinookiMix('win');
+    else if (buyPressed) state = 'win';
+  } else if (state === 'winookiMix') {
+    // [E]/[X]/tap/[Esc] stops the mix and returns to wherever it was opened
+    // from ('win' after the unlock splash, 'crate' from The Crate).
+    if (interactPressed || buyPressed) stopWinookiMix();
   } else if (state === 'santosStuLocked') {
     // Popup shown when the player walks into the still-locked SANTOS' STU
     // door -- see checkSantosStuPortal()/drawSantosStuLockedPopup(). [E]/[X]/
@@ -33557,6 +33604,8 @@ function render(time) {
   if (state === 'record') drawRecordCard();
   if (state === 'labUnlock') drawLabUnlock();
   if (state === 'santosStuUnlock') drawSantosStuUnlock();
+  if (state === 'winookiUnlock') drawWinookiUnlock();
+  if (state === 'winookiMix') drawWinookiMix(time);
   if (state === 'santosStuPortal') drawSantosStuPortalPopup();
   if (state === 'santosStuLocked') drawSantosStuLockedPopup();
   if (state === 'vinylNinjaSplash') drawVinylNinjaSplash();
@@ -51207,6 +51256,24 @@ function drawCrate() {
   ctx.font = 'bold 27px monospace';
   ctx.fillText('THE CRATE', VIEW_W / 2, boxY + 38);
 
+  // Gold record prize for finishing WINOOSKI: a small button that plays the
+  // WINOOSKI MIX (also tappable, see the 'crate' pointerdown branch).
+  winookiMixBtnRect = null;
+  if (hasWinookiGoldRecord()) {
+    const bw = 214, bh = 32, bx = boxX + boxW - bw - 18, by = boxY + 14;
+    winookiMixBtnRect = { x: bx, y: by, w: bw, h: bh };
+    ctx.fillStyle = 'rgba(224,176,64,0.14)';
+    ctx.fillRect(bx, by, bw, bh);
+    ctx.strokeStyle = '#e0b040'; ctx.lineWidth = 1.5;
+    ctx.strokeRect(bx, by, bw, bh);
+    drawGoldRecord(bx + 19, by + bh / 2, 12, performance.now() / 700);
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#f4ecd8';
+    ctx.font = 'bold 13px monospace';
+    ctx.fillText('[P] WINOOSKI MIX', bx + 38, by + bh / 2 + 5);
+    ctx.textAlign = 'center';
+  }
+
   const ids = crateWorldIds();
   const worldId = ids[crateWorldIndex];
   const def = WORLD_DEFS[worldId];
@@ -51922,7 +51989,9 @@ function drawWin() {
 
   ctx.fillStyle = '#f4ecd8';
   ctx.font = '13px monospace';
-  ctx.fillText('All five samples on the pads. The whole town is bumping your track.', VIEW_W / 2, titleY + 22);
+  ctx.fillText(currentWorldId() === 'winooski'
+    ? 'All five samples on the pads. Winooski is bumping your track \u2014 gold record earned.'
+    : 'All five samples on the pads. The whole town is bumping your track.', VIEW_W / 2, titleY + 22);
 
   const gridY = titleY + 36, sq = 34, gap = 10;
   const totalW = sq * 5 + gap * 4;
@@ -51943,6 +52012,273 @@ function drawWin() {
   ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#e0b040' : '#f4ecd8';
   ctx.font = 'bold 15px monospace';
   ctx.fillText('- PRESS E TO KEEP CRUISING -', VIEW_W / 2, VIEW_H - 18);
+}
+
+// ---------------------------------------------------------------- WINOOSKI GOLD RECORD + MIX
+// Prize for finishing LEVEL 4 (WINOOSKI). Completing the world (all five
+// Winooski records found) fires the 'winookiUnlock' splash -- a spinning gold
+// record -- and from there the player can drop the needle on the WINOOSKI MIX
+// ('winookiMix' state): the five records they dug up, layered into one
+// 16-bar arrangement that builds, breaks down and comes back. The gold record
+// itself is just `completedWorlds.has('winooski')`, so it needs no extra save
+// data, and The Crate (see drawCrate()) keeps a [P] PLAY WINOOSKI MIX button
+// for as long as the save has it. The audio reuses WORLD_DEFS.winooski.beat
+// through music.startMix()/music.schedule() -- same notes, same sounds, just a
+// different layer arrangement over time.
+const WINOOKI_MIX_ARRANGEMENT = [
+  ['drums'], ['drums'],
+  ['drums', 'bass'], ['drums', 'bass'],
+  ['drums', 'bass', 'horns'], ['drums', 'bass', 'horns'],
+  ['drums', 'bass', 'horns', 'vox'], ['drums', 'bass', 'horns', 'vox'],
+  ['drums', 'bass', 'horns', 'vox', 'lead'], ['drums', 'bass', 'horns', 'vox', 'lead'],
+  ['drums', 'bass', 'horns', 'vox', 'lead'], ['drums', 'bass', 'horns', 'vox', 'lead'],
+  ['bass', 'vox', 'lead'], ['bass', 'vox', 'lead'],
+  ['drums', 'bass', 'horns', 'vox', 'lead'], ['drums', 'bass', 'horns', 'vox', 'lead'],
+];
+const WINOOKI_MIX_SETS = WINOOKI_MIX_ARRANGEMENT.map((a) => new Set(a));
+const WINOOKI_MIX_SECTIONS = [
+  [0, 'THE NEEDLE DROPS'], [2, 'BASS ROLLS IN'], [4, 'HORNS ON THE SKANK'],
+  [6, 'VOCAL CHOPS'], [8, 'FULL MIX'], [12, 'BREAKDOWN'], [14, 'FINAL CHORUS'],
+];
+function winookiMixLayersForBar(bar) { return WINOOKI_MIX_SETS[bar % WINOOKI_MIX_SETS.length]; }
+function winookiMixSectionName(bar) {
+  let name = WINOOKI_MIX_SECTIONS[0][1];
+  for (const [b, n] of WINOOKI_MIX_SECTIONS) if (bar % 16 >= b) name = n;
+  return name;
+}
+
+let winookiMixReturn = 'win';      // state to return to when the mix player closes ('win' or 'crate')
+let winookiMixFallbackT0 = 0;      // visual clock start when there's no audio context to read
+let winookiMixBtnRect = null;      // { x, y, w, h } of The Crate's PLAY MIX button, set while drawing
+let winookiSkyline = null;         // lazily-built deterministic night skyline for the mix screen
+
+function hasWinookiGoldRecord() { return completedWorlds.has('winooski'); }
+
+function startWinookiMix(returnState) {
+  winookiMixReturn = returnState || 'win';
+  music.start();
+  winookiMixFallbackT0 = performance.now() / 1000;
+  if (music.ctx) music.startMix('winooski');
+  state = 'winookiMix';
+}
+
+function stopWinookiMix() {
+  music.stopMix();
+  state = winookiMixReturn;
+}
+
+// Opens the mix from The Crate ([P] or tapping its button). No-op until the
+// gold record has been earned.
+function openWinookiMixFromCrate() {
+  if (state !== 'crate' || !hasWinookiGoldRecord()) return;
+  startWinookiMix('crate');
+}
+
+// Seconds since the mix's first beat on the audio clock (negative while
+// the previous world's already-scheduled notes are still finishing).
+function winookiMixElapsed() {
+  if (music.mix && music.ctx) return music.ctx.currentTime - music.mix.t0;
+  return performance.now() / 1000 - winookiMixFallbackT0;
+}
+
+// A gold vinyl disc seen from above: radial gold, fine grooves, two rotating
+// sheen wedges and a label. `rot` spins the whole thing; the sheen stays put
+// like a real light reflection so it reads as spinning.
+function drawGoldRecord(cx, cy, r, rot, labelTop, labelBottom) {
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.shadowColor = 'rgba(255,200,70,0.55)';
+  ctx.shadowBlur = r * 0.35;
+  const g = ctx.createRadialGradient(0, 0, r * 0.2, 0, 0, r);
+  g.addColorStop(0, '#f6d56a'); g.addColorStop(0.55, '#d9a52b'); g.addColorStop(1, '#8f6416');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = 'rgba(80,50,0,0.35)';
+  ctx.lineWidth = 1;
+  for (let rr = r * 0.4; rr < r * 0.97; rr += r * 0.045) {
+    ctx.beginPath(); ctx.arc(0, 0, rr, 0, Math.PI * 2); ctx.stroke();
+  }
+  ctx.strokeStyle = '#6e4a0e'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.stroke();
+  // fixed light glints
+  ctx.fillStyle = 'rgba(255,255,235,0.28)';
+  [[-0.9, 0.7], [2.25, 0.7]].forEach(([a, w]) => {
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, r * 0.97, a, a + w * 0.5); ctx.closePath(); ctx.fill();
+  });
+  // rotating label
+  ctx.rotate(rot);
+  ctx.fillStyle = '#b3342c';
+  ctx.beginPath(); ctx.arc(0, 0, r * 0.36, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#f4ecd8'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(0, 0, r * 0.31, 0, Math.PI * 2); ctx.stroke();
+  if (r >= 30) { // label text only reads on a big disc (the Crate button's icon skips it)
+    ctx.fillStyle = '#f4ecd8';
+    ctx.textAlign = 'center';
+    ctx.font = `bold ${Math.max(7, Math.round(r * 0.1))}px monospace`;
+    ctx.fillText(labelTop || 'WINOOSKI', 0, -r * 0.06);
+    ctx.font = `${Math.max(6, Math.round(r * 0.075))}px monospace`;
+    ctx.fillText(labelBottom || 'GOLD RECORD', 0, r * 0.08);
+  }
+  ctx.fillStyle = '#181418';
+  ctx.beginPath(); ctx.arc(0, 0, r * 0.045, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+function winookiNightBackdrop(time) {
+  const bg = ctx.createLinearGradient(0, 0, 0, VIEW_H);
+  bg.addColorStop(0, '#0a0720'); bg.addColorStop(0.6, '#1c1042'); bg.addColorStop(1, '#3b1450');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+  if (!winookiSkyline) {
+    let s = 7;
+    const rnd = () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
+    winookiSkyline = { stars: [], blds: [] };
+    for (let i = 0; i < 70; i++) winookiSkyline.stars.push([rnd() * VIEW_W, rnd() * VIEW_H * 0.5, rnd()]);
+    let x = -10;
+    while (x < VIEW_W) {
+      const w = 34 + Math.floor(rnd() * 56), h = 50 + Math.floor(rnd() * 130);
+      winookiSkyline.blds.push({ x, w, h, seed: Math.floor(rnd() * 1000) });
+      x += w + 2;
+    }
+  }
+  winookiSkyline.stars.forEach(([sx, sy, sr]) => {
+    ctx.fillStyle = `rgba(255,255,255,${(0.25 + 0.5 * Math.abs(Math.sin(time * 0.8 + sr * 20))).toFixed(2)})`;
+    ctx.fillRect(sx, sy, sr > 0.8 ? 2 : 1, sr > 0.8 ? 2 : 1);
+  });
+  winookiSkyline.blds.forEach((b) => {
+    const top = VIEW_H - b.h;
+    ctx.fillStyle = '#120a2a';
+    ctx.fillRect(b.x, top, b.w, b.h);
+    for (let wy = top + 8; wy < VIEW_H - 10; wy += 14) {
+      for (let wx = b.x + 6; wx < b.x + b.w - 8; wx += 12) {
+        const on = ((wx * 31 + wy * 17 + b.seed + Math.floor(time * 0.35)) % 7) < 3;
+        if (on) { ctx.fillStyle = '#f2b94b'; ctx.fillRect(wx, wy, 5, 7); }
+      }
+    }
+  });
+}
+
+// Splash drawn the instant the last Winooski record is picked up.
+function drawWinookiUnlock() {
+  const time = performance.now() / 1000;
+  winookiNightBackdrop(time);
+  ctx.fillStyle = 'rgba(8,6,12,0.45)';
+  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#7be0e6';
+  ctx.font = 'bold 16px monospace';
+  ctx.fillText('LEVEL 4  \u2022  WINOOSKI  \u2022  COMPLETE', VIEW_W / 2, 52);
+  ctx.fillStyle = '#e0b040';
+  ctx.font = 'bold 34px monospace';
+  ctx.fillText('YOU EARNED THE GOLD RECORD!', VIEW_W / 2, 100);
+  drawGoldRecord(VIEW_W / 2, 280, 135, time * 1.4, 'WINOOSKI', 'GOLD RECORD');
+  ctx.fillStyle = 'rgba(8,6,20,0.78)';
+  ctx.fillRect(0, 432, VIEW_W, VIEW_H - 432);
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#f4ecd8';
+  ctx.font = '17px monospace';
+  ctx.fillText('All five Winooski records, one track. The WINOOSKI MIX is yours.', VIEW_W / 2, 458);
+  ctx.fillStyle = '#9a90a8';
+  ctx.font = '13px monospace';
+  ctx.fillText('Replay it any time from The Crate  [V]  \u2192  [P]', VIEW_W / 2, 482);
+  ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#e0b040' : '#f4ecd8';
+  ctx.font = 'bold 17px monospace';
+  ctx.fillText('[E] / TAP \u2014 PLAY THE WINOOSKI MIX', VIEW_W / 2, 536);
+  ctx.fillStyle = '#9a90a8';
+  ctx.font = '13px monospace';
+  ctx.fillText('[X] skip', VIEW_W / 2, 560);
+}
+
+// The mix player itself.
+function drawWinookiMix(time) {
+  const def = WORLD_DEFS.winooski;
+  const bpm = def.beat.bpm;
+  const beatDur = 60 / bpm;
+  const el = winookiMixElapsed();
+  const waiting = el < 0;
+  const barLen = beatDur * 4;
+  const barAbs = waiting ? 0 : Math.floor(el / barLen);
+  const bar = barAbs % 16;
+  const layers = waiting ? new Set() : winookiMixLayersForBar(bar);
+  const beatPhase = waiting ? 1 : ((el / beatDur) % 1);
+  const kick = layers.has('drums') ? Math.exp(-beatPhase * 5) : Math.exp(-beatPhase * 5) * 0.35;
+
+  winookiNightBackdrop(time);
+  ctx.fillStyle = `rgba(255,190,90,${(0.05 * kick).toFixed(3)})`;
+  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#e0b040';
+  ctx.font = 'bold 30px monospace';
+  ctx.fillText('WINOOSKI MIX', VIEW_W / 2, 44);
+  ctx.fillStyle = '#9ad8de';
+  ctx.font = '14px monospace';
+  ctx.fillText(`Rico\u2019s Gold Record  \u00b7  ${bpm} BPM  \u00b7  G minor`, VIEW_W / 2, 68);
+
+  // record + tonearm
+  const rcx = VIEW_W / 2 - 40, rcy = 220, rr = 105;
+  drawGoldRecord(rcx, rcy, rr, waiting ? 0 : el * 2.3, 'WINOOSKI', `MIX \u00b7 ${bpm} BPM`);
+  ctx.strokeStyle = '#cfc7da'; ctx.lineWidth = 5; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(rcx + rr + 70, rcy - rr + 6); ctx.lineTo(rcx + rr * 0.45, rcy - rr * 0.55); ctx.stroke();
+  ctx.fillStyle = '#e0b040';
+  ctx.beginPath(); ctx.arc(rcx + rr + 70, rcy - rr + 6, 9, 0, Math.PI * 2); ctx.fill();
+  ctx.lineCap = 'butt';
+
+  // EQ bars
+  const bars = 28, eqW = 560, eqX = VIEW_W / 2 - eqW / 2, eqBase = 392, eqMaxH = 74;
+  const active = layers.size / 5;
+  for (let i = 0; i < bars; i++) {
+    const wob = 0.5 + 0.5 * Math.sin(time * (2.2 + (i % 5) * 0.7) + i * 1.3);
+    const h = Math.max(3, eqMaxH * (0.08 + active * (0.25 * wob + 0.75 * kick * (0.4 + 0.6 * Math.sin(i * 0.5 + 1) ** 2))));
+    const bx = eqX + i * (eqW / bars);
+    ctx.fillStyle = i % 3 === 0 ? '#e0b040' : (i % 3 === 1 ? '#7be0e6' : '#d9608e');
+    ctx.fillRect(bx, eqBase - h, eqW / bars - 4, h);
+  }
+
+  // the five pads, lit by the layers playing right now
+  const sq = 64, gap = 40;
+  const totalW = sq * 5 + gap * 4;
+  const gx = VIEW_W / 2 - totalW / 2, gy = 412;
+  // darker band behind the pads/labels so the skyline windows don't fight the text
+  const band = ctx.createLinearGradient(0, 396, 0, 420);
+  band.addColorStop(0, 'rgba(8,6,20,0)'); band.addColorStop(1, 'rgba(8,6,20,0.78)');
+  ctx.fillStyle = band; ctx.fillRect(0, 396, VIEW_W, 24);
+  ctx.fillStyle = 'rgba(8,6,20,0.78)'; ctx.fillRect(0, 420, VIEW_W, VIEW_H - 420);
+  def.padOrder.forEach((id, i) => {
+    const r = def.records[id];
+    const x = gx + i * (sq + gap);
+    const on = layers.has(r.layer);
+    ctx.fillStyle = on ? r.color : '#262030';
+    ctx.globalAlpha = on ? 0.75 + 0.25 * kick : 1;
+    ctx.fillRect(x, gy, sq, sq);
+    ctx.globalAlpha = 1;
+    if (on) { ctx.strokeStyle = '#f4ecd8'; ctx.lineWidth = 2; ctx.strokeRect(x - 2, gy - 2, sq + 4, sq + 4); }
+    ctx.fillStyle = on ? '#181418' : '#4a4258';
+    ctx.font = 'bold 15px monospace';
+    ctx.fillText(r.pad, x + sq / 2, gy + sq / 2 + 5);
+    ctx.fillStyle = on ? '#f4ecd8' : '#5a5270';
+    ctx.font = '10px monospace';
+    ctx.fillText(r.title.length > 15 ? r.title.slice(0, 14) + '\u2026' : r.title, x + sq / 2, gy + sq + 14);
+  });
+
+  // section label + 16-bar progress
+  ctx.fillStyle = '#f4ecd8';
+  ctx.font = 'bold 18px monospace';
+  ctx.fillText(waiting ? 'DROPPING THE NEEDLE\u2026' : winookiMixSectionName(bar), VIEW_W / 2, 524);
+  const pw = 480, px = VIEW_W / 2 - pw / 2, py = 536;
+  ctx.fillStyle = '#262030';
+  ctx.fillRect(px, py, pw, 8);
+  const prog = waiting ? 0 : ((el % (barLen * 16)) / (barLen * 16));
+  ctx.fillStyle = '#e0b040';
+  ctx.fillRect(px, py, pw * prog, 8);
+
+  ctx.fillStyle = '#9a90a8';
+  ctx.font = '13px monospace';
+  ctx.fillText(music.muted ? 'MUSIC IS MUTED \u2014 press M to unmute' : 'loops until you stop it', VIEW_W / 2, 566);
+  ctx.fillStyle = Math.floor(performance.now() / 400) % 2 ? '#e0b040' : '#f4ecd8';
+  ctx.font = 'bold 15px monospace';
+  ctx.fillText('[E] / TAP \u2014 STOP & CONTINUE', VIEW_W / 2, 588);
 }
 
 requestAnimationFrame(frame);
