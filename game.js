@@ -792,9 +792,9 @@ const WORLD_DEFS = {
       leadWave: 'sawtooth', leadNotes: [71, 76, 78, 76, 83, 81, 78, 76],
     },
   },
-  // The Winooski -- LEVEL 4. UNDER CONSTRUCTION: `locked: true` keeps it out of the
-  // Crate tabs and the level numbering, and no portal leads to it yet (see
-  // makeWinooski()) -- delete that one line when the level opens up. Its five records
+  // The Winooski -- LEVEL 4. NOW OPEN: reached through the portal door on the bottom
+  // edge of the Main Map in BURLINGTON (see checkSwampPortal()), so it's no longer
+  // `locked` and shows up as its own Crate tab / LEVEL 4 intro card. Its five records
   // are real now, one hidden in each of five buildings (every one of them also has
   // junk crates, see the *_JUNK tables below):
   //   Rotary Breaks      (drums) -- AUTUMN RECORDS      (winDrums, `autumnrecords` shop)
@@ -805,7 +805,6 @@ const WORLD_DEFS = {
   // Cover art for each lives in drawAlbumArt() (cases keyed by title).
   winooski: {
     name: 'Winooski',
-    locked: true,
     records: {
       winDrums: { title: 'Rotary Breaks', artist: 'Asterisk & The Roundabouts', year: '1996',
                   sample: 'Drum Loop', layer: 'drums', color: '#c9792b', pad: 'DRM',
@@ -13041,6 +13040,14 @@ level2IntroImg.src = 'assets/level2_intro_splash.png';
 const level3IntroImg = new Image();
 level3IntroImg.src = 'assets/level3_intro_splash.png';
 
+// Full-art "LEVEL 4" card (Rico's Vinyl Quest: WINOOSKI, neon night skyline)
+// shown by drawLevelIntro() the moment the player walks through the WINOOSKI
+// portal on the bottom edge of the Main Map -- same same-origin local-asset
+// pattern as level1IntroImg/level2IntroImg/level3IntroImg above, so it plays
+// identically online or offline.
+const level4IntroImg = new Image();
+level4IntroImg.src = 'assets/level4_intro_splash.png';
+
 // "KANGA'S WAX NINJA" key-art splash shown by drawVinylNinjaSplash() the
 // moment the player steps up to the samurai sword out in the swamp, before
 // Vinyl Ninja's own DOM/iframe overlay opens. Same same-origin local-asset
@@ -13649,20 +13656,22 @@ function makeOverworld() {
 
   // Portal doors on the east, north & south edges of the map. They sit
   // right on Main Street (row 9) / the vertical cross-street (column 19),
-  // so all three read as a natural continuation of a road. The south one
-  // is still a placeholder — walking into it pops the "more lands coming"
-  // splash (see checkPortal()/drawPortalPopup()). The north one is the
-  // real, working portal into THE SWAMP (LEVEL 2) and the east one is the
-  // real, working portal into THE SKATEPARK (LEVEL 3) — both are 'Q' tiles,
+  // so all three read as a natural continuation of a road. The north one is the
+  // real, working portal into THE SWAMP (LEVEL 2), the east one is the
+  // real, working portal into THE SKATEPARK (LEVEL 3) and the south one is the
+  // real, working portal into WINOOSKI (LEVEL 4) — all three are 'Q' tiles,
   // told apart by position in checkSwampPortal() and drawn with their own
-  // look (drawSwampPortalDoor() / drawSkateparkPortalDoor()).
+  // look (drawSwampPortalDoor() / drawSkateparkPortalDoor() / drawWinooskiPortalDoor()).
   g[9][W - 1] = 'Q';
   g[0][19] = 'Q';
-  // The south placeholder portal sits out in the open on the bottom edge, 8 tiles
+  // The south portal sits out in the open on the bottom edge, 8 tiles
   // east of the cross-street (column 19 -> 27), well clear of the soccer stadium.
-  // Column 19 on the bottom edge goes back to the border tree.
+  // Column 19 on the bottom edge goes back to the border tree. It's now the real,
+  // working portal into WINOOSKI (LEVEL 4): a 'Q' tile like the other two, told
+  // apart by position in checkSwampPortal() and drawn with its own look
+  // (drawWinooskiPortalDoor()), with arrows leading to it (drawWinooskiPortalArrows()).
   const SOUTH_PORTAL_X = 27;
-  g[H - 1][SOUTH_PORTAL_X] = 'P';
+  g[H - 1][SOUTH_PORTAL_X] = 'Q';
   // Rico's Lab door — the west end of Main Street, a stone's throw from
   // Green Door Studio. Locked until every record in town has been found;
   // see checkLabDoor()/drawLabDoor() for the two looks it can have and
@@ -15134,10 +15143,10 @@ function makeSkatepark() {
 //   'e' park bench (solid)          'x' picnic table (solid)
 //   '.' grass                       '#' tree (solid)
 //
-// LOCKED: WORLD_DEFS.winooski is `locked: true` and no portal leads here yet
-// (the placeholder 'P' door at the end of the skatepark's right-hand pier is the
-// natural future entrance). To preview it while it's locked, run this in the
-// browser console once a game is running:
+// NOW OPEN: the south portal on the bottom edge of BURLINGTON's Main Map (a 'Q' tile,
+// see makeOverworld()/checkSwampPortal()) leads here, dropping the player at the foot of
+// the bridge next to this map's `returnPortal` ('Q' tile, bottom edge, column 18). To jump
+// straight in from the browser console once a game is running:
 //   player.map = 'winooski'; player.x = 21.5 * TILE; player.y = 30.5 * TILE; state = 'play';
 function makeWinooski() {
   const W = 64, H = 48;
@@ -15509,6 +15518,7 @@ function makeWinooski() {
       const a = pointAt(pts, c, s), b = pointAt(pts, c, Math.min(L, s + 0.45));
       if (ellOut(a[0], a[1], 2.2) <= 1 || ellOut(b[0], b[1], 2.2) <= 1) continue;
       if (a[0] < -0.5 || a[0] > W + 0.5 || a[1] < -0.5 || a[1] > H + 0.5) continue;
+      if (a[1] > H - 2.5 && Math.abs(a[0] - 18) < 4) continue; // keep the return portal door at the foot of the bridge clear of road paint
       dashes.push([a[0] * PX, a[1] * PX, b[0] * PX, b[1] * PX, 0]);
     }
     // crosswalk: walk inward from the far end to just outside the ring
@@ -15596,8 +15606,15 @@ function makeWinooski() {
   const waterTiles = [];
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (g[y][x] === '~') waterTiles.push({ x, y });
 
+  // Return portal back to BURLINGTON -- the foot of the bridge, on the bottom edge of the
+  // map, dead center on the bridge's road. The south portal on the town's Main Map drops the
+  // player here; stepping back onto it sends them home (see checkSwampPortal()).
+  const RETURN_PORTAL_X = 18, RETURN_PORTAL_Y = H - 1;
+  g[RETURN_PORTAL_Y][RETURN_PORTAL_X] = 'Q';
+
   return {
     id: 'winooski', world: 'winooski', w: W, h: H, grid: g, outside: true,
+    returnPortal: { x: RETURN_PORTAL_X, y: RETURN_PORTAL_Y },
     buildings: winBuildings, doors: {}, crates, npcs: [], riverTiles: waterTiles,
     // ANTHILL DELUXE -- a spray can standing on the concrete clearing under the
     // highway overpass in the lower-right quadrant, right where the dirt trail
@@ -17664,7 +17681,7 @@ for (const [id, d] of Object.entries(doors)) {
 }
 const swamp = makeSwamp();
 const skatepark = makeSkatepark(); // LEVEL 3 -- reached via the east portal on the town's Main Street (see checkSwampPortal())
-const winooski = makeWinooski(); // LEVEL 4 -- LOCKED: nothing links here yet (WORLD_DEFS.winooski.locked)
+const winooski = makeWinooski(); // LEVEL 4 -- reached via the south portal on the town's Main Map (see checkSwampPortal())
 // A_DOG SKATE SHOP door wiring -- same pattern as GUT HUT/etc. in
 // makeSwamp() above. This just connects the shop door to its own room; it
 // has nothing to do with reaching LEVEL 3 itself, which still has no
@@ -18581,6 +18598,24 @@ function checkSwampPortal(map) {
     player.map = 'town';
     player.x = (maps.town.w - 1.5) * TILE;
     player.y = 9.5 * TILE;
+    saveGame();
+  } else if (map.id === 'town' && ty === map.h - 1) {
+    // South edge of the Main Map -> WINOOSKI (LEVEL 4). Same flow as the other
+    // two: LEVEL 4 splash (the neon Winooski night art), then drop the player at
+    // the foot of the bridge, one tile north of Winooski's return portal.
+    showLevelIntro('winooski', () => {
+      const rp = maps.winooski.returnPortal;
+      player.map = 'winooski';
+      player.x = (rp.x + 0.5) * TILE;
+      player.y = (rp.y - 0.5) * TILE; // one tile north of the return portal, off the 'Q' tile
+      state = 'play';
+      saveGame(); // silent autosave checkpoint, same as every ordinary door transition
+    });
+  } else if (map.id === 'winooski') {
+    // Return trip: straight back to town, one tile north of the south portal.
+    player.map = 'town';
+    player.x = 27.5 * TILE;
+    player.y = (maps.town.h - 1.5) * TILE;
     saveGame();
   } else if (map.id === 'town') {
     showLevelIntro('swamp', () => {
@@ -33632,7 +33667,15 @@ function drawTiles(map, time, camX = 0, camY = 0) {
           break;
         case 'L': drawLabDoor(px, py, tx, ty, time); break;
         case 'Q':
-          if (map.skatepark || (map.id === 'town' && tx === map.w - 1)) drawSkateparkPortalDoor(px, py, tx, ty, time);
+          if (map.id === 'winooski') {
+            // return portal at the foot of the bridge: lay the road under the door
+            ctx.fillStyle = '#9a98a0';
+            ctx.fillRect(px, py, TILE, TILE);
+            ctx.fillStyle = 'rgba(0,0,0,0.06)';
+            ctx.fillRect(px, py + TILE - 2, TILE, 2);
+            drawWinooskiPortalDoor(px, py, tx, ty, time);
+          } else if (map.id === 'town' && ty === map.h - 1) drawWinooskiPortalDoor(px, py, tx, ty, time);
+          else if (map.skatepark || (map.id === 'town' && tx === map.w - 1)) drawSkateparkPortalDoor(px, py, tx, ty, time);
           else drawSwampPortalDoor(px, py, tx, ty, time);
           break;
         case 'I': drawSantosStuPortalDoor(px, py, tx, ty, time, h); break;
@@ -34066,6 +34109,60 @@ function drawSkateparkPortalDoor(px, py, tx, ty, time) {
 
   // vinyl-record glyph, same "real door" marker the swamp portal uses
   ctx.fillStyle = Math.floor(t * 2.2) % 2 ? '#f4ecd8' : '#5ae2f0';
+  ctx.font = 'bold 14px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('\u25CF', cx, py - TILE + 22);
+  ctx.restore();
+}
+
+// The real, working portal between town and WINOOSKI (LEVEL 4). Same taller-than-a-tile
+// archway as drawSwampPortalDoor()/drawSkateparkPortalDoor(), dressed in the Winooski
+// splash art's palette -- dark brick-red frame, marquee-gold trim and a purple/orange
+// neon swirl -- so it reads as its own door at a glance. Used for the 'Q' tile on the
+// bottom edge of the town's Main Map and for the return portal at the foot of Winooski's
+// bridge.
+function drawWinooskiPortalDoor(px, py, tx, ty, time) {
+  const t = time || 0;
+  const cx = px + TILE / 2, cy = py + TILE / 2;
+  const pulse = 0.5 + 0.5 * Math.sin(t * 2.2 + tx * 3 + ty);
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(px - 6, py - TILE - 4, TILE + 12, TILE * 2 + 8);
+  ctx.clip();
+
+  // outer glow -- neon violet with a warm orange edge
+  const grd = ctx.createRadialGradient(cx, cy, 2, cx, cy, TILE * 1.05);
+  grd.addColorStop(0, `rgba(176,120,255,${0.6 + pulse * 0.3})`);
+  grd.addColorStop(0.55, 'rgba(255,128,48,0.42)');
+  grd.addColorStop(1, 'rgba(16,8,28,0)');
+  ctx.fillStyle = grd;
+  ctx.fillRect(px - 6, py - TILE - 4, TILE + 12, TILE * 2 + 8);
+
+  // brick-red archway frame with marquee-gold trim
+  ctx.fillStyle = '#3a1612';
+  ctx.fillRect(px + 1, py - TILE + 4, TILE - 2, TILE * 2 - 4);
+  ctx.fillStyle = '#f2b61e';
+  ctx.fillRect(px + 1, py - TILE + 4, TILE - 2, 3);
+  ctx.fillRect(px + 1, py + TILE - 7, TILE - 2, 3);
+  ctx.fillStyle = '#5a2a1e';
+  ctx.fillRect(px + 4, py - TILE + 9, TILE - 8, TILE * 2 - 16);
+
+  // swirling portal core, violet/orange
+  ctx.fillStyle = 'rgba(18,8,34,0.92)';
+  ctx.beginPath();
+  ctx.ellipse(cx, py + TILE - 12, 10, 16, 0, 0, Math.PI * 2);
+  ctx.fill();
+  for (let i = 0; i < 3; i++) {
+    const a = t * 1.6 + i * (Math.PI * 2 / 3);
+    ctx.fillStyle = i % 2 === 0 ? '#b078ff' : '#ff8a30';
+    ctx.beginPath();
+    ctx.ellipse(cx + Math.cos(a) * 4, py + TILE - 12 + Math.sin(a) * 9, 3, 6, a, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // vinyl-record glyph, same "real door" marker the other level portals use
+  ctx.fillStyle = Math.floor(t * 2.2) % 2 ? '#f4ecd8' : '#f2b61e';
   ctx.font = 'bold 14px monospace';
   ctx.textAlign = 'center';
   ctx.fillText('\u25CF', cx, py - TILE + 22);
@@ -43084,6 +43181,7 @@ function drawPlantPot(x, y) {
 function drawTownDecorations(time) {
   drawSwampPortalArrows(time);
   drawSkateparkPortalArrows(time);
+  drawWinooskiPortalArrows(time);
   drawLabCarpet(time);
   drawGreenDoorArtArea();
   drawWallPainter(time);
@@ -43177,6 +43275,45 @@ function drawSkateparkPortalArrow(px, py, time, phase) {
 function drawSkateparkPortalArrows(time) {
   const y = 9 * TILE + TILE / 2;
   drawSkateparkPortalArrow(36.5 * TILE, y, time, 0);
+}
+
+// A single pulsing down-pointing arrow, drawn centered on world-space point
+// (px, py). Used by drawWinooskiPortalArrows() below to flag the new WINOOSKI
+// portal -- same bob/pulse as the swamp/skatepark arrows, but pointing south and
+// in the Winooski palette (marquee gold with a violet outline).
+function drawWinooskiPortalArrow(px, py, time, phase) {
+  const t = time || 0;
+  const bob = Math.sin(t * 3 + (phase || 0)) * 3;
+  const cy = py + bob; // bobs toward the door
+  ctx.save();
+  ctx.globalAlpha = 0.8 + 0.2 * Math.sin(t * 3 + (phase || 0));
+  ctx.fillStyle = '#f2b61e';
+  ctx.strokeStyle = '#5b2fa8';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(px, cy + 12);
+  ctx.lineTo(px - 11, cy - 6);
+  ctx.lineTo(px - 5, cy - 6);
+  ctx.lineTo(px - 5, cy - 16);
+  ctx.lineTo(px + 5, cy - 16);
+  ctx.lineTo(px + 5, cy - 6);
+  ctx.lineTo(px + 11, cy - 6);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+}
+
+// Two pulsing arrow markers stacked on column 27, pointing straight down toward the
+// new WINOOSKI portal on the bottom edge of the Main Map (row 25) -- so a level 4
+// that just opened up is obvious even to a player who never wanders that far south
+// on their own. Rows 22 and 23 sit on open grass: clear of the flea-market crates
+// at (26,20)/(28,21), the yard sign, the stadium and the newsstand at (30,24).
+// Purely cosmetic decoration, same as drawSwampPortalArrows().
+function drawWinooskiPortalArrows(time) {
+  const x = 27 * TILE + TILE / 2;
+  drawWinooskiPortalArrow(x, 22.2 * TILE, time, 0);
+  drawWinooskiPortalArrow(x, 23.45 * TILE, time, 0.9);
 }
 
 // Little curbside newspaper boxes scattered around town. Purely a sprite;
@@ -51652,10 +51789,11 @@ function drawLevelIntro(time) {
   const num = levelNumberFor(levelIntroWorldId);
 
   // Level 1 gets the full-art Burlington card, Level 2 gets the full-art
-  // Swamp card, Level 3 gets the full-art Skate Park card; every other world (should one ever route through
+  // Swamp card, Level 3 gets the full-art Skate Park card, Level 4 gets the full-art
+  // Winooski card; every other world (should one ever route through
   // showLevelIntro() without a matching image) falls back to the plain
   // carved-text card below.
-  const fullArtImg = num === 1 ? level1IntroImg : num === 2 ? level2IntroImg : num === 3 ? level3IntroImg : null;
+  const fullArtImg = num === 1 ? level1IntroImg : num === 2 ? level2IntroImg : num === 3 ? level3IntroImg : num === 4 ? level4IntroImg : null;
   if (fullArtImg && fullArtImg.complete && fullArtImg.naturalWidth) {
     const iw = fullArtImg.naturalWidth, ih = fullArtImg.naturalHeight;
     const scale = Math.max(VIEW_W / iw, VIEW_H / ih);
