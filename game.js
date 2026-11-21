@@ -841,6 +841,47 @@ const WORLD_DEFS = {
       leadWave: 'sine',     leadNotes: [67, 70, 74, 79, 77, 74, 70, 74],
     },
   },
+  // MONTPELIER -- LEVEL 5. LOCKED / UNDER CONSTRUCTION: `locked: true` keeps it out of the Crate tabs and
+  // the level numbering (see crateWorldIds()/levelNumberFor()), and the only door leading to it is the
+  // placeholder 'P' portal on the east edge of WINOOSKI's east road (it just pops the "more lands are being
+  // created" splash). The five records below are PLACEHOLDERS -- rename them / re-pick the layers as you
+  // build the level's shops. TO OPEN THE LEVEL when it's finished: (1) delete `locked: true` here,
+  // (2) change the 'P' portal in makeWinooski() (MONT_PORTAL_*) to 'Q', and (3) add a WINOOSKI-east ->
+  // MONTPELIER branch to checkSwampPortal() (copy the WINOOSKI one: showLevelIntro('montpelier', ...) then
+  // drop the player one tile east of maps.montpelier.returnPortal). The return trip is already wired.
+  montpelier: {
+    name: 'Montpelier',
+    locked: true,
+    records: {
+      montDrums: { title: 'Montpelier Record 1 (TBD)', artist: 'TBD', year: '19??',
+                   sample: 'Drum Loop', layer: 'drums', color: '#d9a520', pad: 'DRM',
+                   flavor: 'Placeholder -- the first record hidden in Montpelier.' },
+      montBass:  { title: 'Montpelier Record 2 (TBD)', artist: 'TBD', year: '19??',
+                   sample: 'Bassline', layer: 'bass', color: '#8a3b2c', pad: 'BAS',
+                   flavor: 'Placeholder -- the second record hidden in Montpelier.' },
+      montHorns: { title: 'Montpelier Record 3 (TBD)', artist: 'TBD', year: '19??',
+                   sample: 'Horn Stab', layer: 'horns', color: '#1f6a45', pad: 'HRN',
+                   flavor: 'Placeholder -- the third record hidden in Montpelier.' },
+      montVox:   { title: 'Montpelier Record 4 (TBD)', artist: 'TBD', year: '19??',
+                   sample: 'Vocal Chop', layer: 'vox', color: '#2c4a6e', pad: 'VOX',
+                   flavor: 'Placeholder -- the fourth record hidden in Montpelier.' },
+      montLead:  { title: 'Montpelier Record 5 (TBD)', artist: 'TBD', year: '19??',
+                   sample: 'Lead Melody', layer: 'lead', color: '#cfd0c6', pad: 'LD',
+                   flavor: 'Placeholder -- the fifth record hidden in Montpelier.' },
+    },
+    padOrder: ['montDrums', 'montBass', 'montHorns', 'montVox', 'montLead'],
+    // Montpelier's beat: a laid-back 98 BPM boom-bap in D minor -- a triangle-wave walking bass, square-wave
+    // horn stabs, triangle vox and a glassy sine lead that climbs the D-minor arpeggio and settles back.
+    // Placeholder groove; retune freely once the level has its own sound.
+    beat: {
+      bpm: 98,
+      kickSteps: [0, 5, 8, 10], snareSteps: [4, 12], hatOpenStep: 14,
+      bassWave: 'triangle', bassPattern: [[0,38,2],[3,38,1],[6,41,2],[8,45,2],[11,43,1],[14,48,1]],
+      hornWave: 'square',   hornSteps: [2, 9], hornNotes: [62, 65, 69],
+      voxWave: 'triangle',  voxSteps: [0, 8], voxNotesEven: [69, 65], voxNotesOdd: [67, 64],
+      leadWave: 'sine',     leadNotes: [74, 72, 69, 65, 69, 72, 74, 77],
+    },
+  },
   // ADD MORE WORLDS HERE, e.g.:
   // subway: {
   //   name: 'The Subway',
@@ -15566,6 +15607,7 @@ function makeWinooski() {
       if (ellOut(a[0], a[1], 2.2) <= 1 || ellOut(b[0], b[1], 2.2) <= 1) continue;
       if (a[0] < -0.5 || a[0] > W + 0.5 || a[1] < -0.5 || a[1] > H + 0.5) continue;
       if (a[1] > H - 2.5 && Math.abs(a[0] - 18) < 4) continue; // keep the return portal door at the foot of the bridge clear of road paint
+      if (a[0] > W - 2.5 && Math.abs(a[1] - 13.5) < 3) continue; // ...and the locked MONTPELIER portal door at the east end of the east road
       dashes.push([a[0] * PX, a[1] * PX, b[0] * PX, b[1] * PX, 0]);
     }
     // crosswalk: walk inward from the far end to just outside the ring
@@ -15656,6 +15698,14 @@ function makeWinooski() {
   // Return portal back to BURLINGTON -- the foot of the bridge, on the bottom edge of the
   // map, dead center on the bridge's road. The south portal on the town's Main Map drops the
   // player here; stepping back onto it sends them home (see checkSwampPortal()).
+  // LOCKED EAST PORTAL -> MONTPELIER (LEVEL 5). A placeholder 'P' door at the far east end of the east road
+  // (right edge of the map, the road's centerline row 13). Walking onto it just pops the "more lands are being
+  // created -- check back later" splash (see checkPortal()/drawPortalPopup()) and nudges the player back
+  // onto the road, exactly like the locked 'P' doors on BURLINGTON's Main Map. The matching green direction
+  // sign is painted by drawMontpelierDirectionSign(). To open the level later, see WORLD_DEFS.montpelier.
+  const MONT_PORTAL_X = W - 1, MONT_PORTAL_Y = 13;
+  g[MONT_PORTAL_Y][MONT_PORTAL_X] = 'P';
+
   const RETURN_PORTAL_X = 18, RETURN_PORTAL_Y = H - 1;
   g[RETURN_PORTAL_Y][RETURN_PORTAL_X] = 'Q';
 
@@ -15753,6 +15803,263 @@ function makeWinooski() {
       trunk: '#4a2e1a', leafDark: '#a8481c', leafMid: '#d9741e', leafLight: '#f2b13a',
     },
     // Fish in the river; no bikes/walkers/dogs yet (their lanes are switched off with -1/[]).
+    ambient: { bikeRows: [], walkerRow: -1, dogRow: -1 },
+  };
+}
+
+// ---------------------------------------------------------------- MONTPELIER (LEVEL 5 -- LOCKED, UNDER CONSTRUCTION)
+// The capital city, tucked into its river valley. This is the MAIN MAP TEMPLATE: terrain,
+// streets, the river, the State House and a row of downtown brick blocks. Nothing here is
+// enterable yet -- the blocks are cosmetic scenery you swap for real shops one at a time (see
+// BLOCK_DEFS below: every block has an id like 'N3' / 'S2' that you can point at).
+//
+// HOW IT IS LAID OUT (north is up; roughly like the real city):
+//   * Hubbard Park -- the wooded hill in the north-west corner, a dirt trail up to the stone tower.
+//   * The State House -- gold dome, granite portico, at the head of State Street (north-center),
+//     backed by the wooded ridge. Not enterable yet (reserve the door at the portico: x 21-22, row 11).
+//   * Main Street -- the downtown spine, running west-east across the whole map (rows 25-28), with
+//     sidewalks (rows 24 / 29) and a row of brick blocks on both sides.
+//   * State Street (x 20-23) runs from the State House plaza down into Main Street.
+//   * Elm Street (x 33-36) runs the full height of the map and crosses the Winooski River on a bridge.
+//   * The Winooski River winds along the south side of downtown; the North Branch comes down from
+//     the north-east and joins it just east of Elm Street (Main Street crosses it on a bridge).
+//   * A riverfront walkway (row 34), a bike path along the south bank (row 45), a footbridge at
+//     x 12-13 and another at x 52-53 tie the two banks together, and a path follows the North
+//     Branch up its west bank.
+//   * The RETURN PORTAL ('Q') sits on the west edge of Main Street (x 0, row 26) -- the road
+//     home toward WINOOSKI / Burlington. WINOOSKI's east road holds the matching LOCKED portal.
+//
+// Legend (same shared tiles as WINOOSKI): 'r' asphalt   'p' sidewalk / path paving   '~' river
+// 'f' railing (solid)   'd' dirt trail   'w' building (solid)   'e' bench (solid)   '#' tree (solid)
+// '.' grass   'Q' return portal.
+//
+// TO JUMP STRAIGHT IN FROM THE BROWSER CONSOLE (the level is locked, so there is no door yet):
+//   player.map = 'montpelier'; player.x = 4.5 * TILE; player.y = 26.5 * TILE; state = 'play';
+function makeMontpelier() {
+  const W = 64, H = 48;
+  const g = blankGrid(W, H, '.');
+  const rng = mulberry32(50505050);
+  const PX = TILE;
+  const inB = (x, y) => x >= 0 && y >= 0 && x < W && y < H;
+  const at = (x, y) => (inB(x, y) ? g[y][x] : null);
+  const put = (x, y, ch) => { if (inB(x, y)) g[y][x] = ch; };
+  const fillRect = (x0, y0, x1, y1, ch, only) => {
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++)
+      if (inB(x, y) && (!only || only.includes(g[y][x]))) g[y][x] = ch;
+  };
+  const segDist = (px, py, ax, ay, bx, by) => {
+    const dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy;
+    let t = l2 ? ((px - ax) * dx + (py - ay) * dy) / l2 : 0;
+    t = Math.max(0, Math.min(1, t));
+    return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+  };
+  const polyDist = (px, py, pts) => {
+    let d = Infinity;
+    for (let i = 0; i + 1 < pts.length; i++) d = Math.min(d, segDist(px, py, pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1]));
+    return d;
+  };
+  const paintPoly = (pts, r, ch, only) => {
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++)
+      if ((!only || only.includes(g[y][x])) && polyDist(x + 0.5, y + 0.5, pts) <= r) g[y][x] = ch;
+  };
+
+  // --- street grid constants
+  const MAIN_Y0 = 25, MAIN_Y1 = 28;              // Main Street asphalt rows
+  const SW_N = 24, SW_S = 29;                    // Main Street sidewalk rows
+  const STATE_X0 = 20, STATE_X1 = 23;            // State Street asphalt columns
+  const ELM_X0 = 33, ELM_X1 = 36;                // Elm Street asphalt columns
+  const WALK_Y = 34;                             // riverfront walkway behind the south-side blocks
+  const BIKE_Y = 45;                             // bike path along the south bank
+  const riverY = (x) => 40 + 1.5 * Math.sin(x * 0.16 + 0.6);
+  const RIVER_HALF = 2.2;
+  const CREEK = [[45, -1], [44, 8], [42.5, 15], [42, 22], [42, 30], [41, 37], [41, 40]];   // the North Branch
+
+  // --- the Winooski River (west to east, gently winding)
+  for (let x = 0; x < W; x++) {
+    const cy = riverY(x);
+    for (let y = 0; y < H; y++) if (Math.abs(y + 0.5 - cy) <= RIVER_HALF) g[y][x] = '~';
+  }
+  // --- the North Branch, from the north-east hills down to the river
+  paintPoly(CREEK, 1.2, '~');
+
+  // --- streets (roads go over water, which makes the bridges)
+  fillRect(0, MAIN_Y0, W - 1, MAIN_Y1, 'r');                       // Main Street
+  fillRect(STATE_X0, 14, STATE_X1, MAIN_Y0 - 1, 'r');              // State Street (State House plaza -> Main)
+  fillRect(ELM_X0, 0, ELM_X1, H - 1, 'r');                         // Elm Street, edge to edge (bridge over the river)
+
+  // --- sidewalks (only on dry grass, so they never overwrite water)
+  fillRect(0, SW_N, W - 1, SW_N, 'p', ['.']);
+  fillRect(0, SW_S, W - 1, SW_S, 'p', ['.']);
+  fillRect(STATE_X0 - 1, 14, STATE_X0 - 1, SW_N - 1, 'p', ['.']);
+  fillRect(STATE_X1 + 1, 14, STATE_X1 + 1, SW_N - 1, 'p', ['.']);
+  fillRect(ELM_X0 - 1, 0, ELM_X0 - 1, SW_N - 1, 'p', ['.']);
+  fillRect(ELM_X1 + 1, 0, ELM_X1 + 1, SW_N - 1, 'p', ['.']);
+  fillRect(ELM_X0 - 1, SW_S + 1, ELM_X0 - 1, WALK_Y, 'p', ['.']);
+  fillRect(ELM_X1 + 1, SW_S + 1, ELM_X1 + 1, WALK_Y, 'p', ['.']);
+  // railings where the creek crosses Main Street's sidewalks (the road itself is the bridge deck)
+  for (let x = 0; x < W; x++) {
+    if (g[SW_N][x] === '~') g[SW_N][x] = 'f';
+    if (g[SW_S][x] === '~') g[SW_S][x] = 'f';
+  }
+  // railings down both sides of Elm Street's river bridge
+  for (let y = 0; y < H; y++) {
+    if (g[y][ELM_X0 - 1] === '~') g[y][ELM_X0 - 1] = 'f';
+    if (g[y][ELM_X1 + 1] === '~') g[y][ELM_X1 + 1] = 'f';
+  }
+
+  // --- riverfront walkway (behind the south-side blocks) + the bike path on the south bank
+  fillRect(0, WALK_Y, W - 1, WALK_Y, 'p', ['.']);
+  fillRect(0, BIKE_Y, W - 1, BIKE_Y, 'p', ['.']);
+  // the walkway hops the North Branch on a little plank bridge
+  for (let x = 38; x <= 45; x++) {
+    if (g[WALK_Y][x] === '~') g[WALK_Y][x] = 'p';
+    if (g[WALK_Y - 1][x] === '~') g[WALK_Y - 1][x] = 'f';
+    if (g[WALK_Y + 1][x] === '~') g[WALK_Y + 1][x] = 'f';
+  }
+  // two footbridges across the Winooski, north-bank walkway to south-bank bike path
+  const footbridge = (x0) => {
+    for (let y = WALK_Y; y <= BIKE_Y; y++) { put(x0, y, 'p'); put(x0 + 1, y, 'p'); }
+    for (let y = WALK_Y; y <= BIKE_Y; y++) {
+      if (at(x0 - 1, y) === '~') put(x0 - 1, y, 'f');
+      if (at(x0 + 2, y) === '~') put(x0 + 2, y, 'f');
+    }
+  };
+  footbridge(12);
+  footbridge(52);
+
+  // --- the North Branch path: follows the creek's west bank from Main Street up into the hills
+  const CREEK_PATH = [[42, -1], [41, 8], [39.5, 15], [39, 22], [39, 24]];
+  paintPoly(CREEK_PATH, 0.9, 'p', ['.']);
+
+  // --- STATE HOUSE: granite body (x 17-26, rows 7-11) + the dome drum/dome block (x 20-23, rows 3-6).
+  // Drawn as one 10x9-tile picture by drawMontpelierStateHouse(); the tiles outside the two solid
+  // rectangles stay open grass. A paved plaza (x 19-24, rows 12-13) fronts the portico and meets
+  // State Street's north end. Reserve the future door at x 21-22, row 11 (bottom of the portico).
+  fillRect(17, 7, 26, 11, 'w');
+  fillRect(20, 3, 23, 6, 'w');
+  fillRect(19, 12, 24, 13, 'p', ['.']);
+  // --- HUBBARD PARK TOWER: a 2x3 stone tower in a clearing on the hill (x 8-9, rows 4-6)
+  const TOWER = { x: 8, y: 4, w: 2, h: 3 };
+
+  // --- downtown blocks. Each is a cosmetic brick row-house/storefront. [id, side, x, w, h]:
+  // 'N' blocks sit on Main Street's north sidewalk (bottom row 23), 'S' blocks on the south
+  // sidewalk (top row 30). To replace one with a real shop later: delete its entry here and
+  // build the shop in the freed footprint.
+  const BLOCK_DEFS = [
+    ['N1', 'N', 5, 6, 4], ['N2', 'N', 11, 8, 5], ['N3', 'N', 25, 4, 4], ['N4', 'N', 29, 3, 5],
+    ['N5', 'N', 46, 6, 4], ['N6', 'N', 52, 5, 5], ['N7', 'N', 57, 6, 4],
+    ['S1', 'S', 5, 7, 4], ['S2', 'S', 12, 8, 4], ['S3', 'S', 20, 7, 4], ['S4', 'S', 27, 5, 4],
+    ['S5', 'S', 45, 7, 4], ['S6', 'S', 52, 8, 4],
+  ];
+  // [wall, trim/cornice, awning]
+  const BLOCK_LOOKS = [
+    ['#a0482e', '#5a2a1e', '#2f6b5a'],   // classic red brick, green awning
+    ['#c9a878', '#6e5436', '#8a2f2a'],   // tan sandstone, brick-red awning
+    ['#8a3b2c', '#3a2620', '#d9b25a'],   // dark brick, gold awning
+    ['#e2d6b8', '#7a6648', '#2c4a6e'],   // cream clapboard, navy awning
+    ['#7f8f86', '#46524b', '#b0453f'],   // slate green-grey, red awning
+    ['#b4583a', '#4a2c22', '#e8e0c8'],   // rust brick, cream awning
+    ['#d9b25a', '#7a5a2a', '#3a5a3a'],   // mustard, forest awning
+  ];
+  const montBuildings = [];
+  BLOCK_DEFS.forEach(([id, side, bx, bw, bh], i) => {
+    const by = side === 'N' ? (SW_N - bh) : (SW_S + 1);
+    fillRect(bx, by, bx + bw - 1, by + bh - 1, 'w');
+    const look = BLOCK_LOOKS[(i * 3 + 1) % BLOCK_LOOKS.length];
+    montBuildings.push({
+      x: bx, y: by, w: bw, h: bh, name: 'MONTPELIER ' + id, lot: id, montScenery: 'brick',
+      wall: look[0], roof: look[1], awning: look[2], doorX: -1,
+    });
+  });
+  montBuildings.push({ x: 17, y: 3, w: 10, h: 9, name: 'STATE HOUSE', montScenery: 'statehouse',
+    wall: '#cfd0c6', roof: '#d9a520', doorX: -1 });
+  montBuildings.push({ x: TOWER.x, y: TOWER.y, w: TOWER.w, h: TOWER.h, name: 'HUBBARD PARK TOWER', montScenery: 'tower',
+    wall: '#8d8a80', roof: '#5d5a52', doorX: -1 });
+
+  // --- trees. Dense woods on Hubbard Park hill (NW), the ridge behind the State House, the north-east
+  // hills along the North Branch and the south hills; sparse elsewhere. Never on streets, paving, water or
+  // building footprints, and always a one-tile margin so nothing boxes the player in.
+  const isHard = (c) => c !== '.' && c !== '#';
+  const nearHard = (x, y, r) => {
+    for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+      const c = at(x + dx, y + dy);
+      if (c && isHard(c)) return true;
+    }
+    return false;
+  };
+  const treeChance = (x, y) => {
+    let d = 0.07;
+    if (x <= 16 && y <= 15) d = 0.55;                      // Hubbard Park hill
+    if (y <= 2 && x <= 34) d = Math.max(d, 0.5);           // wooded ridge behind the State House
+    if (x >= 46 && y <= 17) d = Math.max(d, 0.4);          // north-east hills, North Branch valley
+    if (y >= 46) d = Math.max(d, 0.5);                     // south hills
+    if (x >= 17 && x <= 31 && y >= 12 && y <= 18) d = 0;   // State House front lawn stays open
+    return d;
+  };
+  for (let x = 0; x < W; x++) if (g[0][x] === '.') g[0][x] = '#';
+  for (let x = 0; x < W; x++) if (g[H - 1][x] === '.') g[H - 1][x] = '#';
+  for (let y = 0; y < H; y++) { if (g[y][0] === '.') g[y][0] = '#'; if (g[y][W - 1] === '.') g[y][W - 1] = '#'; }
+  for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
+    if (g[y][x] !== '.') continue;
+    if (nearHard(x, y, 1)) continue;
+    if (rng() < treeChance(x, y)) g[y][x] = '#';
+  }
+
+  // --- Hubbard Park trail (from the State House plaza up to the tower) + the tower clearing
+  const TRAIL = [[18.5, 13.5], [15, 11.5], [12, 9.5], [10, 8], [9.5, 7.2]];
+  paintPoly(TRAIL, 0.9, 'd', ['.', '#']);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++)
+    if (Math.hypot(x + 0.5 - 9, y + 0.5 - 6) <= 3.6 && g[y][x] === '#') g[y][x] = '.';
+  fillRect(TOWER.x, TOWER.y, TOWER.x + TOWER.w - 1, TOWER.y + TOWER.h - 1, 'w');
+  // --- benches: park clearing, State House lawn, creek path, riverfront
+  for (const [bx, by] of [[6, 8], [12, 7], [17, 13], [26, 13], [37, 6], [37, 12], [37, 18], [8, 35], [24, 35], [47, 35], [58, 35], [20, 44], [47, 44]])
+    if (at(bx, by) === '.') put(bx, by, 'e');
+
+  // --- the road home: return portal on the west end of Main Street
+  const RETURN_PORTAL_X = 0, RETURN_PORTAL_Y = 26;
+  g[RETURN_PORTAL_Y][RETURN_PORTAL_X] = 'Q';
+
+  // --- painted road details + lamps (pixel coords; drawn by drawMontpelierDecorations)
+  const dashes = [];   // [x1,y1,x2,y2,kind]  kind 0 = yellow centre line
+  const nearX = (x, a, b) => x >= a && x <= b;
+  for (let x = 2.5; x < W - 0.5; x += 0.9) {
+    if (nearX(x, STATE_X0 - 1.5, STATE_X1 + 1.5) || nearX(x, ELM_X0 - 1.5, ELM_X1 + 1.5)) continue;
+    dashes.push([x * PX, 27 * PX, (x + 0.45) * PX, 27 * PX, 0]);
+  }
+  for (let y = 14.8; y < SW_N - 0.5; y += 0.9) dashes.push([(STATE_X0 + 2) * PX, y * PX, (STATE_X0 + 2) * PX, (y + 0.45) * PX, 0]);
+  for (let y = 0.4; y < H - 0.5; y += 0.9) {
+    if (y > MAIN_Y0 - 2 && y < MAIN_Y1 + 2) continue;
+    dashes.push([(ELM_X0 + 2) * PX, y * PX, (ELM_X0 + 2) * PX, (y + 0.45) * PX, 0]);
+  }
+  const crosswalks = [];   // [x, y, w, h] stripes in world pixels
+  for (const cx of [18, 25, 31, 38]) for (let i = 0; i < 8; i++) crosswalks.push([cx * PX + 3, MAIN_Y0 * PX + 4 + i * 16, 26, 9]);
+  for (const x0 of [STATE_X0, ELM_X0]) for (let i = 0; i < 8; i++) crosswalks.push([x0 * PX + 4 + i * 16, 22 * PX + 3, 9, 26]);
+  const lamps = [];
+  const lampAt = (tx, ty) => { if (at(tx, ty) === 'p') lamps.push([tx * PX + PX / 2, ty * PX + 4]); };
+  for (let x = 3; x < W - 1; x += 6) lampAt(x, SW_N);
+  for (let x = 6; x < W - 1; x += 6) lampAt(x, SW_S);
+  for (const y of [16, 21]) { lampAt(STATE_X0 - 1, y); lampAt(STATE_X1 + 1, y); }
+  for (const y of [4, 10, 16, 21]) { lampAt(ELM_X0 - 1, y); lampAt(ELM_X1 + 1, y); }
+  lampAt(19, 12); lampAt(24, 12);
+
+  const waterTiles = [];
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (g[y][x] === '~') waterTiles.push({ x, y });
+
+  return {
+    id: 'montpelier', world: 'montpelier', w: W, h: H, grid: g, outside: true,
+    returnPortal: { x: RETURN_PORTAL_X, y: RETURN_PORTAL_Y },
+    buildings: montBuildings, doors: {}, crates: {}, npcs: [], riverTiles: waterTiles,
+    newsstands: [], minigames: [],
+    // Drawing data for drawMontpelierDecorations() -- everything in world pixels.
+    montpelier: { dashes, crosswalks, lamps },
+    spawn: { x: 4.5, y: 26.5 },    // tile coords: Main Street, just inside the return portal
+    // AUTUMN, in daylight: same fall look as BURLINGTON / WINOOSKI (golden grass, crimson/orange maples).
+    palette: {
+      autumn: true,
+      groundA: '#a8964a', groundB: '#928040', groundDot: '#dc962f',
+      water: '#35607f', waterHi: '#6a95b3',
+      trunk: '#4a2e1a', leafDark: '#a8481c', leafMid: '#d9741e', leafLight: '#f2b13a',
+    },
     ambient: { bikeRows: [], walkerRow: -1, dogRow: -1 },
   };
 }
@@ -17762,6 +18069,7 @@ for (const [id, d] of Object.entries(doors)) {
 const swamp = makeSwamp();
 const skatepark = makeSkatepark(); // LEVEL 3 -- reached via the east portal on the town's Main Street (see checkSwampPortal())
 const winooski = makeWinooski(); // LEVEL 4 -- reached via the south portal on the town's Main Map (see checkSwampPortal())
+const montpelier = makeMontpelier(); // LEVEL 5 -- LOCKED: WINOOSKI's east-road portal is still a 'P' placeholder (see WORLD_DEFS.montpelier)
 // A_DOG SKATE SHOP door wiring -- same pattern as GUT HUT/etc. in
 // makeSwamp() above. This just connects the shop door to its own room; it
 // has nothing to do with reaching LEVEL 3 itself, which still has no
@@ -17843,7 +18151,7 @@ transitions['goldenhour:' + key(6, 9)] = { map: 'winooski', x: winooski.goldenHo
 // BEVERAGE WAREHOUSE door wiring (Winooski, LEVEL 4) -- same pattern as GOLDEN HOUR above.
 transitions['winooski:' + key(winooski.beverageWarehouseDoor.x, winooski.beverageWarehouseDoor.y)] = { map: 'beveragewarehouse', x: 6.5, y: 7.5 };
 transitions['beveragewarehouse:' + key(6, 9)] = { map: 'winooski', x: winooski.beverageWarehouseDoor.x + 0.5, y: winooski.beverageWarehouseDoor.y + 1.6 };
-const maps = { town, ...shops, swamp, skatepark, winooski };
+const maps = { town, ...shops, swamp, skatepark, winooski, montpelier };
 
 // Reshuffles, within EACH location that has one, which of that location's
 // own crates holds its collectible record and which hold junk. A record's
@@ -18730,6 +19038,13 @@ function checkSwampPortal(map) {
       if (boxClear(maps.town, player.x, cy)) { backY = cy; break; }
     }
     player.y = backY;
+    saveGame();
+  } else if (map.id === 'montpelier') {
+    // Return trip from MONTPELIER (LEVEL 5): back onto WINOOSKI's east road, a few tiles west of its (still
+    // locked) east portal. Landing 3 tiles in keeps the player from bouncing straight back through.
+    player.map = 'winooski';
+    player.x = (maps.winooski.w - 3.5) * TILE;
+    player.y = 13.5 * TILE;   // the east road's centerline
     saveGame();
   } else if (map.id === 'town') {
     showLevelIntro('swamp', () => {
@@ -33554,6 +33869,7 @@ function render(time) {
     if (map.swamp) drawSwampDecorations(time, map, camX, camY);
     else if (map.skatepark) drawSkateparkDecorations(time, map, camX, camY);
     else if (map.winooski) drawWinooskiDecorations(time, map, camX, camY);
+    else if (map.montpelier) drawMontpelierDecorations(time, map, camX, camY);
     else drawTownDecorations(time);
     drawAmbient();
     if (map.palette && map.palette.autumn) drawAutumnLeaves(time, camX, camY);
@@ -33800,12 +34116,25 @@ function drawTiles(map, time, camX = 0, camY = 0) {
             ctx.fillStyle = 'rgba(0,0,0,0.2)';
             ctx.fillRect(px, py, TILE, 2);
             ctx.fillRect(px, py + TILE - 2, TILE, 2);
+          } else if (map.id === 'winooski') {
+            // locked MONTPELIER portal at the east end of WINOOSKI's east road: lay the asphalt under the door
+            ctx.fillStyle = '#9a98a0';
+            ctx.fillRect(px, py, TILE, TILE);
+            ctx.fillStyle = 'rgba(0,0,0,0.06)';
+            ctx.fillRect(px, py + TILE - 2, TILE, 2);
           }
           drawPortalDoor(px, py, tx, ty, time);
           break;
         case 'L': drawLabDoor(px, py, tx, ty, time); break;
         case 'Q':
-          if (map.id === 'winooski') {
+          if (map.id === 'montpelier') {
+            // return portal on the west end of Main Street: lay the asphalt under the door
+            ctx.fillStyle = '#9a98a0';
+            ctx.fillRect(px, py, TILE, TILE);
+            ctx.fillStyle = 'rgba(0,0,0,0.06)';
+            ctx.fillRect(px, py + TILE - 2, TILE, 2);
+            drawWinooskiPortalDoor(px, py, tx, ty, time);
+          } else if (map.id === 'winooski') {
             // return portal at the foot of the bridge: lay the road under the door
             ctx.fillStyle = '#9a98a0';
             ctx.fillRect(px, py, TILE, TILE);
@@ -34941,6 +35270,285 @@ function drawWinooskiDecorations(time, map, camX, camY) {
   drawNewsstands();
   // BEVERAGE WAREHOUSE's parking lot paint, wheel stops and accessible-space sign
   if (wk.bwLot) drawBeverageWarehouseLot(wk.bwLot, x0, x1, y0, y1);
+  // green sign pointing east to the locked MONTPELIER portal
+  drawMontpelierDirectionSign(x0, x1, y0, y1);
+}
+
+// ---------------------------------------------------------------- MONTPELIER (LEVEL 5) DRAWING
+// Cosmetic scenery for the locked MONTPELIER map (see makeMontpelier()). drawBuildings() hands any
+// building with `montScenery` set to drawMontpelierScenery(), which picks the right painter.
+function drawMontpelierScenery(b, px, py, w, h) {
+  if (b.montScenery === 'statehouse') drawMontpelierStateHouse(px, py, w, h);
+  else if (b.montScenery === 'tower') drawMontpelierTower(px, py, w, h);
+  else drawMontpelierBrickBlock(b, px, py, w, h);
+}
+
+// A downtown brick block: cornice, rows of tall windows, a striped awning and shop window on the
+// ground floor. Purely cosmetic -- no door -- until it's swapped for a real shop.
+function drawMontpelierBrickBlock(b, px, py, w, h) {
+  ctx.fillStyle = '#1c140f';
+  ctx.fillRect(px - 1, py - 1, w + 2, h + 2);
+  ctx.fillStyle = b.wall;
+  ctx.fillRect(px, py, w, h);
+  ctx.fillStyle = 'rgba(255,255,255,0.10)';
+  ctx.fillRect(px, py, 4, h);
+  ctx.fillStyle = 'rgba(0,0,0,0.16)';
+  ctx.fillRect(px + w - 4, py, 4, h);
+  ctx.fillStyle = 'rgba(0,0,0,0.09)';                      // brick coursing
+  for (let yy = py + 14; yy < py + h - TILE; yy += 8) ctx.fillRect(px, yy, w, 1);
+  // cornice / roofline
+  ctx.fillStyle = '#1c140f';
+  ctx.fillRect(px - 2, py - 1, w + 4, 14);
+  ctx.fillStyle = b.roof;
+  ctx.fillRect(px - 1, py, w + 2, 12);
+  ctx.fillStyle = 'rgba(255,255,255,0.20)';
+  ctx.fillRect(px - 1, py, w + 2, 3);
+  ctx.fillStyle = 'rgba(0,0,0,0.28)';
+  ctx.fillRect(px, py + 12, w, 3);
+  for (let dx = 4; dx < w - 4; dx += 8) { ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.fillRect(px + dx, py + 6, 4, 5); }   // dentils
+  // upper-floor windows (tile rows 1 .. h-2), one per tile column, skipping the end columns' edges
+  for (let r = 1; r <= b.h - 2; r++) {
+    for (let i = 0; i < b.w; i++) {
+      const wx = px + i * TILE + 8, wy = py + r * TILE + 4;
+      ctx.fillStyle = '#2a1c12';
+      ctx.fillRect(wx - 2, wy - 3, 20, 25);
+      ctx.fillStyle = '#9fc3d2';
+      ctx.fillRect(wx, wy, 16, 20);
+      ctx.fillStyle = 'rgba(255,255,255,0.35)';
+      ctx.fillRect(wx + 1, wy + 1, 5, 7);
+      ctx.fillStyle = 'rgba(0,0,0,0.18)';
+      ctx.fillRect(wx, wy + 11, 16, 9);
+      ctx.fillStyle = '#2a1c12';
+      ctx.fillRect(wx + 7, wy, 2, 20);
+      ctx.fillRect(wx, wy + 9, 16, 2);
+      ctx.fillStyle = '#d6d0c0';                            // stone lintel + sill
+      ctx.fillRect(wx - 3, wy - 5, 22, 3);
+      ctx.fillRect(wx - 3, wy + 20, 22, 3);
+    }
+  }
+  // ground floor: awning + shop windows
+  const gy = py + h - TILE;
+  ctx.fillStyle = 'rgba(0,0,0,0.30)';
+  ctx.fillRect(px, gy, w, TILE);
+  for (let i = 0; i < b.w; i++) {
+    const sx = px + i * TILE;
+    ctx.fillStyle = '#2a1c12';
+    ctx.fillRect(sx + 3, gy + 11, TILE - 6, TILE - 15);
+    ctx.fillStyle = '#e8c878';
+    ctx.fillRect(sx + 5, gy + 13, TILE - 10, TILE - 19);
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.fillRect(sx + 5, gy + 22, TILE - 10, TILE - 28);
+  }
+  for (let sx = 0; sx < w; sx += 8) {                       // striped awning
+    ctx.fillStyle = ((sx >> 3) % 2 === 0) ? b.awning : '#f1ead8';
+    ctx.fillRect(px + sx, gy + 1, Math.min(8, w - sx), 9);
+  }
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.fillRect(px, gy + 10, w, 2);
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';                        // foundation
+  ctx.fillRect(px, py + h - 4, w, 4);
+}
+
+// The Vermont State House: granite wings, a six-column portico under a pediment, a drum and the
+// gold dome with its little lantern. Painted into a 10x9-tile box (x 17-26, rows 3-11).
+function drawMontpelierStateHouse(px, py, w, h) {
+  const t = performance.now() / 1000;
+  const X = (x) => px + x, Y = (y) => py + y;
+  // ground shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.fillRect(X(-2), Y(h - 6), w + 4, 10);
+  // granite wings
+  ctx.fillStyle = '#1c140f';
+  ctx.fillRect(X(-1), Y(149), w + 2, h - 149 + 1);
+  ctx.fillStyle = '#c9cbc1';
+  ctx.fillRect(X(0), Y(150), w, h - 150);
+  ctx.fillStyle = 'rgba(255,255,255,0.18)';
+  ctx.fillRect(X(0), Y(150), w, 4);
+  ctx.fillStyle = 'rgba(0,0,0,0.12)';
+  ctx.fillRect(X(0), Y(h - 12), w, 12);
+  ctx.fillStyle = '#5d6a64';                                // low wing roofs
+  ctx.fillRect(X(0), Y(142), 96, 10);
+  ctx.fillRect(X(224), Y(142), 96, 10);
+  for (const wx of [14, 54, 238, 278]) {                    // tall wing windows, two storeys
+    for (const wy of [166, 214]) {
+      ctx.fillStyle = '#2f3a44';
+      ctx.fillRect(X(wx), Y(wy), 16, 30);
+      ctx.fillStyle = '#7fa0b4';
+      ctx.fillRect(X(wx + 2), Y(wy + 2), 12, 26);
+      ctx.fillStyle = 'rgba(255,255,255,0.3)';
+      ctx.fillRect(X(wx + 3), Y(wy + 3), 4, 8);
+      ctx.fillStyle = '#2f3a44';
+      ctx.fillRect(X(wx + 7), Y(wy + 2), 2, 26);
+      ctx.fillStyle = '#a9aca3';
+      ctx.fillRect(X(wx - 2), Y(wy + 30), 20, 3);
+    }
+  }
+  // dome: drum, then the gold dome with ribs, lantern and finial
+  ctx.fillStyle = '#1c140f';
+  ctx.fillRect(X(117), Y(61), 86, 52);
+  ctx.fillStyle = '#d8d4c6';
+  ctx.fillRect(X(118), Y(62), 84, 50);
+  ctx.fillStyle = '#b9b5a6';
+  ctx.fillRect(X(114), Y(58), 92, 7);
+  for (let i = 0; i < 5; i++) {
+    ctx.fillStyle = '#3a4a58';
+    ctx.fillRect(X(128 + i * 15), Y(72), 8, 26);
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    ctx.fillRect(X(129 + i * 15), Y(73), 2, 8);
+  }
+  const dcx = 160, dby = 60, drx = 54, dry = 46;
+  const grd = ctx.createLinearGradient(X(dcx - drx), 0, X(dcx + drx), 0);
+  grd.addColorStop(0, '#a87a14');
+  grd.addColorStop(0.35, '#f2cf5a');
+  grd.addColorStop(0.6, '#d9a520');
+  grd.addColorStop(1, '#8a6410');
+  ctx.beginPath();
+  ctx.ellipse(X(dcx), Y(dby), drx + 2, dry + 2, 0, Math.PI, 0);
+  ctx.closePath();
+  ctx.fillStyle = '#1c140f';
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(X(dcx), Y(dby), drx, dry, 0, Math.PI, 0);
+  ctx.closePath();
+  ctx.fillStyle = grd;
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(90,60,6,0.55)';                   // melon ribs
+  ctx.lineWidth = 1.5;
+  for (let k = -3; k <= 3; k++) {
+    ctx.beginPath();
+    ctx.moveTo(X(dcx + k * 15), Y(dby));
+    ctx.quadraticCurveTo(X(dcx + k * 9), Y(dby - dry * 0.9), X(dcx), Y(dby - dry));
+    ctx.stroke();
+  }
+  ctx.fillStyle = '#d8d4c6';                                // lantern + finial (Ceres)
+  ctx.fillRect(X(153), Y(7), 14, 11);
+  ctx.fillStyle = '#3a4a58';
+  ctx.fillRect(X(156), Y(9), 3, 7);
+  ctx.fillRect(X(161), Y(9), 3, 7);
+  ctx.fillStyle = '#f2cf5a';
+  ctx.fillRect(X(157), Y(2), 6, 6);
+  // a slow glint crawling across the dome
+  const gx = dcx + Math.sin(t * 0.9) * 30, gy = dby - 22 - Math.cos(t * 0.9) * 8;
+  ctx.fillStyle = 'rgba(255,250,214,' + (0.35 + 0.3 * Math.sin(t * 2.2)).toFixed(2) + ')';
+  ctx.fillRect(X(gx - 3), Y(gy - 1), 7, 3);
+  ctx.fillRect(X(gx - 1), Y(gy - 3), 3, 7);
+  // portico: pediment, entablature, six columns, doorway, steps
+  ctx.fillStyle = '#1c140f';
+  ctx.beginPath();
+  ctx.moveTo(X(88), Y(143)); ctx.lineTo(X(232), Y(143)); ctx.lineTo(X(160), Y(106)); ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#ddd9cb';
+  ctx.beginPath();
+  ctx.moveTo(X(93), Y(140)); ctx.lineTo(X(227), Y(140)); ctx.lineTo(X(160), Y(110)); ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = 'rgba(0,0,0,0.08)';
+  ctx.beginPath();
+  ctx.moveTo(X(112), Y(137)); ctx.lineTo(X(208), Y(137)); ctx.lineTo(X(160), Y(116)); ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#d6d2c4';
+  ctx.fillRect(X(90), Y(140), 140, 10);
+  ctx.fillStyle = '#a9aca3';
+  ctx.fillRect(X(90), Y(148), 140, 3);
+  ctx.fillStyle = '#2a2630';                                // doorway behind the columns
+  ctx.fillRect(X(146), Y(184), 28, 72);
+  ctx.fillStyle = 'rgba(244,236,216,0.12)';
+  ctx.fillRect(X(148), Y(186), 24, 6);
+  for (let i = 0; i < 6; i++) {
+    const cx = 98 + i * 24;
+    ctx.fillStyle = '#ece8dc';
+    ctx.fillRect(X(cx), Y(151), 11, 104);
+    ctx.fillStyle = 'rgba(0,0,0,0.14)';
+    ctx.fillRect(X(cx + 7), Y(151), 4, 104);
+    ctx.fillStyle = '#d6d2c4';
+    ctx.fillRect(X(cx - 2), Y(151), 15, 5);
+    ctx.fillRect(X(cx - 2), Y(250), 15, 5);
+  }
+  for (let s = 0; s < 4; s++) {                              // granite steps
+    ctx.fillStyle = s % 2 ? '#b9bbb1' : '#d4d6cc';
+    ctx.fillRect(X(84 - s * 6), Y(256 + s * 8), 152 + s * 12, 8);
+  }
+}
+
+// The stone observation tower on Hubbard Park hill: rough-cut stone, a crenellated top, slit windows.
+function drawMontpelierTower(px, py, w, h) {
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.fillRect(px - 2, py + h - 6, w + 4, 9);
+  ctx.fillStyle = '#1c140f';
+  ctx.fillRect(px + 5, py + 17, w - 10, h - 17);
+  ctx.fillStyle = '#8d8a80';
+  ctx.fillRect(px + 6, py + 18, w - 12, h - 18);
+  for (let r = 0; r < 8; r++) {                              // stone courses
+    const yy = py + 26 + r * 8;
+    ctx.fillStyle = 'rgba(0,0,0,0.16)';
+    ctx.fillRect(px + 6, yy, w - 12, 1);
+    for (let sx = (r % 2) * 7; sx < w - 12; sx += 14) ctx.fillRect(px + 6 + sx, yy, 1, 8);
+  }
+  ctx.fillStyle = 'rgba(255,255,255,0.12)';
+  ctx.fillRect(px + 6, py + 18, 5, h - 18);
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx.fillRect(px + w - 12, py + 18, 6, h - 18);
+  ctx.fillStyle = '#5d5a52';                                 // crenellated top
+  ctx.fillRect(px + 3, py + 12, w - 6, 8);
+  for (let sx = 3; sx < w - 8; sx += 11) { ctx.fillStyle = '#6b685f'; ctx.fillRect(px + sx, py + 5, 7, 8); }
+  ctx.fillStyle = '#2a2630';                                 // slit windows + arched door
+  ctx.fillRect(px + 14, py + 34, 4, 14);
+  ctx.fillRect(px + w - 19, py + 34, 4, 14);
+  ctx.fillRect(px + w / 2 - 6, py + h - 24, 12, 24);
+  ctx.beginPath(); ctx.arc(px + w / 2, py + h - 24, 6, Math.PI, 0); ctx.fill();
+  ctx.fillStyle = '#a83a2a';                                 // little flag
+  ctx.fillRect(px + w / 2, py - 4, 2, 10);
+  ctx.fillRect(px + w / 2 + 2, py - 4, 8, 5);
+}
+
+// Road paint, crosswalks and lamp posts for MONTPELIER's streets (data from makeMontpelier()).
+function drawMontpelierDecorations(time, map, camX, camY) {
+  const mk = map.montpelier;
+  const x0 = camX - 40, x1 = camX + VIEW_W + 40, y0 = camY - 40, y1 = camY + VIEW_H + 40;
+  // painted yellow centre lines
+  ctx.lineCap = 'butt';
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = '#e8cf4a';
+  ctx.beginPath();
+  for (const d of mk.dashes) {
+    if (d[0] < x0 || d[0] > x1 || d[1] < y0 || d[1] > y1) continue;
+    ctx.moveTo(d[0], d[1]); ctx.lineTo(d[2], d[3]);
+  }
+  ctx.stroke();
+  // crosswalk stripes
+  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+  for (const [cx, cy, cw, ch] of mk.crosswalks) {
+    if (cx < x0 || cx > x1 || cy < y0 || cy > y1) continue;
+    ctx.fillRect(cx, cy, cw, ch);
+  }
+  // street lamps
+  for (const [lx, ly] of mk.lamps) {
+    if (lx < x0 || lx > x1 || ly < y0 || ly > y1) continue;
+    ctx.fillStyle = '#2a2c32';
+    ctx.fillRect(lx - 2, ly - 6, 4, 26);
+    ctx.fillStyle = '#f4e8b0';
+    ctx.fillRect(lx - 4, ly - 12, 8, 7);
+    ctx.fillStyle = '#2a2c32';
+    ctx.fillRect(lx - 5, ly - 14, 10, 3);
+  }
+}
+
+// Green highway sign on WINOOSKI's east road pointing the way to the (still locked) MONTPELIER portal.
+function drawMontpelierDirectionSign(x0, x1, y0, y1) {
+  const cx = 60 * TILE, base = 10.6 * TILE;
+  if (cx < x0 - 80 || cx > x1 + 80 || base < y0 || base - 70 > y1) return;
+  ctx.fillStyle = '#3a3c42';
+  ctx.fillRect(cx - 36, base - 26, 4, 28);
+  ctx.fillRect(cx + 32, base - 26, 4, 28);
+  ctx.fillStyle = '#e8e8e0';
+  ctx.fillRect(cx - 52, base - 68, 104, 44);
+  ctx.fillStyle = '#1f6a45';
+  ctx.fillRect(cx - 49, base - 65, 98, 38);
+  ctx.fillStyle = '#f4f4ec';
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 12px monospace';
+  ctx.fillText('MONTPELIER', cx, base - 50);
+  ctx.font = 'bold 9px monospace';
+  ctx.fillText('\u25B6 COMING SOON', cx, base - 34);
 }
 
 // ---------------------------------------------------------------- WINOOSKI ROTARY CONCERT
@@ -41865,6 +42473,8 @@ function drawBuildings(map) {
     const px = b.x * TILE, py = b.y * TILE, w = b.w * TILE, h = b.h * TILE;
     // THE MILL (Winooski): scenery only -- no door, sign plate or roof/window pass of its own
     if (b.mill) { drawMillWing(b, px, py, w, h); continue; }
+    // MONTPELIER (Level 5): cosmetic State House / brick blocks / tower -- no door, sign plate or window pass of their own
+    if (b.montScenery) { drawMontpelierScenery(b, px, py, w, h); continue; }
     const isGreenDoorStudio = b.name === 'Green Door Studio';
     const isHeyBud = b.name === 'Hey Bud';
     const isThrift = b.name === 'Pure Pop Records';
