@@ -14647,6 +14647,7 @@ function makeShop(id, opts) {
     recordShop: opts.recordShop || false,
     autumnRecords: opts.autumnRecords || false,
     tinyThai: opts.tinyThai || false,
+    stateHouse: opts.stateHouse || false,
     monkeyHouse: opts.monkeyHouse || false,
     bellevue: opts.bellevue || false,
     miseryLoves: opts.miseryLoves || false,
@@ -15816,7 +15817,7 @@ function makeWinooski() {
 // HOW IT IS LAID OUT (north is up; roughly like the real city):
 //   * Hubbard Park -- the wooded hill in the north-west corner, a dirt trail up to the stone tower.
 //   * The State House -- gold dome, granite portico, at the head of State Street (north-center),
-//     backed by the wooded ridge. Not enterable yet (reserve the door at the portico: x 21-22, row 11).
+//     backed by the wooded ridge. ENTERABLE: the portico door is x 21-22, row 11 -> the `statehouse` shop.
 //   * Main Street -- the downtown spine, running west-east across the whole map (rows 25-28), with
 //     sidewalks (rows 24 / 29) and a row of brick blocks on both sides.
 //   * State Street (x 20-23) runs from the State House plaza down into Main Street.
@@ -15938,6 +15939,9 @@ function makeMontpelier() {
   fillRect(17, 7, 26, 11, 'w');
   fillRect(20, 3, 23, 6, 'w');
   fillRect(19, 12, 24, 13, 'p', ['.']);
+  // The portico doorway: two walkable 'D' tiles at the bottom of the granite body (x 21-22, row 11). Stepping onto
+  // either one enters the State House interior (see the `statehouse` shop + the door wiring above `const maps`).
+  g[11][21] = 'D'; g[11][22] = 'D';
   // --- HUBBARD PARK TOWER: a 2x3 stone tower in a clearing on the hill (x 8-9, rows 4-6)
   const TOWER = { x: 8, y: 4, w: 2, h: 3 };
 
@@ -16052,6 +16056,7 @@ function makeMontpelier() {
     newsstands: [], minigames: [],
     // Drawing data for drawMontpelierDecorations() -- everything in world pixels.
     montpelier: { dashes, crosswalks, lamps },
+    stateHouseDoors: [{ x: 21, y: 11 }, { x: 22, y: 11 }],   // the portico doorway -> `statehouse` (see the door wiring above `const maps`)
     spawn: { x: 4.5, y: 26.5 },    // tile coords: Main Street, just inside the return portal
     // AUTUMN, in daylight: same fall look as BURLINGTON / WINOOSKI (golden grass, crimson/orange maples).
     palette: {
@@ -17477,6 +17482,38 @@ const shops = {
     crateSpots: [[1, 5], [12, 5]],
     crates: [ { ttSeed: 0 }, { ttSeed: 1 } ],
   }),
+  // THE VERMONT STATE HOUSE -- the inside of MONTPELIER's capitol (Level 5), entered through the portico doors
+  // (x 21-22, row 11 on the montpelier map; see the door wiring above `const maps`). `world: 'montpelier'` ties it
+  // to that level. `stateHouse: true` gets its own interior (drawStateHouseInterior): a government hall -- Vermont
+  // marble floor, red runner, walnut wainscot, a gilt portrait of BERNIE SANDERS (drop your art in as
+  // assets/bernie.png) over the information desk -- plus Vermont farm country carried inside. Solid props are plain
+  // tiles that painter dresses up: blockTiles = balsam fir (1,2), U.S. flag (3,2), Vermont flag (10,2), maple
+  // sapling (12,2), woodstove + pipe (1,4)(1,5), firewood (1,6), Holstein cow (2,7)(3,7), marble bust (4,5),
+  // bronze catamount (9,5), milk cans (1,7), apple crate (12,7), hay bales (12,4)(12,5), pumpkins (12,6);
+  // extraTables = the maple-syrup-and-cheddar table (10,7)(11,7); the default counter (row 3, cols 4-9) is the
+  // information desk with MABEL (keeper, (6,2)) behind it. Clear of the door (6,9) and the spawn (6.5,7.5).
+  // No record crates in here yet (Montpelier's records are still placeholders).
+  statehouse: makeShop('statehouse', {
+    world: 'montpelier',
+    floor: '#ece5d2', plank: '#6f8e78', wallColor: '#6b3f22',
+    stateHouse: true,
+    blockTiles: [[1, 2], [3, 2], [10, 2], [12, 2], [1, 4], [1, 5], [1, 6], [2, 7], [3, 7], [4, 5], [9, 5], [1, 7], [12, 7], [12, 4], [12, 5], [12, 6]],
+    extraTables: [[10, 7], [11, 7]],
+    keeper: { name: 'MABEL', shirt: '#2c4a7a', skin: '#e2b48c',
+      lines: [
+        'Welcome to the Vermont State House! I\'m Mabel, I give the tours. Mind the mud on the runner -- it\'s always mud season somewhere.',
+        'See the gold dome out front? Real gold leaf. And standing on top of it is Ceres, the goddess of agriculture. Even our statues are farmers.',
+        'Montpelier is the smallest state capital in the whole country. Everybody here knows everybody, and everybody\'s cousin works for the legislature.',
+        'Vermont has a citizen legislature -- farmers, teachers, plumbers, a few maple sugarers -- and every March it all comes down to Town Meeting Day.',
+        'Check out the state seal on the flag: a pine tree, some wheat and a cow. A cow! That\'s why Bessie over there is our honorary legislator. She votes with the herd.',
+        'Yes, that\'s a real woodstove. Yes, it\'s lit. No, you can\'t toast marshmallows. We asked.',
+        'The portrait above my desk? Senator Sanders, Burlington\'s former mayor and Vermont\'s longtime voice in the U.S. Senate. Folks like to stop and look.',
+        'The bronze catamount is our mascot. The last wild one around here vanished a long time ago, but he\'s still on guard duty.',
+        'Take a jar of syrup from the table if you like. Just don\'t pour it on the marble. Visiting dignitaries have tried.',
+        'Don\'t forget the apples by the door. Vermont\'s finest, and they\'re the only lobbyists we trust.',
+      ] },
+    crates: [],
+  }),
   // THE MONKEY HOUSE -- bar/restaurant + live-music venue on the Winooski
   // northwest lawn (see makeWinooski()). `monkeyHouse: true` gets its own
   // interior (drawMonkeyHouseInterior): a pool table up front by the door, a
@@ -18151,6 +18188,10 @@ transitions['goldenhour:' + key(6, 9)] = { map: 'winooski', x: winooski.goldenHo
 // BEVERAGE WAREHOUSE door wiring (Winooski, LEVEL 4) -- same pattern as GOLDEN HOUR above.
 transitions['winooski:' + key(winooski.beverageWarehouseDoor.x, winooski.beverageWarehouseDoor.y)] = { map: 'beveragewarehouse', x: 6.5, y: 7.5 };
 transitions['beveragewarehouse:' + key(6, 9)] = { map: 'winooski', x: winooski.beverageWarehouseDoor.x + 0.5, y: winooski.beverageWarehouseDoor.y + 1.6 };
+// STATE HOUSE door wiring (Montpelier, LEVEL 5) -- the portico is two tiles wide (x 21-22, row 11), so both tiles
+// lead in; leaving drops the player on the paved plaza right in front of the steps, centered between the two.
+for (const d of montpelier.stateHouseDoors) transitions['montpelier:' + key(d.x, d.y)] = { map: 'statehouse', x: 6.5, y: 7.5 };
+transitions['statehouse:' + key(6, 9)] = { map: 'montpelier', x: 22, y: 12.6 };
 const maps = { town, ...shops, swamp, skatepark, winooski, montpelier };
 
 // Reshuffles, within EACH location that has one, which of that location's
@@ -33891,6 +33932,7 @@ function render(time) {
   if (map.recordShop) drawPurePopInterior(time);
   if (map.autumnRecords) drawAutumnRecordsInterior(time);
   if (map.tinyThai) drawTinyThaiInterior(time);
+  if (map.stateHouse) drawStateHouseInterior(time);
   if (map.monkeyHouse) drawMonkeyHouseInterior(time);
   if (map.bellevue) drawBellevueInterior(time);
   if (map.miseryLoves) drawMiseryLovesInterior(time);
@@ -35453,6 +35495,22 @@ function drawMontpelierStateHouse(px, py, w, h) {
   ctx.fillRect(X(146), Y(184), 28, 72);
   ctx.fillStyle = 'rgba(244,236,216,0.12)';
   ctx.fillRect(X(148), Y(186), 24, 6);
+  // the doors are open for visitors now: warm lit double doors with a fanlight (x 21-22, row 11 leads inside)
+  ctx.fillStyle = '#5a3a1c';
+  ctx.fillRect(X(147), Y(190), 26, 66);
+  ctx.fillStyle = '#e8c978';
+  ctx.fillRect(X(150), Y(193), 20, 18);
+  ctx.fillStyle = '#7a4a24';
+  ctx.fillRect(X(150), Y(213), 9, 43);
+  ctx.fillRect(X(161), Y(213), 9, 43);
+  ctx.fillStyle = '#9a6a38';
+  ctx.fillRect(X(152), Y(216), 5, 16);
+  ctx.fillRect(X(163), Y(216), 5, 16);
+  ctx.fillRect(X(152), Y(236), 5, 16);
+  ctx.fillRect(X(163), Y(236), 5, 16);
+  ctx.fillStyle = '#d9b04a';
+  ctx.fillRect(X(158), Y(230), 2, 5);
+  ctx.fillRect(X(161), Y(230), 2, 5);
   for (let i = 0; i < 6; i++) {
     const cx = 98 + i * 24;
     ctx.fillStyle = '#ece8dc';
@@ -35466,6 +35524,704 @@ function drawMontpelierStateHouse(px, py, w, h) {
   for (let s = 0; s < 4; s++) {                              // granite steps
     ctx.fillStyle = s % 2 ? '#b9bbb1' : '#d4d6cc';
     ctx.fillRect(X(84 - s * 6), Y(256 + s * 8), 152 + s * 12, 8);
+  }
+}
+
+// ---------------------------------------------------------------- STATE HOUSE INTERIOR (Montpelier, LEVEL 5)
+// The inside of the Vermont State House (see the `statehouse` shop + drawMontpelierStateHouse()). A proper
+// government hall -- Vermont-marble checkerboard floor, a red runner, walnut wainscot, green plaster walls, brass
+// picture light, gilt frames, an information desk under the big portrait, a U.S. flag and a Vermont flag on
+// stands -- with a good dose of Vermont farm country carried in from outside: a cast-iron woodstove and a
+// firewood stack, hay bales and pumpkins, milk cans, a crate of apples, a table of maple syrup and cheddar, a
+// potted balsam fir and a sugar-maple sapling, a Holstein cow in a sash, a bronze catamount, snowshoes, a barn
+// lantern, a sap bucket and a town-meeting bulletin board.
+//
+// THE PORTRAIT: the big gilt-framed painting on the back wall hangs over a brass BERNIE SANDERS plaque. The
+// painting itself is whatever you drop in as assets/bernie.png (it is cover-fit into the frame and varnished
+// over, no code change needed). Until that file exists the frame shows a plain painted bust silhouette.
+//
+// Solid props are plain 'W' wall tiles (blockTiles on the `statehouse` shop) that this painter dresses up:
+//   (1,2) balsam fir   (3,2) U.S. flag   (10,2) Vermont flag   (12,2) maple sapling
+//   (1,4)+(1,5) woodstove + pipe   (1,6) firewood   (2,7)+(3,7) Holstein cow
+//   (4,5) marble bust   (9,5) bronze catamount   (1,7) milk cans   (12,7) apple crate
+//   (12,4)+(12,5) hay bales   (12,6) pumpkins   (10,7)+(11,7) syrup table ('T')   row 3 cols 4-9 = info desk ('T')
+// Static art is painted once into an offscreen canvas; flags, fire, steam, the cow's tail and ear, falling
+// maple leaves, dust motes and the lamp glow are drawn live.
+
+const stateHousePortraitImg = new Image();
+stateHousePortraitImg.src = 'assets/bernie.png';
+
+const SH_GOLD = '#d9b04a', SH_DGOLD = '#9a7424', SH_WAL = '#6b3f22', SH_WALD = '#43260f', SH_WALL = '#8d5a32';
+const SH_CREAM = '#e6dcc2', SH_GRN = '#466b55';
+// portrait frame geometry (shared by the painter and the live overlay that draws assets/bernie.png)
+const SH_PORTRAIT = { x: 201, y: 10, w: 46, h: 40 };
+
+function shHash(a, b) {
+  let h = (a * 374761393 + b * 668265263) | 0;
+  h = ((h ^ (h >>> 13)) * 1274126177) | 0;
+  return (h ^ (h >>> 16)) >>> 0;
+}
+
+// gilt picture frame with an inner scene painter: inner(c, x, y, w, h) draws inside the clipped opening
+function shFrame(c, x, y, w, h, inner) {
+  c.fillStyle = 'rgba(0,0,0,0.32)'; c.fillRect(x + 2, y + 3, w, h);
+  c.fillStyle = '#4a3008'; c.fillRect(x - 1, y - 1, w + 2, h + 2);
+  c.fillStyle = SH_GOLD; c.fillRect(x, y, w, h);
+  c.fillStyle = '#f2d77f'; c.fillRect(x, y, w, 1); c.fillRect(x, y, 1, h);
+  c.fillStyle = SH_DGOLD; c.fillRect(x + 3, y + 3, w - 6, h - 6);
+  c.fillStyle = '#2e1f06'; c.fillRect(x + 4, y + 4, w - 8, h - 8);
+  c.save(); c.beginPath(); c.rect(x + 5, y + 5, w - 10, h - 10); c.clip();
+  inner(c, x + 5, y + 5, w - 10, h - 10);
+  c.restore();
+  c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(x + 5, y + 5, w - 10, 2);
+}
+
+// tall arched window onto the Green Mountains, with red drapes and a gold swag
+function shWindow(c, x, y, w, h) {
+  const r = w / 2;
+  const path = () => { c.beginPath(); c.moveTo(x, y + h); c.lineTo(x, y + r); c.arc(x + r, y + r, r, Math.PI, 0); c.lineTo(x + w, y + h); c.closePath(); };
+  c.fillStyle = SH_CREAM; c.fillRect(x - 3, y + r - 2, w + 6, h - r + 5);
+  c.beginPath(); c.arc(x + r, y + r, r + 3, Math.PI, 0); c.closePath(); c.fill();
+  c.save(); path(); c.clip();
+  const sg = c.createLinearGradient(0, y, 0, y + h);
+  sg.addColorStop(0, '#86bde3'); sg.addColorStop(1, '#e8f3ef');
+  c.fillStyle = sg; c.fillRect(x, y, w, h);
+  c.fillStyle = '#6a88a4';                                                   // far ridge
+  c.beginPath(); c.moveTo(x, y + h - 10); c.lineTo(x + 8, y + h - 18); c.lineTo(x + 15, y + h - 13); c.lineTo(x + 25, y + h - 21); c.lineTo(x + w, y + h - 12); c.lineTo(x + w, y + h); c.lineTo(x, y + h); c.fill();
+  c.fillStyle = '#4f8a4a'; c.fillRect(x, y + h - 9, w, 9);                    // hill
+  for (const [bx, by, bc] of [[x + 6, y + h - 12, '#d9741e'], [x + 13, y + h - 11, '#c0392b'], [x + 28, y + h - 12, '#e6a82a']]) {
+    c.fillStyle = bc; c.beginPath(); c.arc(bx, by, 4, 0, Math.PI * 2); c.fill();               // fall maples
+  }
+  c.fillStyle = '#b3342a'; c.fillRect(x + 19, y + h - 13, 8, 6);             // red barn
+  c.fillStyle = '#5a4a40'; c.fillRect(x + 18, y + h - 15, 10, 3);
+  c.fillStyle = '#f2eee0'; c.fillRect(x + 21, y + h - 11, 3, 4);
+  c.restore();
+  c.fillStyle = SH_CREAM; c.fillRect(x + r - 1, y, 2, h); c.fillRect(x, y + Math.round(h * 0.45), w, 2);   // mullions
+  c.strokeStyle = SH_CREAM; c.lineWidth = 2; path(); c.stroke();
+  c.fillStyle = '#cfc5aa'; c.fillRect(x - 4, y + h, w + 8, 3);               // sill
+  c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(x - 4, y + h + 3, w + 8, 2);
+  for (const side of [0, 1]) {                                               // drapes
+    const dx = side ? x + w - 3 : x - 6, dw = 9;
+    c.fillStyle = '#7e1a26'; c.fillRect(dx, y - 4, dw, h + 4);
+    c.fillStyle = '#a42a38'; for (let k = 1; k < dw; k += 3) c.fillRect(dx + k, y - 4, 1, h + 4);
+    c.fillStyle = SH_GOLD; c.fillRect(dx, y + Math.round(h * 0.62), dw, 2);  // tie-back
+  }
+  c.fillStyle = '#8c1d2b'; c.beginPath();                                    // swag
+  c.moveTo(x - 7, y - 4); c.quadraticCurveTo(x + r, y + 8, x + w + 7, y - 4); c.lineTo(x + w + 7, y - 7); c.lineTo(x - 7, y - 7); c.closePath(); c.fill();
+  c.fillStyle = SH_GOLD; c.fillRect(x - 7, y - 8, w + 14, 2);
+  for (let k = 0; k < 8; k++) c.fillRect(x - 6 + k * ((w + 12) / 7), y - 1 + Math.sin(k / 7 * Math.PI) * 3, 1.5, 3);   // fringe
+}
+
+function shFlagPole(c, px, topY, baseY) {
+  c.fillStyle = 'rgba(0,0,0,0.28)'; c.fillRect(px - 9, baseY - 2, 18, 5);
+  c.fillStyle = '#b8902c'; c.fillRect(px - 8, baseY - 4, 16, 4);
+  c.fillStyle = '#e8c860'; c.fillRect(px - 8, baseY - 4, 16, 1);
+  c.fillStyle = '#7a5a18'; c.fillRect(px - 2, baseY - 8, 4, 5);
+  c.fillStyle = '#6b4a14'; c.fillRect(px - 1, topY, 3, baseY - topY - 6);
+  c.fillStyle = '#c9a23e'; c.fillRect(px - 1, topY, 1, baseY - topY - 6);
+  c.fillStyle = SH_GOLD; c.beginPath(); c.arc(px, topY - 2, 3.4, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#fff3b0'; c.fillRect(px - 1, topY - 3, 1.5, 1.5);
+}
+
+function shDesk(c) {
+  const x0 = 4 * TILE, x1 = 10 * TILE, y0 = 3 * TILE;
+  c.fillStyle = 'rgba(0,0,0,0.28)'; c.fillRect(x0 + 2, y0 + 30, x1 - x0, 5);
+  c.fillStyle = SH_WALL; c.fillRect(x0 - 2, y0, x1 - x0 + 4, 11);                    // top slab
+  c.fillStyle = '#a97545'; c.fillRect(x0 - 2, y0, x1 - x0 + 4, 2);
+  c.fillStyle = SH_WALD; c.fillRect(x0 - 2, y0 + 10, x1 - x0 + 4, 1);
+  c.fillStyle = SH_WAL; c.fillRect(x0, y0 + 11, x1 - x0, 19);                         // front face
+  c.fillStyle = SH_GOLD; c.fillRect(x0, y0 + 12, x1 - x0, 1);
+  for (let x = x0 + 5; x < x1 - 20; x += 31) {                                        // raised panels
+    c.fillStyle = SH_WALD; c.fillRect(x, y0 + 15, 26, 12);
+    c.fillStyle = '#80502c'; c.fillRect(x + 1, y0 + 16, 24, 10);
+    c.fillStyle = 'rgba(255,255,255,0.1)'; c.fillRect(x + 1, y0 + 16, 24, 1);
+  }
+  c.fillStyle = '#2f1a0a'; c.fillRect(x0, y0 + 28, x1 - x0, 2);
+  c.fillStyle = SH_WALD; c.fillRect(x0 - 2, y0 + 1, 3, 29); c.fillRect(x1 - 1, y0 + 1, 3, 29);
+  // banker's lamp
+  c.fillStyle = '#b8902c'; c.fillRect(145, y0 - 3, 11, 3); c.fillRect(149, y0 - 11, 3, 9);
+  c.fillStyle = '#2f8a52'; c.beginPath(); c.moveTo(141, y0 - 11); c.lineTo(160, y0 - 11); c.lineTo(156, y0 - 18); c.lineTo(145, y0 - 18); c.closePath(); c.fill();
+  c.fillStyle = '#6fd496'; c.fillRect(146, y0 - 17, 8, 1);
+  // open guest book + pen
+  c.fillStyle = '#5a1f1a'; c.fillRect(168, y0 - 6, 26, 7);
+  c.fillStyle = '#efe6cc'; c.fillRect(169, y0 - 8, 12, 7); c.fillRect(182, y0 - 8, 11, 7);
+  c.fillStyle = '#9a8e72'; for (let k = 0; k < 4; k++) { c.fillRect(171, y0 - 7 + k * 1.6, 8, 0.6); c.fillRect(184, y0 - 7 + k * 1.6, 7, 0.6); }
+  c.fillStyle = '#1c2a5a'; c.fillRect(197, y0 - 10, 1.5, 9); c.fillStyle = SH_GOLD; c.fillRect(196, y0 - 2, 4, 2);
+  // brass service bell
+  c.fillStyle = '#e0b84a'; c.beginPath(); c.arc(238, y0 - 1, 5, Math.PI, 0); c.fill(); c.fillRect(232, y0 - 1, 12, 2);
+  c.fillStyle = '#7a5a18'; c.fillRect(237, y0 - 8, 2, 2);
+  // brochure rack
+  c.fillStyle = '#4a2c14'; c.fillRect(254, y0 - 3, 14, 3);
+  for (const [k, col] of [[0, '#2a6a4a'], [1, '#c4402a'], [2, '#e6b02a']]) { c.fillStyle = col; c.fillRect(255 + k * 4.5, y0 - 12, 4, 10); c.fillStyle = 'rgba(255,255,255,0.5)'; c.fillRect(256 + k * 4.5, y0 - 10, 2, 1); }
+  // maple syrup jug
+  c.fillStyle = '#b8681f'; c.fillRect(279, y0 - 12, 9, 12);
+  c.fillStyle = '#e8963a'; c.fillRect(280, y0 - 11, 2, 10);
+  c.fillStyle = '#f4ecd6'; c.fillRect(280, y0 - 8, 7, 5);
+  c.fillStyle = '#3a2a1a'; c.fillRect(281, y0 - 15, 5, 3);
+  c.strokeStyle = '#b8681f'; c.lineWidth = 1.5; c.beginPath(); c.arc(289.5, y0 - 8, 3, -1.2, 1.2); c.stroke();
+  // little Vermont flag on a desk stand
+  c.fillStyle = '#7a5a18'; c.fillRect(300, y0 - 14, 1.5, 14); c.fillRect(297, y0 - 2, 8, 2);
+  c.fillStyle = '#1c3f94'; c.fillRect(301.5, y0 - 14, 11, 8);
+  c.fillStyle = '#2f8a52'; c.fillRect(306, y0 - 12, 3, 4); c.fillStyle = '#b3342a'; c.fillRect(304, y0 - 8, 7, 1.5);
+}
+
+function shFir(c, tx, ty) {            // potted balsam fir in a half barrel, dusted with snow
+  const cx = tx * TILE + 16, by = ty * TILE + 30;
+  c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(cx - 12, by - 2, 24, 4);
+  c.fillStyle = '#6b4424'; c.fillRect(cx - 11, by - 15, 22, 15);                  // barrel
+  c.fillStyle = '#8a5c30'; for (let k = 0; k < 5; k++) c.fillRect(cx - 10 + k * 5, by - 15, 1, 15);
+  c.fillStyle = '#2a2a2e'; c.fillRect(cx - 11, by - 12, 22, 2); c.fillRect(cx - 11, by - 5, 22, 2);
+  for (let k = 0; k < 4; k++) {                                                 // tiers
+    const w = 24 - k * 5, y = by - 14 - k * 11;
+    c.fillStyle = k % 2 ? '#2a7040' : '#1f5a34';
+    c.beginPath(); c.moveTo(cx - w / 2, y); c.lineTo(cx + w / 2, y); c.lineTo(cx, y - 15); c.closePath(); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.8)';
+    c.fillRect(cx - w / 2 + 1, y - 2, 3, 2); c.fillRect(cx + w / 2 - 5, y - 2, 3, 2); c.fillRect(cx - 1, y - 14, 2, 2);
+  }
+  c.fillStyle = '#5a3a22'; c.fillRect(cx - 1.5, by - 17, 3, 4);
+}
+
+function shMapleSapling(c, tx, ty) {   // sugar-maple sapling in a half barrel (leaves fall live)
+  const cx = tx * TILE + 16, by = ty * TILE + 30;
+  c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(cx - 12, by - 2, 24, 4);
+  c.fillStyle = '#6b4424'; c.fillRect(cx - 11, by - 14, 22, 14);
+  c.fillStyle = '#8a5c30'; for (let k = 0; k < 5; k++) c.fillRect(cx - 10 + k * 5, by - 14, 1, 14);
+  c.fillStyle = '#2a2a2e'; c.fillRect(cx - 11, by - 11, 22, 2); c.fillRect(cx - 11, by - 4, 22, 2);
+  c.fillStyle = '#4a3020'; c.fillRect(cx - 1.5, by - 36, 3, 23);
+  c.fillRect(cx - 7, by - 30, 6, 1.5); c.fillRect(cx + 1, by - 27, 7, 1.5);
+  const blobs = [[0, -40, 9, '#d9741e'], [-8, -34, 7, '#c0392b'], [8, -33, 7, '#e6a82a'], [-3, -46, 6, '#e6a82a'], [5, -44, 6, '#c0392b'], [0, -31, 6, '#b8481c']];
+  for (const [dx, dy, r, col] of blobs) { c.fillStyle = col; c.beginPath(); c.arc(cx + dx, by + dy, r, 0, Math.PI * 2); c.fill(); }
+  c.fillStyle = 'rgba(255,240,170,0.35)'; c.beginPath(); c.arc(cx - 3, by - 44, 4, 0, Math.PI * 2); c.fill();
+}
+
+function shStove(c) {                  // cast-iron woodstove with stovepipe into the wall, kettle on top
+  const x = 33, y = 160;
+  c.fillStyle = 'rgba(0,0,0,0.28)'; c.fillRect(x + 2, y + 31, 30, 4);
+  c.fillStyle = '#1e1e22'; c.fillRect(40, 134, 8, 28);                               // pipe up
+  c.fillStyle = '#34343a'; c.fillRect(40, 134, 2, 28);
+  c.fillStyle = '#17171a'; c.fillRect(28, 128, 20, 8);                               // elbow into the wall
+  c.fillStyle = '#34343a'; c.fillRect(28, 128, 20, 2);
+  c.fillStyle = '#b8902c'; c.fillRect(25, 124, 5, 16); c.fillStyle = '#e8c860'; c.fillRect(25, 124, 1.5, 16);   // thimble plate
+  c.fillStyle = '#4a4a52'; c.fillRect(38, 146, 12, 2); c.fillRect(38, 154, 12, 2);   // pipe bands
+  c.fillStyle = '#26262c'; c.fillRect(x + 2, y + 6, 26, 21);                         // body
+  c.fillStyle = '#3a3a42'; c.fillRect(x, y + 3, 30, 4);                              // top plate
+  c.fillStyle = '#54545c'; c.fillRect(x, y + 3, 30, 1);
+  c.fillStyle = '#1a1a1e'; c.fillRect(x + 3, y + 27, 3, 5); c.fillRect(x + 24, y + 27, 3, 5);   // legs
+  c.fillStyle = '#111'; c.fillRect(x + 7, y + 11, 15, 12);                           // door window frame
+  c.fillStyle = '#3a1a0a'; c.fillRect(x + 8, y + 12, 13, 10);
+  c.fillStyle = '#c8ccd0'; c.fillRect(x + 23, y + 15, 2, 5);                          // handle
+  c.fillStyle = '#54545c'; c.fillRect(x + 4, y + 8, 22, 1);
+  c.fillStyle = '#2a4a8a'; c.fillRect(x + 11, y + 24, 8, 2);                          // brand plate
+  c.fillStyle = '#4a4a52'; c.fillRect(x + 17, y - 2, 10, 5);                          // kettle
+  c.fillStyle = '#6a6a74'; c.fillRect(x + 17, y - 2, 10, 1.5); c.fillRect(x + 26, y - 1, 4, 1.5);
+  c.strokeStyle = '#2a2a30'; c.lineWidth = 1; c.beginPath(); c.arc(x + 22, y - 2, 4, Math.PI, 0); c.stroke();
+}
+
+function shLogs(c) {                   // split firewood stacked in a little frame
+  const x0 = 34, yb = 222;
+  c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(x0, yb - 2, 28, 4);
+  c.fillStyle = '#4a2f18'; c.fillRect(x0 - 2, yb - 26, 3, 28); c.fillRect(x0 + 28, yb - 26, 3, 28);
+  const rows = [[3, 6, 6], [3, 6, 6], [2, 10, 6]];
+  rows.forEach(([n, off, r], ri) => {
+    for (let k = 0; k < n; k++) {
+      const cx = x0 + off + k * 9 + (ri === 1 ? 4 : 0), cy = yb - 5 - ri * 8;
+      c.fillStyle = '#5a3a22'; c.beginPath(); c.arc(cx, cy, 4.6, 0, Math.PI * 2); c.fill();
+      c.fillStyle = shHash(k, ri) % 2 ? '#d2aa70' : '#c4985c'; c.beginPath(); c.arc(cx, cy, 3.5, 0, Math.PI * 2); c.fill();
+      c.strokeStyle = '#9a7442'; c.lineWidth = 0.7; c.beginPath(); c.arc(cx, cy, 1.8, 0, Math.PI * 2); c.stroke();
+    }
+  });
+  c.fillStyle = '#8a6a3a'; c.fillRect(x0 + 2, yb - 27, 6, 2);                            // kindling bundle on top
+  c.fillStyle = '#6a4a28'; c.fillRect(x0 + 10, yb - 28, 8, 2); c.fillStyle = '#a82a2a'; c.fillRect(x0 + 8, yb - 28, 1, 3);
+}
+
+function shHay(c) {                    // two hay bales + a pitchfork
+  for (const [bx, by, bw] of [[386, 160, 28], [389, 133, 26]]) {
+    c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(bx + 2, by + 28, bw, 3);
+    c.fillStyle = '#e9d27c'; c.fillRect(bx, by, bw, 6);
+    c.fillStyle = '#cfa94a'; c.fillRect(bx, by + 6, bw, 22);
+    c.fillStyle = '#a8842c';
+    for (let k = 0; k < 14; k++) { const h = shHash(k + bx, by); c.fillRect(bx + 1 + (h % (bw - 3)), by + 8 + ((h >> 8) % 16), 1, 3); }
+    c.fillStyle = '#f4e7a4'; for (let k = 0; k < 9; k++) { const h = shHash(k + 31, bx); c.fillRect(bx + 1 + (h % (bw - 4)), by + 1 + ((h >> 8) % 4), 3, 1); }
+    c.fillStyle = '#6e5020'; c.fillRect(bx + 7, by, 1.5, 28); c.fillRect(bx + bw - 9, by, 1.5, 28);
+  }
+  c.strokeStyle = '#8a6a3a'; c.lineWidth = 2; c.beginPath(); c.moveTo(412, 190); c.lineTo(404, 112); c.stroke();      // pitchfork handle
+  c.strokeStyle = '#a0a4aa'; c.lineWidth = 1.5; c.beginPath();
+  c.moveTo(399, 120); c.lineTo(409, 120); c.moveTo(399, 120); c.lineTo(398.5, 108); c.moveTo(404, 120); c.lineTo(404, 106); c.moveTo(409, 120); c.lineTo(409.5, 108); c.stroke();
+}
+
+function shPumpkins(c) {
+  const ty = 6 * TILE;
+  c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(387, ty + 27, 27, 3);
+  const pump = (cx, cy, rx, ry, col, dark) => {
+    c.fillStyle = col; c.beginPath(); c.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = dark; c.lineWidth = 0.8;
+    for (const k of [-0.5, 0, 0.5]) { c.beginPath(); c.ellipse(cx + k * rx * 0.7, cy, rx * 0.35, ry, 0, 0, Math.PI * 2); c.stroke(); }
+    c.fillStyle = '#4a6a2a'; c.fillRect(cx - 1.5, cy - ry - 2.5, 3, 3.5);
+    c.fillStyle = 'rgba(255,230,170,0.35)'; c.fillRect(cx - rx * 0.6, cy - ry * 0.6, 3, 2);
+  };
+  pump(397, ty + 21, 9, 7, '#e8761c', '#b4500e');
+  pump(409, ty + 23, 6, 5, '#f08a2a', '#b4500e');
+  pump(404, ty + 11, 6, 5, '#f4efe0', '#b8b098');                                  // white pumpkin
+  c.fillStyle = '#5a7a30'; c.fillRect(388, ty + 24, 6, 1.5); c.fillRect(385, ty + 26, 5, 1.5);   // vine
+}
+
+function shCowStatic(c) {              // Holstein on a little platform, wearing a sash (tail + ear are live)
+  const bx = 90, fy = 250;
+  c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(66, 252, 62, 5);
+  c.fillStyle = '#6b4424'; c.fillRect(66, 250, 60, 5); c.fillStyle = '#8a5c30'; c.fillRect(66, 250, 60, 1.5);
+  c.fillStyle = '#f2eee2';                                                       // legs
+  for (const lx of [72, 80, 100, 108]) { c.fillRect(lx, fy - 14, 4, 13); }
+  c.fillStyle = '#1b1b1f'; for (const lx of [72, 80, 100, 108]) c.fillRect(lx, fy - 4, 4, 3);
+  c.fillStyle = '#f4f1e8'; c.beginPath(); c.ellipse(bx, 231, 22, 10, 0, 0, Math.PI * 2); c.fill();           // body
+  c.fillStyle = 'rgba(0,0,0,0.12)'; c.beginPath(); c.ellipse(bx, 238, 20, 3, 0, 0, Math.PI); c.fill();
+  c.fillStyle = '#1b1b1f';
+  c.beginPath(); c.ellipse(79, 227, 7, 5, 0.3, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(99, 236, 7, 4, -0.2, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(106, 226, 4, 3, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#e89aa0'; c.beginPath(); c.ellipse(86, 240, 5, 3, 0, 0, Math.PI); c.fill();                   // udder
+  c.fillStyle = '#e8e4d8'; c.fillRect(108, 219, 18, 15);                         // head
+  c.fillStyle = '#1b1b1f'; c.fillRect(110, 220, 8, 7);
+  c.fillStyle = '#f2b0b4'; c.fillRect(120, 227, 7, 7);
+  c.fillStyle = '#7a3a40'; c.fillRect(122, 230, 1.5, 1.5); c.fillRect(125, 230, 1.5, 1.5);
+  c.fillStyle = '#fff'; c.fillRect(115, 222, 2, 2); c.fillStyle = '#111'; c.fillRect(116, 223, 1, 1);          // eye
+  c.fillStyle = '#e8d8a8'; c.fillRect(110, 216, 3, 4); c.fillRect(120, 216, 3, 4);                             // horns
+  c.fillStyle = '#c4202e';                                                       // sash
+  c.beginPath(); c.moveTo(96, 221); c.lineTo(104, 221); c.lineTo(88, 241); c.lineTo(81, 239); c.closePath(); c.fill();
+  c.fillStyle = SH_GOLD; c.fillRect(93, 226, 2.5, 2.5); c.fillRect(88, 233, 2.5, 2.5);
+  c.fillStyle = '#c4202e'; c.fillRect(111, 233, 4, 3); c.fillStyle = '#2a6aa8'; c.fillRect(111, 236, 4, 3);      // rosette ribbons
+  c.fillStyle = '#f0c030'; c.beginPath(); c.arc(113, 234, 3, 0, Math.PI * 2); c.fill();
+}
+
+function shBust(c) {                   // marble bust on a pedestal at (4,5)
+  const bx = 4 * TILE, by = 5 * TILE;
+  c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(bx + 4, by + 29, 26, 4);
+  c.fillStyle = '#d8d2bf'; c.fillRect(bx + 5, by + 25, 22, 6);
+  c.fillStyle = '#ece6d2'; c.fillRect(bx + 8, by + 14, 16, 12);
+  c.fillStyle = '#b8b29c'; c.fillRect(bx + 8, by + 14, 2, 12); c.fillRect(bx + 22, by + 14, 2, 12);
+  c.fillStyle = '#f4efe0'; c.fillRect(bx + 6, by + 11, 20, 4);
+  c.fillStyle = '#b8902c'; c.fillRect(bx + 12, by + 19, 8, 4);
+  c.fillStyle = '#d8d6cf'; c.beginPath(); c.moveTo(bx + 6, by + 11); c.quadraticCurveTo(bx + 7, by + 1, bx + 16, by + 1); c.quadraticCurveTo(bx + 25, by + 1, bx + 26, by + 11); c.closePath(); c.fill();   // shoulders
+  c.fillStyle = '#c8c6be'; c.fillRect(bx + 13.5, by - 3, 5, 5);                       // neck
+  c.fillStyle = '#e4e2da'; c.beginPath(); c.ellipse(bx + 16, by - 8, 5.5, 6.8, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#bdb9ae'; c.beginPath(); c.ellipse(bx + 16, by - 11, 6, 4.2, 0, Math.PI, 0); c.fill(); c.fillRect(bx + 20, by - 11, 3, 6);   // hair + queue
+  c.fillStyle = 'rgba(255,255,255,0.55)'; c.fillRect(bx + 13, by - 12, 3, 1.5);
+  c.fillStyle = 'rgba(0,0,0,0.12)'; c.fillRect(bx + 18, by - 7, 3, 7);
+}
+
+function shCatamount(c) {              // bronze catamount on a granite block at (9,5)
+  const bx = 9 * TILE, by = 5 * TILE;
+  c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(bx + 1, by + 29, 31, 4);
+  c.fillStyle = '#7e817e'; c.fillRect(bx + 2, by + 17, 28, 14);
+  c.fillStyle = '#a2a6a2'; c.fillRect(bx + 2, by + 17, 28, 3);
+  c.fillStyle = '#5e615e'; c.fillRect(bx + 2, by + 28, 28, 3);
+  c.fillStyle = '#c9a23e'; c.fillRect(bx + 11, by + 23, 10, 3);
+  c.fillStyle = '#8a5a26';                                                         // cat
+  c.beginPath(); c.ellipse(bx + 15, by + 10, 11, 5, 0, 0, Math.PI * 2); c.fill();
+  c.fillRect(bx + 6, by + 12, 3, 6); c.fillRect(bx + 12, by + 13, 3, 5); c.fillRect(bx + 19, by + 13, 3, 5); c.fillRect(bx + 24, by + 12, 3, 6);
+  c.beginPath(); c.arc(bx + 27, by + 6, 4.5, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.moveTo(bx + 24, by + 3); c.lineTo(bx + 25, by - 1); c.lineTo(bx + 27, by + 3); c.fill(); c.beginPath(); c.moveTo(bx + 28, by + 3); c.lineTo(bx + 30, by - 1); c.lineTo(bx + 31, by + 4); c.fill();
+  c.strokeStyle = '#8a5a26'; c.lineWidth = 2.5; c.beginPath(); c.moveTo(bx + 5, by + 9); c.quadraticCurveTo(bx - 3, by + 6, bx + 1, by - 2); c.stroke();   // tail
+  c.fillStyle = 'rgba(90,170,140,0.45)'; c.fillRect(bx + 10, by + 6, 7, 2); c.fillRect(bx + 25, by + 4, 3, 2);   // patina
+  c.fillStyle = '#e0b866'; c.fillRect(bx + 28, by + 5, 1.5, 1.5);
+}
+
+function shMilkCans(c) {               // old steel milk cans in the corner at (1,7)
+  const bx = 1 * TILE, by = 7 * TILE;
+  c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(bx + 3, by + 28, 26, 4);
+  const can = (x, y, w, h) => {
+    c.fillStyle = '#9ea6ab'; c.fillRect(x, y + 5, w, h - 5);
+    c.fillStyle = '#c8d0d4'; c.fillRect(x + 1, y + 5, 2, h - 5);
+    c.fillStyle = '#7a8288'; c.fillRect(x + w - 2, y + 5, 2, h - 5);
+    c.fillStyle = '#8a9298'; c.fillRect(x + 2, y + 1, w - 4, 5);
+    c.fillStyle = '#4a4e54'; c.fillRect(x + 1, y, w - 2, 2);
+    c.fillStyle = '#3a3e44'; c.fillRect(x - 1.5, y + 6, 2, 5); c.fillRect(x + w - 0.5, y + 6, 2, 5);
+    c.fillStyle = '#b3342a'; c.fillRect(x + 2, y + Math.round(h * 0.55), w - 4, 3);
+    c.fillStyle = '#f4ecd6'; c.fillRect(x + 4, y + Math.round(h * 0.55) + 1, w - 8, 1);
+  };
+  can(bx + 3, by + 4, 13, 27); can(bx + 18, by + 12, 11, 19);
+}
+
+function shAppleCrate(c) {             // slatted crate of Vermont apples at (12,7)
+  const bx = 12 * TILE, by = 7 * TILE;
+  c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(bx + 3, by + 28, 27, 4);
+  c.fillStyle = '#7a5530'; c.fillRect(bx + 4, by + 17, 25, 13);
+  c.fillStyle = '#9a7040'; for (let k = 0; k < 3; k++) c.fillRect(bx + 4, by + 18 + k * 4, 25, 2.5);
+  c.fillStyle = '#4a2f18'; c.fillRect(bx + 4, by + 17, 2, 13); c.fillRect(bx + 27, by + 17, 2, 13);
+  for (const [ax, ay] of [[8, 14], [15, 12], [22, 14], [11, 9], [19, 8], [25, 10], [15, 5]]) {
+    c.fillStyle = shHash(ax, ay) % 3 ? '#c8302a' : '#a8241f'; c.beginPath(); c.arc(bx + ax + 1, by + ay + 2, 4.2, 0, Math.PI * 2); c.fill();
+    c.fillStyle = 'rgba(255,230,230,0.5)'; c.fillRect(bx + ax - 1, by + ay, 1.5, 1.5);
+  }
+  c.fillStyle = '#3f8a3a'; c.fillRect(bx + 17, by + 1, 4, 2); c.fillStyle = '#5a3a22'; c.fillRect(bx + 16, by + 1, 1, 3);
+  c.fillStyle = '#f4ecd6'; c.fillRect(bx + 8, by + 22, 17, 5);
+  c.fillStyle = '#b3342a'; c.fillRect(bx + 10, by + 24, 13, 1.5);
+}
+
+function shSyrupTable(c) {             // gingham-draped table: maple syrup, a cheddar wheel, honey, a hand-lettered card
+  const bx = 10 * TILE, by = 7 * TILE;                                          // spans (10,7)(11,7): x 320-384
+  c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(bx + 2, by + 30, 62, 4);
+  c.fillStyle = '#e8e0d0'; c.fillRect(bx + 2, by + 10, 60, 14);                  // cloth top
+  c.fillStyle = '#b52a2a'; for (let x = 0; x < 60; x += 6) for (let y = 0; y < 14; y += 6) c.fillRect(bx + 2 + x, by + 10 + y, 3, 3);
+  c.fillStyle = '#d8d0c0'; c.fillRect(bx + 2, by + 24, 60, 8);                   // front drape
+  c.fillStyle = '#b52a2a'; for (let x = 0; x < 60; x += 6) { c.fillRect(bx + 2 + x, by + 24, 3, 4); c.fillRect(bx + 5 + x, by + 28, 3, 4); }
+  c.fillStyle = 'rgba(0,0,0,0.16)'; c.fillRect(bx + 2, by + 31, 60, 1);
+  const jug = (x, h) => {
+    c.fillStyle = '#b8681f'; c.fillRect(bx + x, by + 21 - h, 8, h); c.fillStyle = '#e8963a'; c.fillRect(bx + x + 1, by + 22 - h, 2, h - 2);
+    c.fillStyle = '#f4ecd6'; c.fillRect(bx + x + 1, by + 22 - h * 0.6, 6, h * 0.35); c.fillStyle = '#3a2a1a'; c.fillRect(bx + x + 2, by + 18 - h, 4, 3);
+  };
+  jug(6, 14); jug(16, 11); jug(26, 8);
+  c.fillStyle = '#e8b82a'; c.beginPath(); c.ellipse(bx + 46, by + 18, 9, 4, 0, 0, Math.PI * 2); c.fill();           // cheddar wheel
+  c.fillRect(bx + 37, by + 14, 18, 4);
+  c.fillStyle = '#f4cf50'; c.beginPath(); c.ellipse(bx + 46, by + 14, 9, 4, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#c4980a'; c.fillRect(bx + 52, by + 15, 5, 4);
+  c.fillStyle = '#d89a1a'; c.fillRect(bx + 58, by + 14, 6, 8); c.fillStyle = '#4a2f18'; c.fillRect(bx + 58, by + 12, 6, 3);   // honey jar
+  c.fillStyle = '#f4ecd6'; c.fillRect(bx + 18, by - 6, 30, 12);                                                        // easel card
+  c.fillStyle = '#7a5530'; c.fillRect(bx + 17, by - 7, 32, 1.5); c.fillRect(bx + 33, by + 6, 1.5, 4);
+  c.fillStyle = '#2f6b3c'; c.font = '700 6px monospace'; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+  c.fillText('VT MADE', bx + 33, by + 3);
+}
+
+function shRunnerAndFloorDressing(c) {
+  const x0 = 184, x1 = 232;
+  c.fillStyle = '#b8902c'; c.fillRect(x0 - 1, 128, x1 - x0 + 2, 160);
+  c.fillStyle = '#7e1a26'; c.fillRect(x0 + 2, 128, x1 - x0 - 4, 160);
+  c.fillStyle = '#a42a38'; c.fillRect(x0 + 6, 128, x1 - x0 - 12, 160);
+  c.fillStyle = SH_GOLD;
+  for (let y = 136; y < 280; y += 16) { c.beginPath(); c.moveTo(208, y); c.lineTo(214, y + 5); c.lineTo(208, y + 10); c.lineTo(202, y + 5); c.closePath(); c.fill(); }
+  c.fillStyle = 'rgba(0,0,0,0.14)'; c.fillRect(x0 - 1, 128, 1, 160); c.fillRect(x1, 128, 1, 160);
+  // WELCOME mat at the door
+  c.fillStyle = '#6a4a28'; c.fillRect(190, 274, 36, 13); c.fillStyle = '#8a6a3c'; c.fillRect(191, 275, 34, 11);
+  c.fillStyle = '#f4ecd6'; c.font = '700 6px monospace'; c.textAlign = 'center'; c.textBaseline = 'alphabetic'; c.fillText('WELCOME', 208, 284);
+  // muddy boot prints coming in off the lawn (mud season)
+  c.fillStyle = 'rgba(70,44,22,0.5)';
+  for (let k = 0; k < 5; k++) { const y = 262 - k * 17; c.fillRect(199 + (k % 2) * 14, y, 5, 8); c.fillRect(199 + (k % 2) * 14, y + 9, 4, 3); }
+  // a few tracked-in maple leaves
+  for (const [lx, ly, col] of [[176, 250, '#d9741e'], [240, 222, '#c0392b'], [170, 196, '#e6a82a'], [248, 270, '#b8481c'], [236, 160, '#d9741e']]) {
+    c.fillStyle = col; c.fillRect(lx, ly, 4, 3); c.fillRect(lx + 1, ly - 1, 2, 5);
+  }
+}
+
+function paintStateHouseInterior(c) {
+  const W = 14 * TILE, H = 10 * TILE;
+  c.fillStyle = '#2a1a10'; c.fillRect(0, 0, W, H);
+
+  // ---------------------------------------------------------------- floor: Vermont marble checkerboard
+  for (let ty = 2; ty < 9; ty++) for (let tx = 1; tx < 13; tx++) {
+    const dark = (tx + ty) % 2, h = shHash(tx, ty);
+    c.fillStyle = dark ? '#6f8e78' : '#ece5d2'; c.fillRect(tx * TILE, ty * TILE, TILE, TILE);
+    c.strokeStyle = dark ? 'rgba(235,245,235,0.25)' : 'rgba(110,135,125,0.25)'; c.lineWidth = 1;
+    c.beginPath(); c.moveTo(tx * TILE + (h % 20) + 4, ty * TILE + 2);
+    c.quadraticCurveTo(tx * TILE + ((h >> 5) % 28) + 2, ty * TILE + 16, tx * TILE + ((h >> 9) % 24) + 4, ty * TILE + TILE - 2); c.stroke();
+    c.fillStyle = 'rgba(0,0,0,0.10)'; c.fillRect(tx * TILE, ty * TILE, TILE, 1); c.fillRect(tx * TILE, ty * TILE, 1, TILE);
+  }
+
+  // ---------------------------------------------------------------- back wall: crown molding, green plaster, walnut wainscot
+  c.fillStyle = SH_GRN; c.fillRect(0, 0, W, 64);
+  for (let y = 14; y < 50; y += 9) for (let x = ((y / 9) | 0) % 2 ? 5 : 0; x < W; x += 10) {
+    c.fillStyle = 'rgba(255,255,255,0.06)'; c.fillRect(x + 4, y, 2, 6); c.fillRect(x + 2, y + 2, 6, 2);
+  }
+  c.fillStyle = SH_CREAM; c.fillRect(0, 0, W, 9);
+  for (let x = 2; x < W; x += 6) { c.fillStyle = '#b8ad90'; c.fillRect(x, 5, 3, 3); }
+  c.fillStyle = SH_GOLD; c.fillRect(0, 9, W, 2); c.fillStyle = SH_DGOLD; c.fillRect(0, 11, W, 1);
+  c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(0, 12, W, 3);
+  c.fillStyle = SH_CREAM; c.fillRect(0, 50, W, 2); c.fillStyle = SH_DGOLD; c.fillRect(0, 52, W, 1);
+  c.fillStyle = SH_WAL; c.fillRect(0, 53, W, 11);
+  for (let x = 34; x < W - 30; x += 30) { c.fillStyle = SH_WALD; c.fillRect(x, 55, 26, 6); c.fillStyle = SH_WALL; c.fillRect(x + 1, 56, 24, 4); }
+  c.fillStyle = SH_WALD; c.fillRect(0, 61, W, 3);
+
+  shWindow(c, 66, 14, 36, 36);
+  shWindow(c, 346, 14, 36, 36);
+
+  // light shafts from the windows across the floor
+  c.save(); c.beginPath(); c.rect(TILE, 64, 12 * TILE, 7 * TILE); c.clip();
+  for (const poly of [[[66, 52], [102, 52], [196, 210], [156, 210]], [[346, 52], [382, 52], [292, 210], [252, 210]]]) {
+    const lg = c.createLinearGradient(0, 56, 0, 210);
+    lg.addColorStop(0, 'rgba(255,244,200,0.30)'); lg.addColorStop(1, 'rgba(255,244,200,0)');
+    c.fillStyle = lg; c.beginPath(); c.moveTo(poly[0][0], poly[0][1]); for (let i = 1; i < 4; i++) c.lineTo(poly[i][0], poly[i][1]); c.closePath(); c.fill();
+  }
+  c.restore();
+
+  // landscape + barn paintings either side of the portrait
+  shFrame(c, 150, 14, 44, 32, (cc, x, y, w, h) => {                       // CAMEL'S HUMP
+    const g = cc.createLinearGradient(0, y, 0, y + h); g.addColorStop(0, '#9cc8e8'); g.addColorStop(1, '#f2e8c8');
+    cc.fillStyle = g; cc.fillRect(x, y, w, h);
+    cc.fillStyle = '#7a93aa'; cc.beginPath(); cc.moveTo(x, y + h - 8); cc.lineTo(x + 9, y + h - 12); cc.lineTo(x + 14, y + h - 16); cc.lineTo(x + 18, y + h - 19);
+    cc.lineTo(x + 22, y + h - 17); cc.lineTo(x + 26, y + h - 20); cc.lineTo(x + 31, y + h - 13); cc.lineTo(x + w, y + h - 9); cc.lineTo(x + w, y + h); cc.lineTo(x, y + h); cc.fill();
+    cc.fillStyle = 'rgba(255,255,255,0.3)'; cc.fillRect(x + 17, y + h - 19, 6, 2);
+    cc.fillStyle = '#5c8c4a'; cc.fillRect(x, y + h - 6, w, 6);
+    cc.fillStyle = '#d9741e'; cc.beginPath(); cc.arc(x + 6, y + h - 8, 3.5, 0, Math.PI * 2); cc.fill();
+    cc.fillStyle = '#2a5a34'; cc.fillRect(x + w - 7, y + h - 12, 3, 8); cc.fillRect(x + w - 8, y + h - 9, 5, 3);
+  });
+  shFrame(c, 254, 14, 44, 32, (cc, x, y, w, h) => {                       // RED BARN IN AUTUMN
+    const g = cc.createLinearGradient(0, y, 0, y + h); g.addColorStop(0, '#f2d9a0'); g.addColorStop(1, '#f8ecd0');
+    cc.fillStyle = g; cc.fillRect(x, y, w, h);
+    cc.fillStyle = '#c9a84a'; cc.fillRect(x, y + h - 8, w, 8);
+    cc.fillStyle = '#8a8a8e'; cc.fillRect(x + w - 9, y + 5, 5, 15); cc.fillStyle = '#6a6a70'; cc.fillRect(x + w - 9, y + 4, 5, 2);
+    cc.fillStyle = '#b3342a'; cc.fillRect(x + 7, y + 9, 17, 11);
+    cc.fillStyle = '#4a3a34'; cc.beginPath(); cc.moveTo(x + 5, y + 10); cc.lineTo(x + 15.5, y + 3); cc.lineTo(x + 26, y + 10); cc.closePath(); cc.fill();
+    cc.strokeStyle = '#f2eee0'; cc.lineWidth = 1; cc.strokeRect(x + 12.5, y + 13.5, 6, 6.5); cc.beginPath(); cc.moveTo(x + 12.5, y + 13.5); cc.lineTo(x + 18.5, y + 20); cc.moveTo(x + 18.5, y + 13.5); cc.lineTo(x + 12.5, y + 20); cc.stroke();
+    for (const [mx, my, mc] of [[x + 3, y + h - 10, '#d9741e'], [x + 30, y + h - 11, '#c0392b']]) { cc.fillStyle = mc; cc.beginPath(); cc.arc(mx, my, 4.5, 0, Math.PI * 2); cc.fill(); cc.fillStyle = '#4a3020'; cc.fillRect(mx - 0.5, my + 3, 1.5, 5); }
+  });
+
+  // ---------------------------------------------------------------- the portrait + brass picture light + plaque
+  const P = SH_PORTRAIT;
+  c.fillStyle = '#b8902c'; c.fillRect(P.x + 8, P.y - 5, P.w - 16, 3); c.fillStyle = '#e8c860'; c.fillRect(P.x + 8, P.y - 5, P.w - 16, 1);
+  c.fillRect(P.x + P.w / 2 - 1, P.y - 3, 2, 3); c.fillStyle = '#b8902c'; c.fillRect(P.x + P.w / 2 - 1, P.y - 3, 2, 3);
+  shFrame(c, P.x, P.y, P.w, P.h, (cc, x, y, w, h) => {                    // painted-bust placeholder (assets/bernie.png replaces it live)
+    const g = cc.createRadialGradient(x + w / 2, y + h * 0.4, 2, x + w / 2, y + h * 0.4, w);
+    g.addColorStop(0, '#6a4a30'); g.addColorStop(1, '#241810');
+    cc.fillStyle = g; cc.fillRect(x, y, w, h);
+    cc.fillStyle = '#1e2a44'; cc.beginPath(); cc.ellipse(x + w / 2, y + h + 3, w * 0.42, h * 0.38, 0, Math.PI, 0); cc.fill();
+    cc.fillStyle = '#e8e4da'; cc.beginPath(); cc.moveTo(x + w / 2 - 5, y + h - 11); cc.lineTo(x + w / 2 + 5, y + h - 11); cc.lineTo(x + w / 2, y + h - 3); cc.closePath(); cc.fill();
+    cc.fillStyle = '#b8845e'; cc.fillRect(x + w / 2 - 3, y + h * 0.55, 6, 6);
+    cc.fillStyle = '#d4a07a'; cc.beginPath(); cc.ellipse(x + w / 2, y + h * 0.4, 6.5, 8, 0, 0, Math.PI * 2); cc.fill();
+    cc.fillStyle = '#3a2a1e'; cc.beginPath(); cc.ellipse(x + w / 2, y + h * 0.34, 7, 6, 0, Math.PI, 0); cc.fill(); cc.fillRect(x + w / 2 - 7, y + h * 0.34, 2, 5); cc.fillRect(x + w / 2 + 5, y + h * 0.34, 2, 5);
+    cc.fillStyle = 'rgba(255,235,200,0.22)'; cc.beginPath(); cc.ellipse(x + w / 2 - 2, y + h * 0.42, 3, 4, 0, 0, Math.PI * 2); cc.fill();
+  });
+  c.fillStyle = '#4a3008'; c.fillRect(P.x - 6, P.y + P.h + 3, P.w + 12, 11);
+  c.fillStyle = '#c9a23e'; c.fillRect(P.x - 5, P.y + P.h + 4, P.w + 10, 9);
+  c.fillStyle = '#e8c860'; c.fillRect(P.x - 5, P.y + P.h + 4, P.w + 10, 1);
+  c.fillStyle = '#2a1a08'; c.font = '700 6px monospace'; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+  c.fillText('BERNIE SANDERS', P.x + P.w / 2, P.y + P.h + 11);
+
+  // flag stands (flags themselves are live)
+  shFlagPole(c, 112, 6, 94);
+  shFlagPole(c, 336, 6, 94);
+
+  // ---------------------------------------------------------------- side walls: walnut paneling + chair rail
+  for (const x0 of [0, 13 * TILE]) {
+    c.fillStyle = '#4e2c16'; c.fillRect(x0, 64, TILE, 224);
+    for (let y = 66; y < 288; y += 14) { c.fillStyle = 'rgba(0,0,0,0.24)'; c.fillRect(x0, y + 12, TILE, 2); c.fillStyle = 'rgba(255,255,255,0.05)'; c.fillRect(x0, y, TILE, 1); }
+    c.fillStyle = SH_GOLD; c.fillRect(x0 === 0 ? TILE - 3 : x0 + 1, 64, 2, 224);
+    c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(x0 === 0 ? TILE - 1 : x0 - 0, 64, 1, 224);
+  }
+  // snowshoes crossed on the left wall
+  for (const rot of [-0.7, 0.7]) {
+    c.save(); c.translate(16, 100); c.rotate(rot); c.scale(0.66, 0.66);
+    c.strokeStyle = '#7a5226'; c.lineWidth = 2.8; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(0, 15); c.lineTo(0, 24); c.stroke();                                // tail stick
+    c.beginPath(); c.moveTo(0, -15); c.bezierCurveTo(9, -13, 9, 8, 0, 15); c.bezierCurveTo(-9, 8, -9, -13, 0, -15); c.closePath();
+    c.fillStyle = '#efe3bd'; c.fill(); c.stroke();
+    c.strokeStyle = '#b89a62'; c.lineWidth = 0.7;
+    for (let k = -10; k <= 10; k += 4) { c.beginPath(); c.moveTo(-6, k); c.lineTo(6, k); c.stroke(); }
+    for (const k of [-3, 0, 3]) { c.beginPath(); c.moveTo(k, -13); c.lineTo(k, 13); c.stroke(); }
+    c.fillStyle = '#4a3020'; c.fillRect(-4, 0, 8, 3);                                            // binding strap
+    c.restore();
+  }
+  // Green Mountain pennant + barn lantern on the left wall
+  c.fillStyle = '#1f6b3c'; c.beginPath(); c.moveTo(4, 160); c.lineTo(28, 168); c.lineTo(4, 176); c.closePath(); c.fill();
+  c.fillStyle = '#f4ecd6'; c.fillRect(7, 166, 3, 4); c.fillRect(11, 166, 3, 4);
+  c.fillStyle = '#4a3a2a'; c.fillRect(3, 158, 2, 20);
+  c.fillStyle = '#1a1a1e'; c.fillRect(11, 234, 10, 2); c.fillRect(12, 236, 8, 14); c.fillRect(11, 250, 10, 2); c.fillRect(14, 230, 4, 4);
+  c.fillStyle = '#e8a83a'; c.fillRect(13, 238, 6, 10); c.fillStyle = '#ffe6a0'; c.fillRect(15, 240, 2, 6);
+  // right wall: regulator clock, sap bucket, "Freedom and Unity" banner, Indian corn
+  c.fillStyle = '#b8902c'; c.beginPath(); c.arc(432, 92, 12.5, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#f4efe0'; c.beginPath(); c.arc(432, 92, 10, 0, Math.PI * 2); c.fill();
+  c.strokeStyle = '#2a1a0a'; c.lineWidth = 1.4; c.beginPath(); c.moveTo(432, 92); c.lineTo(432, 85); c.moveTo(432, 92); c.lineTo(437, 90); c.stroke();
+  c.fillStyle = '#2a1a0a'; for (let k = 0; k < 12; k++) { const a = k / 12 * Math.PI * 2; c.fillRect(432 + Math.sin(a) * 8.5 - 0.5, 92 - Math.cos(a) * 8.5 - 0.5, 1, 1); }
+  c.fillStyle = '#5a3a1a'; c.fillRect(428, 106, 8, 6);
+  c.fillStyle = '#6a4a28'; c.fillRect(421, 118, 22, 28); c.fillStyle = '#8a6a3a'; c.fillRect(421, 118, 22, 2);             // tap board
+  c.fillStyle = '#b8c0c6'; c.fillRect(424, 128, 16, 16); c.fillStyle = '#e0e6ea'; c.fillRect(424, 128, 3, 16);
+  c.fillStyle = '#8a929a'; c.fillRect(437, 128, 3, 16); c.fillStyle = '#6a727a'; c.fillRect(423, 126, 18, 3);          // sap bucket + lid
+  c.fillStyle = '#a0a4a8'; c.fillRect(419, 122, 7, 2); c.fillRect(417, 122, 3, 5);                                    // spile
+  c.fillStyle = '#f2ead0'; c.fillRect(421, 154, 22, 38); c.strokeStyle = '#1f6b3c'; c.lineWidth = 1.5; c.strokeRect(422, 155, 20, 36);
+  c.fillStyle = '#1f6b3c'; c.font = '700 4.4px monospace'; c.textAlign = 'center';
+  c.fillText('FREEDOM', 432, 166); c.fillText('& UNITY', 432, 173);
+  c.fillStyle = '#2f8a3a'; c.beginPath(); c.moveTo(432, 176); c.lineTo(437, 184); c.lineTo(427, 184); c.closePath(); c.fill(); c.fillStyle = '#5a3a22'; c.fillRect(431, 184, 2, 3);
+  c.fillStyle = '#c4a45a'; c.fillRect(425, 202, 14, 3);                                   // hanging bundle of Indian corn
+  for (const [cx, col, dx] of [[427, '#c0392b', -1], [432, '#e6a82a', 0], [437, '#5a2a6a', 1]]) {
+    c.fillStyle = '#8a7a4a'; c.beginPath(); c.moveTo(cx - 3, 218); c.lineTo(cx, 225); c.lineTo(cx + 3, 218); c.closePath(); c.fill();   // husk
+    c.fillStyle = col; c.beginPath(); c.moveTo(cx - 2.6, 205); c.quadraticCurveTo(cx - 3.2, 214, cx, 220); c.quadraticCurveTo(cx + 3.2, 214, cx + 2.6, 205); c.closePath(); c.fill();
+    c.fillStyle = 'rgba(0,0,0,0.25)'; for (let k = 0; k < 5; k++) c.fillRect(cx - 1.5, 207 + k * 2.6, 3, 0.7);
+  }
+  c.fillStyle = '#a82a2a'; c.fillRect(429, 203, 6, 3);
+
+  // ---------------------------------------------------------------- red runner + door mat
+  shRunnerAndFloorDressing(c);
+
+  // ---------------------------------------------------------------- the information desk (row 3, cols 4-9)
+  shDesk(c);
+
+  // ---------------------------------------------------------------- Vermont farm props
+  shFir(c, 1, 2);
+  shMapleSapling(c, 12, 2);
+  shStove(c);
+  shLogs(c);
+  shCowStatic(c);
+  shBust(c);
+  shCatamount(c);
+  shMilkCans(c);
+  shAppleCrate(c);
+  shHay(c);
+  shPumpkins(c);
+  shSyrupTable(c);
+
+  // ---------------------------------------------------------------- front wall (row 9): coat hooks, town-meeting board, exit
+  const fy = 9 * TILE;
+  c.fillStyle = SH_GRN; c.fillRect(0, fy, W, TILE);
+  c.fillStyle = SH_CREAM; c.fillRect(0, fy, W, 3);
+  c.fillStyle = SH_GOLD; c.fillRect(0, fy + 3, W, 1);
+  c.fillStyle = SH_WAL; c.fillRect(0, fy + 15, W, 17);
+  for (let x = 6; x < W - 6; x += 26) { c.fillStyle = SH_WALD; c.fillRect(x, fy + 18, 22, 10); c.fillStyle = SH_WALL; c.fillRect(x + 1, fy + 19, 20, 8); }
+  c.fillStyle = SH_CREAM; c.fillRect(0, fy + 13, W, 2);
+  c.fillStyle = '#17120e'; c.fillRect(0, fy + 29, W, 3);
+  // coat hooks with a buffalo-plaid flannel jacket, a knit hat and a barn lantern
+  c.fillStyle = '#5a3a1c'; c.fillRect(110, fy + 5, 62, 5); c.fillStyle = '#b8902c'; for (const hx of [118, 138, 158]) c.fillRect(hx, fy + 9, 3, 3);
+  c.fillStyle = '#a82a2a'; c.fillRect(114, fy + 10, 16, 17);
+  c.fillStyle = '#1a1a1e'; for (let x = 0; x < 16; x += 4) for (let y = 0; y < 17; y += 4) if (((x + y) / 4) % 2 === 0) c.fillRect(114 + x, fy + 10 + y, 4, 4);
+  c.fillStyle = '#8a1f1f'; c.fillRect(114, fy + 10, 16, 2);
+  c.fillStyle = '#2a5a9a'; c.beginPath(); c.arc(139, fy + 16, 5, Math.PI, 0); c.fill(); c.fillRect(134, fy + 16, 10, 4); c.fillStyle = '#f4ecd6'; c.fillRect(134, fy + 19, 10, 1.5);
+  c.fillStyle = '#e8a83a'; c.fillRect(155, fy + 14, 6, 9); c.fillStyle = '#1a1a1e'; c.fillRect(154, fy + 13, 8, 1.5); c.fillRect(154, fy + 23, 8, 1.5);
+  // exit doorway (the player leaves through (6,9)): frame + daylight
+  c.fillStyle = '#17120e'; c.fillRect(187, fy, 5, TILE); c.fillRect(224, fy, 5, TILE);
+  c.fillStyle = SH_GOLD; c.fillRect(187, fy, 42, 3);
+  const dg = c.createLinearGradient(0, fy + 3, 0, fy + TILE);
+  dg.addColorStop(0, '#f6f2d6'); dg.addColorStop(1, '#b6d8a4');
+  c.fillStyle = dg; c.fillRect(192, fy + 3, 32, TILE - 3);
+  c.fillStyle = 'rgba(0,0,0,0.12)'; c.fillRect(192, fy + 3, 32, 3);
+  // town meeting bulletin board
+  c.fillStyle = '#4a2c14'; c.fillRect(246, fy + 3, 66, 26); c.fillStyle = '#b8864a'; c.fillRect(248, fy + 5, 62, 22);
+  c.fillStyle = '#f4ecd6'; c.fillRect(250, fy + 7, 33, 9); c.fillStyle = '#1f6b3c'; c.font = '700 4.4px monospace'; c.textAlign = 'center'; c.fillText('TOWN MEETING', 266.5, fy + 13.2);
+  c.fillStyle = '#f2d36a'; c.fillRect(286, fy + 8, 10, 8); c.fillStyle = '#9fd0e8'; c.fillRect(298, fy + 9, 11, 9);
+  c.fillStyle = '#f0a0b0'; c.fillRect(252, fy + 18, 9, 7); c.fillStyle = '#c8e8b0'; c.fillRect(264, fy + 18, 13, 7); c.fillStyle = '#f4ecd6'; c.fillRect(281, fy + 19, 12, 6);
+  c.fillStyle = '#9a8e72'; for (const [lx, ly, lw] of [[288, 10, 7], [288, 12.5, 5], [300, 11.5, 7], [266, 20, 8], [266, 22.5, 6], [283, 21, 8]]) c.fillRect(lx, fy + ly, lw, 0.7);
+  c.fillStyle = '#b3342a'; for (const [pxx, pyy] of [[286, 8], [291, 8], [304, 9], [256, 18], [270, 18], [287, 19]]) c.fillRect(pxx, fy + pyy - 0.5, 1.6, 1.6);
+
+  // ---------------------------------------------------------------- finish: vignette + wall-foot shadows
+  const sh = c.createLinearGradient(0, 64, 0, 82); sh.addColorStop(0, 'rgba(0,0,0,0.28)'); sh.addColorStop(1, 'rgba(0,0,0,0)');
+  c.fillStyle = sh; c.fillRect(TILE, 64, 12 * TILE, 18);
+  const vg = c.createRadialGradient(W / 2, H / 2, 150, W / 2, H / 2, 310);
+  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.26)');
+  c.fillStyle = vg; c.fillRect(0, 0, W, H);
+}
+
+// Waving-flag sprites (rendered once, then sliced column by column in drawStateHouseInterior()).
+let _shFlags = null;
+function shBuildFlags() {
+  const mk = (draw) => { const cv = document.createElement('canvas'); cv.width = 30; cv.height = 20; draw(cv.getContext('2d')); return cv; };
+  const us = mk((c) => {
+    for (let r = 0; r < 13; r++) { c.fillStyle = r % 2 ? '#f5f5f5' : '#b3202f'; c.fillRect(0, Math.floor(r * 20 / 13), 30, Math.ceil(20 / 13) + 0.5); }
+    c.fillStyle = '#2a3f8a'; c.fillRect(0, 0, 13, 11);
+    c.fillStyle = '#f5f5f5'; for (let y = 1; y < 10; y += 2.6) for (let x = 1.5; x < 12; x += 2.8) c.fillRect(x, y, 1, 1);
+    c.fillStyle = '#d8b04a'; c.fillRect(0, 19, 30, 1);
+  });
+  const vt = mk((c) => {
+    c.fillStyle = '#1c3f94'; c.fillRect(0, 0, 30, 20);
+    c.fillStyle = '#8fc4e8'; c.fillRect(10, 4, 10, 10);                                    // shield
+    c.fillStyle = '#b3342a'; c.beginPath(); c.moveTo(10, 14); c.lineTo(13, 10); c.lineTo(16, 12); c.lineTo(19, 9); c.lineTo(20, 14); c.fill();
+    c.fillStyle = '#1f6b3c'; c.beginPath(); c.moveTo(15, 4); c.lineTo(18, 11); c.lineTo(12, 11); c.closePath(); c.fill();
+    c.fillStyle = '#e0b040'; c.fillRect(10, 11, 2, 3); c.fillRect(18, 11, 2, 3);          // wheat
+    c.fillStyle = '#f4f1e8'; c.fillRect(13, 12, 4, 2); c.fillStyle = '#1b1b1f'; c.fillRect(14, 12, 1, 1);   // cow
+    c.fillStyle = '#c8a060'; c.fillRect(13, 2, 4, 2); c.fillRect(12, 1, 1, 2); c.fillRect(17, 1, 1, 2);       // deer crest
+    c.fillStyle = '#d8b04a'; c.fillRect(9, 4, 1, 10); c.fillRect(20, 4, 1, 10); c.fillRect(9, 3, 12, 1); c.fillRect(9, 14, 12, 1);
+    c.fillStyle = '#b3342a'; c.fillRect(7, 16, 16, 2); c.fillStyle = '#f4f1e8'; for (let x = 9; x < 21; x += 2) c.fillRect(x, 16.6, 1, 0.8);
+    c.fillStyle = '#d8b04a'; c.fillRect(0, 19, 30, 1);
+  });
+  return { us, vt };
+}
+
+function shDrawFlag(cv, poleX, topY, dir, time, seed) {
+  for (let i = 0; i < 30; i += 2) {
+    const amp = (i / 30) * 1.8;
+    const off = Math.sin(time * 2.6 + i * 0.32 + seed) * amp;
+    const dx = dir > 0 ? poleX + 1 + i : poleX - 2 - i;
+    ctx.drawImage(cv, i, 0, 2, 20, dx, topY + off, 2, 20);
+  }
+}
+
+let _shInteriorCache = null;
+function drawStateHouseInterior(time) {
+  if (!_shInteriorCache) {
+    const cv = document.createElement('canvas');
+    cv.width = 14 * TILE; cv.height = 10 * TILE;
+    paintStateHouseInterior(cv.getContext('2d'));
+    _shInteriorCache = cv;
+    _shFlags = shBuildFlags();
+  }
+  ctx.drawImage(_shInteriorCache, 0, 0);
+
+  // the portrait: your own assets/bernie.png, cover-fit into the frame opening, then varnished
+  const P = SH_PORTRAIT, ix = P.x + 5, iy = P.y + 5, iw = P.w - 10, ih = P.h - 10;
+  const pimg = stateHousePortraitImg;
+  if (pimg && pimg.complete && pimg.naturalWidth) {
+    ctx.save(); ctx.beginPath(); ctx.rect(ix, iy, iw, ih); ctx.clip();
+    const s = Math.max(iw / pimg.naturalWidth, ih / pimg.naturalHeight);
+    const dw = pimg.naturalWidth * s, dh = pimg.naturalHeight * s;
+    ctx.drawImage(pimg, ix + (iw - dw) / 2, iy + (ih - dh) / 2, dw, dh);
+    const vg = ctx.createLinearGradient(ix, iy, ix + iw, iy + ih);
+    vg.addColorStop(0, 'rgba(255,240,200,0.14)'); vg.addColorStop(0.5, 'rgba(255,240,200,0)'); vg.addColorStop(1, 'rgba(60,30,0,0.16)');
+    ctx.fillStyle = vg; ctx.fillRect(ix, iy, iw, ih);
+    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(ix, iy, iw, 2);
+    ctx.restore();
+  }
+  // picture-light glow on the portrait
+  ctx.fillStyle = 'rgba(255,230,160,' + (0.07 + 0.015 * Math.sin(time * 1.7)).toFixed(3) + ')';
+  ctx.fillRect(P.x - 4, P.y - 2, P.w + 8, P.h + 6);
+
+  // flags: U.S. on the left stand, Vermont on the right (they hang toward the portrait)
+  if (_shFlags) {
+    shDrawFlag(_shFlags.us, 112, 8, 1, time, 0);
+    shDrawFlag(_shFlags.vt, 336, 8, -1, time, 1.7);
+  }
+
+  // woodstove: flickering fire in the door window, kettle steam, a warm glow on the floor
+  {
+    const fx = 41, fy = 173;
+    ctx.fillStyle = '#e8601c'; ctx.fillRect(fx, fy, 13, 10);
+    for (let i = 0; i < 4; i++) {
+      const fl = 3 + Math.abs(Math.sin(time * 9 + i * 1.9)) * 4;
+      ctx.fillStyle = '#ffb02e'; ctx.beginPath(); ctx.moveTo(fx + 1 + i * 3, fy + 10); ctx.lineTo(fx + 2.5 + i * 3, fy + 10 - fl); ctx.lineTo(fx + 4 + i * 3, fy + 10); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#fff2a0'; ctx.fillRect(fx + 2 + i * 3, fy + 8, 1.2, 2);
+    }
+    ctx.fillStyle = '#111'; ctx.fillRect(fx + 6, fy, 1, 10);
+    const gl = ctx.createRadialGradient(46, 200, 2, 46, 200, 38);
+    gl.addColorStop(0, 'rgba(255,150,60,' + (0.22 + 0.06 * Math.sin(time * 7.3)).toFixed(3) + ')'); gl.addColorStop(1, 'rgba(255,150,60,0)');
+    ctx.fillStyle = gl; ctx.fillRect(8, 160, 84, 80);
+    for (let k = 0; k < 3; k++) {
+      const t = (time * 0.7 + k / 3) % 1;
+      ctx.fillStyle = 'rgba(255,255,255,' + (0.5 * (1 - t)).toFixed(2) + ')';
+      ctx.beginPath(); ctx.arc(60 + Math.sin(time * 2 + k * 2) * 2 + t * 3, 156 - t * 16, 1.6 + t * 2.2, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  // Bessie's tail swish + ear flick
+  {
+    ctx.save(); ctx.translate(69, 226); ctx.rotate(Math.sin(time * 2.4) * 0.35);
+    ctx.strokeStyle = '#f2eee2'; ctx.lineWidth = 1.8; ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(-4, 8, -2, 16); ctx.stroke();
+    ctx.fillStyle = '#1b1b1f'; ctx.fillRect(-4, 15, 5, 5);
+    ctx.restore();
+    const ef = Math.max(0, Math.sin(time * 1.3 + 1)) > 0.92 ? -2 : 0;
+    ctx.fillStyle = '#1b1b1f'; ctx.fillRect(106 + ef, 221, 4, 3); ctx.fillRect(124 - ef, 221, 4, 3);
+    if (Math.sin(time * 0.9) > 0.985) { ctx.fillStyle = '#e8e4d8'; ctx.fillRect(114, 222, 4, 3); }   // blink
+  }
+
+  // sugar-maple sapling: a few leaves drift down
+  for (let k = 0; k < 4; k++) {
+    const t = (time * 0.28 + k * 0.25) % 1;
+    const lx = 400 + Math.sin(time * 1.3 + k * 2.1) * 10 + (k - 1.5) * 4, ly = 66 + t * 28;
+    ctx.globalAlpha = Math.min(1, (1 - t) * 2.2);
+    ctx.fillStyle = ['#d9741e', '#c0392b', '#e6a82a', '#b8481c'][k];
+    ctx.save(); ctx.translate(lx, ly); ctx.rotate(time * 2 + k); ctx.fillRect(-2, -1.5, 4, 3); ctx.fillRect(-1, -2.5, 2, 5); ctx.restore();
+  }
+  ctx.globalAlpha = 1;
+
+  // sap bucket drip
+  {
+    const t = (time * 0.6) % 1;
+    if (t < 0.6) { ctx.fillStyle = 'rgba(232,150,58,0.9)'; ctx.fillRect(420, 125 + t * 14, 1.5, 2.2); }
+  }
+
+  // banker's lamp glow + dust motes drifting in the window light
+  {
+    const lg = ctx.createRadialGradient(151, 86, 1, 151, 86, 18);
+    lg.addColorStop(0, 'rgba(255,230,140,' + (0.28 + 0.04 * Math.sin(time * 3.1)).toFixed(3) + ')'); lg.addColorStop(1, 'rgba(255,230,140,0)');
+    ctx.fillStyle = lg; ctx.fillRect(130, 66, 42, 40);
+    for (let k = 0; k < 10; k++) {
+      const left = k < 5, t = (time * 0.05 + k * 0.173) % 1;
+      const bx = left ? 80 + t * 90 : 364 - t * 90, by = 56 + t * 140;
+      const mx = bx + Math.sin(time * 0.8 + k * 1.7) * 5, my = by + Math.cos(time * 0.6 + k) * 3;
+      ctx.fillStyle = 'rgba(255,250,215,' + (0.55 * Math.sin(t * Math.PI)).toFixed(2) + ')';
+      ctx.fillRect(Math.round(mx), Math.round(my), 1.5, 1.5);
+    }
   }
 }
 
@@ -50282,7 +51038,7 @@ function drawDeliSeatingArea() {
 }
 
 // ---------------------------------------------------------------- keeper
-const KEEPER_HAIR = { WILL: '#6a3f22', DEE: '#5a2e1c', ROSIE: '#c8c0b0', ZEKE: '#241a12', JADE: '#141014', TONY: '#2a2018', LANNY: '#3a1a5c', MITCH: '#5a3a1c', BIGDOG: '#3a2a1c', EDNA: '#a8a8a8', OPHELIA: '#8a5a2e', GOLDIE: '#8a4a26' };
+const KEEPER_HAIR = { WILL: '#6a3f22', DEE: '#5a2e1c', ROSIE: '#c8c0b0', ZEKE: '#241a12', JADE: '#141014', TONY: '#2a2018', LANNY: '#3a1a5c', MITCH: '#5a3a1c', BIGDOG: '#3a2a1c', EDNA: '#a8a8a8', OPHELIA: '#8a5a2e', GOLDIE: '#8a4a26', MABEL: '#c4c0b6' };
 
 // Optional per-keeper artwork. Drop a PNG at assets/keepers/<name>.png (any
 // size — it's scaled to KEEPER_SPR_H, feet anchored at the same floor line
