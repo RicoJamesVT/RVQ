@@ -17491,7 +17491,7 @@ const shops = {
   // sapling (12,2), woodstove + pipe (1,4)(1,5), firewood (1,6), Holstein cow (2,7)(3,7), marble bust (4,5),
   // bronze catamount (9,5), milk cans (1,7), apple crate (12,7), hay bales (12,4)(12,5), pumpkins (12,6);
   // extraTables = the maple-syrup-and-cheddar table (10,7)(11,7); the default counter (row 3, cols 4-9) is the
-  // information desk with MABEL (keeper, (6,2)) behind it. Clear of the door (6,9) and the spawn (6.5,7.5).
+  // information desk with THE OLD STATESMAN (keeper, (6,2), sprite assets/bernie.png -- see keeperImgs below) behind it. Clear of the door (6,9) and the spawn (6.5,7.5).
   // No record crates in here yet (Montpelier's records are still placeholders).
   statehouse: makeShop('statehouse', {
     world: 'montpelier',
@@ -17499,18 +17499,18 @@ const shops = {
     stateHouse: true,
     blockTiles: [[1, 2], [3, 2], [10, 2], [12, 2], [1, 4], [1, 5], [1, 6], [2, 7], [3, 7], [4, 5], [9, 5], [1, 7], [12, 7], [12, 4], [12, 5], [12, 6]],
     extraTables: [[10, 7], [11, 7]],
-    keeper: { name: 'MABEL', shirt: '#2c4a7a', skin: '#e2b48c',
+    keeper: { name: 'THE OLD STATESMAN', shirt: '#2a2a2e', skin: '#e2b48c',
       lines: [
-        'Welcome to the Vermont State House! I\'m Mabel, I give the tours. Mind the mud on the runner -- it\'s always mud season somewhere.',
-        'See the gold dome out front? Real gold leaf. And standing on top of it is Ceres, the goddess of agriculture. Even our statues are farmers.',
-        'Montpelier is the smallest state capital in the whole country. Everybody here knows everybody, and everybody\'s cousin works for the legislature.',
-        'Vermont has a citizen legislature -- farmers, teachers, plumbers, a few maple sugarers -- and every March it all comes down to Town Meeting Day.',
-        'Check out the state seal on the flag: a pine tree, some wheat and a cow. A cow! That\'s why Bessie over there is our honorary legislator. She votes with the herd.',
-        'Yes, that\'s a real woodstove. Yes, it\'s lit. No, you can\'t toast marshmallows. We asked.',
-        'The portrait above my desk? Senator Sanders, Burlington\'s former mayor and Vermont\'s longtime voice in the U.S. Senate. Folks like to stop and look.',
-        'The bronze catamount is our mascot. The last wild one around here vanished a long time ago, but he\'s still on guard duty.',
-        'Take a jar of syrup from the table if you like. Just don\'t pour it on the marble. Visiting dignitaries have tried.',
-        'Don\'t forget the apples by the door. Vermont\'s finest, and they\'re the only lobbyists we trust.',
+        'Welcome to the Vermont State House. Let me be clear: this building belongs to you, not to me, and not to anybody with a fat wallet and a fancy lobbyist.',
+        'You see that dome out front? Real gold leaf, and the goddess on top is Ceres, goddess of agriculture. Even our statues work for a living.',
+        'Montpelier is the smallest state capital in the country. Think about that. We run a whole government without a single chain restaurant. And somehow we get things done.',
+        'In Vermont, ordinary people show up at Town Meeting and vote on the budget. Farmers, teachers, plumbers. That is democracy, my friend. Not the kind you see on television.',
+        'Here is what I do not understand. A cow in this room has a better deal than half the working people in this country. Bessie gets fed, she gets housing, she even has a sash!',
+        'Yes, that is a real woodstove. Yes, it is lit. We have a fiscal responsibility to stay warm in January. Look, I did not make the rules about marshmallows.',
+        'You know who is pretty good, by the way? Jarv. That Vermont rapper. Talented kid, writes about real life, and speaks for the people. I will say it: he is pretty good.',
+        'The bronze catamount is our mascot. The last wild one around here vanished a long time ago, but he is still on guard duty. Which is more than I can say for some people in this business.',
+        'Take a jar of maple syrup from the table. Go on. Just do not pour it on the marble! Visiting dignitaries have tried. Do not be a visiting dignitary.',
+        'And do not forget the apples by the door. Vermont\'s finest. Healthy food for everybody, that is not a radical idea. It is an apple!',
       ] },
     crates: [],
   }),
@@ -51107,6 +51107,13 @@ keeperImgs.SANDY = sandyImg;
 keeperImgs.WILL = willImg;
 // BEVERAGE WAREHOUSE's keeper, WES -- same idea as WILL above.
 keeperImgs.WES = wesImg;
+// THE VERMONT STATE HOUSE's keeper, THE OLD STATESMAN -- same idea as WES above. His sprite is
+// assets/bernie.png (the same file hangs in the portrait frame inside the State House); a second Image
+// is declared here so this registration doesn't depend on declaration order. Cached by the browser, so
+// there's no extra download, and it ships with the game so it works offline.
+const statesmanImg = new Image();
+statesmanImg.src = 'assets/bernie.png';
+keeperImgs['THE OLD STATESMAN'] = statesmanImg;
 
 function drawAnt(cx, cy, s) {
   // A white ant silhouette (the Anthill Collective mark), drawn on SK1's hat.
