@@ -14648,6 +14648,7 @@ function makeShop(id, opts) {
     autumnRecords: opts.autumnRecords || false,
     tinyThai: opts.tinyThai || false,
     stateHouse: opts.stateHouse || false,
+    bookstore: opts.bookstore || false,
     monkeyHouse: opts.monkeyHouse || false,
     bellevue: opts.bellevue || false,
     miseryLoves: opts.miseryLoves || false,
@@ -15980,6 +15981,15 @@ function makeMontpelier() {
   montBuildings.push({ x: TOWER.x, y: TOWER.y, w: TOWER.w, h: TOWER.h, name: 'HUBBARD PARK TOWER', montScenery: 'tower',
     wall: '#8d8a80', roof: '#5d5a52', doorX: -1 });
 
+  // --- A BOY'S WILL: a small independent bookshop in the N3 slot (x 25-28, rows 20-23), just up State Street's east
+  // sidewalk from Main Street. N3 stays in BLOCK_DEFS (so every other block keeps its look); it is re-dressed here
+  // (montScenery 'bookstore' -> drawMontpelierBookstore) and given a door: the 'D' tile at (26, 23) opens onto the
+  // sidewalk (row 24). Entering leads to the `aboywill` shop (see `shops`).
+  const BOOKSTORE_DOOR = { x: 26, y: 23 };
+  const bookstoreB = montBuildings.find((b) => b.lot === 'N3');
+  Object.assign(bookstoreB, { name: "A BOY'S WILL", montScenery: 'bookstore', wall: '#2f4a3b', roof: '#e8dcc0', awning: '#2f4a3b', doorX: BOOKSTORE_DOOR.x });
+  g[BOOKSTORE_DOOR.y][BOOKSTORE_DOOR.x] = 'D';
+
   // --- trees. Dense woods on Hubbard Park hill (NW), the ridge behind the State House, the north-east
   // hills along the North Branch and the south hills; sparse elsewhere. Never on streets, paving, water or
   // building footprints, and always a one-tile margin so nothing boxes the player in.
@@ -16056,6 +16066,7 @@ function makeMontpelier() {
     newsstands: [], minigames: [],
     // Drawing data for drawMontpelierDecorations() -- everything in world pixels.
     montpelier: { dashes, crosswalks, lamps },
+    bookstoreDoor: { x: BOOKSTORE_DOOR.x, y: BOOKSTORE_DOOR.y },   // A BOY'S WILL -> `aboywill` (see the door wiring above `const maps`)
     stateHouseDoors: [{ x: 21, y: 11 }, { x: 22, y: 11 }],   // the portico doorway -> `statehouse` (see the door wiring above `const maps`)
     spawn: { x: 4.5, y: 26.5 },    // tile coords: Main Street, just inside the return portal
     // AUTUMN, in daylight: same fall look as BURLINGTON / WINOOSKI (golden grass, crimson/orange maples).
@@ -17514,6 +17525,40 @@ const shops = {
       ] },
     crates: [],
   }),
+  // A BOY'S WILL -- a small independent bookshop on MONTPELIER's Main Street (N3 block; door on State Street's east
+  // sidewalk, see makeMontpelier() + drawMontpelierBookstore()). `world: 'montpelier'` ties it to that level.
+  // `bookstore: true` gets its own interior (drawBookstoreInterior): walnut bookcases packed from cornice to floor on
+  // every wall, a stone fireplace with live flames, a hearth rug with a sleeping cat, armchairs, a loveseat, a
+  // new-arrivals table and a bargain cart. Solid props are plain tiles the painter dresses up: blockTiles = the whole
+  // back-wall row (1..12,1) [bookcases + fireplace x8-9], bookcases down col 1 and col 12 (rows 2-8), book cart (5,2),
+  // armchairs (6,3)(11,3)(10,7), loveseat (8,5)(9,5), lamp table (11,7), fern (2,8); extraTables = new-arrivals table
+  // (3,5)(4,5); the counter is the checkout desk (row 3, cols 2-4) with the BOOKSELLER (keeper, (3,2)) behind it.
+  // Clear of the door (6,9) and the spawn (6.5,7.5). No record crates in here.
+  aboywill: makeShop('aboywill', {
+    world: 'montpelier',
+    floor: '#7d5532', plank: '#6b4626', wallColor: '#2f4a3b',
+    bookstore: true,
+    tableRange: { start: 2, end: 4 },
+    blockTiles: [
+      [1, 1], [2, 1], [3, 1], [4, 1], [5, 1], [6, 1], [7, 1], [8, 1], [9, 1], [10, 1], [11, 1], [12, 1],
+      [1, 2], [1, 3], [1, 4], [1, 5], [1, 6], [1, 7], [1, 8],
+      [12, 2], [12, 3], [12, 4], [12, 5], [12, 6], [12, 7], [12, 8],
+      [5, 2], [6, 3], [11, 3], [8, 5], [9, 5], [10, 7], [11, 7], [2, 8],
+    ],
+    extraTables: [[3, 5], [4, 5]],
+    keeper: { x: 3, y: 2, name: 'THE BOOKSELLER', shirt: '#7a2a34', skin: '#e2b48c',
+      lines: [
+        "Welcome to A Boy's Will. Mind the cat, wipe your boots, and browse as long as you like.",
+        "The name? That was Robert Frost's very first book of poems, back in 1913. He spent a good many years up here in Vermont, so we like to think he'd approve.",
+        "Floor to ceiling, just like the sign says. Poetry's on the left, mysteries by the fire, history along the back. Cookbooks are wherever they landed.",
+        "The fireplace goes on the first cold morning and stays lit till spring. Nobody leaves a warm bookshop in a hurry.",
+        "Take the armchair by the hearth. Just don't wake the cat. She's been asleep since Tuesday and she gets cranky.",
+        "New arrivals are on the table in the middle of the room. The cart by my desk is the bargain pile. Treasures, mostly. Some dust.",
+        "A good book is cheaper than a plane ticket and the legroom is better.",
+        "Looking for records? Sorry, just books here. But Montpelier is full of music people if you ask around.",
+      ] },
+    crates: [],
+  }),
   // THE MONKEY HOUSE -- bar/restaurant + live-music venue on the Winooski
   // northwest lawn (see makeWinooski()). `monkeyHouse: true` gets its own
   // interior (drawMonkeyHouseInterior): a pool table up front by the door, a
@@ -18192,6 +18237,9 @@ transitions['beveragewarehouse:' + key(6, 9)] = { map: 'winooski', x: winooski.b
 // lead in; leaving drops the player on the paved plaza right in front of the steps, centered between the two.
 for (const d of montpelier.stateHouseDoors) transitions['montpelier:' + key(d.x, d.y)] = { map: 'statehouse', x: 6.5, y: 7.5 };
 transitions['statehouse:' + key(6, 9)] = { map: 'montpelier', x: 22, y: 12.6 };
+// A BOY'S WILL door wiring (Montpelier, LEVEL 5) -- same pattern as the other shops; leaving drops the player on the sidewalk below the door.
+transitions['montpelier:' + key(montpelier.bookstoreDoor.x, montpelier.bookstoreDoor.y)] = { map: 'aboywill', x: 6.5, y: 7.5 };
+transitions['aboywill:' + key(6, 9)] = { map: 'montpelier', x: montpelier.bookstoreDoor.x + 0.5, y: montpelier.bookstoreDoor.y + 1.6 };
 const maps = { town, ...shops, swamp, skatepark, winooski, montpelier };
 
 // Reshuffles, within EACH location that has one, which of that location's
@@ -33933,6 +33981,7 @@ function render(time) {
   if (map.autumnRecords) drawAutumnRecordsInterior(time);
   if (map.tinyThai) drawTinyThaiInterior(time);
   if (map.stateHouse) drawStateHouseInterior(time);
+  if (map.bookstore) drawBookstoreInterior(time);
   if (map.monkeyHouse) drawMonkeyHouseInterior(time);
   if (map.bellevue) drawBellevueInterior(time);
   if (map.miseryLoves) drawMiseryLovesInterior(time);
@@ -35322,6 +35371,7 @@ function drawWinooskiDecorations(time, map, camX, camY) {
 function drawMontpelierScenery(b, px, py, w, h) {
   if (b.montScenery === 'statehouse') drawMontpelierStateHouse(px, py, w, h);
   else if (b.montScenery === 'tower') drawMontpelierTower(px, py, w, h);
+  else if (b.montScenery === 'bookstore') drawMontpelierBookstore(px, py, w, h);
   else drawMontpelierBrickBlock(b, px, py, w, h);
 }
 
@@ -36222,6 +36272,637 @@ function drawStateHouseInterior(time) {
       ctx.fillStyle = 'rgba(255,250,215,' + (0.55 * Math.sin(t * Math.PI)).toFixed(2) + ')';
       ctx.fillRect(Math.round(mx), Math.round(my), 1.5, 1.5);
     }
+  }
+}
+
+// A BOY'S WILL: the little bookshop in MONTPELIER's N3 slot (4x4 tiles). Forest-green clapboard with cream trim, a gold-leaf
+// sign board, a round book emblem, lit upstairs windows with a flower box of mums, a striped awning over a red door
+// (tile column 1 = the 'D' tile at (26, 23)), a narrow display window and a big bay window packed with books.
+function drawMontpelierBookstore(px, py, w, h) {
+  const t = performance.now() / 1000;
+  const X = (x) => px + x, Y = (y) => py + y;
+  const CR = '#e8dcc0', GR = '#2f4a3b', GO = '#d9b04a', DG = '#9a7424';
+  ctx.fillStyle = '#10130f'; ctx.fillRect(px - 1, py - 1, w + 2, h + 2);
+  ctx.fillStyle = GR; ctx.fillRect(px, py, w, h);
+  for (let yy = 16; yy < h - 4; yy += 6) { ctx.fillStyle = 'rgba(0,0,0,0.20)'; ctx.fillRect(X(0), Y(yy), w, 1); ctx.fillStyle = 'rgba(255,255,255,0.05)'; ctx.fillRect(X(0), Y(yy + 1), w, 1); }
+  ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fillRect(px, py, 3, h);
+  ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(px + w - 3, py, 3, h);
+  // cornice
+  ctx.fillStyle = '#10130f'; ctx.fillRect(px - 2, py - 1, w + 4, 15);
+  ctx.fillStyle = CR; ctx.fillRect(px - 1, py, w + 2, 12);
+  ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(px - 1, py, w + 2, 3);
+  ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(px, py + 12, w, 3);
+  for (let dx = 4; dx < w - 4; dx += 8) { ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.fillRect(px + dx, py + 6, 4, 5); }
+  // sign board
+  ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(X(8), Y(19), 112, 21);
+  ctx.fillStyle = GO; ctx.fillRect(X(7), Y(17), 114, 21);
+  ctx.fillStyle = '#16231b'; ctx.fillRect(X(9), Y(19), 110, 17);
+  ctx.fillStyle = DG; ctx.fillRect(X(9), Y(19), 110, 1);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+  let fs = 13; ctx.font = 'bold ' + fs + 'px Georgia, serif';
+  while (ctx.measureText("A BOY'S WILL").width > 100 && fs > 8) { fs--; ctx.font = 'bold ' + fs + 'px Georgia, serif'; }
+  ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillText("A BOY'S WILL", X(65), Y(31));
+  ctx.fillStyle = GO; ctx.fillText("A BOY'S WILL", X(64), Y(30));
+  ctx.font = '600 5px Georgia, serif'; ctx.fillStyle = CR; ctx.fillText('BOOKSELLERS \u00b7 EST. 1913', X(64), Y(35));
+  for (const rx of [11, 117]) { ctx.fillStyle = GO; ctx.beginPath(); ctx.arc(X(rx), Y(27), 2.2, 0, Math.PI * 2); ctx.fill(); }
+  // upper floor: two lit windows + a round book emblem between them
+  for (const wx of [13, 87]) {
+    ctx.fillStyle = CR; ctx.fillRect(X(wx - 2), Y(41), 32, 25);
+    ctx.fillStyle = '#2a1c12'; ctx.fillRect(X(wx), Y(43), 28, 17);
+    const wg = ctx.createLinearGradient(0, Y(43), 0, Y(60)); wg.addColorStop(0, '#ffe9a8'); wg.addColorStop(1, '#e8b860');
+    ctx.fillStyle = wg; ctx.fillRect(X(wx + 1), Y(44), 26, 15);
+    for (let k = 0; k < 9; k++) { ctx.fillStyle = ['#8c2f39', '#2f5d62', '#3c4f76', '#5b3a29'][k % 4]; ctx.fillRect(X(wx + 3 + k * 2.7), Y(52 + (k % 3)), 2, 7 - (k % 3)); }
+    ctx.fillStyle = CR; ctx.fillRect(X(wx + 13), Y(44), 2, 15); ctx.fillRect(X(wx + 1), Y(50), 26, 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.28)'; ctx.fillRect(X(wx + 2), Y(45), 4, 6);
+    ctx.fillStyle = CR; ctx.fillRect(X(wx - 3), Y(60), 34, 3);                     // sill
+    ctx.fillStyle = '#5a3a1c'; ctx.fillRect(X(wx - 1), Y(62), 30, 5);              // flower box
+    for (let k = 0; k < 6; k++) { ctx.fillStyle = ['#d9741e', '#c0392b', '#e6a82a'][k % 3]; ctx.beginPath(); ctx.arc(X(wx + 3 + k * 4.6), Y(61), 2.6, 0, Math.PI * 2); ctx.fill(); }
+  }
+  ctx.fillStyle = CR; ctx.beginPath(); ctx.arc(X(64), Y(52), 12, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = GO; ctx.beginPath(); ctx.arc(X(64), Y(52), 10, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#f4efe0'; ctx.beginPath(); ctx.arc(X(64), Y(52), 8.2, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = GR; ctx.beginPath(); ctx.moveTo(X(64), Y(48)); ctx.quadraticCurveTo(X(60), Y(46), X(56), Y(48)); ctx.lineTo(X(56), Y(56)); ctx.quadraticCurveTo(X(60), Y(54), X(64), Y(56)); ctx.closePath(); ctx.fill();   // open book
+  ctx.beginPath(); ctx.moveTo(X(64), Y(48)); ctx.quadraticCurveTo(X(68), Y(46), X(72), Y(48)); ctx.lineTo(X(72), Y(56)); ctx.quadraticCurveTo(X(68), Y(54), X(64), Y(56)); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#f4efe0'; ctx.fillRect(X(63.4), Y(48), 1.2, 8);
+  // ground floor: bulkhead, windows, door
+  ctx.fillStyle = CR; ctx.fillRect(X(0), Y(112), w, 16);
+  ctx.fillStyle = 'rgba(0,0,0,0.20)'; for (const bx of [5, 66, 98]) ctx.fillRect(X(bx), Y(115), 26, 10);
+  ctx.fillStyle = 'rgba(255,255,255,0.4)'; for (const bx of [5, 66, 98]) ctx.fillRect(X(bx), Y(115), 26, 1);
+  // narrow display window (tile 0)
+  ctx.fillStyle = CR; ctx.fillRect(X(3), Y(80), 27, 32);
+  ctx.fillStyle = '#2a1c12'; ctx.fillRect(X(5), Y(83), 23, 27);
+  const dg = ctx.createLinearGradient(0, Y(83), 0, Y(110)); dg.addColorStop(0, '#ffe9a8'); dg.addColorStop(1, '#d8a050');
+  ctx.fillStyle = dg; ctx.fillRect(X(6), Y(84), 21, 25);
+  ctx.fillStyle = '#6b4023'; ctx.fillRect(X(6), Y(100), 21, 2);
+  bkStack(ctx, X(8), Y(100), 11, 4, 201); bkBooks(ctx, X(20), Y(100), 7, 12, 203);
+  ctx.fillStyle = '#7a1f2c'; ctx.fillRect(X(9), Y(106), 15, 3); ctx.fillStyle = '#f4efe0'; ctx.fillRect(X(11), Y(104), 11, 2);          // an open book on a cloth
+  ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.beginPath(); ctx.moveTo(X(7), Y(84)); ctx.lineTo(X(14), Y(84)); ctx.lineTo(X(7), Y(96)); ctx.fill();
+  // red door (tile 1)
+  ctx.fillStyle = CR; ctx.fillRect(X(33), Y(80), 30, 48);
+  ctx.fillStyle = '#17120e'; ctx.fillRect(X(36), Y(84), 24, 44);
+  ctx.fillStyle = '#7a2230'; ctx.fillRect(X(37), Y(85), 22, 43);
+  ctx.fillStyle = '#5a1822'; ctx.fillRect(X(40), Y(109), 16, 15); ctx.fillStyle = '#8a2c3a'; ctx.fillRect(X(41), Y(110), 14, 13);
+  const gg = ctx.createLinearGradient(0, Y(88), 0, Y(106)); gg.addColorStop(0, '#ffe9a8'); gg.addColorStop(1, '#e8b860');
+  ctx.fillStyle = '#17120e'; ctx.fillRect(X(40), Y(88), 16, 19); ctx.fillStyle = gg; ctx.fillRect(X(41), Y(89), 14, 17);
+  ctx.fillStyle = '#7a2230'; ctx.fillRect(X(47), Y(89), 2, 17);
+  bkBooks(ctx, X(42), Y(106), 12, 7, 211);
+  ctx.fillStyle = '#f4efe0'; ctx.fillRect(X(42), Y(93), 12, 6); ctx.fillStyle = '#b3342a'; ctx.font = '700 4.4px monospace'; ctx.fillText('OPEN', X(48), Y(97.6));   // hanging sign
+  ctx.fillStyle = GO; ctx.beginPath(); ctx.arc(X(56), Y(112), 1.8, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#c9c0a8'; ctx.fillRect(X(34), Y(124), 28, 4);
+  // bay window (tiles 2-3)
+  ctx.fillStyle = CR; ctx.fillRect(X(66), Y(80), 58, 32);
+  ctx.fillStyle = '#2a1c12'; ctx.fillRect(X(68), Y(83), 54, 27);
+  const bg = ctx.createLinearGradient(0, Y(83), 0, Y(110)); bg.addColorStop(0, '#ffe9a8'); bg.addColorStop(1, '#d8a050');
+  ctx.fillStyle = bg; ctx.fillRect(X(69), Y(84), 52, 25);
+  for (const [sy, sd] of [[92, 221], [101, 222]]) { bkBooks(ctx, X(70), Y(sy), 50, 8, sd); ctx.fillStyle = '#6b4023'; ctx.fillRect(X(69), Y(sy), 52, 2); }
+  bkStack(ctx, X(72), Y(109), 14, 4, 223); bkStack(ctx, X(92), Y(109), 14, 3, 224);
+  ctx.fillStyle = '#7a1f2c'; ctx.fillRect(X(69), Y(107), 52, 2);
+  ctx.fillStyle = CR; ctx.fillRect(X(94), Y(84), 2, 25);
+  ctx.font = '600 6px Georgia, serif'; ctx.fillStyle = 'rgba(217,176,74,0.95)'; ctx.fillText('NEW & USED', X(100), Y(90));
+  ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.beginPath(); ctx.moveTo(X(71), Y(84)); ctx.lineTo(X(84), Y(84)); ctx.lineTo(X(71), Y(104)); ctx.fill();
+  const fl = 0.05 + 0.025 * Math.sin(t * 2.1); ctx.fillStyle = 'rgba(255,200,100,' + fl.toFixed(3) + ')'; ctx.fillRect(X(66), Y(80), 58, 30);
+  // striped awning
+  ctx.fillStyle = 'rgba(0,0,0,0.30)'; ctx.fillRect(X(0), Y(77), w, 5);
+  for (let sx = 0; sx < w; sx += 8) {
+    ctx.fillStyle = ((sx >> 3) % 2 === 0) ? '#1f3a2c' : '#f1ead8'; ctx.fillRect(X(sx), Y(66), 8, 10);
+    ctx.beginPath(); ctx.arc(X(sx + 4), Y(76), 4, 0, Math.PI); ctx.fill();
+  }
+  ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(X(0), Y(66), w, 2);
+  ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(px, py + h - 3, w, 3);
+}
+
+// ---------------------------------------------------------------- A BOY'S WILL INTERIOR (Montpelier, LEVEL 5)
+// The inside of the little bookshop on Main Street (see the `aboywill` shop + drawMontpelierBookstore()). A snug,
+// lamplit room: walnut bookcases from the cornice to the floor on every wall, a crackling stone fireplace in the back wall
+// (live flames, sparks and a warm pulse of firelight), a hearth rug with a sleeping cat, deep armchairs and a loveseat, a
+// "new arrivals" table, a bargain cart and the checkout desk. Everything static is painted once into a cached canvas by
+// paintBookstoreInterior(); drawBookstoreInterior() blits it and animates the fire, lamps, sconces, cat, steam and dust.
+// Tile map (14x10, TILE = 32): back-wall row 1 = bookcases x1-7 + x10-12 and the fireplace x8-9; bookcases down col 1 and
+// col 12 (rows 2-8); desk = row 3 cols 2-4 with the BOOKSELLER at (3,2); book cart (5,2); armchairs (6,3) (11,3) (10,7);
+// loveseat (8,5)(9,5); new-arrivals table (3,5)(4,5); lamp table (11,7); fern (2,8). Exit = (6,9).
+const BK_SPINES = ['#8c2f39', '#2f5d62', '#d9a441', '#3c4f76', '#5b3a29', '#a8573a', '#4b6a3a', '#6a3f6e', '#c9b27c', '#2a2a33', '#7c8f4a', '#b3472e', '#e2d6b8', '#375a8a', '#9a6a3a', '#1f4a3a'];
+const BK_WOOD = '#4a2b16', BK_WOOD_M = '#6b4023', BK_WOOD_L = '#8a5a30', BK_CREAM = '#e8dcc0', BK_GOLD = '#d9b04a', BK_DGOLD = '#9a7424', BK_GRN = '#2f4a3b';
+
+// rounded-rect path helper
+function bkRR(c, x, y, w, h, r) {
+  c.beginPath();
+  c.moveTo(x + r, y); c.lineTo(x + w - r, y); c.quadraticCurveTo(x + w, y, x + w, y + r);
+  c.lineTo(x + w, y + h - r); c.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  c.lineTo(x + r, y + h); c.quadraticCurveTo(x, y + h, x, y + h - r);
+  c.lineTo(x, y + r); c.quadraticCurveTo(x, y, x + r, y); c.closePath();
+}
+
+// one row of upright book spines sitting on `base` (y of the shelf surface), at most maxH px tall
+function bkBooks(c, x, base, w, maxH, seed) {
+  let cx = x, i = 0;
+  while (cx < x + w - 2 && i < 80) {
+    const r = shHash(seed + 17, i * 7 + 3); i++;
+    const bw = 3 + (r % 4);
+    if (cx + bw > x + w) break;
+    const minH = Math.max(5, Math.round(maxH * 0.62));
+    const bh = maxH - ((r >>> 3) % Math.max(1, maxH - minH + 1));
+    const col = BK_SPINES[(r >>> 7) % BK_SPINES.length];
+    if (((r >>> 12) % 17) === 0 && cx + bw + 6 < x + w) {            // a book leaning on its neighbour
+      c.save(); c.translate(cx + bw + 1, base); c.rotate(-0.3);
+      c.fillStyle = col; c.fillRect(-bw, -bh, bw, bh);
+      c.fillStyle = 'rgba(0,0,0,0.28)'; c.fillRect(-1, -bh, 1, bh);
+      c.fillStyle = BK_GOLD; c.fillRect(-bw, -bh + 2, bw, 1);
+      c.restore();
+      cx += bw + 5; continue;
+    }
+    c.fillStyle = col; c.fillRect(cx, base - bh, bw, bh);
+    c.fillStyle = 'rgba(255,255,255,0.16)'; c.fillRect(cx, base - bh, 1, bh);
+    c.fillStyle = 'rgba(0,0,0,0.30)'; c.fillRect(cx + bw - 1, base - bh, 1, bh);
+    if (bw >= 4) {
+      c.fillStyle = ((r >>> 15) % 2) ? BK_GOLD : BK_CREAM;
+      c.fillRect(cx, base - bh + 2, bw, 1);
+      if (bh > 9) c.fillRect(cx, base - 4, bw, 1);
+      if (((r >>> 17) % 3) === 0 && bh > 10) { c.fillStyle = 'rgba(240,226,190,0.85)'; c.fillRect(cx + 1, base - Math.round(bh / 2) - 1, bw - 2, 3); }
+    }
+    cx += bw;
+    if (((r >>> 20) % 23) === 0) cx += 2 + ((r >>> 24) % 3);        // the odd gap
+  }
+}
+
+// a pile of n books lying flat, w px wide, sitting on `base`
+function bkStack(c, x, base, w, n, seed) {
+  let y = base;
+  for (let i = 0; i < n; i++) {
+    const r = shHash(seed, i + 5), th = 4 + (r % 2), bw = w - ((r >>> 4) % 5), bx = x + ((r >>> 9) % 4) - 1;
+    y -= th;
+    c.fillStyle = BK_SPINES[(r >>> 12) % BK_SPINES.length]; c.fillRect(bx, y, bw, th);
+    c.fillStyle = 'rgba(255,255,255,0.18)'; c.fillRect(bx, y, bw, 1);
+    c.fillStyle = 'rgba(0,0,0,0.32)'; c.fillRect(bx, y + th - 1, bw, 1);
+    c.fillStyle = BK_CREAM; c.fillRect(bx + bw - 4, y + 1, 3, th - 2);
+  }
+}
+
+// a walnut bookcase (x, y, w, h) with shelves ~shelfH apiece, every shelf packed with books
+function bkCase(c, x, y, w, h, shelfH, seed) {
+  c.fillStyle = '#150c06'; c.fillRect(x - 1, y - 1, w + 2, h + 2);
+  c.fillStyle = BK_WOOD; c.fillRect(x, y, w, h);
+  c.fillStyle = '#24150b'; c.fillRect(x + 2, y + 2, w - 4, h - 4);
+  const rows = Math.max(1, Math.floor((h - 4) / shelfH)), sh = (h - 4) / rows;
+  for (let r = 0; r < rows; r++) {
+    const base = y + 2 + (r + 1) * sh;
+    bkBooks(c, x + 3, base - 3, w - 6, sh - 6, seed * 31 + r);
+    c.fillStyle = BK_WOOD_M; c.fillRect(x + 1, base - 3, w - 2, 3);
+    c.fillStyle = BK_WOOD_L; c.fillRect(x + 1, base - 3, w - 2, 1);
+    c.fillStyle = 'rgba(0,0,0,0.38)'; c.fillRect(x + 2, base, w - 4, 1);
+  }
+  c.fillStyle = 'rgba(0,0,0,0.34)'; c.fillRect(x + 2, y + 2, w - 4, 3);                  // shadow under the cornice
+  c.fillStyle = 'rgba(0,0,0,0.20)'; c.fillRect(x + 2, y + 2, 2, h - 4); c.fillRect(x + w - 4, y + 2, 2, h - 4);
+  c.fillStyle = BK_WOOD_M; c.fillRect(x - 2, y - 2, w + 4, 3);                           // cornice
+  c.fillStyle = BK_WOOD_L; c.fillRect(x - 2, y - 2, w + 4, 1);
+  c.fillStyle = BK_WOOD_M; c.fillRect(x - 1, y + h - 3, w + 2, 3);                       // plinth
+  c.fillStyle = 'rgba(0,0,0,0.4)'; c.fillRect(x - 1, y + h - 1, w + 2, 1);
+}
+
+function bkSconce(c, x, y) {
+  c.fillStyle = BK_DGOLD; c.fillRect(x - 5, y + 6, 10, 3); c.fillRect(x - 1, y + 2, 2, 8);
+  c.fillStyle = BK_GOLD; c.fillRect(x - 5, y + 6, 10, 1);
+  c.fillStyle = '#f4e3b0'; c.beginPath(); c.moveTo(x - 6, y + 3); c.lineTo(x - 3, y - 7); c.lineTo(x + 3, y - 7); c.lineTo(x + 6, y + 3); c.closePath(); c.fill();
+  c.fillStyle = 'rgba(0,0,0,0.18)'; c.fillRect(x + 1, y - 7, 2, 10);
+  c.fillStyle = BK_DGOLD; c.fillRect(x - 3, y - 8, 6, 2);
+}
+
+// small oval-framed print for the side-wall strips
+function bkOval(c, cx, cy, rx, ry, scene) {
+  c.fillStyle = 'rgba(0,0,0,0.3)'; c.beginPath(); c.ellipse(cx + 1.5, cy + 2, rx + 3, ry + 3, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = BK_GOLD; c.beginPath(); c.ellipse(cx, cy, rx + 3, ry + 3, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = BK_DGOLD; c.beginPath(); c.ellipse(cx, cy, rx + 1.5, ry + 1.5, 0, 0, Math.PI * 2); c.fill();
+  c.save(); c.beginPath(); c.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); c.clip();
+  scene(c, cx - rx, cy - ry, rx * 2, ry * 2);
+  c.restore();
+}
+
+function bkArmchair(c, tx, ty, base, light, dark) {
+  const x = tx * TILE, y = ty * TILE;
+  c.fillStyle = 'rgba(0,0,0,0.30)'; c.fillRect(x + 3, y + 27, 26, 4);
+  c.fillStyle = '#2a170a'; c.fillRect(x + 5, y + 27, 3, 4); c.fillRect(x + 24, y + 27, 3, 4);
+  c.fillStyle = dark; bkRR(c, x + 5, y + 1, 22, 20, 7); c.fill();                          // winged back
+  c.fillStyle = base; bkRR(c, x + 6, y + 2, 20, 17, 6); c.fill();
+  c.fillStyle = light; c.fillRect(x + 9, y + 3, 14, 1);
+  c.fillStyle = 'rgba(0,0,0,0.25)'; for (const bx of [12, 16, 20]) c.fillRect(x + bx, y + 8, 2, 2);   // tufting buttons
+  c.fillStyle = 'rgba(0,0,0,0.12)'; for (const bx of [14, 18]) c.fillRect(x + bx, y + 11, 2, 2);
+  c.fillStyle = dark; bkRR(c, x + 2, y + 11, 8, 17, 4); c.fill(); bkRR(c, x + 22, y + 11, 8, 17, 4); c.fill();   // arms
+  c.fillStyle = base; bkRR(c, x + 3, y + 11, 6, 15, 3); c.fill(); bkRR(c, x + 23, y + 11, 6, 15, 3); c.fill();
+  c.fillStyle = light; c.fillRect(x + 4, y + 12, 4, 1); c.fillRect(x + 24, y + 12, 4, 1);
+  c.fillStyle = dark; bkRR(c, x + 8, y + 17, 16, 10, 3); c.fill();                          // seat cushion
+  c.fillStyle = light; bkRR(c, x + 9, y + 17, 14, 8, 3); c.fill();
+  c.fillStyle = 'rgba(0,0,0,0.18)'; c.fillRect(x + 9, y + 24, 14, 1);
+  c.fillStyle = BK_GOLD; c.fillRect(x + 9, y + 20, 14, 1);                                 // piping
+}
+
+function bkLoveseat(c, tx, ty, base, light, dark) {
+  const x = tx * TILE, y = ty * TILE;
+  c.fillStyle = 'rgba(0,0,0,0.30)'; c.fillRect(x + 3, y + 27, 58, 4);
+  c.fillStyle = '#2a170a'; for (const lx of [5, 55]) c.fillRect(x + lx, y + 27, 3, 4);
+  c.fillStyle = dark; bkRR(c, x + 3, y + 2, 58, 20, 7); c.fill();                          // back
+  c.fillStyle = base; bkRR(c, x + 4, y + 3, 56, 17, 6); c.fill();
+  c.fillStyle = light; c.fillRect(x + 8, y + 4, 48, 1);
+  c.fillStyle = 'rgba(0,0,0,0.22)'; for (let bx = 14; bx < 54; bx += 9) { c.fillRect(x + bx, y + 9, 2, 2); c.fillRect(x + bx + 4, y + 13, 2, 2); }
+  c.fillStyle = dark; bkRR(c, x + 1, y + 12, 10, 16, 4); c.fill(); bkRR(c, x + 53, y + 12, 10, 16, 4); c.fill();   // arms
+  c.fillStyle = base; bkRR(c, x + 2, y + 12, 8, 14, 3); c.fill(); bkRR(c, x + 54, y + 12, 8, 14, 3); c.fill();
+  c.fillStyle = light; c.fillRect(x + 3, y + 13, 5, 1); c.fillRect(x + 55, y + 13, 5, 1);
+  for (const sx of [11, 32]) {                                                             // two seat cushions
+    c.fillStyle = dark; bkRR(c, x + sx, y + 17, 21, 11, 3); c.fill();
+    c.fillStyle = light; bkRR(c, x + sx + 1, y + 17, 19, 9, 3); c.fill();
+    c.fillStyle = BK_GOLD; c.fillRect(x + sx + 1, y + 21, 19, 1);
+  }
+  c.save(); c.translate(x + 17, y + 14); c.rotate(-0.25); c.fillStyle = '#e0a23a'; c.fillRect(-5, -5, 10, 10);       // throw pillows
+  c.fillStyle = '#b87a22'; c.fillRect(-5, -5, 10, 1); c.restore();
+  c.save(); c.translate(x + 47, y + 14); c.rotate(0.2); c.fillStyle = '#e6dcc0'; c.fillRect(-5, -5, 10, 10);
+  c.fillStyle = '#9a3b32'; c.fillRect(-5, -1, 10, 2); c.restore();
+}
+
+function bkFern(c, x, y) {
+  c.fillStyle = 'rgba(0,0,0,0.28)'; c.fillRect(x + 6, y + 27, 22, 4);
+  for (let k = 0; k < 9; k++) {
+    const a = -Math.PI / 2 + (k - 4) * 0.34, len = 14 + (k % 3) * 3;
+    c.strokeStyle = k % 2 ? '#3f7a3a' : '#2f6a35'; c.lineWidth = 2;
+    c.beginPath(); c.moveTo(x + 16, y + 20); c.quadraticCurveTo(x + 16 + Math.cos(a) * len * 0.6, y + 20 + Math.sin(a) * len * 0.9, x + 16 + Math.cos(a) * len * 1.1, y + 20 + Math.sin(a) * len * 0.7 + 4); c.stroke();
+    c.fillStyle = '#5a9a4a'; c.beginPath(); c.arc(x + 16 + Math.cos(a) * len * 1.1, y + 24 + Math.sin(a) * len * 0.7, 2, 0, Math.PI * 2); c.fill();
+  }
+  c.fillStyle = '#b8643a'; c.fillRect(x + 8, y + 19, 16, 9); c.fillStyle = '#d27a4a'; c.fillRect(x + 8, y + 19, 16, 2);
+  c.fillStyle = '#8a4a2a'; c.fillRect(x + 10, y + 27, 12, 2); c.fillStyle = 'rgba(0,0,0,0.2)'; c.fillRect(x + 8, y + 26, 16, 1);
+}
+
+function bkFireplace(c) {
+  const x0 = 252, x1 = 324;
+  // stone chimney breast
+  for (let y = 4, row = 0; y < 64; y += 9, row++) {
+    for (let x = x0 - (row % 2 ? 7 : 0); x < x1; x += 14) {
+      const h = shHash(x, y), shade = ['#9a8a74', '#8d7d68', '#a39480', '#85755f'][h % 4];
+      const bx = Math.max(x0, x), bw = Math.min(x1, x + 13) - bx;
+      if (bw <= 0) continue;
+      c.fillStyle = shade; c.fillRect(bx, y, bw, 8);
+      c.fillStyle = 'rgba(255,255,255,0.10)'; c.fillRect(bx, y, bw, 1);
+      c.fillStyle = 'rgba(0,0,0,0.18)'; c.fillRect(bx, y + 7, bw, 1);
+    }
+  }
+  c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(x0, 4, 3, 60); c.fillRect(x1 - 3, 4, 3, 60);
+  c.fillStyle = 'rgba(0,0,0,0.38)'; c.fillRect(x0 - 1, 4, 1, 60); c.fillRect(x1, 4, 1, 60);
+  // painting above the mantel (a snowy Green Mountain ridge)
+  const ox = 267, oy = 6;
+  c.fillStyle = '#4a3008'; c.fillRect(ox - 1, oy - 1, 44, 25);
+  c.fillStyle = BK_GOLD; c.fillRect(ox, oy, 42, 23);
+  c.fillStyle = '#f2d77f'; c.fillRect(ox, oy, 42, 1); c.fillRect(ox, oy, 1, 23);
+  const sg = c.createLinearGradient(0, oy + 3, 0, oy + 20); sg.addColorStop(0, '#f0b070'); sg.addColorStop(1, '#f6e4c0');
+  c.fillStyle = sg; c.fillRect(ox + 3, oy + 3, 36, 17);
+  c.fillStyle = '#5a6a8a'; c.beginPath(); c.moveTo(ox + 3, oy + 17); c.lineTo(ox + 12, oy + 8); c.lineTo(ox + 19, oy + 13); c.lineTo(ox + 27, oy + 6); c.lineTo(ox + 39, oy + 15); c.lineTo(ox + 39, oy + 20); c.lineTo(ox + 3, oy + 20); c.fill();
+  c.fillStyle = '#f4f0e8'; c.beginPath(); c.moveTo(ox + 24, oy + 9); c.lineTo(ox + 27, oy + 6); c.lineTo(ox + 30, oy + 10); c.lineTo(ox + 27, oy + 9); c.fill();
+  c.beginPath(); c.moveTo(ox + 9, oy + 11); c.lineTo(ox + 12, oy + 8); c.lineTo(ox + 15, oy + 12); c.lineTo(ox + 12, oy + 11); c.fill();
+  c.fillStyle = '#e8eef0'; c.fillRect(ox + 3, oy + 17, 36, 3);
+  c.fillStyle = '#2a4a34'; for (const [tx, th] of [[8, 5], [12, 4], [31, 5], [35, 4]]) { c.beginPath(); c.moveTo(ox + tx - 2, oy + 19); c.lineTo(ox + tx, oy + 19 - th); c.lineTo(ox + tx + 2, oy + 19); c.fill(); }
+  // mantel shelf
+  c.fillStyle = '#2e1a0d'; c.fillRect(x0 - 8, 29, x1 - x0 + 16, 8);
+  c.fillStyle = BK_WOOD_M; c.fillRect(x0 - 8, 28, x1 - x0 + 16, 6);
+  c.fillStyle = BK_WOOD_L; c.fillRect(x0 - 8, 28, x1 - x0 + 16, 1);
+  c.fillStyle = 'rgba(0,0,0,0.32)'; c.fillRect(x0 - 8, 36, x1 - x0 + 16, 3);
+  // on the mantel: candlesticks, a little clock, a lean of books, a vase of dried grasses
+  for (const cxm of [x0 - 3, x1 + 1]) {
+    c.fillStyle = BK_DGOLD; c.fillRect(cxm - 2, 25, 5, 3); c.fillRect(cxm - 1, 19, 3, 6); c.fillStyle = BK_GOLD; c.fillRect(cxm - 2, 25, 5, 1);
+    c.fillStyle = '#f4ecd6'; c.fillRect(cxm - 1, 13, 3, 6); c.fillStyle = '#e8a83a'; c.fillRect(cxm, 11, 1, 2);
+  }
+  c.fillStyle = '#3a2210'; c.fillRect(x0 + 2, 18, 12, 10); c.fillStyle = BK_GOLD; c.fillRect(x0 + 3, 19, 10, 8);
+  c.fillStyle = '#f4efe0'; c.beginPath(); c.arc(x0 + 8, 23, 3.6, 0, Math.PI * 2); c.fill();
+  c.strokeStyle = '#2a1a0a'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(x0 + 8, 23); c.lineTo(x0 + 8, 20.5); c.moveTo(x0 + 8, 23); c.lineTo(x0 + 10, 23.8); c.stroke();
+  bkStack(c, x1 - 22, 28, 12, 3, 41);
+  c.fillStyle = '#5a7a8a'; c.fillRect(x1 - 9, 21, 6, 7); c.fillStyle = '#7a9aaa'; c.fillRect(x1 - 9, 21, 6, 1);
+  c.strokeStyle = '#c9a23e'; c.lineWidth = 0.9;
+  for (const [dx, dy] of [[-2, -6], [0, -9], [2, -7]]) { c.beginPath(); c.moveTo(x1 - 6, 21); c.lineTo(x1 - 6 + dx, 21 + dy); c.stroke(); }
+  // firebox: arched opening, dark and sooty, with andirons and logs
+  c.fillStyle = '#4a3f33'; c.beginPath(); c.moveTo(262, 64); c.lineTo(262, 47); c.quadraticCurveTo(288, 33, 314, 47); c.lineTo(314, 64); c.closePath(); c.fill();
+  c.fillStyle = '#120905'; c.beginPath(); c.moveTo(265, 64); c.lineTo(265, 48); c.quadraticCurveTo(288, 37, 311, 48); c.lineTo(311, 64); c.closePath(); c.fill();
+  c.fillStyle = 'rgba(255,255,255,0.10)'; c.fillRect(263, 47, 1, 17);
+  c.fillStyle = '#1a1a1e'; c.fillRect(268, 54, 2, 10); c.fillRect(306, 54, 2, 10); c.fillRect(267, 53, 4, 2); c.fillRect(305, 53, 4, 2);       // andirons
+  c.fillStyle = '#4a2a14'; bkRR(c, 270, 56, 36, 6, 3); c.fill();                                                                                // logs
+  c.fillStyle = '#6a3c1c'; bkRR(c, 273, 52, 30, 5, 2.5); c.fill();
+  c.fillStyle = '#2a160a'; c.fillRect(276, 60, 24, 2);
+  c.fillStyle = '#8a5a30'; c.fillRect(273, 52, 30, 1);
+  // hearth slab
+  c.fillStyle = '#6a5f50'; c.fillRect(x0 - 2, 64, x1 - x0 + 4, 11);
+  c.fillStyle = '#9a8e7a'; c.fillRect(x0 - 2, 64, x1 - x0 + 4, 2);
+  c.fillStyle = 'rgba(0,0,0,0.28)'; c.fillRect(x0 - 2, 72, x1 - x0 + 4, 3);
+  for (let x = x0 + 8; x < x1; x += 18) { c.fillStyle = 'rgba(0,0,0,0.18)'; c.fillRect(x, 66, 1, 6); }
+  // fireplace tools (poker, shovel, brush) in a stand to the left of the hearth
+  c.fillStyle = '#1a1a1e'; c.fillRect(240, 50, 2, 14); c.fillRect(244, 48, 2, 16); c.fillRect(248, 52, 2, 12);
+  c.fillStyle = BK_DGOLD; c.fillRect(238, 62, 14, 3); c.fillStyle = BK_GOLD; c.fillRect(238, 62, 14, 1);
+  c.fillRect(239, 49, 4, 1); c.fillStyle = '#5a5a60'; c.fillRect(247, 50, 4, 3);
+}
+
+function bkCounter(c) {
+  const x = 64, y = 96, w = 96;
+  c.fillStyle = 'rgba(0,0,0,0.30)'; c.fillRect(x + 2, y + 28, w, 5);
+  c.fillStyle = BK_WOOD; c.fillRect(x, y + 10, w, 20);
+  c.fillStyle = '#2e1a0d'; c.fillRect(x, y + 28, w, 3);
+  for (let px = x + 4; px < x + w - 8; px += 22) {
+    c.fillStyle = '#5c3820'; c.fillRect(px, y + 13, 18, 13); c.fillStyle = '#3a2210'; c.fillRect(px + 2, y + 15, 14, 9); c.fillStyle = '#6d4426'; c.fillRect(px + 2, y + 15, 14, 1);
+  }
+  c.fillStyle = BK_WOOD_L; c.fillRect(x - 2, y + 2, w + 4, 9);
+  c.fillStyle = '#b07a44'; c.fillRect(x - 2, y + 2, w + 4, 2);
+  c.fillStyle = '#5c3a1c'; c.fillRect(x - 2, y + 10, w + 4, 2);
+  // brass cash register
+  c.fillStyle = '#6a4a14'; c.fillRect(x + 4, y - 4, 18, 11); c.fillStyle = BK_GOLD; c.fillRect(x + 5, y - 3, 16, 9);
+  c.fillStyle = '#f4efe0'; c.fillRect(x + 7, y - 7, 12, 5); c.fillStyle = '#2a1a0a'; c.fillRect(x + 8, y - 6, 10, 3);
+  c.fillStyle = '#7a1f1f'; for (let k = 0; k < 4; k++) c.fillRect(x + 7 + k * 3.6, y, 2, 2);
+  c.fillStyle = BK_DGOLD; c.fillRect(x + 5, y + 4, 16, 2);
+  // service bell
+  c.fillStyle = BK_GOLD; c.beginPath(); c.arc(x + 31, y + 5, 4, Math.PI, 0); c.fill(); c.fillStyle = BK_DGOLD; c.fillRect(x + 27, y + 5, 8, 2); c.fillStyle = '#fff3b0'; c.fillRect(x + 29, y + 2, 1.5, 1.5);
+  // paper bags + a stack of holds
+  c.fillStyle = '#b89a62'; c.fillRect(x + 62, y - 2, 12, 10); c.fillStyle = '#d8bc84'; c.fillRect(x + 62, y - 2, 12, 2); c.fillStyle = 'rgba(0,0,0,0.2)'; c.fillRect(x + 62, y + 4, 12, 1);
+  bkStack(c, x + 76, y + 7, 14, 4, 57);
+  // little brass picture of the shop name
+  c.fillStyle = BK_DGOLD; c.fillRect(x + 38, y + 14, 20, 9); c.fillStyle = BK_GOLD; c.fillRect(x + 39, y + 15, 18, 7);
+  c.fillStyle = '#2a1a08'; c.font = '700 3.6px monospace'; c.textAlign = 'center'; c.fillText("A BOY'S WILL", x + 48, y + 20.5);
+}
+
+function bkLampStatic(c, x, y) {           // a brass banker's lamp with a green glass shade, base at (x, y)
+  c.fillStyle = BK_DGOLD; c.fillRect(x - 4, y - 2, 8, 3); c.fillRect(x - 1, y - 9, 2, 8);
+  c.fillStyle = '#1f6b3c'; c.beginPath(); c.moveTo(x - 8, y - 9); c.lineTo(x - 5, y - 15); c.lineTo(x + 5, y - 15); c.lineTo(x + 8, y - 9); c.closePath(); c.fill();
+  c.fillStyle = '#3a9a5c'; c.fillRect(x - 5, y - 15, 10, 1); c.fillStyle = BK_GOLD; c.fillRect(x - 8, y - 9, 16, 1);
+}
+
+function bkCart(c, x, y) {                 // the bargain cart (tile (5,2)): a little wheeled bookcase of paperbacks
+  c.fillStyle = 'rgba(0,0,0,0.28)'; c.fillRect(x + 3, y + 27, 27, 4);
+  c.fillStyle = BK_WOOD; c.fillRect(x + 2, y + 6, 28, 21);
+  c.fillStyle = '#24150b'; c.fillRect(x + 4, y + 8, 24, 17);
+  bkBooks(c, x + 5, y + 16, 22, 7, 71);
+  c.fillStyle = BK_WOOD_M; c.fillRect(x + 3, y + 16, 26, 2);
+  bkBooks(c, x + 5, y + 24, 22, 7, 72);
+  c.fillStyle = BK_WOOD_M; c.fillRect(x + 3, y + 24, 26, 3); c.fillStyle = BK_WOOD_L; c.fillRect(x + 3, y + 24, 26, 1);
+  c.fillStyle = BK_WOOD_L; c.fillRect(x + 1, y + 4, 30, 3);                                   // top rail
+  c.fillStyle = BK_WOOD; c.fillRect(x + 28, y, 3, 8);                                         // push handle
+  c.fillStyle = '#17120e'; c.beginPath(); c.arc(x + 8, y + 29, 3, 0, Math.PI * 2); c.arc(x + 25, y + 29, 3, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#e8dcc0'; c.fillRect(x + 11, y + 1, 12, 6); c.fillStyle = '#9a3b32'; c.font = '700 3.6px monospace'; c.textAlign = 'center'; c.fillText('BARGAIN', x + 17, y + 5.4);
+}
+
+function bkArrivalsTable(c, x, y) {        // "new arrivals" table: tiles (3,5)(4,5), 64x32 at (x, y)
+  c.fillStyle = 'rgba(0,0,0,0.30)'; c.fillRect(x + 3, y + 28, 62, 4);
+  c.fillStyle = '#2e1a0d'; c.fillRect(x + 4, y + 24, 3, 7); c.fillRect(x + 57, y + 24, 3, 7);
+  c.fillStyle = BK_WOOD_M; c.fillRect(x + 1, y + 8, 62, 19); c.fillStyle = BK_WOOD_L; c.fillRect(x + 1, y + 8, 62, 2);
+  c.fillStyle = '#3a2210'; c.fillRect(x + 1, y + 24, 62, 3);
+  c.fillStyle = '#7a1f2c'; c.fillRect(x + 4, y + 10, 56, 14);                                  // a crimson runner cloth
+  c.fillStyle = BK_GOLD; c.fillRect(x + 4, y + 10, 56, 1); c.fillRect(x + 4, y + 23, 56, 1);
+  bkStack(c, x + 7, y + 22, 13, 5, 81);
+  bkStack(c, x + 23, y + 22, 13, 3, 82);
+  for (let k = 0; k < 3; k++) {                                                                   // fanned display copies
+    c.save(); c.translate(x + 45 + k * 4, y + 18); c.rotate(-0.4 + k * 0.4);
+    c.fillStyle = BK_SPINES[(k * 5 + 2) % BK_SPINES.length]; c.fillRect(-4, -9, 8, 12); c.fillStyle = BK_GOLD; c.fillRect(-4, -7, 8, 1); c.fillStyle = 'rgba(255,255,255,0.15)'; c.fillRect(-4, -9, 1, 12);
+    c.restore();
+  }
+  c.fillStyle = '#1b2a22'; c.fillRect(x + 25, y + 1, 18, 9); c.fillStyle = BK_GOLD; c.fillRect(x + 25, y + 1, 18, 1);   // chalkboard sign
+  c.fillStyle = '#f4efe0'; c.font = '700 3.6px monospace'; c.textAlign = 'center'; c.fillText('NEW', x + 34, y + 5.4); c.fillText('ARRIVALS', x + 34, y + 9);
+  c.fillStyle = '#6a4a2a'; c.fillRect(x + 30, y + 10, 8, 1);
+  c.fillStyle = '#a8c8d8'; c.fillRect(x + 54, y + 4, 5, 8); c.fillStyle = '#7a9aaa'; c.fillRect(x + 54, y + 4, 5, 1);     // a jar of asters
+  for (const [dx, dc] of [[-2, '#d86ab0'], [0, '#9a6ad8'], [2, '#e8a83a']]) { c.fillStyle = dc; c.fillRect(x + 56 + dx, y, 3, 3); c.fillStyle = '#4a7a3a'; c.fillRect(x + 57 + dx, y + 3, 1, 2); }
+}
+
+function bkLampTable(c, x, y) {            // tile (11,7): round side table, reading lamp, books, a teacup
+  c.fillStyle = 'rgba(0,0,0,0.30)'; c.fillRect(x + 4, y + 27, 24, 4);
+  c.fillStyle = '#2e1a0d'; c.fillRect(x + 14, y + 17, 4, 11); c.fillRect(x + 8, y + 27, 16, 2);
+  c.fillStyle = BK_WOOD_L; c.beginPath(); c.ellipse(x + 16, y + 17, 14, 5, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#b07a44'; c.beginPath(); c.ellipse(x + 16, y + 16, 14, 4.2, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = BK_DGOLD; c.fillRect(x + 7, y + 12, 8, 4); c.fillStyle = BK_GOLD; c.fillRect(x + 10, y + 5, 2, 8);
+  c.fillStyle = '#f4e3b0'; c.beginPath(); c.moveTo(x + 5, y + 6); c.lineTo(x + 8, y - 4); c.lineTo(x + 14, y - 4); c.lineTo(x + 17, y + 6); c.closePath(); c.fill();
+  c.fillStyle = 'rgba(0,0,0,0.16)'; c.fillRect(x + 14, y - 4, 2, 10);
+  bkStack(c, x + 20, y + 16, 9, 2, 91);
+  c.fillStyle = '#e8e0cc'; c.fillRect(x + 6, y + 15, 0, 0);
+  c.fillStyle = '#e8e0cc'; c.beginPath(); c.ellipse(x + 18, y + 18, 4.5, 1.6, 0, 0, Math.PI * 2); c.fill();      // saucer
+  c.fillStyle = '#f4efe0'; c.fillRect(x + 15, y + 13, 6, 5); c.fillStyle = '#6a3a1a'; c.fillRect(x + 15.5, y + 13, 5, 1.5);
+}
+
+// the whole static room
+function paintBookstoreInterior(c) {
+  const W = 14 * TILE, H = 10 * TILE;
+  c.fillStyle = '#1a110b'; c.fillRect(0, 0, W, H);
+
+  // ---------------------------------------------------------------- floor: wide oak planks
+  for (let row = 0, y = 64; y < 288; row++, y += 14) {
+    let x = 0, k = 0;
+    while (x < W) {
+      const h = shHash(row * 13 + 3, k * 5 + 1), len = 56 + (h % 70);
+      const shade = ['#84583a', '#7a502f', '#8c6040', '#74492a', '#805534'][(h >>> 5) % 5];
+      c.fillStyle = shade; c.fillRect(x, y, Math.min(len, W - x), 14);
+      c.fillStyle = 'rgba(255,255,255,0.06)'; c.fillRect(x, y, Math.min(len, W - x), 1);
+      c.fillStyle = 'rgba(0,0,0,0.34)'; c.fillRect(x, y + 13, Math.min(len, W - x), 1);
+      c.fillStyle = 'rgba(0,0,0,0.30)'; c.fillRect(x, y, 1, 14);
+      c.fillStyle = 'rgba(0,0,0,0.09)';
+      c.fillRect(x + 6 + (h >>> 9) % 20, y + 4, 18 + (h >>> 14) % 16, 1); c.fillRect(x + 12 + (h >>> 17) % 22, y + 9, 14 + (h >>> 21) % 14, 1);
+      c.fillStyle = 'rgba(30,16,8,0.45)'; c.fillRect(x + 3, y + 3, 1, 1); c.fillRect(x + 3, y + 10, 1, 1);
+      x += len; k++;
+    }
+  }
+
+  // ---------------------------------------------------------------- back wall: forest-green paper, crown molding
+  c.fillStyle = BK_GRN; c.fillRect(0, 0, W, 66);
+  for (let y = 10; y < 64; y += 10) for (let x = ((y / 10) | 0) % 2 ? 6 : 0; x < W; x += 12) {
+    c.fillStyle = 'rgba(255,255,255,0.055)'; c.fillRect(x + 4, y, 2, 6); c.fillRect(x + 2, y + 2, 6, 2);
+  }
+  c.fillStyle = BK_CREAM; c.fillRect(0, 0, W, 7);
+  for (let x = 2; x < W; x += 6) { c.fillStyle = '#b8ad90'; c.fillRect(x, 3, 3, 3); }
+  c.fillStyle = BK_GOLD; c.fillRect(0, 7, W, 2); c.fillStyle = BK_DGOLD; c.fillRect(0, 9, W, 1);
+  c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(0, 10, W, 3);
+
+  // ---------------------------------------------------------------- side walls: wallpaper strips + wainscot
+  for (const x0 of [0, 13 * TILE]) {
+    c.fillStyle = BK_GRN; c.fillRect(x0, 64, TILE, 224);
+    for (let y = 70; y < 280; y += 10) for (let x = (((y - 70) / 10) | 0) % 2 ? 6 : 0; x < TILE; x += 12) {
+      c.fillStyle = 'rgba(255,255,255,0.055)'; c.fillRect(x0 + x + 4, y, 2, 6); c.fillRect(x0 + x + 2, y + 2, 6, 2);
+    }
+    c.fillStyle = '#17241c'; c.fillRect(x0, 64, TILE, 224); c.globalAlpha = 0.45; c.fillStyle = BK_GRN; c.fillRect(x0, 64, TILE, 224); c.globalAlpha = 1;
+    c.fillStyle = BK_WOOD; c.fillRect(x0, 276, TILE, 12); c.fillStyle = BK_WOOD_M; c.fillRect(x0, 276, TILE, 2);
+    c.fillStyle = BK_CREAM; c.fillRect(x0 === 0 ? TILE - 3 : x0, 64, 3, 224);
+    c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(x0 === 0 ? TILE - 1 : x0, 64, 1, 224);
+  }
+
+  // ---------------------------------------------------------------- bookcases: back wall, left and right, floor to cornice
+  [[33, 70, 1], [105, 72, 2], [179, 74, 3], [326, 44, 4], [372, 44, 5]].forEach(([x, w, s]) => bkCase(c, x, 9, w, 55, 16, s));
+  bkCase(c, 33, 64, 30, 224, 24, 6);
+  bkCase(c, 385, 64, 30, 224, 24, 7);
+  // brass ladder rail across the back-left cases, with the ladder resting against it
+  c.fillStyle = BK_DGOLD; c.fillRect(33, 12, 220, 2); c.fillStyle = BK_GOLD; c.fillRect(33, 12, 220, 1);
+  for (const bx of [36, 100, 176, 248]) { c.fillStyle = BK_DGOLD; c.fillRect(bx, 11, 2, 4); }
+  c.fillStyle = 'rgba(0,0,0,0.28)'; c.fillRect(143, 13, 14, 51);
+  c.fillStyle = '#5c3a1c'; c.fillRect(141, 12, 2, 52); c.fillRect(153, 12, 2, 52);
+  c.fillStyle = BK_WOOD_L; c.fillRect(141, 12, 1, 52); c.fillRect(153, 12, 1, 52);
+  for (let ry = 19; ry < 62; ry += 7) { c.fillStyle = '#3a2210'; c.fillRect(141, ry, 14, 2); c.fillStyle = BK_WOOD_L; c.fillRect(141, ry, 14, 1); }
+  c.fillStyle = BK_DGOLD; c.fillRect(139, 10, 18, 3);
+
+  // ---------------------------------------------------------------- the fireplace
+  bkFireplace(c);
+
+  // ---------------------------------------------------------------- side-wall dressing: sconces + oval prints
+  for (const [sx, sy] of [[16, 112], [16, 228], [432, 112], [432, 228]]) bkSconce(c, sx, sy);
+  bkOval(c, 16, 170, 8, 11, (cc, x, y, w, h) => {
+    const g = cc.createLinearGradient(0, y, 0, y + h); g.addColorStop(0, '#9cc8e8'); g.addColorStop(1, '#f2e8c8'); cc.fillStyle = g; cc.fillRect(x, y, w, h);
+    cc.fillStyle = '#5c8c4a'; cc.fillRect(x, y + h - 7, w, 7); cc.fillStyle = '#d9741e'; cc.beginPath(); cc.arc(x + 5, y + h - 9, 4, 0, Math.PI * 2); cc.fill();
+    cc.fillStyle = '#7a93aa'; cc.beginPath(); cc.moveTo(x, y + h - 7); cc.lineTo(x + 8, y + h - 14); cc.lineTo(x + w, y + h - 7); cc.fill();
+  });
+  bkOval(c, 432, 170, 8, 11, (cc, x, y, w, h) => {
+    cc.fillStyle = '#e8dcc0'; cc.fillRect(x, y, w, h);
+    cc.strokeStyle = '#7a5a3a'; cc.lineWidth = 0.8; cc.beginPath(); cc.moveTo(x + 3, y + 3); cc.quadraticCurveTo(x + 9, y + 8, x + 6, y + 13); cc.quadraticCurveTo(x + 11, y + 15, x + 12, y + 19); cc.stroke();
+    cc.fillStyle = '#b3342a'; cc.fillRect(x + 10, y + 7, 2, 2);
+  });
+
+  // ---------------------------------------------------------------- hearth rug (rows 2-4, cols 7-10)
+  {
+    const rx = 226, ry = 80, rw = 124, rh = 78;
+    c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(rx + 2, ry + 3, rw, rh);
+    c.fillStyle = '#d8cba6'; for (let fx = rx + 2; fx < rx + rw - 2; fx += 4) { c.fillRect(fx, ry - 3, 1, 4); c.fillRect(fx, ry + rh - 1, 1, 4); }   // fringe
+    c.fillStyle = '#7a1f2c'; c.fillRect(rx, ry, rw, rh);
+    c.fillStyle = BK_GOLD; c.fillRect(rx + 3, ry + 3, rw - 6, rh - 6);
+    c.fillStyle = '#1f4a3a'; c.fillRect(rx + 5, ry + 5, rw - 10, rh - 10);
+    c.fillStyle = '#8c2430'; c.fillRect(rx + 8, ry + 8, rw - 16, rh - 16);
+    for (let k = 0; k < 6; k++) {                                                            // border motifs
+      const bx = rx + 12 + k * 20;
+      c.fillStyle = '#c9a23e'; c.fillRect(bx, ry + 9, 5, 5); c.fillRect(bx, ry + rh - 14, 5, 5);
+    }
+    c.fillStyle = '#d9b04a';                                                                  // central medallion
+    c.beginPath(); c.moveTo(rx + rw / 2, ry + 16); c.lineTo(rx + rw / 2 + 24, ry + rh / 2); c.lineTo(rx + rw / 2, ry + rh - 16); c.lineTo(rx + rw / 2 - 24, ry + rh / 2); c.closePath(); c.fill();
+    c.fillStyle = '#1f4a3a';
+    c.beginPath(); c.moveTo(rx + rw / 2, ry + 21); c.lineTo(rx + rw / 2 + 18, ry + rh / 2); c.lineTo(rx + rw / 2, ry + rh - 21); c.lineTo(rx + rw / 2 - 18, ry + rh / 2); c.closePath(); c.fill();
+    c.fillStyle = '#8c2430'; c.beginPath(); c.arc(rx + rw / 2, ry + rh / 2, 7, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#e8c860'; c.fillRect(rx + rw / 2 - 1, ry + rh / 2 - 1, 2, 2);
+    c.fillStyle = 'rgba(0,0,0,0.12)'; for (let yy = ry + 10; yy < ry + rh - 10; yy += 4) c.fillRect(rx + 10, yy, rw - 20, 1);
+  }
+
+  // ---------------------------------------------------------------- furniture
+  bkCounter(c);
+  bkLampStatic(c, 153, 98);
+  bkCart(c, 160, 64);
+  bkArrivalsTable(c, 96, 160);
+  bkLoveseat(c, 8, 5, '#2f6b62', '#3f8a7e', '#1f4a44');
+  bkArmchair(c, 6, 3, '#7a2a34', '#9a3a46', '#561c25');
+  bkArmchair(c, 11, 3, '#35603f', '#4a7f55', '#244530');
+  bkArmchair(c, 10, 7, '#b8862a', '#d9a63e', '#8a6420');
+  bkLampTable(c, 352, 224);
+  bkFern(c, 64, 256);
+  // a few strays on the floor: a stack by the loveseat, a basket of magazines by the cart
+  bkStack(c, 236, 190, 14, 4, 101);
+  c.fillStyle = BK_WOOD_L; c.fillRect(70, 196, 16, 9); c.fillStyle = BK_WOOD; c.fillRect(70, 196, 16, 2); c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(70, 204, 16, 1);
+  bkBooks(c, 72, 197, 12, 7, 103);
+
+  // ---------------------------------------------------------------- front wall (row 9): wainscot, doorway, coat hooks, staff picks
+  const fy = 9 * TILE;
+  c.fillStyle = BK_GRN; c.fillRect(0, fy, W, TILE);
+  c.fillStyle = BK_CREAM; c.fillRect(0, fy, W, 3); c.fillStyle = BK_GOLD; c.fillRect(0, fy + 3, W, 1);
+  c.fillStyle = BK_WOOD; c.fillRect(0, fy + 15, W, 17);
+  for (let x = 6; x < W - 6; x += 26) { c.fillStyle = '#2e1a0d'; c.fillRect(x, fy + 18, 22, 10); c.fillStyle = BK_WOOD_M; c.fillRect(x + 1, fy + 19, 20, 8); }
+  c.fillStyle = BK_CREAM; c.fillRect(0, fy + 13, W, 2); c.fillStyle = '#17120e'; c.fillRect(0, fy + 29, W, 3);
+  c.fillStyle = '#5a3a1c'; c.fillRect(104, fy + 5, 56, 5); c.fillStyle = BK_DGOLD; for (const hx of [110, 128, 146]) c.fillRect(hx, fy + 9, 3, 3);          // coat hooks
+  c.fillStyle = '#4a5a8a'; c.fillRect(108, fy + 10, 14, 18); c.fillStyle = '#3a4a78'; c.fillRect(108, fy + 10, 14, 2); c.fillStyle = '#d8d0b8'; c.fillRect(114, fy + 12, 1, 14);
+  c.fillStyle = '#c0392b'; c.beginPath(); c.arc(135, fy + 17, 5, Math.PI, 0); c.fill(); c.fillRect(130, fy + 17, 10, 3); c.fillStyle = '#f4ecd6'; c.fillRect(130, fy + 19, 10, 1.5);   // wool hat
+  c.fillStyle = '#6a4a28'; c.fillRect(150, fy + 8, 8, 20); c.fillStyle = '#c9a23e'; c.fillRect(150, fy + 8, 8, 2); c.fillStyle = '#e8dcc0'; c.fillRect(152, fy + 12, 4, 10);           // tote bag
+  // exit doorway (the player leaves through (6,9)): frame + daylight + a brass bell over the door
+  c.fillStyle = '#17120e'; c.fillRect(187, fy, 5, TILE); c.fillRect(224, fy, 5, TILE);
+  c.fillStyle = BK_GOLD; c.fillRect(187, fy, 42, 3);
+  const dg = c.createLinearGradient(0, fy + 3, 0, fy + TILE); dg.addColorStop(0, '#f6f2d6'); dg.addColorStop(1, '#b6d8a4');
+  c.fillStyle = dg; c.fillRect(192, fy + 3, 32, TILE - 3); c.fillStyle = 'rgba(0,0,0,0.12)'; c.fillRect(192, fy + 3, 32, 3);
+  c.fillStyle = BK_GOLD; c.beginPath(); c.arc(208, fy + 12, 3.5, Math.PI, 0); c.fill(); c.fillRect(204.5, fy + 12, 7, 2); c.fillStyle = '#7a5a14'; c.fillRect(207, fy + 5, 2, 4);
+  // staff picks board
+  c.fillStyle = '#4a2c14'; c.fillRect(246, fy + 3, 66, 26); c.fillStyle = '#b8864a'; c.fillRect(248, fy + 5, 62, 22);
+  c.fillStyle = '#f4ecd6'; c.fillRect(250, fy + 7, 33, 9); c.fillStyle = '#2f4a3b'; c.font = '700 4.4px monospace'; c.textAlign = 'center'; c.fillText('STAFF PICKS', 266.5, fy + 13.2);
+  c.fillStyle = '#f2d36a'; c.fillRect(286, fy + 8, 10, 8); c.fillStyle = '#9fd0e8'; c.fillRect(298, fy + 9, 11, 9);
+  c.fillStyle = '#f0a0b0'; c.fillRect(252, fy + 18, 9, 7); c.fillStyle = '#c8e8b0'; c.fillRect(264, fy + 18, 13, 7); c.fillStyle = '#f4ecd6'; c.fillRect(281, fy + 19, 12, 6);
+  c.fillStyle = '#9a8e72'; for (const [lx, ly, lw] of [[288, 10, 7], [288, 12.5, 5], [300, 11.5, 7], [266, 20, 8], [266, 22.5, 6], [283, 21, 8]]) c.fillRect(lx, fy + ly, lw, 0.7);
+  c.fillStyle = '#b3342a'; for (const [pxx, pyy] of [[286, 8], [291, 8], [304, 9], [256, 18], [270, 18], [287, 19]]) c.fillRect(pxx, fy + pyy - 0.5, 1.6, 1.6);
+  // welcome mat inside the door
+  c.fillStyle = 'rgba(0,0,0,0.2)'; c.fillRect(179, 271, 58, 18);
+  c.fillStyle = '#4a3320'; c.fillRect(177, 269, 58, 18); c.fillStyle = '#d8c89a'; c.fillRect(179, 271, 54, 14); c.fillStyle = '#4a3320'; c.fillRect(181, 273, 50, 10);
+  c.fillStyle = BK_GOLD; c.font = '700 4.2px monospace'; c.textAlign = 'center'; c.fillText("A BOY'S WILL", 206, 279.6);
+
+  // ---------------------------------------------------------------- finish: wall-foot shadows + vignette
+  const sh = c.createLinearGradient(0, 64, 0, 82); sh.addColorStop(0, 'rgba(0,0,0,0.30)'); sh.addColorStop(1, 'rgba(0,0,0,0)');
+  c.fillStyle = sh; c.fillRect(TILE, 64, 12 * TILE, 18);
+  const vg = c.createRadialGradient(W / 2, H / 2, 150, W / 2, H / 2, 310);
+  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.30)');
+  c.fillStyle = vg; c.fillRect(0, 0, W, H);
+}
+
+let _bkInteriorCache = null;
+function drawBookstoreInterior(time) {
+  if (!_bkInteriorCache) {
+    const cv = document.createElement('canvas');
+    cv.width = 14 * TILE; cv.height = 10 * TILE;
+    paintBookstoreInterior(cv.getContext('2d'));
+    _bkInteriorCache = cv;
+  }
+  ctx.drawImage(_bkInteriorCache, 0, 0);
+
+  // ---- firelight: a warm pulse over the hearth, the rug and the nearest furniture
+  {
+    const pulse = 0.22 + 0.05 * Math.sin(time * 7.1) + 0.03 * Math.sin(time * 13.3 + 1);
+    const g = ctx.createRadialGradient(288, 70, 6, 288, 96, 135);
+    g.addColorStop(0, 'rgba(255,170,70,' + pulse.toFixed(3) + ')'); g.addColorStop(1, 'rgba(255,140,50,0)');
+    ctx.fillStyle = g; ctx.fillRect(150, 30, 280, 200);
+  }
+  // ---- flames in the firebox
+  ctx.save();
+  ctx.beginPath(); ctx.rect(265, 38, 46, 26); ctx.clip();
+  for (let i = 0; i < 5; i++) {
+    const bx = 272 + i * 8, sway = Math.sin(time * 5 + i * 1.3) * 2;
+    const h = 13 + 8 * Math.abs(Math.sin(time * 8.3 + i * 1.7)) + 3 * Math.sin(time * 17 + i * 2.3);
+    for (const [wd, hh, col] of [[5.5, 1, '#e8601c'], [4, 0.72, '#ffb02e'], [2.2, 0.42, '#fff2a0']]) {
+      ctx.fillStyle = col; ctx.beginPath();
+      ctx.moveTo(bx - wd, 62); ctx.quadraticCurveTo(bx - wd * 0.7 + sway, 62 - h * hh * 0.5, bx + sway, 62 - h * hh);
+      ctx.quadraticCurveTo(bx + wd * 0.7 + sway, 62 - h * hh * 0.5, bx + wd, 62); ctx.closePath(); ctx.fill();
+    }
+  }
+  ctx.fillStyle = 'rgba(255,120,30,0.55)'; ctx.fillRect(272, 59, 32, 3);
+  ctx.restore();
+  for (let k = 0; k < 5; k++) {                                                                // sparks
+    const t = (time * 0.8 + k * 0.2) % 1, sx = 278 + k * 6 + Math.sin(time * 3 + k * 2) * 3, sy = 48 - t * 12;
+    ctx.fillStyle = 'rgba(255,' + (190 + k * 10) + ',90,' + (0.9 * (1 - t)).toFixed(2) + ')'; ctx.fillRect(Math.round(sx), Math.round(sy), 1.5, 1.5);
+  }
+
+  // ---- sconces, desk lamp, reading lamp: soft flickering pools of light
+  for (const [lx, ly, r, a] of [[16, 106, 46, 0.14], [16, 222, 46, 0.14], [432, 106, 46, 0.14], [432, 222, 46, 0.14], [153, 84, 34, 0.18], [368, 228, 56, 0.2]]) {
+    const f = a + 0.025 * Math.sin(time * 2.3 + lx * 0.07 + ly * 0.03);
+    const g = ctx.createRadialGradient(lx, ly, 2, lx, ly, r);
+    g.addColorStop(0, 'rgba(255,224,150,' + f.toFixed(3) + ')'); g.addColorStop(1, 'rgba(255,224,150,0)');
+    ctx.fillStyle = g; ctx.fillRect(lx - r, ly - r, r * 2, r * 2);
+  }
+
+  // ---- the cat, curled up asleep on the rug: slow breathing, a twitching tail tip, drifting Zs
+  {
+    const cx = 270, cy = 140, br = 1 + 0.045 * Math.sin(time * 1.7);
+    ctx.save(); ctx.translate(cx, cy); ctx.scale(1, br);
+    ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.beginPath(); ctx.ellipse(1, 5, 13, 4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#f1e8d8'; ctx.beginPath(); ctx.ellipse(0, 0, 12, 7, 0, 0, Math.PI * 2); ctx.fill();           // body
+    ctx.fillStyle = '#d98a3a'; ctx.beginPath(); ctx.ellipse(4, -2, 6, 4, 0.3, 0, Math.PI * 2); ctx.fill();         // marmalade patch
+    ctx.fillStyle = '#3a2f2a'; ctx.beginPath(); ctx.ellipse(-4, 2, 4, 3, 0, 0, Math.PI * 2); ctx.fill();           // dark patch
+    ctx.fillStyle = '#f1e8d8'; ctx.beginPath(); ctx.arc(-9, -1, 5, 0, Math.PI * 2); ctx.fill();                      // head
+    ctx.fillStyle = '#d98a3a'; ctx.beginPath(); ctx.moveTo(-13, -4); ctx.lineTo(-12, -9); ctx.lineTo(-9.5, -5); ctx.fill();   // ears
+    ctx.fillStyle = '#3a2f2a'; ctx.beginPath(); ctx.moveTo(-8, -5); ctx.lineTo(-6, -9.5); ctx.lineTo(-4.5, -4); ctx.fill();
+    ctx.strokeStyle = '#2a1f1a'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(-11.5, -1); ctx.lineTo(-9.5, -0.2); ctx.moveTo(-8.5, -0.4); ctx.lineTo(-6.8, -1.2); ctx.stroke();   // closed eyes
+    ctx.fillStyle = '#e8909a'; ctx.fillRect(-9.4, 1, 1.6, 1);                                                      // nose
+    ctx.restore();
+    const tw = Math.sin(time * 1.1) > 0.8 ? Math.sin(time * 16) * 1.2 : 0;                                         // tail wraps round the front
+    ctx.strokeStyle = '#d98a3a'; ctx.lineWidth = 3.4; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(cx + 9, cy + 4); ctx.quadraticCurveTo(cx + 2, cy + 11, cx - 10, cy + 7 + tw); ctx.stroke();
+    ctx.strokeStyle = '#3a2f2a'; ctx.lineWidth = 3.4; ctx.beginPath(); ctx.moveTo(cx - 8, cy + 7.6 + tw); ctx.lineTo(cx - 11, cy + 6.8 + tw); ctx.stroke(); ctx.lineCap = 'butt';
+    for (let k = 0; k < 2; k++) {
+      const t = (time * 0.35 + k * 0.5) % 1;
+      ctx.globalAlpha = Math.sin(t * Math.PI) * 0.9; ctx.fillStyle = '#f4efe0'; ctx.font = '700 ' + (6 + k * 2) + 'px monospace'; ctx.textAlign = 'center';
+      ctx.fillText('z', cx - 12 + t * 8 + k * 3, cy - 12 - t * 14);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // ---- steam off the teacup on the lamp table
+  for (let k = 0; k < 3; k++) {
+    const t = (time * 0.55 + k / 3) % 1;
+    ctx.fillStyle = 'rgba(255,255,255,' + (0.5 * (1 - t)).toFixed(2) + ')';
+    ctx.beginPath(); ctx.arc(371 + Math.sin(time * 2 + k * 2) * 2 + t * 2, 236 - t * 14, 1.2 + t * 2, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // ---- dust motes drifting through the lamplight
+  for (let k = 0; k < 12; k++) {
+    const t = (time * 0.04 + k * 0.083) % 1;
+    const mx = 200 + ((k * 53) % 190) + Math.sin(time * 0.7 + k * 1.7) * 6, my = 70 + t * 170 + Math.cos(time * 0.55 + k) * 3;
+    ctx.fillStyle = 'rgba(255,244,210,' + (0.55 * Math.sin(t * Math.PI)).toFixed(2) + ')'; ctx.fillRect(Math.round(mx), Math.round(my), 1.5, 1.5);
   }
 }
 
