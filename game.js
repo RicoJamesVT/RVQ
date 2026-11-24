@@ -1072,6 +1072,19 @@ const SPEAKING_VOLUMES_JUNK = [
     reply: 'Somebody\'s bargain, but not yours. Keep digging.' },
 ];
 
+// BUCH SPIELER RECORDS' four dig crates (c.bsSeed 0-3, same 1:1 pairing as SPEAKING_VOLUMES_JUNK). Montpelier's hunted records
+// are still placeholders, so these are pure browsing: Vermont-flavored crates, never one of the collectibles.
+const BUCH_SPIELER_JUNK = [
+  { line: 'A crate of used jazz and soul LPs, sleeves worn white at the edges, price stickers layered like tree rings.',
+    reply: 'Gorgeous, but not the one you are after. Keep digging.' },
+  { line: 'Local pressings and hand-numbered 7-inches from bands that practiced in barns and basements all over Vermont.',
+    reply: 'The scene at its most honest. Not what you came for, though.' },
+  { line: 'A bin of classic rock and folk reissues, with a couple of dollar-bin Christmas records somebody keeps trying to hide.',
+    reply: 'Solid stuff. Not the one, though. Keep digging.' },
+  { line: 'Punk, hardcore and new wave 45s in paper sleeves, each one stamped with the shop name and a handwritten price.',
+    reply: 'Loud, fast and over in two minutes. Keep digging.' },
+];
+
 // CB PRINTS' two dig crates -- one hip hop, one reggae. Which crate holds
 // Halftone Dub is shuffled each new game (shuffleRecordCrates()), so the
 // junk crate's genre is picked by WHICH SIDE of the shop it sits on (left
@@ -14659,6 +14672,7 @@ function makeShop(id, opts) {
     soulShack: opts.soulShack || false,
     foamBrewers: opts.foamBrewers || false,
     speakingVolumes: opts.speakingVolumes || false,
+    buchSpieler: opts.buchSpieler || false,
     cbPrints: opts.cbPrints || false,
     talent: opts.talent || false,
     echoCenter: opts.echoCenter || false,
@@ -15990,6 +16004,15 @@ function makeMontpelier() {
   Object.assign(bookstoreB, { name: "A BOY'S WILL", montScenery: 'bookstore', wall: '#2f4a3b', roof: '#e8dcc0', awning: '#2f4a3b', doorX: BOOKSTORE_DOOR.x });
   g[BOOKSTORE_DOOR.y][BOOKSTORE_DOOR.x] = 'D';
 
+  // --- BUCH SPIELER RECORDS: an independent record store in the N1 slot (x 5-10, rows 20-23), the first block you see
+  // after the return portal. Same trick as A BOY'S WILL: N1 stays in BLOCK_DEFS, is re-dressed here (montScenery
+  // 'recordstore' -> drawMontpelierRecordStore) and gets a door: the 'D' tile at (7, 23) opens onto the sidewalk (row 24).
+  // Entering leads to the `buchspieler` shop (see `shops`).
+  const RECORDSTORE_DOOR = { x: 7, y: 23 };
+  const recordStoreB = montBuildings.find((b) => b.lot === 'N1');
+  Object.assign(recordStoreB, { name: 'BUCH SPIELER RECORDS', montScenery: 'recordstore', wall: '#9a4634', roof: '#b9b4a7', awning: '#f2c81c', doorX: RECORDSTORE_DOOR.x });
+  g[RECORDSTORE_DOOR.y][RECORDSTORE_DOOR.x] = 'D';
+
   // --- trees. Dense woods on Hubbard Park hill (NW), the ridge behind the State House, the north-east
   // hills along the North Branch and the south hills; sparse elsewhere. Never on streets, paving, water or
   // building footprints, and always a one-tile margin so nothing boxes the player in.
@@ -16066,6 +16089,7 @@ function makeMontpelier() {
     newsstands: [], minigames: [],
     // Drawing data for drawMontpelierDecorations() -- everything in world pixels.
     montpelier: { dashes, crosswalks, lamps },
+    recordStoreDoor: { x: RECORDSTORE_DOOR.x, y: RECORDSTORE_DOOR.y },   // BUCH SPIELER RECORDS -> `buchspieler` (see the door wiring above `const maps`)
     bookstoreDoor: { x: BOOKSTORE_DOOR.x, y: BOOKSTORE_DOOR.y },   // A BOY'S WILL -> `aboywill` (see the door wiring above `const maps`)
     stateHouseDoors: [{ x: 21, y: 11 }, { x: 22, y: 11 }],   // the portico doorway -> `statehouse` (see the door wiring above `const maps`)
     spawn: { x: 4.5, y: 26.5 },    // tile coords: Main Street, just inside the return portal
@@ -17559,6 +17583,33 @@ const shops = {
       ] },
     crates: [],
   }),
+  // BUCH SPIELER RECORDS -- an independent record store on MONTPELIER's Main Street (N1 block; door at (7, 23), see
+  // makeMontpelier() + drawMontpelierRecordStore()). `world: 'montpelier'` ties it to that level. `buchSpieler: true` gets its
+  // own interior (drawBuchSpielerInterior), modeled on the store's photo. Solid props are plain tiles the painter dresses up:
+  // blockTiles = the whole back-wall row (1..12,1), record browsers (2,5)(3,5) + (9,5)(10,5), 45s crates (3,8)(4,8), tee rack
+  // (10,7)(11,7); the counter is the default row 3 (cols 4-9) with the CLERK at (6,2). Four junk dig crates on the default spots
+  // (1,4)(1,6)(12,4)(12,6) -- Montpelier's records are still placeholders, so none holds a hunted record yet (swap one for
+  // `{ record: 'montDrums' }` etc. when they are real). Clear of the door (6,9) and the spawn (6.5,7.5).
+  buchspieler: makeShop('buchspieler', {
+    world: 'montpelier',
+    floor: '#a07a4e', plank: '#8c6a40', wallColor: '#d9c9a0',
+    buchSpieler: true,
+    blockTiles: [
+      [1, 1], [2, 1], [3, 1], [4, 1], [5, 1], [6, 1], [7, 1], [8, 1], [9, 1], [10, 1], [11, 1], [12, 1],
+      [2, 5], [3, 5], [9, 5], [10, 5], [3, 8], [4, 8], [10, 7], [11, 7],
+    ],
+    keeper: { name: 'THE CLERK', shirt: '#f2c81c', skin: '#e2b48c',
+      lines: [
+        'Welcome to Buch Spieler Records. New, used, and everything in between. Dig as long as you like.',
+        'Since 1973. That is what the sign says, and the sign is not lying. We have outlasted a few formats and a lot of trends.',
+        'Light wood racks are the browsers, left and right. The white crates down by the door are all 45s. The 45s are where the good stuff hides.',
+        'Look up. The stained glass was here before most of these records were, and it pulls its weight every single morning.',
+        'The tees are on the rack. They are soft. No, they do not run small.',
+        'Anything on the turntable is fair game. If you like what you hear, the cover is probably in the window.',
+        'Four crates along the walls, mostly local stuff. Nobody ever finds exactly what they came for, and everybody leaves with something.',
+      ] },
+    crates: [ { bsSeed: 0 }, { bsSeed: 1 }, { bsSeed: 2 }, { bsSeed: 3 } ],
+  }),
   // THE MONKEY HOUSE -- bar/restaurant + live-music venue on the Winooski
   // northwest lawn (see makeWinooski()). `monkeyHouse: true` gets its own
   // interior (drawMonkeyHouseInterior): a pool table up front by the door, a
@@ -18240,6 +18291,9 @@ transitions['statehouse:' + key(6, 9)] = { map: 'montpelier', x: 22, y: 12.6 };
 // A BOY'S WILL door wiring (Montpelier, LEVEL 5) -- same pattern as the other shops; leaving drops the player on the sidewalk below the door.
 transitions['montpelier:' + key(montpelier.bookstoreDoor.x, montpelier.bookstoreDoor.y)] = { map: 'aboywill', x: 6.5, y: 7.5 };
 transitions['aboywill:' + key(6, 9)] = { map: 'montpelier', x: montpelier.bookstoreDoor.x + 0.5, y: montpelier.bookstoreDoor.y + 1.6 };
+// BUCH SPIELER RECORDS door wiring (Montpelier, LEVEL 5) -- same pattern; leaving drops the player on the sidewalk below the door.
+transitions['montpelier:' + key(montpelier.recordStoreDoor.x, montpelier.recordStoreDoor.y)] = { map: 'buchspieler', x: 6.5, y: 7.5 };
+transitions['buchspieler:' + key(6, 9)] = { map: 'montpelier', x: montpelier.recordStoreDoor.x + 0.5, y: montpelier.recordStoreDoor.y + 1.6 };
 const maps = { town, ...shops, swamp, skatepark, winooski, montpelier };
 
 // Reshuffles, within EACH location that has one, which of that location's
@@ -19384,6 +19438,10 @@ function doInteract() {
     } else if (c.svSeed !== undefined) {
       const svj = SPEAKING_VOLUMES_JUNK[c.svSeed % SPEAKING_VOLUMES_JUNK.length];
       dialog = { name: 'CRATE', lines: [svj.line, svj.reply], i: 0 };
+      state = 'dialog';
+    } else if (c.bsSeed !== undefined) {
+      const bsj = BUCH_SPIELER_JUNK[c.bsSeed % BUCH_SPIELER_JUNK.length];
+      dialog = { name: 'CRATE', lines: [bsj.line, bsj.reply], i: 0 };
       state = 'dialog';
     } else if (c.echoSeed !== undefined) {
       // ECHO CENTER: the crate's SPOT picks its theme (Shallows / Deep Sea /
@@ -33982,6 +34040,7 @@ function render(time) {
   if (map.tinyThai) drawTinyThaiInterior(time);
   if (map.stateHouse) drawStateHouseInterior(time);
   if (map.bookstore) drawBookstoreInterior(time);
+  if (map.buchSpieler) drawBuchSpielerInterior(time);
   if (map.monkeyHouse) drawMonkeyHouseInterior(time);
   if (map.bellevue) drawBellevueInterior(time);
   if (map.miseryLoves) drawMiseryLovesInterior(time);
@@ -35372,6 +35431,7 @@ function drawMontpelierScenery(b, px, py, w, h) {
   if (b.montScenery === 'statehouse') drawMontpelierStateHouse(px, py, w, h);
   else if (b.montScenery === 'tower') drawMontpelierTower(px, py, w, h);
   else if (b.montScenery === 'bookstore') drawMontpelierBookstore(px, py, w, h);
+  else if (b.montScenery === 'recordstore') drawMontpelierRecordStore(px, py, w, h);
   else drawMontpelierBrickBlock(b, px, py, w, h);
 }
 
@@ -36371,6 +36431,129 @@ function drawMontpelierBookstore(px, py, w, h) {
   ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(px, py + h - 3, w, 3);
 }
 
+// BUCH SPIELER RECORDS: the record store in MONTPELIER's N1 slot (6x4 tiles, x 5-10, rows 20-23), modeled on the real
+// storefront photos: red brick under a grey stone cornice, a band of diamond-pane stained glass between yellow-and-black trim,
+// a black storefront with a shelf-lined left window, a glazed door with a tote bag (tile column 2 = the 'D' tile at (7, 23)),
+// a right window packed with album covers, and the hanging yellow sign with a vinyl disc behind it ("Buch Spieler Records,
+// SINCE 1973").
+function drawMontpelierRecordStore(px, py, w, h) {
+  const t = performance.now() / 1000;
+  const X = (x) => px + x, Y = (y) => py + y;
+  const YE = '#f2c81c', YD = '#b8900e', BL = '#15130f', BR = '#9a4634';
+  ctx.fillStyle = '#0f0d0a'; ctx.fillRect(px - 1, py - 1, w + 2, h + 2);
+  // red brick wall with coursing
+  ctx.fillStyle = BR; ctx.fillRect(px, py, w, h);
+  for (let yy = 14, row = 0; yy < 66; yy += 5, row++) {
+    ctx.fillStyle = 'rgba(0,0,0,0.17)'; ctx.fillRect(X(0), Y(yy), w, 1);
+    for (let xx = row % 2 ? 4 : 10; xx < w; xx += 12) ctx.fillRect(X(xx), Y(yy - 4), 1, 4);
+  }
+  ctx.fillStyle = 'rgba(255,255,255,0.07)'; ctx.fillRect(px, py, 3, h);
+  ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(px + w - 3, py, 3, h);
+  // grey stone cornice
+  ctx.fillStyle = '#0f0d0a'; ctx.fillRect(px - 2, py - 1, w + 4, 15);
+  ctx.fillStyle = '#b9b4a7'; ctx.fillRect(px - 1, py, w + 2, 12);
+  ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(px - 1, py, w + 2, 3);
+  ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(px, py + 12, w, 3);
+  for (let dx = 4; dx < w - 4; dx += 8) { ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.fillRect(px + dx, py + 6, 4, 5); }
+  // two little spotlights on arms, aimed down at the window
+  for (const sx of [78, 132]) {
+    ctx.fillStyle = BL; ctx.fillRect(X(sx), Y(30), 8, 2); ctx.fillRect(X(sx + 6), Y(30), 2, 6);
+    ctx.fillStyle = '#f6e6a0'; ctx.beginPath(); ctx.arc(X(sx + 7), Y(38), 3, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,230,140,0.10)'; ctx.beginPath(); ctx.moveTo(X(sx + 4), Y(40)); ctx.lineTo(X(sx + 10), Y(40)); ctx.lineTo(X(sx + 22), Y(64)); ctx.lineTo(X(sx - 8), Y(64)); ctx.fill();
+  }
+  // yellow + black trim, then the stained-glass transom (diamond panes: blue, green, grey, amber, red)
+  ctx.fillStyle = BL; ctx.fillRect(X(0), Y(39), w, 26);
+  ctx.fillStyle = YE; ctx.fillRect(X(0), Y(40), w, 4);
+  ctx.fillStyle = YD; ctx.fillRect(X(0), Y(43), w, 1);
+  ctx.fillStyle = YE; ctx.fillRect(X(0), Y(61), w, 4);
+  ctx.fillStyle = YD; ctx.fillRect(X(0), Y(64), w, 1);
+  const SG = ['#2f5fb0', '#3d8f5a', '#8a9098', '#d9a52a', '#2f5fb0', '#b03a3a', '#e2dccb', '#3d8f5a'];
+  ctx.fillStyle = '#26211a'; ctx.fillRect(X(0), Y(45), w, 16);
+  for (let i = 0, cx = 0; cx < w + 6; i++, cx += 9) {
+    const col = SG[(i * 3 + (i >> 2)) % SG.length];
+    ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(X(cx), Y(46)); ctx.lineTo(X(cx + 4.5), Y(53)); ctx.lineTo(X(cx), Y(60)); ctx.lineTo(X(cx - 4.5), Y(53)); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.beginPath(); ctx.moveTo(X(cx), Y(46)); ctx.lineTo(X(cx + 2), Y(50)); ctx.lineTo(X(cx - 2), Y(50)); ctx.fill();
+    ctx.strokeStyle = '#17130e'; ctx.lineWidth = 0.9; ctx.beginPath(); ctx.moveTo(X(cx), Y(46)); ctx.lineTo(X(cx + 4.5), Y(53)); ctx.lineTo(X(cx), Y(60)); ctx.lineTo(X(cx - 4.5), Y(53)); ctx.closePath(); ctx.stroke();
+  }
+  ctx.fillStyle = 'rgba(255,225,150,' + (0.06 + 0.03 * Math.sin(t * 1.7)).toFixed(3) + ')'; ctx.fillRect(X(0), Y(45), w, 16);   // warm light behind the glass
+  // black storefront
+  ctx.fillStyle = BL; ctx.fillRect(X(0), Y(65), w, h - 65);
+  // left window (tile 0-1): shelves of records and gear
+  ctx.fillStyle = '#2a2217'; ctx.fillRect(X(4), Y(70), 56, 46);
+  const lg = ctx.createLinearGradient(0, Y(72), 0, Y(114)); lg.addColorStop(0, '#f0cf7e'); lg.addColorStop(1, '#b98a48');
+  ctx.fillStyle = lg; ctx.fillRect(X(6), Y(72), 52, 42);
+  for (const [sy, sd] of [[84, 301], [97, 302]]) { bsAlbums(ctx, X(8), Y(sy - 11), 4, 11, sd); ctx.fillStyle = '#5a3a1c'; ctx.fillRect(X(6), Y(sy), 52, 2); }
+  bkBooks(ctx, X(8), Y(110), 48, 11, 303); bsBinTops(ctx, X(10), Y(112), 44, 305);
+  ctx.fillStyle = '#6b4023'; ctx.fillRect(X(6), Y(110), 52, 4);
+  ctx.fillStyle = 'rgba(255,255,255,0.20)'; ctx.beginPath(); ctx.moveTo(X(8), Y(72)); ctx.lineTo(X(22), Y(72)); ctx.lineTo(X(8), Y(94)); ctx.fill();
+  // door (tile 2 = the 'D' tile): black frame, lit glass pane with a tote bag, wood kick panel
+  ctx.fillStyle = '#26221b'; ctx.fillRect(X(63), Y(70), 34, 52);
+  ctx.fillStyle = '#0c0b09'; ctx.fillRect(X(66), Y(73), 28, 49);
+  const dg = ctx.createLinearGradient(0, Y(75), 0, Y(106)); dg.addColorStop(0, '#fbe3a0'); dg.addColorStop(1, '#d9a458');
+  ctx.fillStyle = dg; ctx.fillRect(X(69), Y(76), 22, 33);
+  ctx.fillStyle = '#0c0b09'; ctx.fillRect(X(79), Y(76), 2, 33);
+  ctx.fillStyle = '#6b4023'; ctx.fillRect(X(69), Y(110), 22, 12); ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(X(72), Y(113), 16, 7);
+  ctx.fillStyle = '#f4efe0'; ctx.fillRect(X(72), Y(88), 11, 14);                                            // tote bag
+  ctx.strokeStyle = '#b3342a'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.arc(X(77.5), Y(88), 4, Math.PI, 0); ctx.stroke();
+  ctx.fillStyle = '#17130e'; ctx.font = '700 4px Georgia, serif'; ctx.textAlign = 'center'; ctx.fillText('B S', X(77.5), Y(97));
+  ctx.fillStyle = YE; ctx.beginPath(); ctx.arc(X(90), Y(98), 1.6, 0, Math.PI * 2); ctx.fill();               // handle
+  ctx.fillStyle = '#f4efe0'; ctx.fillRect(X(70), Y(79), 8, 5); ctx.fillStyle = '#b3342a'; ctx.font = '700 3.6px monospace'; ctx.fillText('OPEN', X(74), Y(83));
+  ctx.fillStyle = '#c9c0a8'; ctx.fillRect(X(64), Y(122), 32, 4);                                              // stone step
+  // right window (tiles 3-5): a wall of album covers
+  ctx.fillStyle = '#2a2217'; ctx.fillRect(X(100), Y(70), 88, 46);
+  ctx.fillStyle = '#7a6a50'; ctx.fillRect(X(102), Y(72), 84, 42);
+  for (let r = 0; r < 3; r++) bsAlbums(ctx, X(103), Y(73 + r * 14), 6, 13, 310 + r * 11);
+  ctx.fillStyle = 'rgba(0,0,0,0.30)'; ctx.fillRect(X(102), Y(100), 84, 1); ctx.fillRect(X(102), Y(86), 84, 1);
+  ctx.fillStyle = BL; ctx.fillRect(X(143), Y(72), 2, 42);
+  ctx.fillStyle = 'rgba(255,255,255,0.16)'; ctx.beginPath(); ctx.moveTo(X(104), Y(72)); ctx.lineTo(X(122), Y(72)); ctx.lineTo(X(104), Y(98)); ctx.fill();
+  const fl = 0.05 + 0.025 * Math.sin(t * 2.1); ctx.fillStyle = 'rgba(255,200,100,' + fl.toFixed(3) + ')'; ctx.fillRect(X(4), Y(72), 56, 42); ctx.fillRect(X(100), Y(72), 88, 42);
+  // yellow and black striped bulkhead
+  ctx.fillStyle = YE; ctx.fillRect(X(0), Y(118), 62, 5); ctx.fillRect(X(98), Y(118), w - 98, 5);
+  ctx.fillStyle = YD; ctx.fillRect(X(0), Y(122), 62, 1); ctx.fillRect(X(98), Y(122), w - 98, 1);
+  ctx.fillStyle = '#06050a'; ctx.fillRect(X(0), Y(123), 62, 5); ctx.fillRect(X(98), Y(123), w - 98, 5);
+  ctx.fillStyle = 'rgba(255,255,255,0.10)'; ctx.fillRect(X(100), Y(117), 86, 1);
+  // the hanging sign: black arm, two chains, a yellow board, and the vinyl disc peeking out behind it
+  ctx.fillStyle = 'rgba(0,0,0,0.40)'; ctx.fillRect(X(20), Y(24), 36, 38);
+  ctx.fillStyle = '#0e0e10'; ctx.beginPath(); ctx.arc(X(14), Y(42), 17, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.10)'; ctx.lineWidth = 0.7; for (const rr of [8, 11, 14]) { ctx.beginPath(); ctx.arc(X(14), Y(42), rr, 0, Math.PI * 2); ctx.stroke(); }
+  ctx.fillStyle = '#b3342a'; ctx.beginPath(); ctx.arc(X(14), Y(42), 6, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = BL; ctx.fillRect(X(0), Y(15), 62, 2); ctx.fillRect(X(58), Y(13), 3, 6);
+  ctx.strokeStyle = '#8a8a8a'; ctx.lineWidth = 0.8; for (const cx of [22, 46]) { ctx.beginPath(); ctx.moveTo(X(cx), Y(17)); ctx.lineTo(X(cx), Y(21)); ctx.stroke(); }
+  ctx.fillStyle = BL; ctx.fillRect(X(19), Y(20), 34, 36);
+  ctx.fillStyle = YE; ctx.fillRect(X(20), Y(21), 32, 34);
+  ctx.fillStyle = 'rgba(255,255,255,0.28)'; ctx.fillRect(X(20), Y(21), 32, 2);
+  ctx.fillStyle = BL; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+  ctx.font = 'bold 10px "Old English Text MT", "UnifrakturCook", Georgia, serif';
+  ctx.fillText('Buch', X(36), Y(33)); ctx.fillText('Spieler', X(36), Y(42)); ctx.fillText('Records', X(36), Y(51));
+  ctx.font = '600 3.6px Georgia, serif'; ctx.fillText('SINCE 1973', X(36), Y(54.6));
+  ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(px, py + h - 3, w, 3);
+}
+
+// a row of `cols` face-out album covers (size x size px, 1px gap) at (x, y)
+function bsAlbums(c, x, y, cols, size, seed) {
+  const pal = ['#c0392b', '#2c6fb0', '#d9a441', '#2f8f5a', '#7a3d8f', '#e8e0cc', '#1d1d22', '#e0702a', '#3a8f9a', '#b0305a'];
+  for (let i = 0; i < cols; i++) {
+    const r = shHash(seed, i * 3 + 1), ax = x + i * (size + 1), kind = (r >>> 5) % 4;
+    c.fillStyle = pal[r % pal.length]; c.fillRect(ax, y, size, size);
+    if (kind === 0) { c.fillStyle = 'rgba(255,255,255,0.25)'; c.beginPath(); c.arc(ax + size / 2, y + size / 2, size * 0.3, 0, Math.PI * 2); c.fill(); }
+    else if (kind === 1) { c.fillStyle = 'rgba(255,255,255,0.22)'; c.fillRect(ax, y + size * 0.55, size, size * 0.2); }
+    else if (kind === 2) { c.fillStyle = 'rgba(255,255,255,0.22)'; c.fillRect(ax + size * 0.2, y + size * 0.2, size * 0.25, size * 0.6); }
+    else { c.fillStyle = 'rgba(0,0,0,0.28)'; c.fillRect(ax + size * 0.15, y + size * 0.15, size * 0.7, size * 0.7); }
+    c.fillStyle = 'rgba(0,0,0,0.35)'; c.fillRect(ax, y + size - 1, size, 1);
+  }
+}
+
+// upright record sleeves sticking up out of a bin, bottoms at `base`
+function bsBinTops(c, x, base, w, seed) {
+  const pal = ['#c0392b', '#2c6fb0', '#d9a441', '#2f8f5a', '#7a3d8f', '#e8e0cc', '#e0702a', '#3a8f9a'];
+  for (let i = 0, cx = x; cx < x + w - 3; i++) {
+    const r = shHash(seed, i * 5 + 2), sw = 4 + (r % 3), sh = 8 + ((r >>> 4) % 6);
+    c.fillStyle = pal[(r >>> 8) % pal.length]; c.fillRect(cx, base - sh, sw, sh);
+    c.fillStyle = 'rgba(0,0,0,0.30)'; c.fillRect(cx + sw - 1, base - sh, 1, sh);
+    cx += sw;
+  }
+}
+
 // ---------------------------------------------------------------- A BOY'S WILL INTERIOR (Montpelier, LEVEL 5)
 // The inside of the little bookshop on Main Street (see the `aboywill` shop + drawMontpelierBookstore()). A snug,
 // lamplit room: walnut bookcases from the cornice to the floor on every wall, a crackling stone fireplace in the back wall
@@ -36904,6 +37087,165 @@ function drawBookstoreInterior(time) {
     const mx = 200 + ((k * 53) % 190) + Math.sin(time * 0.7 + k * 1.7) * 6, my = 70 + t * 170 + Math.cos(time * 0.55 + k) * 3;
     ctx.fillStyle = 'rgba(255,244,210,' + (0.55 * Math.sin(t * Math.PI)).toFixed(2) + ')'; ctx.fillRect(Math.round(mx), Math.round(my), 1.5, 1.5);
   }
+}
+
+// ---------------------------------------------------------------- BUCH SPIELER RECORDS INTERIOR (Montpelier, LEVEL 5)
+// The inside of the record store on Main Street (see the `buchspieler` shop + drawMontpelierRecordStore()), modeled on the
+// interior photo: cream walls under a stained-glass band, a dark alcove of face-out albums on wood-slab shelves behind the
+// counter, pendant lamps and string lights, a framed poster collage, light wood record browsers with red-trimmed fronts,
+// white crates of 45s, and a rack of band tees. Static art is painted once into a cached canvas by
+// paintBuchSpielerInterior(); drawBuchSpielerInterior() blits it, then animates the turntable, pendant glow and string lights.
+// Tile map (14x10, TILE = 32): back-wall row 1 is solid; counter = row 3 cols 4-9 with the CLERK at (6,2); browsers
+// (2,5)(3,5) + (9,5)(10,5); 45s crates (3,8)(4,8); tee rack (10,7)(11,7); dig crates on the default spots (1,4)(1,6)(12,4)(12,6).
+// Exit = (6,9).
+function paintBuchSpielerInterior(c) {
+  const W = 14 * TILE, FL = '#a07a4e', YE = '#f2c81c';
+  // ---- back wall: cream plaster under a stained-glass clerestory band
+  c.fillStyle = '#e6d6b0'; c.fillRect(0, 0, W, 64);
+  c.fillStyle = 'rgba(0,0,0,0.04)'; for (let x = 0; x < W; x += 24) c.fillRect(x, 20, 1, 44);
+  c.fillStyle = '#16120d'; c.fillRect(0, 0, W, 17);
+  const SG = ['#2f5fb0', '#3d8f5a', '#8a9098', '#d9a52a', '#b03a3a', '#e2dccb'];
+  for (let i = 0, cx = 6; cx < W + 6; i++, cx += 12) {
+    c.fillStyle = SG[(i * 5 + (i >> 2)) % SG.length];
+    c.beginPath(); c.moveTo(cx, 2); c.lineTo(cx + 6, 8.5); c.lineTo(cx, 15); c.lineTo(cx - 6, 8.5); c.closePath(); c.fill();
+    c.strokeStyle = '#0c0a07'; c.lineWidth = 1; c.stroke();
+    c.fillStyle = 'rgba(255,255,255,0.22)'; c.fillRect(cx - 2, 4, 4, 3);
+  }
+  c.fillStyle = YE; c.fillRect(0, 17, W, 3); c.fillStyle = '#16120d'; c.fillRect(0, 20, W, 1);
+  c.fillStyle = 'rgba(0,0,0,0.18)'; c.fillRect(0, 21, W, 3);
+  // ---- framed poster collage (left)
+  c.fillStyle = '#4a2c14'; c.fillRect(39, 25, 60, 36);
+  c.fillStyle = '#8a5a30'; c.fillRect(40, 26, 58, 34);
+  c.fillStyle = '#f1ead8'; c.fillRect(43, 29, 52, 28);
+  for (let r = 0; r < 3; r++) bsAlbums(c, 46, 31 + r * 8, 6, 7, 401 + r * 7);
+  c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(43, 29, 52, 3);
+  // small black poster with a yellow record
+  c.fillStyle = '#4a2c14'; c.fillRect(103, 28, 14, 30); c.fillStyle = '#111114'; c.fillRect(104, 29, 12, 28);
+  c.fillStyle = YE; c.beginPath(); c.arc(110, 40, 4.5, 0, Math.PI * 2); c.fill(); c.fillStyle = '#111114'; c.beginPath(); c.arc(110, 40, 1.2, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#e8e0cc'; c.fillRect(106, 49, 8, 1.5); c.fillRect(107, 52, 6, 1.5);
+  // ---- dark alcove of face-out albums on wood-slab shelves (behind the counter)
+  c.fillStyle = '#4a2c14'; c.fillRect(120, 25, 216, 38);
+  c.fillStyle = '#16120e'; c.fillRect(122, 27, 212, 34);
+  for (const [sy, sd] of [[40, 411], [55, 412]]) {
+    bsAlbums(c, 126, sy - 11, 16, 11, sd);
+    c.fillStyle = '#c99a5a'; c.fillRect(122, sy, 212, 3); c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(122, sy, 212, 1);
+  }
+  c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(122, 27, 212, 3);
+  // ---- yellow wall plaque with the shop name (right)
+  c.fillStyle = '#15130f'; c.fillRect(343, 25, 50, 33); c.fillStyle = YE; c.fillRect(344, 26, 48, 31);
+  c.fillStyle = '#15130f'; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+  let fs = 9; c.font = 'bold ' + fs + 'px "Old English Text MT", "UnifrakturCook", Georgia, serif';
+  while (c.measureText('Buch Spieler').width > 42 && fs > 5) { fs--; c.font = 'bold ' + fs + 'px "Old English Text MT", "UnifrakturCook", Georgia, serif'; }
+  c.fillText('Buch Spieler', 368, 38); c.fillText('Records', 368, 47);
+  c.font = '600 4px Georgia, serif'; c.fillText('SINCE 1973', 368, 54);
+  // ---- red pillar (right)
+  c.fillStyle = '#7a1f16'; c.fillRect(397, 21, 17, 43); c.fillStyle = '#a83226'; c.fillRect(398, 21, 14, 43);
+  c.fillStyle = 'rgba(255,255,255,0.18)'; c.fillRect(399, 21, 3, 43); c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(410, 21, 3, 43);
+  // ---- wall-foot shadow
+  const sh = c.createLinearGradient(0, 64, 0, 80); sh.addColorStop(0, 'rgba(0,0,0,0.28)'); sh.addColorStop(1, 'rgba(0,0,0,0)');
+  c.fillStyle = sh; c.fillRect(TILE, 64, 12 * TILE, 16);
+  // ---- record browsers: light wood bins, red-trimmed fronts, sleeves standing up
+  const browser = (x, y, w, seed) => {
+    c.fillStyle = FL; c.fillRect(x, y, w, 32);
+    c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(x + 2, y + 30, w, 4);
+    bsBinTops(c, x + 3, y + 12, w - 6, seed);
+    c.fillStyle = '#c99a5a'; c.fillRect(x, y + 10, w, 22);
+    c.fillStyle = '#e0b878'; c.fillRect(x, y + 10, w, 2);
+    c.fillStyle = '#b3392b'; c.fillRect(x, y + 14, w, 12);
+    c.fillStyle = 'rgba(255,255,255,0.18)'; c.fillRect(x, y + 14, w, 2);
+    c.fillStyle = '#f4ecd8'; for (let k = x + 7; k < x + w - 12; k += 16) c.fillRect(k, y + 18, 11, 5);
+    c.fillStyle = '#8a5a30'; c.fillRect(x, y + 26, w, 6); c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(x, y + 31, w, 1);
+  };
+  browser(2 * TILE, 5 * TILE, 2 * TILE, 421);
+  browser(9 * TILE, 5 * TILE, 2 * TILE, 431);
+  // ---- white crates of 45s on a wooden table (3,8)(4,8)
+  c.fillStyle = FL; c.fillRect(3 * TILE, 8 * TILE, 2 * TILE, TILE);
+  c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(3 * TILE + 3, 8 * TILE + 29, 2 * TILE, 4);
+  c.fillStyle = '#8a5a30'; c.fillRect(3 * TILE + 2, 8 * TILE + 12, 2 * TILE - 4, 20);
+  c.fillStyle = '#c99a5a'; c.fillRect(3 * TILE + 2, 8 * TILE + 12, 2 * TILE - 4, 3);
+  for (const bx of [3 * TILE + 4, 3 * TILE + 35]) {
+    bsBinTops(c, bx + 2, 8 * TILE + 9, 22, bx);
+    c.fillStyle = '#eceae2'; c.fillRect(bx, 8 * TILE + 5, 26, 14);
+    c.fillStyle = '#c4c2ba'; c.fillRect(bx, 8 * TILE + 15, 26, 4); c.fillStyle = 'rgba(255,255,255,0.7)'; c.fillRect(bx, 8 * TILE + 5, 26, 1);
+    c.fillStyle = '#3a3a3a'; c.fillRect(bx + 9, 8 * TILE + 10, 8, 2);
+  }
+  // ---- band-tee rack (10,7)(11,7)
+  c.fillStyle = FL; c.fillRect(10 * TILE, 7 * TILE, 2 * TILE, TILE);
+  c.fillStyle = 'rgba(0,0,0,0.22)'; c.beginPath(); c.ellipse(10 * TILE + 32, 7 * TILE + 28, 31, 4, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#c9ccd2'; c.fillRect(324, 202, 2, 50); c.fillRect(380, 202, 2, 50); c.fillRect(324, 204, 58, 2);
+  c.fillRect(318, 251, 14, 2); c.fillRect(374, 251, 14, 2);
+  ['#3d8f5a', '#8a9098', '#b03a3a', '#f2c81c', '#1d1d22', '#2c6fb0'].forEach((col, i) => {
+    const tx = 328 + i * 8.6;
+    c.fillStyle = '#6a6a6a'; c.fillRect(tx + 3.5, 206, 1, 3);
+    c.fillStyle = col; c.fillRect(tx, 209, 9, 17); c.fillRect(tx - 2, 209, 13, 5);
+    c.fillStyle = 'rgba(255,255,255,0.22)'; c.fillRect(tx + 2, 216, 5, 4);
+    c.fillStyle = 'rgba(0,0,0,0.2)'; c.fillRect(tx + 7, 214, 2, 12);
+  });
+  // ---- the counter (row 3, cols 4-9): pine top, red panel, register + tip jar
+  c.fillStyle = '#8a5a30'; c.fillRect(4 * TILE, 3 * TILE, 6 * TILE, TILE);
+  c.fillStyle = '#d0a468'; c.fillRect(4 * TILE, 3 * TILE, 6 * TILE, 13);
+  c.fillStyle = 'rgba(255,255,255,0.30)'; c.fillRect(4 * TILE, 3 * TILE, 6 * TILE, 2);
+  c.fillStyle = '#6b4023'; c.fillRect(4 * TILE, 3 * TILE + 13, 6 * TILE, 19);
+  c.fillStyle = '#a83226'; c.fillRect(4 * TILE + 4, 3 * TILE + 19, 6 * TILE - 8, 7);
+  c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(4 * TILE, 3 * TILE + 13, 6 * TILE, 2);
+  c.fillStyle = '#2c2a30'; c.fillRect(7 * TILE + 10, 2 * TILE + 26, 28, 16);
+  c.fillStyle = '#7ad07a'; c.fillRect(7 * TILE + 13, 2 * TILE + 22, 14, 6);
+  c.fillStyle = '#c8c8cc'; c.fillRect(7 * TILE + 10, 2 * TILE + 38, 28, 4);
+  c.fillStyle = 'rgba(200,220,240,0.35)'; c.fillRect(8 * TILE + 14, 2 * TILE + 24, 12, 18);
+  c.fillStyle = '#e0b040'; c.fillRect(8 * TILE + 16, 2 * TILE + 36, 8, 4);
+  c.fillStyle = '#c0392b'; c.fillRect(9 * TILE + 2, 2 * TILE + 30, 20, 3); c.fillStyle = '#2c6fb0'; c.fillRect(9 * TILE + 3, 2 * TILE + 33, 19, 3); c.fillStyle = '#e8e0cc'; c.fillRect(9 * TILE + 1, 2 * TILE + 36, 20, 4);
+  // ---- vignette
+  const vg = c.createRadialGradient(W / 2, 160, 150, W / 2, 160, 300);
+  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.22)');
+  c.fillStyle = vg; c.fillRect(0, 64, W, 256);
+}
+
+let _bsInteriorCache = null;
+function drawBuchSpielerInterior(time) {
+  if (!_bsInteriorCache) {
+    const cv = document.createElement('canvas');
+    cv.width = 14 * TILE; cv.height = 10 * TILE;
+    paintBuchSpielerInterior(cv.getContext('2d'));
+    _bsInteriorCache = cv;
+  }
+  ctx.drawImage(_bsInteriorCache, 0, 0);
+  ctx.save();
+  // turntable on the counter, spinning
+  drawTurntableDeck(4 * TILE + 12, 2 * TILE + 18, 0.85, time, 0.7);
+  // pendant lamps: black cords + cone shades, with a soft flickering glow
+  for (const lx of [126, 190, 254, 318]) {
+    ctx.fillStyle = '#15130f'; ctx.fillRect(lx, 21, 1, 7);
+    ctx.beginPath(); ctx.moveTo(lx - 7, 36); ctx.lineTo(lx - 2, 27); ctx.lineTo(lx + 3, 27); ctx.lineTo(lx + 8, 36); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#ffe9a8'; ctx.fillRect(lx - 5, 35, 11, 2);
+    const a = 0.16 + 0.03 * Math.sin(time * 2.2 + lx * 0.1);
+    const g = ctx.createRadialGradient(lx, 40, 2, lx, 52, 52);
+    g.addColorStop(0, 'rgba(255,224,150,' + a.toFixed(3) + ')'); g.addColorStop(1, 'rgba(255,224,150,0)');
+    ctx.fillStyle = g; ctx.fillRect(lx - 52, 24, 104, 100);
+  }
+  // string lights: a swag from the alcove to the red pillar, then down it
+  const bulbs = [];
+  for (let i = 0; i <= 8; i++) { const u = i / 8; bulbs.push([336 + u * 66, 26 + Math.sin(u * Math.PI) * 7]); }
+  for (let y = 30; y < 62; y += 8) bulbs.push([405 + Math.sin(y * 0.4) * 3, y]);
+  ctx.strokeStyle = 'rgba(20,20,20,0.7)'; ctx.lineWidth = 0.8; ctx.beginPath();
+  bulbs.forEach(([bx, by], i) => { if (i === 0) ctx.moveTo(bx, by); else ctx.lineTo(bx, by); }); ctx.stroke();
+  bulbs.forEach(([bx, by], i) => {
+    const tw = 0.55 + 0.45 * Math.sin(time * 3 + i * 1.7);
+    ctx.fillStyle = 'rgba(255,214,120,' + (0.55 + 0.4 * tw).toFixed(2) + ')'; ctx.beginPath(); ctx.arc(bx, by + 1.5, 1.6, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,214,120,' + (0.12 * tw).toFixed(3) + ')'; ctx.beginPath(); ctx.arc(bx, by + 1.5, 5, 0, Math.PI * 2); ctx.fill();
+  });
+  // sunlight through the stained glass, drifting across the floor
+  for (let k = 0; k < 4; k++) {
+    const sx = 40 + k * 100 + Math.sin(time * 0.3 + k) * 6;
+    ctx.fillStyle = ['rgba(60,110,200,0.05)', 'rgba(220,170,40,0.06)', 'rgba(60,150,90,0.05)', 'rgba(180,60,60,0.05)'][k];
+    ctx.beginPath(); ctx.moveTo(sx, 66); ctx.lineTo(sx + 26, 66); ctx.lineTo(sx + 70, 196); ctx.lineTo(sx + 24, 196); ctx.fill();
+  }
+  // dust motes
+  for (let k = 0; k < 10; k++) {
+    const t = (time * 0.04 + k * 0.1) % 1;
+    const mx = 60 + ((k * 61) % 330) + Math.sin(time * 0.7 + k * 1.7) * 6, my = 70 + t * 170;
+    ctx.fillStyle = 'rgba(255,244,210,' + (0.5 * Math.sin(t * Math.PI)).toFixed(2) + ')'; ctx.fillRect(Math.round(mx), Math.round(my), 1.5, 1.5);
+  }
+  ctx.restore();
 }
 
 // The stone observation tower on Hubbard Park hill: rough-cut stone, a crenellated top, slit windows.
