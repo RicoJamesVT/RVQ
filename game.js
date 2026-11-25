@@ -14673,6 +14673,7 @@ function makeShop(id, opts) {
     foamBrewers: opts.foamBrewers || false,
     speakingVolumes: opts.speakingVolumes || false,
     buchSpieler: opts.buchSpieler || false,
+    charlios: opts.charlios || false,
     cbPrints: opts.cbPrints || false,
     talent: opts.talent || false,
     echoCenter: opts.echoCenter || false,
@@ -16013,6 +16014,14 @@ function makeMontpelier() {
   Object.assign(recordStoreB, { name: 'BUCH SPIELER RECORDS', montScenery: 'recordstore', wall: '#9a4634', roof: '#b9b4a7', awning: '#f2c81c', doorX: RECORDSTORE_DOOR.x });
   g[RECORDSTORE_DOOR.y][RECORDSTORE_DOOR.x] = 'D';
 
+  // --- CHARLIE-O'S WORLD FAMOUS: the dive bar in the N2 slot (x 11-18, rows 19-23), just east of BUCH SPIELER. Same trick:
+  // N2 stays in BLOCK_DEFS, is re-dressed here (montScenery 'charlios' -> drawMontpelierCharlieOs) and gets a door: the 'D'
+  // tile at (13, 23) opens onto the sidewalk (row 24). Entering leads to the `charlios` shop (see `shops`).
+  const CHARLIOS_DOOR = { x: 13, y: 23 };
+  const charliosB = montBuildings.find((b) => b.lot === 'N2');
+  Object.assign(charliosB, { name: "CHARLIE-O'S", montScenery: 'charlios', wall: '#d8c9a0', roof: '#7a2a2a', awning: '#8a2431', doorX: CHARLIOS_DOOR.x });
+  g[CHARLIOS_DOOR.y][CHARLIOS_DOOR.x] = 'D';
+
   // --- trees. Dense woods on Hubbard Park hill (NW), the ridge behind the State House, the north-east
   // hills along the North Branch and the south hills; sparse elsewhere. Never on streets, paving, water or
   // building footprints, and always a one-tile margin so nothing boxes the player in.
@@ -16089,6 +16098,7 @@ function makeMontpelier() {
     newsstands: [], minigames: [],
     // Drawing data for drawMontpelierDecorations() -- everything in world pixels.
     montpelier: { dashes, crosswalks, lamps },
+    charliosDoor: { x: CHARLIOS_DOOR.x, y: CHARLIOS_DOOR.y },   // CHARLIE-O'S -> `charlios` (see the door wiring above `const maps`)
     recordStoreDoor: { x: RECORDSTORE_DOOR.x, y: RECORDSTORE_DOOR.y },   // BUCH SPIELER RECORDS -> `buchspieler` (see the door wiring above `const maps`)
     bookstoreDoor: { x: BOOKSTORE_DOOR.x, y: BOOKSTORE_DOOR.y },   // A BOY'S WILL -> `aboywill` (see the door wiring above `const maps`)
     stateHouseDoors: [{ x: 21, y: 11 }, { x: 22, y: 11 }],   // the portico doorway -> `statehouse` (see the door wiring above `const maps`)
@@ -17610,6 +17620,38 @@ const shops = {
       ] },
     crates: [ { bsSeed: 0 }, { bsSeed: 1 }, { bsSeed: 2 }, { bsSeed: 3 } ],
   }),
+  // CHARLIE-O'S WORLD FAMOUS -- the classic dark dive bar on MONTPELIER's Main Street (N2 block; door at (13, 23), see
+  // makeMontpelier() + drawMontpelierCharlieOs()). `world: 'montpelier'` ties it to that level. `charlios: true` gets its own
+  // interior (drawCharlieOsInterior), modeled on the bar's photo: sticker-plastered walls, orange globe string lights, a
+  // braided rug and a live four-piece band (guitar, sax, vibraphone, drums) set up in the back. Solid props are plain tiles
+  // the painter dresses up: blockTiles = back-wall row (1..12,1), the stage (1..7,2), keg end of the bar (8,2), bar stools
+  // (9,4)(11,4), sticker cabinet (1,4)(1,5), booth (12,6)(12,7); extraTables = high-tops (3,6)(10,7). The bar counter is row 3
+  // cols 9-12 (tableRange) with the BARTENDER at (11,2); the stage front (row 3, cols 1-7) is walkable. Clear of the door
+  // (6,9) and the spawn (6.5,7.5). No record crates in here.
+  charlios: makeShop('charlios', {
+    world: 'montpelier',
+    floor: '#2c1f17', plank: '#21170f', wallColor: '#1d1410',
+    charlios: true,
+    tableRange: { start: 9, end: 12 },
+    blockTiles: [
+      [1, 1], [2, 1], [3, 1], [4, 1], [5, 1], [6, 1], [7, 1], [8, 1], [9, 1], [10, 1], [11, 1], [12, 1],
+      [1, 2], [2, 2], [3, 2], [4, 2], [5, 2], [6, 2], [7, 2], [8, 2],
+      [9, 4], [11, 4], [1, 4], [1, 5], [12, 6], [12, 7],
+    ],
+    extraTables: [[3, 6], [10, 7]],
+    keeper: { x: 11, y: 2, name: 'THE BARTENDER', shirt: '#1f1f24', skin: '#e0b090',
+      lines: [
+        "Welcome to Charlie-O's. Grab a stool, any stool. Nobody's keeping score.",
+        "World famous? That's what the sign says. Baptised by fire, still a dive for nice people. That's the whole pitch.",
+        "Mind the band. Guitar, sax, vibes and a drummer who hits things for a living. No cover, but the jar by the register eats dollars.",
+        "Look at the walls. Every sticker is somebody's band that played here, or wanted to. Add yours to the cabinet by the stage.",
+        "Vibraphone in a bar this size. Don't ask me how it fit through the door. We took the hinges off.",
+        "Cold beer, cheap beer, local beer. If you want fancy, there's a place down the street with a menu longer than this wall.",
+        "High-tops in the middle, booth by the wall. The booth is bad luck for anyone who skips a round.",
+        "Looking for records? Try the shop up the block. Down here we just play them. Loud.",
+      ] },
+    crates: [],
+  }),
   // THE MONKEY HOUSE -- bar/restaurant + live-music venue on the Winooski
   // northwest lawn (see makeWinooski()). `monkeyHouse: true` gets its own
   // interior (drawMonkeyHouseInterior): a pool table up front by the door, a
@@ -18294,6 +18336,9 @@ transitions['aboywill:' + key(6, 9)] = { map: 'montpelier', x: montpelier.bookst
 // BUCH SPIELER RECORDS door wiring (Montpelier, LEVEL 5) -- same pattern; leaving drops the player on the sidewalk below the door.
 transitions['montpelier:' + key(montpelier.recordStoreDoor.x, montpelier.recordStoreDoor.y)] = { map: 'buchspieler', x: 6.5, y: 7.5 };
 transitions['buchspieler:' + key(6, 9)] = { map: 'montpelier', x: montpelier.recordStoreDoor.x + 0.5, y: montpelier.recordStoreDoor.y + 1.6 };
+// CHARLIE-O'S door wiring (Montpelier, LEVEL 5) -- same pattern; leaving drops the player on the sidewalk below the door.
+transitions['montpelier:' + key(montpelier.charliosDoor.x, montpelier.charliosDoor.y)] = { map: 'charlios', x: 6.5, y: 7.5 };
+transitions['charlios:' + key(6, 9)] = { map: 'montpelier', x: montpelier.charliosDoor.x + 0.5, y: montpelier.charliosDoor.y + 1.6 };
 const maps = { town, ...shops, swamp, skatepark, winooski, montpelier };
 
 // Reshuffles, within EACH location that has one, which of that location's
@@ -34041,6 +34086,7 @@ function render(time) {
   if (map.stateHouse) drawStateHouseInterior(time);
   if (map.bookstore) drawBookstoreInterior(time);
   if (map.buchSpieler) drawBuchSpielerInterior(time);
+  if (map.charlios) drawCharlieOsInterior(time);
   if (map.monkeyHouse) drawMonkeyHouseInterior(time);
   if (map.bellevue) drawBellevueInterior(time);
   if (map.miseryLoves) drawMiseryLovesInterior(time);
@@ -35432,6 +35478,7 @@ function drawMontpelierScenery(b, px, py, w, h) {
   else if (b.montScenery === 'tower') drawMontpelierTower(px, py, w, h);
   else if (b.montScenery === 'bookstore') drawMontpelierBookstore(px, py, w, h);
   else if (b.montScenery === 'recordstore') drawMontpelierRecordStore(px, py, w, h);
+  else if (b.montScenery === 'charlios') drawMontpelierCharlieOs(px, py, w, h);
   else drawMontpelierBrickBlock(b, px, py, w, h);
 }
 
@@ -37244,6 +37291,405 @@ function drawBuchSpielerInterior(time) {
     const t = (time * 0.04 + k * 0.1) % 1;
     const mx = 60 + ((k * 61) % 330) + Math.sin(time * 0.7 + k * 1.7) * 6, my = 70 + t * 170;
     ctx.fillStyle = 'rgba(255,244,210,' + (0.5 * Math.sin(t * Math.PI)).toFixed(2) + ')'; ctx.fillRect(Math.round(mx), Math.round(my), 1.5, 1.5);
+  }
+  ctx.restore();
+}
+
+// CHARLIE-O'S WORLD FAMOUS: the dive bar in MONTPELIER's N2 slot (8x5 tiles, x 11-18, rows 19-23), modeled on the reference
+// photos: weathered cream clapboard with maroon-shuttered upper windows, a pale-green sign board ("CHARLIE-O'S WORLD FAMOUS")
+// lit by teal gooseneck barn lamps, a scalloped maroon awning reading "A DIVE FOR NICE PEOPLE", a little "DIVE BAR" window,
+// the front door (tile column 2 = the 'D' tile at (13, 23)), a big open bar window with a blue neon sign and a long
+// wooden planter of flowers, and the A-frame chalkboard out front.
+function drawMontpelierCharlieOs(px, py, w, h) {
+  const t = performance.now() / 1000;
+  const X = (x) => px + x, Y = (y) => py + y;
+  const CL = '#d8c9a0', CD = '#b9a97f', MAR = '#8a2431', MD = '#5e1822', TEAL = '#2f6b66', CREAM = '#efe6c8';
+  ctx.save();
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = '#120d0a'; ctx.fillRect(px - 1, py - 1, w + 2, h + 2);
+  // weathered clapboard
+  ctx.fillStyle = CL; ctx.fillRect(px, py, w, h);
+  for (let yy = 14; yy < h - 4; yy += 5) {
+    ctx.fillStyle = 'rgba(0,0,0,0.16)'; ctx.fillRect(X(0), Y(yy), w, 1);
+    ctx.fillStyle = 'rgba(255,255,255,0.10)'; ctx.fillRect(X(0), Y(yy + 1), w, 1);
+  }
+  for (let k = 0; k < 26; k++) {   // paint wear + stains
+    const r = shHash(777, k);
+    ctx.fillStyle = (k % 3) ? 'rgba(120,96,60,0.10)' : 'rgba(255,250,230,0.10)';
+    ctx.fillRect(X(r % (w - 14)), Y(14 + ((r >>> 8) % (h - 30))), 6 + ((r >>> 16) % 12), 2 + ((r >>> 22) % 3));
+  }
+  ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fillRect(px, py, 3, h);
+  ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(px + w - 3, py, 3, h);
+  // cornice
+  ctx.fillStyle = '#120d0a'; ctx.fillRect(px - 2, py - 1, w + 4, 14);
+  ctx.fillStyle = CD; ctx.fillRect(px - 1, py, w + 2, 11);
+  ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(px - 1, py, w + 2, 3);
+  ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(px, py + 11, w, 3);
+  for (let dx = 4; dx < w - 4; dx += 8) { ctx.fillStyle = 'rgba(0,0,0,0.20)'; ctx.fillRect(px + dx, py + 5, 4, 5); }
+  // upper floor: three windows with maroon louvered shutters
+  for (const wx of [24, 112, 200]) {
+    ctx.fillStyle = CREAM; ctx.fillRect(X(wx - 1), Y(16), 34, 36);
+    ctx.fillStyle = '#1b2230'; ctx.fillRect(X(wx + 1), Y(18), 30, 32);
+    const gl = ctx.createLinearGradient(0, Y(18), 0, Y(50)); gl.addColorStop(0, '#506279'); gl.addColorStop(1, '#2b3646');
+    ctx.fillStyle = gl; ctx.fillRect(X(wx + 2), Y(19), 28, 30);
+    ctx.fillStyle = CREAM; ctx.fillRect(X(wx + 15), Y(19), 2, 30); ctx.fillRect(X(wx + 2), Y(33), 28, 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.beginPath(); ctx.moveTo(X(wx + 3), Y(20)); ctx.lineTo(X(wx + 12), Y(20)); ctx.lineTo(X(wx + 3), Y(32)); ctx.fill();
+    for (const sx of [wx - 11, wx + 34]) {
+      ctx.fillStyle = MD; ctx.fillRect(X(sx), Y(16), 10, 36);
+      ctx.fillStyle = MAR; ctx.fillRect(X(sx + 1), Y(17), 8, 34);
+      for (let ly = 19; ly < 50; ly += 3) { ctx.fillStyle = 'rgba(0,0,0,0.30)'; ctx.fillRect(X(sx + 1), Y(ly), 8, 1); }
+    }
+    ctx.fillStyle = CD; ctx.fillRect(X(wx - 2), Y(52), 36, 3);
+  }
+  // sign board: pale green, maroon "CHARLIE-O'S", tan "WORLD FAMOUS"
+  ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(X(15), Y(59), 228, 28);
+  ctx.fillStyle = '#4c6b60'; ctx.fillRect(X(13), Y(57), 230, 28);
+  ctx.fillStyle = '#a9c0b3'; ctx.fillRect(X(15), Y(59), 226, 24);
+  ctx.fillStyle = '#d6e3da'; ctx.fillRect(X(15), Y(59), 226, 2);
+  ctx.fillStyle = '#7f9a8c'; ctx.fillRect(X(15), Y(81), 226, 2);
+  ctx.textAlign = 'center';
+  let fs = 17; ctx.font = '900 ' + fs + 'px Georgia, serif';
+  while (ctx.measureText("CHARLIE-O'S").width > 128 && fs > 8) { fs--; ctx.font = '900 ' + fs + 'px Georgia, serif'; }
+  ctx.fillStyle = 'rgba(0,0,0,0.30)'; ctx.fillText("CHARLIE-O'S", X(87), Y(77.5));
+  ctx.fillStyle = MAR; ctx.fillText("CHARLIE-O'S", X(86), Y(76));
+  ctx.font = '800 9px Georgia, serif'; ctx.fillStyle = '#8c7a52';
+  ctx.fillText('WORLD', X(193), Y(71)); ctx.fillText('FAMOUS', X(193), Y(80));
+  ctx.fillStyle = MAR; ctx.fillRect(X(155), Y(64), 1, 16);
+  // teal gooseneck barn lamps over the board
+  for (const lx of [52, 124, 196]) {
+    ctx.strokeStyle = '#1d3b38'; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.moveTo(X(lx), Y(57)); ctx.quadraticCurveTo(X(lx), Y(50), X(lx + 8), Y(52)); ctx.stroke();
+    ctx.fillStyle = TEAL; ctx.beginPath(); ctx.moveTo(X(lx + 3), Y(53)); ctx.lineTo(X(lx + 15), Y(53)); ctx.lineTo(X(lx + 18), Y(59)); ctx.lineTo(X(lx), Y(59)); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(255,236,170,0.20)'; ctx.beginPath(); ctx.moveTo(X(lx), Y(59)); ctx.lineTo(X(lx + 18), Y(59)); ctx.lineTo(X(lx + 26), Y(84)); ctx.lineTo(X(lx - 8), Y(84)); ctx.fill();
+  }
+  // scalloped maroon awning: "A DIVE FOR NICE PEOPLE"
+  ctx.fillStyle = 'rgba(0,0,0,0.38)'; ctx.fillRect(X(0), Y(100), w, 9);
+  ctx.fillStyle = MAR; ctx.fillRect(X(0), Y(88), w, 16);
+  ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(X(0), Y(88), w, 2);
+  for (let sx = 0; sx < w; sx += 12) { ctx.fillStyle = MAR; ctx.beginPath(); ctx.arc(X(sx + 6), Y(104), 6, 0, Math.PI); ctx.fill(); ctx.fillStyle = 'rgba(0,0,0,0.20)'; ctx.fillRect(X(sx), Y(88), 1, 16); }
+  ctx.fillStyle = 'rgba(0,0,0,0.20)'; ctx.fillRect(X(0), Y(88), w, 1);
+  ctx.textAlign = 'left'; ctx.font = '800 8px Georgia, serif'; ctx.fillStyle = CREAM;
+  ctx.fillText('A DIVE FOR NICE PEOPLE', X(14), Y(100));
+  // ground floor, dim and warm behind the awning
+  ctx.fillStyle = '#2b2118'; ctx.fillRect(X(0), Y(110), w, h - 110);
+  // left window: "DIVE BAR" lit sign
+  ctx.fillStyle = CREAM; ctx.fillRect(X(4), Y(112), 54, 36);
+  ctx.fillStyle = '#0e0a08'; ctx.fillRect(X(6), Y(114), 50, 32);
+  const lw = ctx.createLinearGradient(0, Y(114), 0, Y(146)); lw.addColorStop(0, '#3a2a1c'); lw.addColorStop(1, '#1a120c');
+  ctx.fillStyle = lw; ctx.fillRect(X(7), Y(115), 48, 30);
+  ctx.fillStyle = '#0a0706'; ctx.fillRect(X(15), Y(121), 32, 14);
+  const dp = 0.75 + 0.25 * Math.sin(t * 3.1);
+  ctx.fillStyle = 'rgba(255,180,80,' + dp.toFixed(2) + ')'; ctx.font = '700 6px monospace'; ctx.textAlign = 'center';
+  ctx.fillText('DIVE BAR', X(31), Y(130));
+  ctx.fillStyle = 'rgba(255,200,120,0.5)'; ctx.fillRect(X(17), Y(132), 28, 1);
+  ctx.fillStyle = 'rgba(255,255,255,0.14)'; ctx.beginPath(); ctx.moveTo(X(8), Y(116)); ctx.lineTo(X(22), Y(116)); ctx.lineTo(X(8), Y(134)); ctx.fill();
+  ctx.fillStyle = '#6b4a2a'; ctx.fillRect(X(2), Y(146), 58, 11);          // flower box
+  ctx.fillStyle = '#8a6a44'; ctx.fillRect(X(2), Y(146), 58, 2);
+  for (let k = 0; k < 8; k++) { ctx.fillStyle = ['#d9741e', '#a64d9e', '#e6c22a', '#c0392b'][k % 4]; ctx.beginPath(); ctx.arc(X(7 + k * 6.6), Y(145), 2.6, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#3d6a2a'; ctx.fillRect(X(6 + k * 6.6), Y(146), 3, 2); }
+  // the front door (tile column 2)
+  ctx.fillStyle = CREAM; ctx.fillRect(X(63), Y(110), 34, 50);
+  ctx.fillStyle = '#120d0a'; ctx.fillRect(X(66), Y(113), 28, 47);
+  ctx.fillStyle = '#4a3220'; ctx.fillRect(X(67), Y(114), 26, 46);
+  ctx.fillStyle = '#3a2618'; ctx.fillRect(X(70), Y(134), 20, 22); ctx.fillRect(X(70), Y(118), 20, 12);
+  for (let k = 0; k < 6; k++) { const r = shHash(808, k); ctx.fillStyle = ['#d9a52a', '#c0392b', '#e8e0cc', '#2f8f5a', '#2c6fb0', '#b0305a'][k]; ctx.fillRect(X(71 + (k % 3) * 6), Y(119 + Math.floor(k / 3) * 5), 5, 4 + (r % 2)); }
+  ctx.fillStyle = '#efe6c8'; ctx.fillRect(X(72), Y(138), 16, 9); ctx.fillStyle = MAR; ctx.font = '700 4px monospace'; ctx.textAlign = 'center'; ctx.fillText('OPEN', X(80), Y(144.5));
+  ctx.fillStyle = '#d9b04a'; ctx.beginPath(); ctx.arc(X(90), Y(140), 1.6, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#b9b09a'; ctx.fillRect(X(64), Y(156), 32, 4);
+  // big bar window: dark interior, string lights, posters, the bartender in a cap, a long wood ledge, neon
+  ctx.fillStyle = CREAM; ctx.fillRect(X(100), Y(110), 152, 38);
+  ctx.fillStyle = '#0c0807'; ctx.fillRect(X(103), Y(113), 146, 32);
+  const bw = ctx.createLinearGradient(0, Y(113), 0, Y(145)); bw.addColorStop(0, '#2a1d14'); bw.addColorStop(1, '#120c09');
+  ctx.fillStyle = bw; ctx.fillRect(X(104), Y(114), 144, 30);
+  for (let k = 0; k < 6; k++) { ctx.fillStyle = ['#d9a52a', '#c0392b', '#e8e0cc', '#2c6fb0', '#b0305a', '#2f8f5a'][k]; ctx.fillRect(X(108 + k * 11), Y(115), 8, 10); ctx.fillStyle = 'rgba(0,0,0,0.30)'; ctx.fillRect(X(110 + k * 11), Y(118), 4, 1); }
+  for (let k = 0; k < 14; k++) {   // string lights
+    const lx2 = 106 + k * 10, ly = 127 + Math.sin(k * 0.9) * 2, tw = 0.5 + 0.5 * Math.sin(t * 2.4 + k * 1.3);
+    ctx.fillStyle = (k % 3 === 0) ? 'rgba(120,255,140,' + (0.45 + 0.4 * tw).toFixed(2) + ')' : 'rgba(255,190,90,' + (0.45 + 0.4 * tw).toFixed(2) + ')';
+    ctx.beginPath(); ctx.arc(X(lx2), Y(ly), 1.5, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.fillStyle = '#17110c'; ctx.beginPath(); ctx.arc(X(206), Y(132), 6, 0, Math.PI * 2); ctx.fill();         // bartender
+  ctx.fillRect(X(199), Y(138), 14, 8);
+  ctx.fillStyle = '#e0b090'; ctx.beginPath(); ctx.arc(X(206), Y(133), 4, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#1a1a1c'; ctx.fillRect(X(201), Y(126), 11, 4); ctx.fillRect(X(209), Y(128), 6, 2);
+  ctx.fillStyle = '#c9a06a'; ctx.fillRect(X(103), Y(136), 146, 5);                                         // wooden bar ledge
+  ctx.fillStyle = '#e0bb86'; ctx.fillRect(X(103), Y(136), 146, 1);
+  ctx.fillStyle = 'rgba(0,0,0,0.30)'; ctx.fillRect(X(103), Y(141), 146, 2);
+  // blue neon ribbon sign
+  const np = 0.8 + 0.2 * Math.sin(t * 4.3);
+  ctx.strokeStyle = 'rgba(70,140,255,' + np.toFixed(2) + ')'; ctx.lineWidth = 2; ctx.lineJoin = 'round';
+  ctx.beginPath(); ctx.moveTo(X(152), Y(118)); ctx.lineTo(X(172), Y(118)); ctx.lineTo(X(176), Y(128)); ctx.lineTo(X(172), Y(138)); ctx.lineTo(X(152), Y(138)); ctx.lineTo(X(148), Y(128)); ctx.closePath(); ctx.stroke();
+  ctx.fillStyle = 'rgba(120,190,255,' + np.toFixed(2) + ')'; ctx.font = '700 7px Georgia, serif'; ctx.textAlign = 'center'; ctx.fillText('BEER', X(162), Y(131));
+  ctx.fillStyle = 'rgba(70,140,255,0.12)'; ctx.fillRect(X(140), Y(114), 44, 28);
+  ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.beginPath(); ctx.moveTo(X(106), Y(114)); ctx.lineTo(X(132), Y(114)); ctx.lineTo(X(106), Y(142)); ctx.fill();
+  ctx.fillStyle = 'rgba(255,190,100,' + (0.05 + 0.02 * Math.sin(t * 2.1)).toFixed(3) + ')'; ctx.fillRect(X(104), Y(114), 144, 30);
+  // long wooden planter under the bar window
+  ctx.fillStyle = '#7a5a36'; ctx.fillRect(X(98), Y(146), 156, 12);
+  ctx.fillStyle = '#a07a4c'; ctx.fillRect(X(98), Y(146), 156, 2);
+  for (let yy = 149; yy < 158; yy += 3) { ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.fillRect(X(98), Y(yy), 156, 1); }
+  for (let k = 0; k < 22; k++) { ctx.fillStyle = ['#d9741e', '#a64d9e', '#e6c22a', '#c0392b', '#e8e0cc'][k % 5]; ctx.beginPath(); ctx.arc(X(103 + k * 7), Y(145 - (k % 3)), 2.6, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#3d6a2a'; ctx.fillRect(X(102 + k * 7), Y(146), 3, 2); }
+  // the A-frame chalkboard out front
+  ctx.fillStyle = 'rgba(0,0,0,0.28)'; ctx.fillRect(X(116), Y(156), 28, 4);
+  ctx.fillStyle = '#26211a'; ctx.beginPath(); ctx.moveTo(X(118), Y(160)); ctx.lineTo(X(121), Y(124)); ctx.lineTo(X(139), Y(124)); ctx.lineTo(X(142), Y(160)); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#16231c'; ctx.beginPath(); ctx.moveTo(X(121), Y(157)); ctx.lineTo(X(123), Y(128)); ctx.lineTo(X(137), Y(128)); ctx.lineTo(X(139), Y(157)); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#efe6c8'; ctx.fillRect(X(124), Y(129), 12, 4); ctx.fillStyle = MAR; ctx.fillRect(X(126), Y(130), 8, 2);
+  ctx.fillStyle = 'rgba(240,236,220,0.75)'; for (const [cy, cw] of [[137, 10], [141, 9], [145, 10]]) ctx.fillRect(X(125), Y(cy), cw, 1);
+  ctx.strokeStyle = '#e8803a'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(X(126), Y(151)); ctx.quadraticCurveTo(X(129), Y(147), X(131), Y(152)); ctx.quadraticCurveTo(X(133), Y(148), X(135), Y(152)); ctx.stroke();
+  ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(px, py + h - 3, w, 3);
+  ctx.restore();
+}
+
+// ---------------------------------------------------------------- CHARLIE-O'S INTERIOR (Montpelier, LEVEL 5)
+// The inside of the dive bar on Main Street (see the `charlios` shop + drawMontpelierCharlieOs()), modeled on the interior
+// photo: a dark, sticker-plastered room under orange globe string lights, a jam-packed wall of posters, a sticker-bombed
+// cabinet, a braided rug, and a four-piece band set up in the back (guitar, sax, vibraphone, drums). Static art is painted
+// once into a cached canvas by paintCharlieOsInterior(); drawCharlieOsInterior() blits it, then animates the band, stage
+// lights, string lights, neon and music notes.
+// Tile map (14x10, TILE = 32): back-wall row 1 is solid; the stage (1..7, row 2) is solid -- the band lives there, and the
+// stage front (row 3) is walkable; the bar is on the right: BARTENDER at (11,2), counter = row 3 cols 9-12, stools (9,4)(11,4),
+// keg end (8,2); sticker cabinet (1,4)(1,5); high-tops (3,6)(10,7); booth (12,6)(12,7). Exit = (6,9). No crates in here.
+function paintCharlieOsInterior(c) {
+  const W = 14 * TILE, T = TILE;
+  const SC = ['#c0392b', '#2c6fb0', '#d9a441', '#2f8f5a', '#7a3d8f', '#e8e0cc', '#e0702a', '#3a8f9a', '#b0305a', '#1d1d22'];
+  // ---- back wall: dark plaster over a wainscot of old boards
+  c.fillStyle = '#2a1c16'; c.fillRect(0, 0, W, 66);
+  c.fillStyle = '#1a110d'; c.fillRect(0, 46, W, 20);
+  for (let x = 0; x < W; x += 14) { c.fillStyle = 'rgba(0,0,0,0.30)'; c.fillRect(x, 46, 1, 20); }
+  c.fillStyle = '#3a281c'; c.fillRect(0, 45, W, 2);
+  // ---- stickers, posters and flyers all over the wall (denser behind the band)
+  for (let i = 0; i < 190; i++) {
+    const r = shHash(901, i), sx = 4 + (r % (W - 14)), sy = 3 + ((r >>> 9) % 56), sw = 4 + ((r >>> 15) % 9), sh = 3 + ((r >>> 19) % 7);
+    if (sx > 256 && sy > 30) continue;          // clear of the bar's bottle shelf
+    if (sx > 332 && sx < 410 && sy < 36) continue;   // clear of the TV
+    if (sx > 218 && sx < 262 && sy < 46) continue;   // clear of the neon
+    if (sx < 256 && i % 3 === 0) { /* extra density behind the band */ }
+    c.fillStyle = SC[(r >>> 23) % SC.length]; c.fillRect(sx, sy, sw, sh);
+    const k = (r >>> 27) % 3;
+    c.fillStyle = 'rgba(255,255,255,0.28)';
+    if (k === 0) c.fillRect(sx + 1, sy + 1, sw - 2, 1); else if (k === 1) c.fillRect(sx, sy + sh - 2, sw, 1); else { c.beginPath(); c.arc(sx + sw / 2, sy + sh / 2, Math.min(sw, sh) * 0.3, 0, Math.PI * 2); c.fill(); }
+    c.fillStyle = 'rgba(0,0,0,0.30)'; c.fillRect(sx, sy + sh - 1, sw, 1);
+  }
+  // band flyers: bigger paper posters with scribbled lines
+  for (const [fx, fy, fw, fh, col] of [[40, 8, 22, 30, '#e8e0cc'], [68, 14, 18, 26, '#d9a441'], [126, 6, 24, 32, '#e0702a'], [168, 12, 20, 28, '#e8e0cc'], [196, 6, 18, 34, '#3a8f9a']]) {
+    c.fillStyle = 'rgba(0,0,0,0.35)'; c.fillRect(fx + 1, fy + 1, fw, fh);
+    c.fillStyle = col; c.fillRect(fx, fy, fw, fh);
+    c.fillStyle = 'rgba(20,14,10,0.7)'; c.fillRect(fx + 3, fy + 4, fw - 6, 5);
+    for (let ly = fy + 13; ly < fy + fh - 3; ly += 4) c.fillRect(fx + 3, ly, fw - 6 - ((ly * 7) % 5), 1.5);
+  }
+  // round clock + a dartboard on the wall behind the stage
+  c.fillStyle = '#0e0a08'; c.beginPath(); c.arc(96, 30, 13, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#d8d0b8'; c.beginPath(); c.arc(96, 30, 11, 0, Math.PI * 2); c.fill();
+  c.strokeStyle = '#17110c'; c.lineWidth = 1; c.beginPath(); c.moveTo(96, 30); c.lineTo(96, 22); c.moveTo(96, 30); c.lineTo(102, 33); c.stroke();
+  c.fillStyle = '#0e0a08'; c.beginPath(); c.arc(240, 54, 7, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#2f8f5a'; c.beginPath(); c.arc(240, 54, 5.5, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#c0392b'; c.beginPath(); c.arc(240, 54, 3.2, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#e8e0cc'; c.beginPath(); c.arc(240, 54, 1.3, 0, Math.PI * 2); c.fill();
+  // ---- bar back wall: a TV and two shelves of bottles
+  c.fillStyle = '#0c0b0d'; c.fillRect(338, 4, 66, 32); c.fillStyle = '#16181c'; c.fillRect(340, 6, 62, 28);
+  c.fillStyle = 'rgba(255,255,255,0.06)'; c.beginPath(); c.moveTo(342, 7); c.lineTo(366, 7); c.lineTo(342, 28); c.fill();
+  c.fillStyle = '#2a2a2e'; c.fillRect(366, 36, 8, 2);
+  c.fillStyle = '#120c09'; c.fillRect(262, 38, 152, 25);
+  const BOT = ['#2f6b3a', '#7a3d1e', '#c9a441', '#7aa0b8', '#8a2431', '#e8e0cc', '#2c6fb0', '#3d2a14'];
+  for (const [sy, sd] of [[49, 11], [61, 17]]) {
+    for (let i = 0, bx = 266; bx < 408; i++, bx += 8) {
+      const r = shHash(sd, i), bh = 7 + (r % 5);
+      c.fillStyle = BOT[(r >>> 6) % BOT.length]; c.fillRect(bx, sy - bh, 4, bh); c.fillRect(bx + 1, sy - bh - 3, 2, 3);
+      c.fillStyle = 'rgba(255,255,255,0.28)'; c.fillRect(bx + 1, sy - bh + 1, 1, bh - 2);
+    }
+    c.fillStyle = '#5a3a1c'; c.fillRect(262, sy, 152, 2); c.fillStyle = 'rgba(255,255,255,0.15)'; c.fillRect(262, sy, 152, 1);
+  }
+  // keg / cooler at the end of the bar (8,2)
+  c.fillStyle = '#1a1a1e'; c.fillRect(8 * T + 2, 2 * T + 4, T - 4, T - 4);
+  c.fillStyle = '#9aa0a8'; c.fillRect(8 * T + 4, 2 * T + 7, T - 8, 5); c.fillRect(8 * T + 4, 2 * T + 17, T - 8, 5);
+  c.fillStyle = 'rgba(255,255,255,0.22)'; c.fillRect(8 * T + 6, 2 * T + 7, 3, 15);
+  c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(8 * T + 2, 2 * T + T - 2, T - 4, 3);
+  // ---- wall-foot shadow + stage riser
+  const sh = c.createLinearGradient(0, 66, 0, 84); sh.addColorStop(0, 'rgba(0,0,0,0.35)'); sh.addColorStop(1, 'rgba(0,0,0,0)');
+  c.fillStyle = sh; c.fillRect(T, 66, 12 * T, 18);
+  c.fillStyle = '#3a2618'; c.fillRect(T - 4, 64, 7 * T + 8, 36);
+  c.fillStyle = '#4e341f'; c.fillRect(T - 2, 66, 7 * T + 4, 32);
+  for (let x = T; x < 8 * T; x += 18) { c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(x, 66, 1, 32); }
+  c.fillStyle = '#6b4a2c'; c.fillRect(T - 4, 98, 7 * T + 8, 3); c.fillStyle = 'rgba(0,0,0,0.35)'; c.fillRect(T - 4, 101, 7 * T + 8, 3);
+  // ---- braided oval rug in front of the stage
+  const rug = [['#3a2418', 40, 20], ['#8a2f2a', 36, 17], ['#c9a45a', 32, 14.5], ['#2f5d62', 28, 12], ['#b0693a', 24, 9.8], ['#e0d0a8', 19, 7.4], ['#6b3a2a', 14, 5], ['#c9a45a', 9, 3]];
+  for (const [col, rx, ry] of rug) { c.fillStyle = col; c.beginPath(); c.ellipse(140, 152, rx * 2.6, ry * 2.1, 0, 0, Math.PI * 2); c.fill(); }
+  c.strokeStyle = 'rgba(0,0,0,0.22)'; c.lineWidth = 1;
+  for (let a = 0; a < 40; a++) { const an = a / 40 * Math.PI * 2; c.beginPath(); c.moveTo(140 + Math.cos(an) * 78, 152 + Math.sin(an) * 30); c.lineTo(140 + Math.cos(an) * 104, 152 + Math.sin(an) * 42); c.stroke(); }
+  // ---- amps, drum kit shells, vibraphone, music stands (all static; the players are drawn live)
+  const amp = (x, y, w, h) => {
+    c.fillStyle = '#0e0e10'; c.fillRect(x, y, w, h); c.fillStyle = '#2a2a2e'; c.fillRect(x + 2, y + 2, w - 4, h - 4);
+    c.fillStyle = '#1a1a1c'; for (let gx = x + 4; gx < x + w - 4; gx += 3) c.fillRect(gx, y + 5, 1, h - 10);
+    c.fillStyle = '#d9d0b8'; c.fillRect(x + w - 10, y + 3, 7, 2); c.fillStyle = 'rgba(255,255,255,0.18)'; c.fillRect(x + 2, y + 2, w - 4, 2);
+  };
+  amp(36, 64, 22, 26); amp(60, 76, 20, 16);
+  amp(232, 62, 20, 26);
+  // drum kit (back right): bass drum, toms, cymbal stands
+  c.fillStyle = '#16120e'; c.fillRect(214, 70, 38, 24);
+  c.fillStyle = '#7a1f2c'; c.beginPath(); c.ellipse(232, 82, 13, 13, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#d8d0b8'; c.beginPath(); c.ellipse(232, 82, 10, 10, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#7a1f2c'; c.beginPath(); c.ellipse(232, 82, 3, 3, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#8a2f3a'; c.fillRect(216, 66, 12, 9); c.fillRect(238, 66, 12, 9);
+  c.fillStyle = '#d8d0b8'; c.fillRect(216, 66, 12, 2); c.fillRect(238, 66, 12, 2);
+  c.fillStyle = '#9a9aa0'; c.fillRect(213, 72, 1, 22); c.fillRect(253, 72, 1, 22);
+  // vibraphone: wooden frame on legs with two rows of bars and resonator tubes
+  c.fillStyle = '#16120e'; c.fillRect(138, 92, 3, 12); c.fillRect(204, 92, 3, 12); c.fillRect(150, 92, 3, 12); c.fillRect(192, 92, 3, 12);
+  c.fillStyle = '#2a2a2e'; c.fillRect(135, 100, 8, 3); c.fillRect(201, 100, 8, 3);
+  c.fillStyle = '#7a5230'; c.fillRect(134, 82, 76, 12);
+  c.fillStyle = '#3a2a1c'; c.fillRect(134, 92, 76, 3);
+  for (let k = 0; k < 14; k++) { c.fillStyle = k % 2 ? '#c8cbd0' : '#b4b8be'; c.fillRect(137 + k * 5, 78, 4, 12 - Math.abs(k - 7) * 0.4); }
+  for (let k = 0; k < 10; k++) { c.fillStyle = '#9aa0a8'; c.fillRect(143 + k * 6, 84, 3, 7); }
+  c.fillStyle = 'rgba(255,255,255,0.30)'; c.fillRect(137, 78, 70, 1);
+  c.fillStyle = '#1a1a1c'; c.fillRect(112, 84, 14, 10);   // music stand base-ish: a little folding stand
+  c.fillStyle = '#15130f'; c.fillRect(118, 94, 2, 10);
+  // mic stands
+  c.fillStyle = '#15130f'; c.fillRect(46, 92, 1.5, 12); c.fillRect(40, 103, 14, 2);
+  c.fillRect(176, 92, 1.5, 11); c.fillRect(170, 103, 12, 2);
+  // ---- sticker-bombed black cabinet (1,4)(1,5)
+  c.fillStyle = '#0c0b0d'; c.fillRect(T + 1, 4 * T + 2, T - 2, 2 * T - 4);
+  for (let i = 0; i < 40; i++) {
+    const r = shHash(951, i), sx = T + 3 + (r % 22), sy = 4 * T + 4 + ((r >>> 8) % 52), sw = 4 + ((r >>> 14) % 6), sh2 = 3 + ((r >>> 18) % 5);
+    c.fillStyle = SC[(r >>> 22) % SC.length]; c.fillRect(sx, sy, Math.min(sw, T - 4 - (sx - T)), sh2);
+  }
+  c.fillStyle = 'rgba(255,255,255,0.10)'; c.fillRect(T + 1, 4 * T + 2, T - 2, 2); c.fillStyle = 'rgba(0,0,0,0.35)'; c.fillRect(T + 1, 6 * T - 4, T - 2, 4);
+  // ---- the bar counter (row 3, cols 9-12): dark wood, stickers on the face, tip jar
+  c.fillStyle = '#1e140d'; c.fillRect(9 * T, 3 * T, 4 * T, T);
+  c.fillStyle = '#6b4626'; c.fillRect(9 * T, 3 * T, 4 * T, 12);
+  c.fillStyle = 'rgba(255,255,255,0.26)'; c.fillRect(9 * T, 3 * T, 4 * T, 2);
+  c.fillStyle = '#2e1e12'; c.fillRect(9 * T, 3 * T + 12, 4 * T, 20);
+  for (let i = 0; i < 16; i++) { const r = shHash(971, i); c.fillStyle = SC[(r >>> 4) % SC.length]; c.fillRect(9 * T + 3 + (r % 120), 3 * T + 15 + ((r >>> 9) % 10), 4 + ((r >>> 14) % 5), 3 + ((r >>> 18) % 3)); }
+  c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(9 * T, 3 * T + 12, 4 * T, 2);
+  // tap tower + register
+  c.fillStyle = '#b8bcc4'; c.fillRect(10 * T + 6, 2 * T + 18, 14, 4); c.fillStyle = '#d8dce2'; for (const tx of [8, 13, 18]) c.fillRect(10 * T + tx, 2 * T + 8, 2, 11);
+  c.fillStyle = '#2c2a30'; c.fillRect(12 * T + 4, 2 * T + 22, 22, 14); c.fillStyle = '#7ad07a'; c.fillRect(12 * T + 7, 2 * T + 19, 12, 5);
+  // tip jar
+  c.fillStyle = 'rgba(200,225,235,0.55)'; c.fillRect(9 * T + 6, 3 * T - 10, 11, 14); c.fillStyle = '#3a8f4a'; c.fillRect(9 * T + 8, 3 * T - 1, 7, 3); c.fillStyle = '#9a9aa0'; c.fillRect(9 * T + 5, 3 * T - 12, 13, 3);
+  c.fillStyle = '#17110c'; c.font = '700 4px monospace'; c.textAlign = 'center'; c.fillText('TIPS', 9 * T + 11.5, 3 * T - 4);
+  // ---- bar stools (9,4)(11,4)
+  for (const sx of [9, 11]) {
+    const cx = sx * T + T / 2, cy = 4 * T + 18;
+    c.fillStyle = 'rgba(0,0,0,0.30)'; c.beginPath(); c.ellipse(cx, cy + 10, 11, 4, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#17120e'; c.fillRect(cx - 7, cy - 2, 2, 12); c.fillRect(cx + 5, cy - 2, 2, 12); c.fillRect(cx - 7, cy + 5, 14, 1.5);
+    c.fillStyle = '#7a1f2c'; c.beginPath(); c.ellipse(cx, cy - 4, 10, 5, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#a83a46'; c.beginPath(); c.ellipse(cx, cy - 5, 8, 3.2, 0, 0, Math.PI * 2); c.fill();
+  }
+  // ---- high-top tables (3,6)(10,7) with two stools each
+  for (const [tx, ty] of [[3, 6], [10, 7]]) {
+    const cx = tx * T + T / 2, cy = ty * T + 14;
+    c.fillStyle = 'rgba(0,0,0,0.28)'; c.beginPath(); c.ellipse(cx, cy + 14, 15, 5, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#17120e'; c.fillRect(cx - 1.5, cy, 3, 14); c.fillRect(cx - 8, cy + 13, 16, 2);
+    c.fillStyle = '#4e341f'; c.beginPath(); c.ellipse(cx, cy, 15, 7, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#7a5230'; c.beginPath(); c.ellipse(cx, cy - 1, 14, 6, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.18)'; c.beginPath(); c.ellipse(cx - 4, cy - 3, 6, 1.6, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = 'rgba(200,225,235,0.6)'; c.fillRect(cx + 3, cy - 8, 4, 7); c.fillStyle = '#d9a441'; c.fillRect(cx + 3, cy - 5, 4, 4);
+    c.fillStyle = '#e8c070'; c.fillRect(cx - 7, cy - 4, 3, 3);
+    for (const sd of [-1, 1]) { c.fillStyle = '#17120e'; c.fillRect(cx + sd * 19 - 1, cy + 6, 2, 9); c.fillStyle = '#7a1f2c'; c.beginPath(); c.ellipse(cx + sd * 19, cy + 5, 6, 3, 0, 0, Math.PI * 2); c.fill(); }
+  }
+  // ---- red vinyl booth along the right wall (12,6)(12,7)
+  c.fillStyle = '#17120e'; c.fillRect(12 * T, 6 * T + 2, T, 2 * T - 4);
+  c.fillStyle = '#5a1822'; c.fillRect(12 * T + 3, 6 * T + 4, T - 4, 2 * T - 8);
+  c.fillStyle = '#7a1f2c'; c.fillRect(12 * T + 5, 6 * T + 6, T - 8, 2 * T - 12);
+  for (let k = 0; k < 4; k++) { c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(12 * T + 5, 6 * T + 6 + k * 14, T - 8, 1); }
+  c.fillStyle = 'rgba(255,255,255,0.16)'; c.fillRect(12 * T + 5, 6 * T + 6, 3, 2 * T - 12);
+  // ---- side walls: framed photos + stickers (columns 0 and 13)
+  for (const [fx, fy, fw, fh] of [[4, 100, 18, 22], [5, 150, 16, 20], [3, 210, 20, 24], [424, 110, 18, 22], [426, 160, 16, 18], [423, 232, 20, 22]]) {
+    c.fillStyle = 'rgba(0,0,0,0.35)'; c.fillRect(fx + 1, fy + 1, fw, fh);
+    c.fillStyle = '#17110c'; c.fillRect(fx, fy, fw, fh); c.fillStyle = '#d8cfae'; c.fillRect(fx + 2, fy + 2, fw - 4, fh - 4);
+    c.fillStyle = 'rgba(40,30,20,0.55)'; c.fillRect(fx + 4, fy + 5, fw - 8, fh - 12); c.fillStyle = 'rgba(255,255,255,0.18)'; c.fillRect(fx + 2, fy + 2, fw - 4, 3);
+  }
+  // ---- vignette
+  const vg = c.createRadialGradient(W / 2, 170, 120, W / 2, 170, 290);
+  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.40)');
+  c.fillStyle = vg; c.fillRect(0, 0, W, 10 * T);
+}
+
+// one band member: shirt/skin/hair colors, `hat` = cap color or null, feet at (cx, fy), `bob` = body bounce in px
+function coPerson(cx, fy, shirt, skin, hair, hat, bob, lean) {
+  const y = fy - bob;
+  ctx.fillStyle = 'rgba(0,0,0,0.28)'; ctx.beginPath(); ctx.ellipse(cx, fy + 1, 9, 2.5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#1b1b22'; ctx.fillRect(cx - 5, y - 14, 4.5, 14); ctx.fillRect(cx + 0.5, y - 14, 4.5, 14);
+  ctx.fillStyle = shirt; ctx.fillRect(cx - 6 + lean, y - 32, 12, 19);
+  ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.fillRect(cx + 3 + lean, y - 32, 3, 19);
+  ctx.fillStyle = skin; ctx.beginPath(); ctx.arc(cx + lean * 1.4, y - 37, 5.6, 0, Math.PI * 2); ctx.fill();
+  if (hat) { ctx.fillStyle = hat; ctx.fillRect(cx + lean * 1.4 - 6, y - 43, 12, 4); ctx.fillRect(cx + lean * 1.4 - 1, y - 40, 9, 2); }
+  else { ctx.fillStyle = hair; ctx.fillRect(cx + lean * 1.4 - 5.6, y - 43, 11, 4); ctx.fillRect(cx + lean * 1.4 - 6, y - 40, 2, 4); ctx.fillRect(cx + lean * 1.4 + 4, y - 40, 2, 4); }
+}
+
+let _coInteriorCache = null;
+function drawCharlieOsInterior(time) {
+  if (!_coInteriorCache) {
+    const cv = document.createElement('canvas');
+    cv.width = 14 * TILE; cv.height = 10 * TILE;
+    paintCharlieOsInterior(cv.getContext('2d'));
+    _coInteriorCache = cv;
+  }
+  ctx.drawImage(_coInteriorCache, 0, 0);
+  ctx.save();
+  const beat = time * 4.2;                       // the tune's pulse
+  // ---- the band: guitar (left), sax, vibraphone (front right), drums (back right)
+  // guitarist: plaid shirt, grey hair, strumming a sunburst electric
+  coPerson(90, 96, '#6a7fb0', '#e0b090', '#b8b8bc', null, Math.abs(Math.sin(beat * 0.5)) * 1.5, Math.sin(beat * 0.25) * 1.2);
+  ctx.fillStyle = '#c98a3a'; ctx.beginPath(); ctx.ellipse(92, 80, 9, 6, -0.3, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#3a2a1c'; ctx.beginPath(); ctx.ellipse(92, 80, 3, 2, -0.3, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#5a3a1c'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(86, 77); ctx.lineTo(66, 66); ctx.stroke();
+  ctx.fillStyle = '#e0b090'; ctx.fillRect(Math.round(94 + Math.sin(beat) * 3), 82, 3, 3);
+  // saxophonist: black clothes, glasses, a big curved brass sax swaying
+  const sw = Math.sin(beat * 0.5 + 1) * 2;
+  coPerson(124, 96, '#202028', '#d8a888', '#303030', null, Math.abs(Math.sin(beat * 0.5 + 1)) * 1.2, sw * 0.4);
+  ctx.fillStyle = '#e0b440'; ctx.fillRect(Math.round(124 + sw * 0.4 - 3), 66, 5, 22);
+  ctx.beginPath(); ctx.moveTo(122 + sw * 0.4, 86); ctx.quadraticCurveTo(118 + sw * 0.4, 98, 128 + sw * 0.4, 96); ctx.lineTo(132 + sw * 0.4, 88); ctx.lineTo(126 + sw * 0.4, 90); ctx.fill();
+  ctx.fillStyle = '#f6d878'; ctx.fillRect(Math.round(125 + sw * 0.4), 68, 1, 16);
+  // vibraphonist: cap, dark tee, two mallets rocking over the bars
+  coPerson(172, 98, '#2a2024', '#e0b090', '#303030', '#e8e0cc', Math.abs(Math.sin(beat * 0.5 + 2)) * 1.2, 0);
+  for (const [mx, ph] of [[164, 0], [180, Math.PI]]) {
+    const my = 78 + Math.abs(Math.sin(beat + ph)) * 4;
+    ctx.strokeStyle = '#d8d0b8'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(172 + (mx > 172 ? 5 : -5), 70); ctx.lineTo(mx, my); ctx.stroke();
+    ctx.fillStyle = '#c0392b'; ctx.beginPath(); ctx.arc(mx, my, 1.8, 0, Math.PI * 2); ctx.fill();
+  }
+  // drummer: cap, black tee, sticks flicking between snare and hi-hat
+  coPerson(250, 92, '#1f1f26', '#e0b090', '#303030', '#9aa0a8', Math.abs(Math.sin(beat * 2)) * 1.4, 0);
+  const sa = Math.sin(beat * 2);
+  ctx.strokeStyle = '#d8d0b8'; ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.moveTo(244, 66); ctx.lineTo(236, 72 + sa * 2.5); ctx.moveTo(256, 66); ctx.lineTo(244 + 8, 72 - sa * 2.5); ctx.stroke();
+  const cym = 1 + Math.abs(Math.sin(beat * 2 + 0.4)) * 0.6;
+  ctx.fillStyle = '#d9b84a'; ctx.fillRect(210, 62, 16, 2 * cym); ctx.fillRect(246, 58, 16, 2 * cym);
+  // ---- stage wash: purple and orange pools, slow beams
+  for (const [lx, col] of [[70, '168,60,230'], [150, '255,150,60'], [230, '60,170,255']]) {
+    const a = 0.10 + 0.04 * Math.sin(time * 1.6 + lx * 0.05);
+    const g = ctx.createRadialGradient(lx, 90, 4, lx, 100, 70);
+    g.addColorStop(0, 'rgba(' + col + ',' + (a * 2.2).toFixed(3) + ')'); g.addColorStop(1, 'rgba(' + col + ',0)');
+    ctx.fillStyle = g; ctx.fillRect(lx - 70, 40, 140, 140);
+  }
+  // ---- orange globe string lights along the ceiling line, swagging across the room
+  const bulbs = [];
+  for (let x = 4; x <= 440; x += 22) bulbs.push([x, 66 + Math.sin(x * 0.045) * 3 + ((x / 22) % 2 ? 4 : 0)]);
+  ctx.strokeStyle = 'rgba(15,10,8,0.8)'; ctx.lineWidth = 0.9; ctx.beginPath();
+  for (let x = 0; x <= 448; x += 4) { const y = 60 + Math.sin(x * 0.07) * 4; if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); } ctx.stroke();
+  for (let i = 0; i < bulbs.length; i++) {
+    const bx = bulbs[i][0], by = 60 + Math.sin(bx * 0.07) * 4 + 4;
+    const tw = 0.7 + 0.3 * Math.sin(time * 2.6 + i * 1.9);
+    ctx.fillStyle = 'rgba(255,150,40,' + (0.20 * tw).toFixed(3) + ')'; ctx.beginPath(); ctx.arc(bx, by, 7, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,170,60,' + (0.85 * tw).toFixed(2) + ')'; ctx.beginPath(); ctx.arc(bx, by, 2.6, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,240,200,0.5)'; ctx.fillRect(bx - 1, by - 1, 1, 1);
+  }
+  // ---- neon sign above the band-to-bar gap (animated flicker)
+  const np = Math.sin(time * 7.3) > 0.93 ? 0.4 : 0.85 + 0.15 * Math.sin(time * 3.7);
+  ctx.strokeStyle = 'rgba(70,150,255,' + np.toFixed(2) + ')'; ctx.lineWidth = 2; ctx.lineJoin = 'round';
+  ctx.beginPath(); ctx.moveTo(228, 16); ctx.lineTo(250, 16); ctx.lineTo(254, 27); ctx.lineTo(250, 38); ctx.lineTo(228, 38); ctx.lineTo(224, 27); ctx.closePath(); ctx.stroke();
+  ctx.fillStyle = 'rgba(130,200,255,' + np.toFixed(2) + ')'; ctx.font = '700 8px Georgia, serif'; ctx.textAlign = 'center'; ctx.fillText('BEER', 239, 30);
+  ctx.fillStyle = 'rgba(70,150,255,' + (0.10 * np).toFixed(3) + ')'; ctx.beginPath(); ctx.arc(239, 27, 30, 0, Math.PI * 2); ctx.fill();
+  // TV flicker
+  ctx.fillStyle = 'rgba(160,190,255,' + (0.05 + 0.04 * Math.sin(time * 5.3)).toFixed(3) + ')'; ctx.fillRect(340, 6, 62, 28);
+  // ---- floating music notes drifting up from the band
+  for (let k = 0; k < 6; k++) {
+    const p = (time * 0.22 + k * 0.17) % 1, nx = 60 + k * 36 + Math.sin(time * 1.3 + k * 2) * 8, ny = 92 - p * 78;
+    ctx.fillStyle = 'rgba(255,225,150,' + (0.75 * Math.sin(p * Math.PI)).toFixed(2) + ')';
+    ctx.fillRect(Math.round(nx), Math.round(ny), 3, 2); ctx.fillRect(Math.round(nx) + 2, Math.round(ny) - 6, 1, 7);
+    if (k % 2) ctx.fillRect(Math.round(nx) + 2, Math.round(ny) - 6, 4, 1.5);
+  }
+  // ---- bar glow + dust motes
+  const bg = ctx.createRadialGradient(350, 80, 4, 350, 90, 80); bg.addColorStop(0, 'rgba(255,170,70,0.16)'); bg.addColorStop(1, 'rgba(255,170,70,0)');
+  ctx.fillStyle = bg; ctx.fillRect(260, 20, 180, 140);
+  for (let k = 0; k < 12; k++) {
+    const t = (time * 0.04 + k * 0.083) % 1, mx = 50 + ((k * 67) % 340) + Math.sin(time * 0.7 + k * 1.7) * 6, my = 70 + t * 190;
+    ctx.fillStyle = 'rgba(255,230,190,' + (0.45 * Math.sin(t * Math.PI)).toFixed(2) + ')'; ctx.fillRect(Math.round(mx), Math.round(my), 1.5, 1.5);
   }
   ctx.restore();
 }
