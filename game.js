@@ -14677,6 +14677,7 @@ function makeShop(id, opts) {
     capitolGrounds: opts.capitolGrounds || false,
     positivePie: opts.positivePie || false,
     hungerMountain: opts.hungerMountain || false,
+    sarduccis: opts.sarduccis || false,
     cbPrints: opts.cbPrints || false,
     talent: opts.talent || false,
     echoCenter: opts.echoCenter || false,
@@ -16054,6 +16055,16 @@ function makeMontpelier() {
   Object.assign(coopB, { name: 'HUNGER MOUNTAIN CO-OP', montScenery: 'hungermountain', wall: '#a3262a', roof: '#17181b', awning: '#5a3820', doorX: COOP_DOOR.x });
   g[COOP_DOOR.y][COOP_DOOR.x] = 'D';
 
+  // --- SARDUCCI'S: the Italian restaurant + bar in the N7 slot (x 57-62, rows 20-23), the last block on Main Street's north side,
+  // just east of HUNGER MOUNTAIN CO-OP. Same trick as the other shops: N7 stays in BLOCK_DEFS, is re-dressed here (montScenery
+  // 'sarduccis' -> drawMontpelierSarduccis) and gets a door: the 'D' tile at (61, 23) opens onto the sidewalk (row 24). Entering
+  // leads to the `sarduccis` shop (see `shops`). The door x must sit 4 tiles in from the lot's left edge so it lines up with the
+  // glazed door painted in drawMontpelierSarduccis().
+  const SARDUCCIS_DOOR = { x: 61, y: 23 };
+  const sarduccisB = montBuildings.find((b) => b.lot === 'N7');
+  Object.assign(sarduccisB, { name: "SARDUCCI'S", montScenery: 'sarduccis', wall: '#3e2619', roof: '#2f4a3e', awning: '#7d1f2b', doorX: SARDUCCIS_DOOR.x });
+  g[SARDUCCIS_DOOR.y][SARDUCCIS_DOOR.x] = 'D';
+
   // --- trees. Dense woods on Hubbard Park hill (NW), the ridge behind the State House, the north-east
   // hills along the North Branch and the south hills; sparse elsewhere. Never on streets, paving, water or
   // building footprints, and always a one-tile margin so nothing boxes the player in.
@@ -16131,6 +16142,7 @@ function makeMontpelier() {
     // Drawing data for drawMontpelierDecorations() -- everything in world pixels.
     montpelier: { dashes, crosswalks, lamps },
     capitolDoor: { x: CAPITOL_DOOR.x, y: CAPITOL_DOOR.y },   // CAPITOL GROUNDS -> `capitolgrounds` (see the door wiring above `const maps`)
+    sarduccisDoor: { x: SARDUCCIS_DOOR.x, y: SARDUCCIS_DOOR.y },   // SARDUCCI'S -> `sarduccis` (see the door wiring above `const maps`)
     hungerMountainDoor: { x: COOP_DOOR.x, y: COOP_DOOR.y },   // HUNGER MOUNTAIN CO-OP -> `hungermountain` (see the door wiring above `const maps`)
     positivePieDoor: { x: PIE_DOOR.x, y: PIE_DOOR.y },   // POSITIVE PIE -> `positivepie` (see the door wiring above `const maps`)
     charliosDoor: { x: CHARLIOS_DOOR.x, y: CHARLIOS_DOOR.y },   // CHARLIE-O'S -> `charlios` (see the door wiring above `const maps`)
@@ -17789,6 +17801,37 @@ const shops = {
       ] },
     crates: [],
   }),
+  // SARDUCCI'S -- the Italian restaurant + bar on MONTPELIER's Main Street (N7 block, the last one on the north side, east of
+  // HUNGER MOUNTAIN CO-OP; door at (61, 23), see makeMontpelier() + drawMontpelierSarduccis()). `world: 'montpelier'` ties it to
+  // that level. `sarduccis: true` gets its own interior (drawSarduccisInterior), modeled on the dining-room photo: sunny tall
+  // wooden windows with vines + twinkle lights, red-clothed tables with slat-back chairs, ceiling fans, a bottle shelf and a host
+  // counter. Solid props are plain tiles the painter dresses up: blockTiles = the whole back-wall row (1..12,1), wine rack (1,2)(2,2),
+  // fig tree (5,2); extraTables = dining tables (2,5)(4,5)(9,5)(11,5)(3,8)(10,8). The counter is row 3 cols 9-12 (tableRange) with
+  // the HOST at (11,2). Clear of the door (6,9) and the spawn (6.5,7.5); the center aisle (col 6-7, rows 4-8) stays open. No record
+  // crates in here.
+  sarduccis: makeShop('sarduccis', {
+    world: 'montpelier',
+    floor: '#7a4a2e', plank: '#5e3720', wallColor: '#e6c88a',
+    sarduccis: true,
+    tableRange: { start: 9, end: 12 },
+    blockTiles: [
+      [1, 1], [2, 1], [3, 1], [4, 1], [5, 1], [6, 1], [7, 1], [8, 1], [9, 1], [10, 1], [11, 1], [12, 1],
+      [1, 2], [2, 2], [5, 2],
+    ],
+    extraTables: [[2, 5], [4, 5], [9, 5], [11, 5], [3, 8], [10, 8]],
+    keeper: { x: 11, y: 2, name: 'THE HOST', shirt: '#f2ece0', skin: '#d9a47c',
+      lines: [
+        "Benvenuti to Sarducci's! Table by the window? They are all by the window. It is a very narrow room.",
+        'Everything is made from scratch. The lasagna takes all day. The tiramisu takes all night. I do not sleep much.',
+        'Look at those windows. The river is right there, behind the leaves. Sit down and you can hear it over the garlic.',
+        'The twinkle lights in the vines? Leave them on year round. Nobody ever asked us to turn them off. Not once.',
+        'Order the chicken parm. Do not tell the lasagna I said that. It is sensitive.',
+        'The little blue plates on the wall were painted by hand in Italy. Do not touch them. Nonna is watching.',
+        'Montpelier is the smallest capital in the country and half the legislature eats at the corner table. We bring them extra bread. It helps the debates.',
+        'Looking for records? Buch Spieler, west end of Main Street. Take a breadstick for the walk. Do not get marinara on the vinyl.',
+      ] },
+    crates: [],
+  }),
   // THE MONKEY HOUSE -- bar/restaurant + live-music venue on the Winooski
   // northwest lawn (see makeWinooski()). `monkeyHouse: true` gets its own
   // interior (drawMonkeyHouseInterior): a pool table up front by the door, a
@@ -18485,6 +18528,9 @@ transitions['positivepie:' + key(6, 9)] = { map: 'montpelier', x: montpelier.pos
 // HUNGER MOUNTAIN CO-OP door wiring (Montpelier, LEVEL 5) -- same pattern; leaving drops the player on the sidewalk below the door.
 transitions['montpelier:' + key(montpelier.hungerMountainDoor.x, montpelier.hungerMountainDoor.y)] = { map: 'hungermountain', x: 6.5, y: 7.5 };
 transitions['hungermountain:' + key(6, 9)] = { map: 'montpelier', x: montpelier.hungerMountainDoor.x + 0.5, y: montpelier.hungerMountainDoor.y + 1.6 };
+// SARDUCCI'S door wiring (Montpelier, LEVEL 5) -- same pattern; leaving drops the player on the sidewalk below the door.
+transitions['montpelier:' + key(montpelier.sarduccisDoor.x, montpelier.sarduccisDoor.y)] = { map: 'sarduccis', x: 6.5, y: 7.5 };
+transitions['sarduccis:' + key(6, 9)] = { map: 'montpelier', x: montpelier.sarduccisDoor.x + 0.5, y: montpelier.sarduccisDoor.y + 1.6 };
 const maps = { town, ...shops, swamp, skatepark, winooski, montpelier };
 
 // Reshuffles, within EACH location that has one, which of that location's
@@ -34236,6 +34282,7 @@ function render(time) {
   if (map.capitolGrounds) drawCapitolGroundsInterior(time);
   if (map.positivePie) drawPositivePieInterior(time);
   if (map.hungerMountain) drawHungerMountainInterior(time);
+  if (map.sarduccis) drawSarduccisInterior(time);
   if (map.monkeyHouse) drawMonkeyHouseInterior(time);
   if (map.bellevue) drawBellevueInterior(time);
   if (map.miseryLoves) drawMiseryLovesInterior(time);
@@ -35631,6 +35678,7 @@ function drawMontpelierScenery(b, px, py, w, h) {
   else if (b.montScenery === 'capitolgrounds') drawMontpelierCapitolGrounds(px, py, w, h);
   else if (b.montScenery === 'positivepie') drawMontpelierPositivePie(px, py, w, h);
   else if (b.montScenery === 'hungermountain') drawMontpelierHungerMountain(px, py, w, h);
+  else if (b.montScenery === 'sarduccis') drawMontpelierSarduccis(px, py, w, h);
   else drawMontpelierBrickBlock(b, px, py, w, h);
 }
 
@@ -38548,6 +38596,356 @@ function drawPositivePieInterior(time) {
   for (let k = 0; k < 10; k++) {
     const tt = (time * 0.04 + k * 0.1) % 1, mx = 304 + ((k * 47) % 70) + Math.sin(time * 0.7 + k * 1.7) * 6, my = 72 + tt * 120;
     ctx.fillStyle = 'rgba(255,230,240,' + (0.45 * Math.sin(tt * Math.PI)).toFixed(2) + ')'; ctx.fillRect(Math.round(mx), Math.round(my), 1.5, 1.5);
+  }
+  ctx.restore();
+}
+
+// ---------------------------------------------------------------- SARDUCCI'S (Montpelier, LEVEL 5)
+// SARDUCCI'S: the Italian restaurant + bar in MONTPELIER's N7 slot (6x4 tiles, x 57-62, rows 20-23), at the east end of Main
+// Street's north side, modeled on the real storefront photo: a big white sign board in a dark-green frame with a maroon inset
+// border and a maroon "Sarducci's restaurant and bar" plaque flanked by green leaf sprigs, black gooseneck lamps over it, a
+// dark-green standing-seam metal porch roof, a dark-brown timber wall with two big windows and red-geranium hanging baskets, a
+// white porch railing with two dark benches and terracotta flower pots, leafy trees on the right and a white 9-pane glazed door
+// (tile column 4 = the 'D' tile at (61, 23)) with a warm glow and a flickering OPEN sign. (The photo's door is on the left; it is
+// mirrored here so it lines up with the shared door tile.)
+function drawMontpelierSarduccis(px, py, w, h) {
+  const t = performance.now() / 1000;
+  const X = (x) => px + x, Y = (y) => py + y;
+  const WOOD = '#3e2619', GRN = '#2f4a3e', MAR = '#7d1f2b', WHT = '#f4f0e6';
+  ctx.fillStyle = '#120a06'; ctx.fillRect(px - 1, py - 1, w + 2, h + 2);
+  ctx.fillStyle = WOOD; ctx.fillRect(px, py, w, h);
+  // ---- sign board (x 2-190, y 2-40): dark-green frame, white face, maroon inset border + plaque
+  ctx.fillStyle = '#18261f'; ctx.fillRect(X(1), Y(1), 190, 40);
+  ctx.fillStyle = GRN; ctx.fillRect(X(2), Y(2), 188, 38);
+  ctx.fillStyle = WHT; ctx.fillRect(X(5), Y(5), 182, 32);
+  ctx.fillStyle = 'rgba(0,0,0,0.06)'; ctx.fillRect(X(5), Y(34), 182, 3);
+  ctx.strokeStyle = MAR; ctx.lineWidth = 1.5; ctx.strokeRect(X(9), Y(8.5), 174, 26);
+  ctx.fillStyle = MAR; ctx.fillRect(X(36), Y(12), 120, 20);
+  ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(X(36), Y(12), 120, 2);
+  ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(X(36), Y(30), 120, 2);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+  let fs = 13; ctx.font = 'bold ' + fs + 'px Georgia, "Times New Roman", serif';
+  while (ctx.measureText("Sarducci's").width > 98 && fs > 6) { fs--; ctx.font = 'bold ' + fs + 'px Georgia, "Times New Roman", serif'; }
+  ctx.fillStyle = '#f6ecd6'; ctx.fillText("Sarducci's", X(96), Y(23));
+  ctx.font = 'bold 5px Georgia, "Times New Roman", serif'; ctx.fillStyle = '#ecdcc0'; ctx.fillText('restaurant and bar', X(96), Y(29.5));
+  // green leaf sprigs either side of the plaque
+  for (const [sx, dir] of [[41, 1], [151, -1]]) {
+    ctx.fillStyle = '#4f8a3c';
+    for (let k = 0; k < 3; k++) {
+      ctx.beginPath(); ctx.ellipse(X(sx + dir * (k * 2.4 - 4)), Y(17 + k * 3.4), 3.2, 1.5, dir * (0.7 - k * 0.5), 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.strokeStyle = '#2f5a26'; ctx.lineWidth = 0.7; ctx.beginPath(); ctx.moveTo(X(sx - dir * 4), Y(15)); ctx.lineTo(X(sx + dir * 3), Y(28)); ctx.stroke();
+  }
+  // ---- black gooseneck lamps over the sign + warm light cones
+  for (const gx of [22, 66, 126, 170]) {
+    ctx.fillStyle = '#0a0a0a'; ctx.fillRect(X(gx - 1), Y(1), 2.5, 4); ctx.fillRect(X(gx - 1), Y(3), 7, 2);
+    ctx.fillStyle = '#16161a'; ctx.beginPath(); ctx.moveTo(X(gx + 3), Y(4)); ctx.lineTo(X(gx + 10), Y(4)); ctx.lineTo(X(gx + 8.5), Y(8)); ctx.lineTo(X(gx + 4.5), Y(8)); ctx.closePath(); ctx.fill();
+    const cone = ctx.createLinearGradient(0, Y(8), 0, Y(36)); cone.addColorStop(0, 'rgba(255,236,180,0.35)'); cone.addColorStop(1, 'rgba(255,236,180,0)');
+    ctx.fillStyle = cone; ctx.beginPath(); ctx.moveTo(X(gx + 5), Y(8)); ctx.lineTo(X(gx + 8), Y(8)); ctx.lineTo(X(gx + 20), Y(36)); ctx.lineTo(X(gx - 6), Y(36)); ctx.closePath(); ctx.fill();
+  }
+  // ---- dark-green standing-seam metal porch roof (a sloped band) with a shadowed eave
+  ctx.fillStyle = '#0c1511'; ctx.fillRect(X(0), Y(41), w, 3);
+  const rg = ctx.createLinearGradient(0, Y(44), 0, Y(64)); rg.addColorStop(0, '#5d7466'); rg.addColorStop(1, '#3d5246');
+  ctx.fillStyle = rg; ctx.beginPath(); ctx.moveTo(X(6), Y(44)); ctx.lineTo(X(186), Y(44)); ctx.lineTo(X(w), Y(62)); ctx.lineTo(X(0), Y(62)); ctx.closePath(); ctx.fill();
+  for (let sx = 4; sx < w; sx += 9) { ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.fillRect(X(sx), Y(45), 1, 17); ctx.fillStyle = 'rgba(255,255,255,0.10)'; ctx.fillRect(X(sx + 1), Y(45), 1, 17); }
+  ctx.fillStyle = '#26382f'; ctx.fillRect(X(0), Y(61), w, 3);
+  ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(X(0), Y(61), w, 1);
+  ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(X(0), Y(64), w, 4);
+  // ---- timber wall + two big windows (dark glass with a warm dining-room glow) 
+  for (let yy = 68; yy < 112; yy += 7) { ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.fillRect(X(0), Y(yy), w, 1); ctx.fillStyle = 'rgba(255,220,170,0.04)'; ctx.fillRect(X(0), Y(yy + 1), w, 1); }
+  for (const wx of [4, 68]) {
+    ctx.fillStyle = '#1d110b'; ctx.fillRect(X(wx), Y(68), 56, 42);
+    const wg = ctx.createLinearGradient(0, Y(70), 0, Y(108)); wg.addColorStop(0, '#6a3f22'); wg.addColorStop(1, '#2a160c');
+    ctx.fillStyle = wg; ctx.fillRect(X(wx + 2), Y(70), 52, 38);
+    // glimpse of the dining room: a wall lamp and a red-cloth table
+    ctx.fillStyle = 'rgba(255,190,110,0.55)'; ctx.beginPath(); ctx.arc(X(wx + 14), Y(80), 3, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,200,130,0.22)'; ctx.beginPath(); ctx.arc(X(wx + 14), Y(80), 10, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#8a2430'; ctx.fillRect(X(wx + 28), Y(96), 20, 9); ctx.fillStyle = '#e8d8b0'; ctx.fillRect(X(wx + 36), Y(93), 2, 3);
+    ctx.fillStyle = '#17100b'; ctx.fillRect(X(wx + 27), Y(86), 3, 20); ctx.fillRect(X(wx + 47), Y(86), 3, 20);
+    // mullions (4 panes)
+    ctx.fillStyle = '#1d110b'; ctx.fillRect(X(wx + 27), Y(70), 2, 38); ctx.fillRect(X(wx + 2), Y(88), 52, 2);
+    // sky/leaf reflection streak
+    ctx.fillStyle = 'rgba(200,225,210,0.16)'; ctx.beginPath(); ctx.moveTo(X(wx + 4), Y(71)); ctx.lineTo(X(wx + 17), Y(71)); ctx.lineTo(X(wx + 4), Y(95)); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#e9e2d0'; ctx.fillRect(X(wx - 1), Y(108), 58, 3);
+  }
+  const fl = 0.05 + 0.04 * Math.sin(t * 2.3);
+  ctx.fillStyle = 'rgba(255,180,90,' + fl.toFixed(3) + ')'; ctx.fillRect(X(6), Y(70), 48, 38); ctx.fillRect(X(70), Y(70), 52, 38);
+  // ---- hanging flower baskets with red geraniums (under the eave)
+  for (const bx of [14, 62, 108]) {
+    ctx.strokeStyle = '#222'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(X(bx - 5), Y(64)); ctx.lineTo(X(bx - 1), Y(72)); ctx.moveTo(X(bx + 5), Y(64)); ctx.lineTo(X(bx + 1), Y(72)); ctx.stroke();
+    ctx.fillStyle = '#2f6a2a'; ctx.beginPath(); ctx.arc(X(bx), Y(75), 7, Math.PI, 0); ctx.fill(); ctx.fillRect(X(bx - 7), Y(75), 14, 2);
+    ctx.fillStyle = '#4a3418'; ctx.beginPath(); ctx.arc(X(bx), Y(76), 6, 0, Math.PI); ctx.fill();
+    for (const [dx, dy] of [[-5, -3], [-1, -6], [3, -4], [6, -2], [0, -2], [-3, 0]]) {
+      ctx.fillStyle = '#d02a2a'; ctx.beginPath(); ctx.arc(X(bx + dx), Y(74 + dy), 2, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(255,170,160,0.7)'; ctx.fillRect(X(bx + dx - 0.6), Y(74 + dy - 0.8), 1, 1);
+    }
+  }
+  // ---- porch: dark benches behind a white railing, posts with caps, deck, terracotta pots
+  for (const bx of [8, 74]) {
+    ctx.fillStyle = '#17120e'; ctx.fillRect(X(bx), Y(94), 38, 3); ctx.fillRect(X(bx), Y(87), 38, 2); ctx.fillRect(X(bx + 2), Y(87), 2, 11); ctx.fillRect(X(bx + 34), Y(87), 2, 11);
+    ctx.fillRect(X(bx + 4), Y(97), 2, 9); ctx.fillRect(X(bx + 32), Y(97), 2, 9);
+    ctx.fillStyle = 'rgba(255,255,255,0.10)'; ctx.fillRect(X(bx), Y(94), 38, 1);
+  }
+  ctx.fillStyle = '#4a3a2c'; ctx.fillRect(X(0), Y(110), 126, 18);
+  for (let yy = 113; yy < 128; yy += 5) { ctx.fillStyle = 'rgba(0,0,0,0.28)'; ctx.fillRect(X(0), Y(yy), 126, 1); }
+  ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(X(0), Y(110), 126, 2);
+  ctx.fillStyle = WHT;
+  ctx.fillRect(X(0), Y(98), 124, 3); ctx.fillRect(X(0), Y(107), 124, 3);          // top + bottom rails
+  for (let bx = 4; bx < 122; bx += 5) ctx.fillRect(X(bx), Y(101), 2, 6);          // balusters
+  for (const pxx of [0, 59, 118]) { ctx.fillStyle = WHT; ctx.fillRect(X(pxx), Y(92), 6, 18); ctx.fillStyle = '#d6d0c0'; ctx.fillRect(X(pxx - 1), Y(90), 8, 3); ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.fillRect(X(pxx + 4), Y(92), 2, 18); }
+  const pot = (cx, cy, col, bloom) => {
+    ctx.fillStyle = 'rgba(0,0,0,0.30)'; ctx.beginPath(); ctx.ellipse(X(cx), Y(cy + 9), 8, 2.4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#b5532e'; ctx.beginPath(); ctx.moveTo(X(cx - 6), Y(cy)); ctx.lineTo(X(cx + 6), Y(cy)); ctx.lineTo(X(cx + 4), Y(cy + 9)); ctx.lineTo(X(cx - 4), Y(cy + 9)); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#cf6a3c'; ctx.fillRect(X(cx - 7), Y(cy - 2), 14, 3);
+    ctx.fillStyle = col; ctx.beginPath(); ctx.arc(X(cx), Y(cy - 4), 6, 0, Math.PI * 2); ctx.fill();
+    for (const [dx, dy] of [[-3, -6], [2, -8], [4, -3], [-4, -2], [0, -4]]) { ctx.fillStyle = bloom; ctx.beginPath(); ctx.arc(X(cx + dx), Y(cy + dy), 1.7, 0, Math.PI * 2); ctx.fill(); }
+  };
+  pot(22, 112, '#3f7a34', '#f08ac0'); pot(52, 114, '#3f7a34', '#f4f0e8'); pot(104, 113, '#3f7a34', '#f08ac0');
+  // ---- leafy tree on the right + glazed 9-pane door (tile column 4)
+  ctx.fillStyle = '#14301a'; ctx.fillRect(X(160), Y(66), 32, 62);
+  for (let i = 0; i < 26; i++) {
+    const r = shHash(3101, i), lx = 160 + (r % 32), ly = 64 + ((r >>> 8) % 60), lr = 4 + ((r >>> 16) % 5);
+    ctx.fillStyle = (i % 3 === 0) ? '#3f8a3c' : (i % 3 === 1 ? '#2a6a2c' : '#58a24a'); ctx.beginPath(); ctx.arc(X(lx), Y(ly), lr, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.fillStyle = '#2a1a10'; ctx.fillRect(X(184), Y(100), 4, 28);
+  // door
+  ctx.fillStyle = '#d9d4c4'; ctx.fillRect(X(127), Y(64), 34, 64);
+  ctx.fillStyle = WHT; ctx.fillRect(X(129), Y(66), 30, 62);
+  ctx.fillStyle = '#7a5a3a'; ctx.fillRect(X(131), Y(68), 26, 8);
+  const dg = ctx.createLinearGradient(0, Y(77), 0, Y(118)); dg.addColorStop(0, '#ffe0a0'); dg.addColorStop(1, '#d98a40');
+  for (let gy = 0; gy < 3; gy++) for (let gx = 0; gx < 3; gx++) { ctx.fillStyle = dg; ctx.fillRect(X(132 + gx * 8.6), Y(78 + gy * 13.4), 7.2, 11.6); }
+  ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.beginPath(); ctx.moveTo(X(133), Y(79)); ctx.lineTo(X(139), Y(79)); ctx.lineTo(X(133), Y(96)); ctx.fill();
+  ctx.fillStyle = '#c9a24a'; ctx.fillRect(X(153), Y(100), 2.5, 5);
+  const nf = 0.70 + 0.30 * Math.sin(t * 8) * Math.sin(t * 3.1);
+  ctx.fillStyle = 'rgba(255,60,60,0.22)'; ctx.fillRect(X(134), Y(68.5), 20, 7);
+  ctx.fillStyle = 'rgba(255,100,100,' + Math.max(0.4, nf).toFixed(2) + ')'; ctx.font = '900 5.5px "Arial Black", Arial, sans-serif'; ctx.fillText('OPEN', X(144), Y(74.5));
+  ctx.fillStyle = '#8a8272'; ctx.fillRect(X(127), Y(125), 34, 3);
+  ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(px, py + h - 3, w, 3);
+}
+
+// ---------------------------------------------------------------- SARDUCCI'S INTERIOR (Montpelier, LEVEL 5)
+// The inside of the Italian restaurant (see the `sarduccis` shop + drawMontpelierSarduccis()), modeled on the dining-room photo:
+// a long sunny room with tall wooden-framed windows onto the green river bank, wild vines strung with twinkle lights along the
+// window tops, dark timber beams and ceiling fans, red-clothed tables with wooden slat-back chairs (red seats), a painted plate on
+// the wall, a bottle shelf behind the host counter and warm amber light everywhere.
+// Static art is painted once into a cached canvas by paintSarduccisInterior(); drawSarduccisInterior() blits it, then animates
+// the twinkle lights, ceiling fans, candle flames, window dapple, sun shafts and dust.
+// Tile map (14x10, TILE = 32): back-wall row 1 solid; wine rack (1,2)(2,2); fig tree (5,2); HOST (11,2) behind the counter =
+// row 3 cols 9-12; red-clothed tables (2,5)(4,5)(9,5)(11,5)(3,8)(10,8). Exit = (6,9).
+const SARD_TABLES = [[2, 5], [4, 5], [9, 5], [11, 5], [3, 8], [10, 8]];
+const SARD_BULBS = (() => {
+  const b = [];
+  for (let x = 36; x <= 240; x += 9) b.push([x, 13 + 3.2 * Math.sin(x * 0.19)]);                 // vine over the three back windows
+  for (let x = 300; x <= 410; x += 11) b.push([x, 9 + 2.6 * Math.sin(x * 0.23)]);                // vine over the bottle shelf
+  for (let y = 12; y <= 150; y += 11) b.push([13 + 2.5 * Math.sin(y * 0.3), y]);                 // strand down the left wall
+  for (let y = 12; y <= 150; y += 11) b.push([435 + 2.5 * Math.sin(y * 0.3 + 1), y]);            // strand down the right wall
+  return b;
+})();
+function paintSarduccisInterior(c) {
+  const W = 14 * TILE, T = TILE;
+  // ---- back wall: warm cream plaster, mottled
+  const wg = c.createLinearGradient(0, 0, 0, 66); wg.addColorStop(0, '#e6c88a'); wg.addColorStop(1, '#f1dcab');
+  c.fillStyle = wg; c.fillRect(0, 0, W, 66);
+  for (let i = 0; i < 70; i++) {
+    const r = shHash(3201, i), bx = r % W, by = (r >>> 10) % 56, bw = 14 + ((r >>> 18) % 34), bh = 6 + ((r >>> 24) % 12);
+    c.fillStyle = (i % 3 === 0) ? 'rgba(255,244,210,0.20)' : (i % 3 === 1 ? 'rgba(160,110,50,0.10)' : 'rgba(230,170,110,0.10)');
+    c.fillRect(bx, by, bw, bh);
+  }
+  c.fillStyle = '#35200f'; c.fillRect(0, 0, W, 7); c.fillStyle = 'rgba(255,255,255,0.10)'; c.fillRect(0, 7, W, 1);   // ceiling beam
+  for (let bx = 60; bx < W; bx += 120) { c.fillStyle = '#4a2c16'; c.fillRect(bx, 0, 8, 7); }
+  c.fillStyle = '#5a3320'; c.fillRect(0, 56, W, 10); c.fillStyle = 'rgba(255,255,255,0.14)'; c.fillRect(0, 56, W, 1);   // wainscot rail
+  for (let x = 4; x < W; x += 16) { c.fillStyle = 'rgba(0,0,0,0.20)'; c.fillRect(x, 58, 1, 8); }
+  // ---- side walls: wood posts with a small sunny window each
+  for (const px0 of [0, W - 32]) {
+    c.fillStyle = '#7a4a28'; c.fillRect(px0, 0, 32, 10 * T);
+    for (let i = 0; i < 40; i++) { const r = shHash(3301 + px0, i); c.fillStyle = (i % 2) ? 'rgba(255,210,150,0.10)' : 'rgba(40,20,8,0.18)'; c.fillRect(px0 + (r % 30), (r >>> 8) % 310, 1.5, 8 + ((r >>> 18) % 28)); }
+    c.fillStyle = 'rgba(0,0,0,0.30)'; c.fillRect(px0 === 0 ? 30 : px0, 0, 2, 10 * T);
+    const wx = px0 === 0 ? 5 : W - 27;
+    c.fillStyle = '#3a2210'; c.fillRect(wx - 1, 86, 24, 84);
+    const sg = c.createLinearGradient(0, 88, 0, 168); sg.addColorStop(0, '#cfe8a8'); sg.addColorStop(1, '#5a9a48');
+    c.fillStyle = sg; c.fillRect(wx + 1, 88, 20, 80);
+    c.fillStyle = '#3a2210'; c.fillRect(wx + 9, 88, 3, 80); c.fillRect(wx + 1, 126, 20, 3);
+  }
+  // ---- three tall wooden-framed windows onto the green river bank (x 40-92, 108-160, 176-228)
+  for (const wx of [40, 108, 176]) {
+    c.fillStyle = '#4a2a14'; c.fillRect(wx - 3, 9, 58, 46);
+    const sg = c.createLinearGradient(0, 11, 0, 53); sg.addColorStop(0, '#d8eeb4'); sg.addColorStop(0.5, '#7fbf5c'); sg.addColorStop(1, '#3f7a38');
+    c.fillStyle = sg; c.fillRect(wx, 11, 52, 42);
+    for (let i = 0; i < 14; i++) { const r = shHash(3401 + wx, i); c.fillStyle = (i % 2) ? 'rgba(40,100,40,0.45)' : 'rgba(230,250,200,0.35)'; c.beginPath(); c.arc(wx + (r % 52), 14 + ((r >>> 9) % 38), 3 + ((r >>> 18) % 5), 0, Math.PI * 2); c.fill(); }
+    c.fillStyle = '#4a2a14'; c.fillRect(wx + 25, 11, 3, 42); c.fillRect(wx, 30, 52, 3);
+    c.fillStyle = 'rgba(255,255,255,0.20)'; c.beginPath(); c.moveTo(wx + 2, 12); c.lineTo(wx + 14, 12); c.lineTo(wx + 2, 34); c.closePath(); c.fill();
+    c.fillStyle = '#6a3f20'; c.fillRect(wx - 4, 53, 60, 3);
+  }
+  // wild-vine garland (leaves) along the window tops + over the bottle shelf
+  const vine = (x0, x1, y0, amp, freq, seed) => {
+    c.strokeStyle = '#2f5a26'; c.lineWidth = 1.2; c.beginPath();
+    for (let x = x0; x <= x1; x += 2) { const y = y0 + amp * Math.sin(x * freq); if (x === x0) c.moveTo(x, y); else c.lineTo(x, y); }
+    c.stroke();
+    for (let x = x0; x <= x1; x += 5) {
+      const r = shHash(seed, x), y = y0 + amp * Math.sin(x * freq) + ((r % 7) - 3);
+      c.fillStyle = (r & 8) ? '#4f9040' : '#3a7a30'; c.beginPath(); c.ellipse(x, y, 3.4, 1.7, ((r >>> 4) % 6) * 0.5, 0, Math.PI * 2); c.fill();
+    }
+  };
+  vine(34, 242, 13, 3.2, 0.19, 3501); vine(298, 412, 9, 2.6, 0.23, 3502);
+  // ---- little painted plates between the windows
+  for (const [cx, cy] of [[100, 32], [168, 32]]) {
+    c.fillStyle = 'rgba(0,0,0,0.25)'; c.beginPath(); c.arc(cx + 1, cy + 1.5, 7.5, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#f4efe2'; c.beginPath(); c.arc(cx, cy, 7, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#2f5aa8'; c.beginPath(); c.arc(cx, cy, 5.6, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#f4efe2'; c.beginPath(); c.arc(cx, cy, 4.2, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#c4452c'; c.beginPath(); c.arc(cx, cy, 2.2, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#3a8a3a'; c.fillRect(cx - 0.6, cy - 4, 1.2, 8);
+  }
+  // ---- chalkboard menu (x 238-292) between the windows and the bar
+  c.fillStyle = '#3a2114'; c.fillRect(238, 14, 54, 38); c.fillStyle = '#1b2420'; c.fillRect(240, 16, 50, 34);
+  c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+  c.fillStyle = '#f6efd8'; c.font = 'bold 5.5px Georgia, serif'; c.fillText("SARDUCCI'S", 265, 24);
+  c.fillStyle = 'rgba(246,239,216,0.5)'; c.fillRect(246, 26, 38, 1);
+  c.textAlign = 'left'; c.font = '600 4px monospace'; c.fillStyle = 'rgba(239,233,216,0.92)';
+  c.fillText('LASAGNA', 244, 33); c.fillText('LINGUINE', 244, 38); c.fillText('CHICKEN PARM', 244, 43); c.fillText('TIRAMISU', 244, 48);
+  // ---- bottle shelf behind the host counter (x 296-412)
+  c.fillStyle = '#3a2114'; c.fillRect(294, 18, 120, 40); c.fillStyle = '#26160c'; c.fillRect(296, 20, 116, 36);
+  for (const sy of [32, 46]) { c.fillStyle = '#6a3f22'; c.fillRect(296, sy, 116, 2.5); c.fillStyle = 'rgba(255,255,255,0.14)'; c.fillRect(296, sy, 116, 1); }
+  for (let row = 0; row < 3; row++) for (let k = 0; k < 11; k++) {
+    const bx = 299 + k * 10.3, by = [21, 34, 48][row], bh = [11, 11, 8][row];
+    const r = shHash(3601, row * 20 + k), col = ['#2a5a2a', '#5a1f24', '#c9a24a', '#2a3a5a', '#7a4a1e'][r % 5];
+    c.fillStyle = col; c.fillRect(bx, by + 3, 5, bh - 3); c.fillRect(bx + 1.5, by, 2, 4);
+    c.fillStyle = 'rgba(255,255,255,0.22)'; c.fillRect(bx + 0.7, by + 4, 1, bh - 5);
+    if (row !== 2 && (r & 4)) { c.fillStyle = '#efe6cf'; c.fillRect(bx + 0.5, by + 6, 4, 3); }
+  }
+  // ---- floor: dark wood planks with sun patches under the windows
+  c.fillStyle = '#7a4a2e'; c.fillRect(0, 66, W, 10 * T - 66);
+  for (let y = 66, row = 0; y < 10 * T; y += 12, row++) {
+    c.fillStyle = 'rgba(0,0,0,0.24)'; c.fillRect(0, y, W, 1);
+    for (let x = (row % 2) ? 40 : 4; x < W; x += 74 + (shHash(3701, row) % 20)) { c.fillStyle = 'rgba(0,0,0,0.20)'; c.fillRect(x, y, 1, 12); }
+    c.fillStyle = (row % 3 === 0) ? 'rgba(255,200,140,0.06)' : 'rgba(40,16,4,0.06)'; c.fillRect(0, y + 1, W, 11);
+  }
+  c.save(); c.beginPath(); c.rect(0, 66, W, 10 * T - 66); c.clip();
+  for (const wx of [40, 108, 176]) {
+    const sg = c.createLinearGradient(0, 66, 0, 200); sg.addColorStop(0, 'rgba(255,236,170,0.26)'); sg.addColorStop(1, 'rgba(255,236,170,0)');
+    c.fillStyle = sg; c.beginPath(); c.moveTo(wx, 66); c.lineTo(wx + 52, 66); c.lineTo(wx + 92, 190); c.lineTo(wx + 24, 190); c.closePath(); c.fill();
+  }
+  c.restore();
+  c.fillStyle = 'rgba(0,0,0,0.30)'; c.fillRect(32, 66, W - 64, 4);
+  // ---- wine rack (1,2)(2,2): dark timber cabinet with diamond lattice + bottle ends, bottle + glasses on top
+  c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(34, 94, 62, 4);
+  c.fillStyle = '#4a2a16'; c.fillRect(34, 68, 62, 28); c.fillStyle = 'rgba(255,255,255,0.08)'; c.fillRect(34, 68, 62, 2);
+  c.fillStyle = '#2a160a'; c.fillRect(37, 74, 56, 19);
+  for (let rr = 0; rr < 2; rr++) for (let k = 0; k < 6; k++) {
+    const cx = 42 + k * 9.4 + (rr ? 4.7 : 0), cy = 79 + rr * 8;
+    c.fillStyle = ['#5a1f24', '#2a5a2a', '#c9a24a'][(k + rr) % 3]; c.beginPath(); c.arc(cx, cy, 3.4, 0, Math.PI * 2); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.30)'; c.fillRect(cx - 1.4, cy - 1.8, 1.2, 1.2);
+  }
+  c.fillStyle = '#5a1f24'; c.fillRect(42, 56, 5, 12); c.fillRect(43.5, 52, 2, 5); c.fillStyle = '#efe6cf'; c.fillRect(42.5, 60, 4, 4);
+  c.fillStyle = 'rgba(210,225,235,0.7)'; c.beginPath(); c.moveTo(64, 68); c.lineTo(72, 68); c.lineTo(70, 60); c.lineTo(66, 60); c.closePath(); c.fill();
+  // ---- fig tree in a terracotta pot (5,2)
+  c.fillStyle = 'rgba(0,0,0,0.28)'; c.beginPath(); c.ellipse(176, 96, 15, 3.5, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#b5532e'; c.beginPath(); c.moveTo(164, 82); c.lineTo(188, 82); c.lineTo(185, 96); c.lineTo(167, 96); c.closePath(); c.fill();
+  c.fillStyle = '#cf6a3c'; c.fillRect(162, 79, 28, 5);
+  c.fillStyle = '#4a2a14'; c.fillRect(175, 62, 3, 18);
+  for (let i = 0; i < 14; i++) { const r = shHash(3801, i); c.fillStyle = (i % 2) ? '#3f8a3c' : '#2f6a2e'; c.beginPath(); c.ellipse(176 + ((r % 28) - 14), 64 + ((r >>> 8) % 14), 6, 4, ((r >>> 16) % 6) * 0.5, 0, Math.PI * 2); c.fill(); }
+  // ---- host counter (row 3, cols 9-12): wood top over deep-red panelling, with a tiramisu stand, register, bread basket
+  c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(290, 126, 128, 4);
+  c.fillStyle = '#6e1f26'; c.fillRect(290, 108, 128, 20);
+  for (let x = 294; x < 414; x += 20) { c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(x, 110, 1, 16); c.fillStyle = 'rgba(255,220,160,0.18)'; c.fillRect(x + 4, 112, 12, 12); c.fillStyle = '#6e1f26'; c.fillRect(x + 5.5, 113.5, 9, 9); }
+  c.fillStyle = '#7a4a28'; c.fillRect(288, 98, 132, 11); c.fillStyle = 'rgba(255,230,190,0.24)'; c.fillRect(288, 98, 132, 2); c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(288, 107, 132, 2);
+  c.fillStyle = '#c9a24a'; c.fillRect(292, 123, 124, 2);
+  c.fillStyle = 'rgba(190,225,235,0.34)'; c.fillRect(294, 86, 22, 12); c.fillStyle = 'rgba(255,255,255,0.4)'; c.fillRect(294, 86, 22, 1.5);   // tiramisu dome
+  c.fillStyle = '#4a2a1a'; c.fillRect(297, 91, 16, 7); c.fillStyle = '#efe6cf'; c.fillRect(297, 93, 16, 1.5); c.fillStyle = '#4a2a1a'; c.fillRect(297, 95, 16, 1.5);
+  c.fillStyle = '#0e0f12'; c.fillRect(334, 88, 24, 10); c.fillStyle = '#06210f'; c.fillRect(337, 90, 12, 6); c.fillStyle = '#39d86a'; c.fillRect(339, 91.5, 8, 1.2);
+  c.fillStyle = '#b8863a'; c.beginPath(); c.ellipse(384, 96, 11, 4, 0, 0, Math.PI * 2); c.fill();
+  for (let k = 0; k < 4; k++) { c.fillStyle = '#e8c27a'; c.beginPath(); c.ellipse(378 + k * 4, 93.5, 5, 2.4, 0.4, 0, Math.PI * 2); c.fill(); }
+  c.fillStyle = '#5a1f24'; c.fillRect(402, 82, 6, 16); c.fillRect(403.5, 78, 3, 5); c.fillStyle = '#efe6cf'; c.fillRect(402.5, 88, 5, 5);   // chianti
+  // ---- red-clothed tables, wooden slat-back chairs with red seats, bread baskets, candles
+  const chair = (cx, top) => {
+    c.fillStyle = 'rgba(0,0,0,0.25)'; c.beginPath(); c.ellipse(cx, top + 26, 9, 3, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#3a1f0e'; c.fillRect(cx - 7, top + 14, 2, 12); c.fillRect(cx + 5, top + 14, 2, 12);
+    c.fillStyle = '#a8242c'; c.fillRect(cx - 8, top + 9, 16, 6); c.fillStyle = 'rgba(255,255,255,0.18)'; c.fillRect(cx - 8, top + 9, 16, 1.2);
+    c.fillStyle = '#5a3018'; c.fillRect(cx - 8, top - 8, 2.5, 18); c.fillRect(cx + 5.5, top - 8, 2.5, 18);
+    for (let k = 0; k < 3; k++) c.fillRect(cx - 8, top - 6 + k * 5, 16, 2);
+    c.fillStyle = 'rgba(255,220,170,0.14)'; c.fillRect(cx - 8, top - 8, 1, 18);
+  };
+  const tbl = (tx, ty) => {
+    const x = tx * T, y = ty * T;
+    c.fillStyle = 'rgba(0,0,0,0.28)'; c.beginPath(); c.ellipse(x + 16, y + 30, 16, 5, 0, 0, Math.PI * 2); c.fill();
+    chair(x + 16, y - 14);
+    c.fillStyle = '#3a1f0e'; c.fillRect(x + 14, y + 24, 4, 7); c.fillRect(x + 8, y + 30, 16, 2);
+    const tg = c.createLinearGradient(0, y + 4, 0, y + 24); tg.addColorStop(0, '#b02a32'); tg.addColorStop(1, '#7a1a22');
+    c.fillStyle = tg; c.fillRect(x + 1, y + 4, 30, 20);                                    // red cloth
+    c.fillStyle = '#6a161d'; c.fillRect(x + 1, y + 22, 30, 4);                             // cloth hem
+    c.fillStyle = 'rgba(255,225,200,0.20)'; c.fillRect(x + 1, y + 4, 30, 1.5);
+    c.fillStyle = '#f2ead6'; c.beginPath(); c.moveTo(x + 16, y + 6); c.lineTo(x + 28, y + 14); c.lineTo(x + 16, y + 22); c.lineTo(x + 4, y + 14); c.closePath(); c.fill();   // white overlay
+    c.fillStyle = 'rgba(0,0,0,0.08)'; c.fillRect(x + 4, y + 14, 24, 1);
+    c.fillStyle = '#e8e2d0'; c.fillRect(x + 6, y + 13, 7, 4); c.fillRect(x + 19, y + 13, 7, 4);   // plates
+    c.fillStyle = 'rgba(210,225,235,0.9)'; c.fillRect(x + 12, y + 8, 2, 4);                       // water glass
+    c.fillStyle = '#b8863a'; c.fillRect(x + 20, y + 8, 6, 3);                                      // bread basket
+    c.fillStyle = '#d9d2c0'; c.fillRect(x + 15, y + 9, 3, 4);                                      // candle jar
+    chair(x + 16, y + 31);
+  };
+  for (const [tx, ty] of SARD_TABLES) tbl(tx, ty);
+  // ---- welcome mat inside the door
+  c.fillStyle = '#244a30'; c.fillRect(190, 274, 36, 12); c.fillStyle = '#ece3cc'; c.fillRect(192, 276, 32, 1.5); c.fillRect(192, 282, 32, 1.5);
+  // ---- vignette
+  const vg = c.createRadialGradient(W / 2, 170, 120, W / 2, 170, 290);
+  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.34)');
+  c.fillStyle = vg; c.fillRect(0, 0, W, 10 * T);
+}
+
+let _sarducciInteriorCache = null;
+function drawSarduccisInterior(time) {
+  if (!_sarducciInteriorCache) {
+    const cv = document.createElement('canvas');
+    cv.width = 14 * TILE; cv.height = 10 * TILE;
+    paintSarduccisInterior(cv.getContext('2d'));
+    _sarducciInteriorCache = cv;
+  }
+  ctx.drawImage(_sarducciInteriorCache, 0, 0);
+  ctx.save();
+  // ---- window dapple: leaf shadows drifting across the panes
+  for (const wx of [40, 108, 176]) {
+    ctx.save(); ctx.beginPath(); ctx.rect(wx, 11, 52, 42); ctx.clip();
+    for (let i = 0; i < 6; i++) {
+      const ox = (wx + 8 + i * 9 + 4 * Math.sin(time * 0.7 + i * 1.3 + wx)), oy = 18 + (i * 7) % 30 + 2 * Math.cos(time * 0.9 + i);
+      ctx.fillStyle = 'rgba(30,90,30,0.30)'; ctx.beginPath(); ctx.ellipse(ox, oy, 5, 3, 0.5, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+  }
+  // ---- sun shafts breathing on the floor
+  const sp = 0.6 + 0.4 * Math.sin(time * 0.6);
+  for (const wx of [40, 108, 176]) {
+    const sg = ctx.createLinearGradient(0, 66, 0, 190); sg.addColorStop(0, 'rgba(255,238,170,' + (0.10 * sp).toFixed(3) + ')'); sg.addColorStop(1, 'rgba(255,238,170,0)');
+    ctx.fillStyle = sg; ctx.beginPath(); ctx.moveTo(wx, 66); ctx.lineTo(wx + 52, 66); ctx.lineTo(wx + 92, 190); ctx.lineTo(wx + 24, 190); ctx.closePath(); ctx.fill();
+  }
+  // ---- twinkle lights along the vines + the side walls
+  SARD_BULBS.forEach(([bx, by], i) => {
+    const tw = 0.55 + 0.45 * Math.sin(time * 2.1 + i * 1.7);
+    const gl = ctx.createRadialGradient(bx, by, 0.5, bx, by, 7);
+    gl.addColorStop(0, 'rgba(255,226,140,' + (0.55 * tw).toFixed(3) + ')'); gl.addColorStop(1, 'rgba(255,226,140,0)');
+    ctx.fillStyle = gl; ctx.fillRect(bx - 7, by - 7, 14, 14);
+    ctx.fillStyle = 'rgba(255,248,210,' + (0.55 + 0.45 * tw).toFixed(3) + ')'; ctx.beginPath(); ctx.arc(bx, by, 1.5, 0, Math.PI * 2); ctx.fill();
+  });
+  // ---- two ceiling fans turning (seen edge-on at the top of the room)
+  for (const fx of [150, 330]) {
+    ctx.strokeStyle = '#1d120a'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(fx, 7); ctx.lineTo(fx, 13); ctx.stroke();
+    ctx.fillStyle = '#2a1a10'; ctx.fillRect(fx - 3, 12, 6, 3);
+    for (let k = 0; k < 4; k++) {
+      const a = time * 4 + k * Math.PI / 2, dx = Math.cos(a) * 24, front = Math.sin(a) > 0;
+      ctx.fillStyle = front ? 'rgba(90,52,28,0.95)' : 'rgba(60,34,18,0.75)';
+      ctx.beginPath(); ctx.ellipse(fx + dx / 2, 14 + (front ? 1 : 0), Math.max(2, Math.abs(dx) / 2), 1.8, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.fillStyle = 'rgba(255,214,140,0.16)'; ctx.beginPath(); ctx.arc(fx, 14, 9, 0, Math.PI * 2); ctx.fill();
+  }
+  // ---- candle flames on every table
+  SARD_TABLES.forEach(([tx, ty], i) => {
+    const x = tx * TILE + 16.5, y = ty * TILE + 8, fl = 0.7 + 0.3 * Math.sin(time * 9 + i * 2.3) * Math.sin(time * 3.7 + i);
+    const g = ctx.createRadialGradient(x, y, 0.5, x, y, 9); g.addColorStop(0, 'rgba(255,200,100,' + (0.45 * fl).toFixed(3) + ')'); g.addColorStop(1, 'rgba(255,200,100,0)');
+    ctx.fillStyle = g; ctx.fillRect(x - 9, y - 9, 18, 18);
+    ctx.fillStyle = 'rgba(255,230,150,' + fl.toFixed(2) + ')'; ctx.beginPath(); ctx.ellipse(x, y, 1.1, 2.1 * fl + 0.6, 0, 0, Math.PI * 2); ctx.fill();
+  });
+  // ---- floating dust in the sun
+  for (let i = 0; i < 10; i++) {
+    const dx = 40 + ((i * 53 + time * 6) % 230), dy = 76 + ((i * 29 + time * 4 + 10 * Math.sin(time * 0.8 + i)) % 110);
+    ctx.fillStyle = 'rgba(255,244,200,0.35)'; ctx.fillRect(dx, dy, 1.5, 1.5);
   }
   ctx.restore();
 }
